@@ -11,21 +11,31 @@ from urllib.parse import urlparse
 from tqdm import tqdm
 from pydantic import BaseModel, ValidationError
 
-# OpenRouter setup
-SITE_URL = os.getenv("SITE_URL", "https://github.com/yourusername/yourrepo")
-SITE_NAME = os.getenv("SITE_NAME", "AIME Math Evaluation")
+# API Configuration
+USE_OPENROUTER = os.getenv("USE_OPENROUTER", "false").lower() == "true"
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    default_headers={
-        "HTTP-Referer": SITE_URL,
-        "X-Title": SITE_NAME,
-    }
-)
+if USE_OPENROUTER:
+    # OpenRouter setup
+    SITE_URL = os.getenv("SITE_URL", "https://github.com/yourusername/yourrepo")
+    SITE_NAME = os.getenv("SITE_NAME", "AIME Math Evaluation")
+    API_KEY = os.getenv("OPENROUTER_API_KEY")
+    BASE_URL = "https://openrouter.ai/api/v1"
+    MODEL = "anthropic/claude-3-opus"  # OpenRouter model identifier
+    client = OpenAI(
+        base_url=BASE_URL,
+        api_key=API_KEY,
+        default_headers={
+            "HTTP-Referer": SITE_URL,
+            "X-Title": SITE_NAME,
+        }
+    )
+else:
+    # Standard OpenAI setup
+    API_KEY = os.getenv("OPENAI_API_KEY")
+    MODEL = "gpt-4"  # Standard OpenAI model
+    client = OpenAI(api_key=API_KEY)
 
 # Constants
-MODEL = "anthropic/claude-3-opus"  # OpenRouter model identifier
 MAX_RETRIES = 1
 SLEEP_TIME = 30  # Seconds to wait between retries in case of rate limits
 
