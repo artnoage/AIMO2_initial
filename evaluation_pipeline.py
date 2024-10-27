@@ -161,8 +161,9 @@ def save_results(results, filename=OUTPUT_FILE):
 def main():
     parser = argparse.ArgumentParser(description='Run evaluation pipeline with selected model and provider')
     parser.add_argument('--provider', choices=['openai', 'openrouter'], default='openrouter',
-                      help='API provider to use (default: openai)')
-    parser.add_argument('--model', help='Model to use for evaluation')
+                      help='API provider to use (default: openrouter)')
+    parser.add_argument('--model', default='qwen/qwen-2.5-7b-instruct',
+                      help='Model to use for evaluation (default: qwen/qwen-2.5-7b-instruct)')
     args = parser.parse_args()
 
     # Validate model selection
