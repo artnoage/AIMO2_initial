@@ -7,15 +7,25 @@ from typing import Optional, List
 import openai
 from openai import OpenAI
 from datasets import load_dataset
+from urllib.parse import urlparse
 from tqdm import tqdm
 from pydantic import BaseModel, ValidationError
 
+# OpenRouter setup
+SITE_URL = os.getenv("SITE_URL", "https://github.com/yourusername/yourrepo")
+SITE_NAME = os.getenv("SITE_NAME", "AIME Math Evaluation")
+
 client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    default_headers={
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
+    }
 )
 
 # Constants
-MODEL = "gpt-4o-2024-08-06"  # Use a model that supports Structured Outputs
+MODEL = "anthropic/claude-3-opus"  # OpenRouter model identifier
 MAX_RETRIES = 1
 SLEEP_TIME = 30  # Seconds to wait between retries in case of rate limits
 
