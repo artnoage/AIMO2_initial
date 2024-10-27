@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import argparse
 import datetime
 from typing import Optional, List
 import openai
@@ -11,23 +12,29 @@ from urllib.parse import urlparse
 from tqdm import tqdm
 from pydantic import BaseModel, ValidationError
 
-# API Configuration
-USE_OPENROUTER = os.getenv("USE_OPENROUTER", "false").lower() == "true"
+# Model configurations
+OPENAI_MODELS = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
+OPENROUTER_MODELS = ["anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro"]
 
-if USE_OPENROUTER:
-    # OpenRouter setup
-    API_KEY = os.getenv("OPENROUTER_API_KEY")
-    BASE_URL = "https://openrouter.ai/api/v1"
-    MODEL = "anthropic/claude-3.5-sonnet"  # OpenRouter model identifier
-    client = OpenAI(
-        base_url=BASE_URL,
-        api_key=API_KEY
-    )
-else:
-    # Standard OpenAI setup
-    API_KEY = os.getenv("OPENAI_API_KEY")
-    MODEL = "gpt-4"  # Standard OpenAI model
-    client = OpenAI(api_key=API_KEY)
+def setup_client(provider: str, model: str):
+    """Setup API client based on provider and model selection"""
+    if provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY environment variable not set")
+        return OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key
+        ), model
+    else:  # openai
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable not set")
+        return OpenAI(api_key=api_key), model
+
+# Initialize these globally as they'll be set in main()
+client = None
+MODEL = None
 
 # Constants
 MAX_RETRIES = 1
@@ -152,6 +159,25 @@ def save_results(results, filename=OUTPUT_FILE):
     print(f"Results saved to {filename}")
 
 def main():
+    parser = argparse.ArgumentParser(description='Run evaluation pipeline with selected model and provider')
+    parser.add_argument('--provider', choices=['openai', 'openrouter'], default='openai',
+                      help='API provider to use (default: openai)')
+    parser.add_argument('--model', help='Model to use for evaluation')
+    args = parser.parse_args()
+
+    # Validate model selection
+    if args.provider == 'openai' and args.model not in OPENAI_MODELS:
+        print(f"Invalid OpenAI model. Choose from: {', '.join(OPENAI_MODELS)}")
+        return
+    elif args.provider == 'openrouter' and args.model not in OPENROUTER_MODELS:
+        print(f"Invalid OpenRouter model. Choose from: {', '.join(OPENROUTER_MODELS)}")
+        return
+
+    # Setup global client and model
+    global client, MODEL
+    client, MODEL = setup_client(args.provider, args.model)
+
+    print(f"Using {args.provider} with model: {args.model}")
     print("Loading dataset...")
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
     print(f"Loaded {len(dataset)} problems.")
