@@ -105,7 +105,7 @@ def evaluate_model(dataset):
 
         structured_response = get_structured_response(prompt)
 
-        timestamp = timestamp()
+        current_timestamp = timestamp()
 
         if structured_response:
             model_reasoning = structured_response.reasoning
@@ -129,7 +129,7 @@ def evaluate_model(dataset):
             "model_reasoning": model_reasoning,
             "correctness": correctness,
             "refusal": refusal,
-            "timestamp": timestamp,
+            "timestamp": current_timestamp,
             "url": example.get('url', ''),
         }
 
