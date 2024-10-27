@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 # Model configurations
 OPENAI_MODELS = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
-OPENROUTER_MODELS = ["anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro"]
+OPENROUTER_MODELS = ["anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro","qwen/qwen-2.5-7b-instruct"]
 
 def setup_client(provider: str, model: str):
     """Setup API client based on provider and model selection"""
@@ -160,7 +160,7 @@ def save_results(results, filename=OUTPUT_FILE):
 
 def main():
     parser = argparse.ArgumentParser(description='Run evaluation pipeline with selected model and provider')
-    parser.add_argument('--provider', choices=['openai', 'openrouter'], default='openai',
+    parser.add_argument('--provider', choices=['openai', 'openrouter'], default='openrouter',
                       help='API provider to use (default: openai)')
     parser.add_argument('--model', help='Model to use for evaluation')
     args = parser.parse_args()
