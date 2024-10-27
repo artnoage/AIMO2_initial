@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import argparse
 import datetime
 from typing import Optional, List
 import openai
@@ -11,29 +12,44 @@ from urllib.parse import urlparse
 from tqdm import tqdm
 from pydantic import BaseModel, ValidationError
 
-# API Configuration
-USE_OPENROUTER = os.getenv("USE_OPENROUTER", "false").lower() == "true"
+# Available models
+OPENAI_MODELS = ["gpt-4", "gpt-4-turbo-preview", "gpt-3.5-turbo"]
+OPENROUTER_MODELS = ["anthropic/claude-3-opus", "anthropic/claude-3-sonnet", "google/gemini-pro"]
 
-if USE_OPENROUTER:
-    # OpenRouter setup
-    SITE_URL = os.getenv("SITE_URL", "https://github.com/yourusername/yourrepo")
-    SITE_NAME = os.getenv("SITE_NAME", "AIME Math Evaluation")
-    API_KEY = os.getenv("OPENROUTER_API_KEY")
-    BASE_URL = "https://openrouter.ai/api/v1"
-    MODEL = "anthropic/claude-3-opus"  # OpenRouter model identifier
-    client = OpenAI(
-        base_url=BASE_URL,
-        api_key=API_KEY,
-        default_headers={
-            "HTTP-Referer": SITE_URL,
-            "X-Title": SITE_NAME,
-        }
-    )
-else:
-    # Standard OpenAI setup
-    API_KEY = os.getenv("OPENAI_API_KEY")
-    MODEL = "gpt-4"  # Standard OpenAI model
-    client = OpenAI(api_key=API_KEY)
+def setup_client(provider: str, model: str):
+    """Setup API client based on provider and model selection"""
+    if provider == "openrouter":
+        # OpenRouter setup
+        SITE_URL = os.getenv("SITE_URL", "https://github.com/yourusername/yourrepo")
+        SITE_NAME = os.getenv("SITE_NAME", "AIME Math Evaluation")
+        API_KEY = os.getenv("OPENROUTER_API_KEY")
+        if not API_KEY:
+            raise ValueError("OPENROUTER_API_KEY environment variable is required for OpenRouter")
+        
+        if model not in OPENROUTER_MODELS:
+            raise ValueError(f"Invalid OpenRouter model. Choose from: {', '.join(OPENROUTER_MODELS)}")
+        
+        return OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=API_KEY,
+            default_headers={
+                "HTTP-Referer": SITE_URL,
+                "X-Title": SITE_NAME,
+            }
+        ), model
+    
+    elif provider == "openai":
+        API_KEY = os.getenv("OPENAI_API_KEY")
+        if not API_KEY:
+            raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI")
+        
+        if model not in OPENAI_MODELS:
+            raise ValueError(f"Invalid OpenAI model. Choose from: {', '.join(OPENAI_MODELS)}")
+        
+        return OpenAI(api_key=API_KEY), model
+    
+    else:
+        raise ValueError("Provider must be either 'openai' or 'openrouter'")
 
 # Constants
 MAX_RETRIES = 1
@@ -158,6 +174,21 @@ def save_results(results, filename=OUTPUT_FILE):
     print(f"Results saved to {filename}")
 
 def main():
+    parser = argparse.ArgumentParser(description='Evaluate math problems using different LLM providers and models')
+    parser.add_argument('--provider', type=str, choices=['openai', 'openrouter'], default='openai',
+                      help='API provider to use (default: openai)')
+    parser.add_argument('--model', type=str,
+                      help='Model to use. See OPENAI_MODELS or OPENROUTER_MODELS for available options')
+    args = parser.parse_args()
+
+    # Set default model based on provider if not specified
+    if not args.model:
+        args.model = "gpt-4" if args.provider == "openai" else "anthropic/claude-3-opus"
+
+    print(f"Setting up client for {args.provider} using model {args.model}")
+    global client, MODEL
+    client, MODEL = setup_client(args.provider, args.model)
+
     print("Loading dataset...")
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
     print(f"Loaded {len(dataset)} problems.")
