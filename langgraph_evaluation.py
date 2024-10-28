@@ -109,16 +109,22 @@ def preprocess_template_vars(text: str) -> str:
     return processed_text
 
 def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
-    # Create the prompt with the raw problem text
+    # Escape any template-like variables in the problem text
+    escaped_problem = re.sub(r'\{([^{}]+)\}', r'{{\1}}', problem)
+    
+    # Create the prompt with the escaped problem text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT.format(problem=problem, messages="{messages}"))
+        ("system", SOLVER_PROMPT.format(problem=escaped_problem, messages="{messages}"))
     ])
     return prompt | model
 
 def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
-    # Create the prompt with the raw problem text
+    # Escape any template-like variables in the problem text
+    escaped_problem = re.sub(r'\{([^{}]+)\}', r'{{\1}}', problem)
+    
+    # Create the prompt with the escaped problem text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(problem=problem, messages="{messages}"))
+        ("system", VERIFIER_PROMPT.format(problem=escaped_problem, messages="{messages}"))
     ])
     return prompt | model
 
