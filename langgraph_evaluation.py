@@ -117,19 +117,21 @@ def clean_answer(state: AgentState) -> AgentState:
     else:
         final_answer = None
     
-    # Save conversation to MD file
-    save_conversation_to_md(state)
+    # Note: This call will be handled in the main loop instead
+    pass
     
     return {
         **state,
         "final_answer": final_answer
     }
 
-def save_conversation_to_md(state: AgentState, problem_id: str):
+def save_conversation_to_md(state: AgentState, problem_id: str, solution: str):
     """Save the conversation to a Markdown file"""
     filename = f"conversation_{problem_id}.md"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id}\n\n")
+        f.write("## Dataset Solution\n\n")
+        f.write(f"{solution}\n\n")
         f.write("## Solver Messages\n\n")
         for msg in state["solver_messages"]:
             role = "Human" if isinstance(msg, HumanMessage) else "Solver"
@@ -202,7 +204,7 @@ if __name__ == "__main__":
         })
         
         # Save conversation after processing
-        save_conversation_to_md(result, problem_id)
+        save_conversation_to_md(result, problem_id, example['solution'])
     
     # Print summary
     print("\nResults Summary:")
