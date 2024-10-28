@@ -270,7 +270,7 @@ def process_problem(problem_text: str, ground_truth: int):
     }
     
     # Build and compile graph for this problem
-    workflow = build_graph(solver_chain, verifier_chain)
+    workflow = build_graph(solver_chain, verifier_chain, ground_truth)
     app = workflow.compile()
     
     # Run the graph
