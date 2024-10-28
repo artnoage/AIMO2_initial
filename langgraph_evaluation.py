@@ -312,8 +312,8 @@ def process_problem(problem_text: str, ground_truth: int,
     try:
         display(Image(workflow.get_graph().draw_mermaid_png()))
     except Exception:
-        # Fallback to basic print if visualization fails
-        print_graph(workflow)
+        # This requires some extra dependencies and is optional
+        pass
     
     app = workflow.compile()
     
