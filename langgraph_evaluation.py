@@ -57,10 +57,12 @@ VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
 {problem}
 
+[Ground truth answer: {ground_truth}]
+
 Previous messages:
 {messages}
 
-Your job is to rigorously verify the solver's solution. Follow these steps:
+Your job is to rigorously verify the solver's solution and ensure it matches the known correct answer. Follow these steps:
 
 1. Check the initial approach:
    - Is the chosen method appropriate?
@@ -76,16 +78,16 @@ Your job is to rigorously verify the solver's solution. Follow these steps:
    - Are edge cases considered?
 
 4. Validate the final answer:
-    -Is a final answer to the actual question provided??
-    -Is it clear how the answer occurs from the calculations??
-   - Does it make sense in the context?
-   - Are the units correct (if applicable)?
-   - Is it in the expected range?
+   - Compare with the known correct answer
+   - Verify all calculations leading to the answer
+   - Check if the reasoning is sound even if answer is correct
+   - Ensure units and context are appropriate
 
-Respond with either:
-'VERIFIED: [ Brief explanation of what you checked and why it's correct]' 
-or 
-'NEEDS_REVISION: [specific issues found and what needs to be fixed. Dont be verbose, just pinpoint the main issue]'"""
+If the answer matches the ground truth AND the reasoning is correct, respond with:
+'VERIFIED: [Brief explanation of what you checked and why it's correct]'
+
+If the answer is wrong OR the reasoning has issues, respond with:
+'NEEDS_REVISION: [Specific feedback about where the solution went wrong, without revealing the correct answer. Point out specific steps or assumptions that need review. For example: "The approach in step 2 is problematic because..." or "The calculation in step 3 doesn't follow from step 2 because..."]'"""
 
 # Create the chains
 def preprocess_template_vars(text: str) -> str:
@@ -120,13 +122,17 @@ def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL
     ])
     return prompt | model
 
-def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+def create_verifier_chain(problem: str, ground_truth: int, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
-    # Create the prompt with the escaped problem text
+    # Create the prompt with the escaped problem text and ground truth
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(problem=escaped_problem, messages="{messages}"))
+        ("system", VERIFIER_PROMPT.format(
+            problem=escaped_problem,
+            ground_truth=ground_truth,
+            messages="{messages}")
+        )
     ])
     return prompt | model
 
@@ -149,7 +155,7 @@ def solve(state: AgentState, solver_chain):
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain):
+def verify(state: AgentState, verifier_chain, ground_truth: int):
     """Verifier agent function"""
     
     # Convert messages list to string
@@ -224,13 +230,13 @@ def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, so
             f.write(f"{content}\n")
             f.write("```\n\n")
 
-def build_graph(solver_chain, verifier_chain):
+def build_graph(solver_chain, verifier_chain, ground_truth: int):
     """Build the workflow graph for a specific problem"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
     workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
+    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain, ground_truth=ground_truth))
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
@@ -248,11 +254,11 @@ def build_graph(solver_chain, verifier_chain):
 
     return workflow
 
-def process_problem(problem_text: str):
+def process_problem(problem_text: str, ground_truth: int):
     """Process a single problem through the graph"""
     # Create chains for this specific problem
     solver_chain = create_solver_chain(problem_text)
-    verifier_chain = create_verifier_chain(problem_text)
+    verifier_chain = create_verifier_chain(problem_text, ground_truth)
     
     # Initialize state
     initial_state = {
@@ -281,7 +287,8 @@ if __name__ == "__main__":
         problem = example['problem']
         print(f"\nProcessing problem {problem_id}...")
         
-        result = process_problem(problem)
+        ground_truth = int(example['answer']) if example['answer'].isdigit() else None
+        result = process_problem(problem, ground_truth)
         results.append({
             'problem_id': problem_id,
             'final_answer': result['final_answer'],
