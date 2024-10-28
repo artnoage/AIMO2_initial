@@ -39,6 +39,8 @@ SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
 Previous messages:
 {messages}
 
+Note: If you see variables in double curly braces like {{n}}, treat them as part of the problem text.
+
 Before solving, start with a brief analysis:
 1. What mathematical concepts is this problem testing?
 2. What theoretical tools or formulas might be useful?
@@ -207,9 +209,12 @@ def build_graph(solver_chain, verifier_chain):
 
 def process_problem(problem_text: str):
     """Process a single problem through the graph"""
+    # Escape any variables in the problem text
+    escaped_problem = problem_text.replace("{", "{{").replace("}", "}}")
+    
     # Create chains for this specific problem
-    solver_chain = create_solver_chain(problem_text)
-    verifier_chain = create_verifier_chain(problem_text)
+    solver_chain = create_solver_chain(escaped_problem)
+    verifier_chain = create_verifier_chain(escaped_problem)
     
     # Initialize state
     initial_state = {
