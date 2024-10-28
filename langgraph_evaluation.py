@@ -188,6 +188,8 @@ def check_answer(state: AgentState, ground_truth: int) -> Union[str, None]:
     if state["final_answer"] == ground_truth or state["iteration_count"] >= 3:
         return END
     
+    print("\n🔄 Verifier was wrong - resampling verifier...\n")
+    
     # Remove last messages and try verification again
     if len(state["solver_messages"]) > 0:
         state["solver_messages"].pop()
