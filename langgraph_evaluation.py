@@ -53,36 +53,47 @@ verifier = ChatPromptTemplate.from_messages([
 
 def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     """Solver agent function"""
-    # Get the last message and convert verifier's message to human if it exists
-    last_message = state["all_messages"][-1]
-    if isinstance(last_message, AIMessage):
-        last_message = HumanMessage(content=last_message.content)
+    # Convert the solver's message history - making verifier messages appear as human
+    solver_history = []
+    for msg in state["all_messages"]:
+        if isinstance(msg, AIMessage) and msg.content == state["current_solution"]:
+            # Skip the solver's own last message
+            continue
+        # Convert verifier messages to human messages
+        if isinstance(msg, AIMessage):
+            solver_history.append(HumanMessage(content=msg.content))
+        else:
+            solver_history.append(msg)
     
     prompt = solver.invoke({
-        "solver_messages": [*state["solver_messages"], last_message],
-        "input": last_message.content
+        "solver_messages": solver_history,
+        "input": state["all_messages"][-1].content
     })
     response = model.invoke(prompt)
     return {
-        "solver_messages": [*state["solver_messages"], last_message, response],
-        "current_solution": response.content,
-        "all_messages": [*state["all_messages"], response]
+        "current_solution": response.content
     }
 
 def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     """Verifier agent function"""
-    # Convert solver's message to human message for the verifier
-    solver_message = HumanMessage(content=state["current_solution"])
+    # Convert the verifier's message history - making solver messages appear as human
+    verifier_history = []
+    for msg in state["all_messages"]:
+        if isinstance(msg, AIMessage) and "VERIFIED" in msg.content or "NEEDS_REVISION" in msg.content:
+            # Skip the verifier's own messages
+            continue
+        # Convert solver messages to human messages
+        if isinstance(msg, AIMessage):
+            verifier_history.append(HumanMessage(content=msg.content))
+        else:
+            verifier_history.append(msg)
     
     prompt = verifier.invoke({
-        "verifier_messages": [*state["verifier_messages"], solver_message],
+        "verifier_messages": verifier_history,
         "solution": state["current_solution"]
     })
     response = model.invoke(prompt)
-    return {
-        "verifier_messages": [*state["verifier_messages"], solver_message, response],
-        "all_messages": [*state["all_messages"], response]
-    }
+    return {}
 
 def should_continue(state: AgentState) -> Union[str, None]:
     """Determine if we need another iteration"""
