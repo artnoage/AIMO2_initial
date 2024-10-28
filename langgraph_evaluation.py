@@ -12,8 +12,8 @@ from langchain_core.prompts import ChatPromptTemplate
 # Setup for OpenRouter
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Both agents using claude-3-sonnet for now
-SOLVER_MODEL = "anthropic/claude-3.5-sonnet"
-VERIFIER_MODEL = "anthropic/claude-3.5-sonnet"
+SOLVER_MODEL = "anthropic/claude-3.5-sonnet:beta"
+VERIFIER_MODEL = "anthropic/claude-3.5-sonnet:beta"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -283,7 +283,7 @@ def process_problem(problem_text: str, ground_truth: int):
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:4]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:8]")
     
     results = []
     for example in dataset:
