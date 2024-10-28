@@ -90,15 +90,23 @@ or
 # Create the chains
 def preprocess_template_vars(text: str) -> str:
     """Replace any template-like variables in the text with escaped versions"""
+    # First escape any existing curly braces that aren't template variables
+    processed_text = text.replace("{{", "{{{{").replace("}}", "}}}}")
+    
     # Find all template variables like {ABC} or {n}
     var_pattern = r'\{([^{}]+)\}'
-    template_vars = set(re.findall(var_pattern, text))
+    template_vars = set(re.findall(var_pattern, processed_text))
     
-    # Replace each with escaped version
-    processed_text = text
+    # Create a dictionary of replacements
+    replacements = {}
     for var in template_vars:
-        if var != 'messages':  # Don't escape the special messages variable
-            processed_text = processed_text.replace(f"{{{var}}}", f"{{{{var_{var}}}}}")
+        if var == 'messages' or var == 'problem':  # Keep special variables
+            continue
+        replacements[f"{{{var}}}"] = f"{{{{n}}}}" if var == 'n' else f"{{var_{var}}}"
+    
+    # Apply replacements
+    for old, new in replacements.items():
+        processed_text = processed_text.replace(old, new)
     
     return processed_text
 
@@ -106,9 +114,9 @@ def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL
     # Preprocess the problem text
     processed_problem = preprocess_template_vars(problem)
     
-    # Create the prompt with processed text
+    # Create the prompt template directly with the processed problem
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT.format(problem=processed_problem, messages="{messages}"))
+        ("system", processed_problem)
     ])
     return prompt | model
 
@@ -116,9 +124,9 @@ def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_M
     # Preprocess the problem text
     processed_problem = preprocess_template_vars(problem)
     
-    # Create the prompt with processed text
+    # Create the prompt template directly with the processed problem
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(problem=processed_problem, messages="{messages}"))
+        ("system", processed_problem)
     ])
     return prompt | model
 
