@@ -47,6 +47,7 @@ Before solving, start with a brief analysis:
 Then solve the problem step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
 - Show all calculations explicitly
+- Never omit calculations for bravity.
 - Highlight any key insights or clever observations
 - Double-check your work
 
@@ -66,17 +67,16 @@ Your job is to rigorously verify the solver's solution. Follow these steps:
    - Are all necessary concepts being used correctly?
 
 2. Verify calculations:
-   - Redo ALL numerical calculations independently
-   - Check for arithmetic errors
-   - Verify any algebraic manipulations
-   - If possible, work backwards from the answer to verify it satisfies the initial conditions
-
+    If possible, work backwards from the answer to verify it satisfies the initial conditions, 
+    or the intermediate steps. 
+   
 3. Examine logic:
    - Are all steps properly justified?
    - Are there any gaps in reasoning?
    - Are edge cases considered?
 
 4. Validate the final answer:
+    -Is a final answer to the actual question provided??
    - Does it make sense in the context?
    - Are the units correct (if applicable)?
    - Is it in the expected range?
@@ -261,7 +261,7 @@ def process_problem(problem_text: str):
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[0:1]+train[2:4]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:4]")
     
     results = []
     for example in dataset:
