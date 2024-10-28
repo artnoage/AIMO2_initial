@@ -21,7 +21,6 @@ class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     verifier_messages: Annotated[List[BaseMessage], add_messages]
     current_solution: Annotated[str, "Current solution being worked on"]
-    problem_id: Annotated[str, "ID of the current problem"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
 
 # Initialize the models
@@ -33,31 +32,34 @@ def get_model(model_name: str):
     )
 
 # Define system prompts
-SOLVER_PROMPT = """You are a mathematical problem solver. Your task is to solve math problems step by step,
-showing your work clearly. Provide your final answer as a number at the end of your response
-prefixed with 'ANSWER: '. Be thorough but concise."""
+SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
 
-VERIFIER_PROMPT = """You are a mathematical solution verifier. Your job is to check if the solver's solution is correct.
-Look for any errors in logic or calculation. Respond with either:
+{problem}
+
+Solve this problem step by step, showing your work clearly. Provide your final answer as a number 
+at the end of your response prefixed with 'ANSWER: '. Be thorough but concise."""
+
+VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
+
+{problem}
+
+Your job is to check if the solver's solution is correct. Look for any errors in logic or calculation. 
+Respond with either:
 'VERIFIED: [explanation]' if the solution looks correct
 'NEEDS_REVISION: [explanation]' if you find any issues"""
 
 # Create the chains
-def create_solver_chain(model: ChatOpenAI = get_model(SOLVER_MODEL)):
+def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT)
+        ("system", SOLVER_PROMPT.format(problem=problem))
     ])
     return prompt | model
 
-def create_verifier_chain(model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT)
+        ("system", VERIFIER_PROMPT.format(problem=problem))
     ])
     return prompt | model
-
-# Initialize the chains
-solver_chain = create_solver_chain()
-verifier_chain = create_verifier_chain()
 
 def solve(state: AgentState):
     """Solver agent function"""
@@ -123,11 +125,11 @@ def clean_answer(state: AgentState) -> AgentState:
         "final_answer": final_answer
     }
 
-def save_conversation_to_md(state: AgentState):
+def save_conversation_to_md(state: AgentState, problem_id: str):
     """Save the conversation to a Markdown file"""
-    filename = f"conversation_{state['problem_id']}.md"
+    filename = f"conversation_{problem_id}.md"
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(f"# Problem {state['problem_id']}\n\n")
+        f.write(f"# Problem {problem_id}\n\n")
         f.write("## Solver Messages\n\n")
         for msg in state["solver_messages"]:
             role = "Human" if isinstance(msg, HumanMessage) else "Solver"
@@ -137,39 +139,46 @@ def save_conversation_to_md(state: AgentState):
             role = "Human" if isinstance(msg, HumanMessage) else "Verifier"
             f.write(f"### {role}\n\n{msg.content}\n\n")
 
-# Build the graph
-workflow = Graph()
+def build_graph(solver_chain, verifier_chain):
+    """Build the workflow graph for a specific problem"""
+    workflow = Graph()
 
-# Add nodes
-workflow.add_node("solver", solve)
-workflow.add_node("verifier", verify)
-workflow.add_node("cleaner", clean_answer)
+    # Add nodes
+    workflow.add_node("solver", solve)
+    workflow.add_node("verifier", verify)
+    workflow.add_node("cleaner", clean_answer)
 
-# Add edges
-workflow.add_edge("solver", "verifier")
-workflow.add_conditional_edges(
-    "verifier",
-    should_continue,
-    {
-        "solver": "solver",
-        "cleaner": "cleaner"
-    }
-)
-workflow.add_edge("cleaner", None)
+    # Add edges
+    workflow.add_edge("solver", "verifier")
+    workflow.add_conditional_edges(
+        "verifier",
+        should_continue,
+        {
+            "solver": "solver",
+            "cleaner": "cleaner"
+        }
+    )
+    workflow.add_edge("cleaner", None)
 
-# Compile the graph
-app = workflow.compile()
+    return workflow
 
-def process_problem(problem_text: str, problem_id: str):
+def process_problem(problem_text: str):
     """Process a single problem through the graph"""
+    # Create chains for this specific problem
+    solver_chain = create_solver_chain(problem_text)
+    verifier_chain = create_verifier_chain(problem_text)
+    
     # Initialize state
     initial_state = {
         "solver_messages": [HumanMessage(content=problem_text)],
         "verifier_messages": [],
         "current_solution": "",
-        "problem_id": problem_id,
         "final_answer": None
     }
+    
+    # Build and compile graph for this problem
+    workflow = build_graph(solver_chain, verifier_chain)
+    app = workflow.compile()
     
     # Run the graph
     final_state = app.invoke(initial_state)
@@ -185,12 +194,15 @@ if __name__ == "__main__":
         problem = example['problem']
         print(f"\nProcessing problem {problem_id}...")
         
-        result = process_problem(problem, problem_id)
+        result = process_problem(problem)
         results.append({
             'problem_id': problem_id,
             'final_answer': result['final_answer'],
             'ground_truth': int(example['answer']) if example['answer'].isdigit() else None
         })
+        
+        # Save conversation after processing
+        save_conversation_to_md(result, problem_id)
     
     # Print summary
     print("\nResults Summary:")
