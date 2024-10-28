@@ -32,34 +32,46 @@ def get_model(model_name: str):
         api_key=os.getenv("OPENROUTER_API_KEY")
     )
 
-def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
+# Define system prompts
+SOLVER_PROMPT = """You are a mathematical problem solver. Your task is to solve math problems step by step,
+showing your work clearly. Provide your final answer as a number at the end of your response
+prefixed with 'ANSWER: '. Be thorough but concise."""
+
+VERIFIER_PROMPT = """You are a mathematical solution verifier. Your job is to check if the solver's solution is correct.
+Look for any errors in logic or calculation. Respond with either:
+'VERIFIED: [explanation]' if the solution looks correct
+'NEEDS_REVISION: [explanation]' if you find any issues"""
+
+# Create the chains
+def create_solver_chain(model: ChatOpenAI = get_model(SOLVER_MODEL)):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SOLVER_PROMPT)
+    ])
+    return prompt | model
+
+def create_verifier_chain(model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", VERIFIER_PROMPT)
+    ])
+    return prompt | model
+
+# Initialize the chains
+solver_chain = create_solver_chain()
+verifier_chain = create_verifier_chain()
+
+def solve(state: AgentState):
     """Solver agent function"""
-    messages = [
-        ("system", "You are a mathematical problem solver. Your task is to solve math problems step by step, "
-                  "showing your work clearly. Provide your final answer as a number at the end of your response "
-                  "prefixed with 'ANSWER: '. Be thorough but concise.")
-    ]
-    
-    prompt = ChatPromptTemplate.from_messages(messages)
-    response = model.invoke(prompt)
-    
+    response = solver_chain.invoke(state["solver_messages"])
     return {
         "current_solution": response.content
     }
 
-def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+def verify(state: AgentState):
     """Verifier agent function"""
-    messages = [
-        ("system", "You are a mathematical solution verifier. Your job is to check if the solver's solution is correct. "
-                  "Look for any errors in logic or calculation. Respond with either:\n"
-                  "'VERIFIED: [explanation]' if the solution looks correct\n"
-                  "'NEEDS_REVISION: [explanation]' if you find any issues"),
-        ("human", f"Please verify this solution:\n{state['current_solution']}")
+    messages = state["verifier_messages"] + [
+        HumanMessage(content=f"Please verify this solution:\n{state['current_solution']}")
     ]
-    
-    prompt = ChatPromptTemplate.from_messages(messages)
-    response = model.invoke(prompt)
-    
+    response = verifier_chain.invoke(messages)
     return {}
 
 def should_continue(state: AgentState) -> Union[str, None]:
