@@ -69,6 +69,7 @@ Your job is to rigorously verify the solver's solution. Follow these steps:
    - Redo ALL numerical calculations independently
    - Check for arithmetic errors
    - Verify any algebraic manipulations
+   - If possible, work backwards from the answer to verify it satisfies the initial conditions
 
 3. Examine logic:
    - Are all steps properly justified?
