@@ -71,7 +71,8 @@ def solve(state: AgentState, solver_chain):
     
     return {
         "current_solution": solution_content,
-        "solver_messages": [ai_message, human_message]
+        "solver_messages": [ai_message],
+        "verifier_messages": [human_message]
     }
 
 def verify(state: AgentState, verifier_chain):
@@ -89,7 +90,8 @@ def verify(state: AgentState, verifier_chain):
     human_message = HumanMessage(content=verification_content)
     
     return {
-        "verifier_messages": [ai_message, human_message]
+        "solver_messages": [human_message],
+        "verifier_messages": [ai_message]
     }
 
 def should_continue(state: AgentState) -> Union[str, None]:
