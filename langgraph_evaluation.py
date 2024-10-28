@@ -32,31 +32,23 @@ def get_model(model_name: str):
         api_key=os.getenv("OPENROUTER_API_KEY")
     )
 
-# Setup solver agent
-solver = ChatPromptTemplate.from_messages([
-    ("system", "You are a mathematical problem solver. Your task is to solve math problems step by step, "
-              "showing your work clearly. Provide your final answer as a number at the end of your response "
-              "prefixed with 'ANSWER: '. Be thorough but concise."),
-    MessagesPlaceholder(variable_name="solver_messages"),
-    ("human", "{input}")
-])
-
-# Setup verifier agent
-verifier = ChatPromptTemplate.from_messages([
-    ("system", "You are a mathematical solution verifier. Your job is to check if the solver's solution is correct. "
-              "Look for any errors in logic or calculation. Respond with either:\n"
-              "'VERIFIED: [explanation]' if the solution looks correct\n"
-              "'NEEDS_REVISION: [explanation]' if you find any issues"),
-    MessagesPlaceholder(variable_name="verifier_messages"),
-    ("human", "Please verify this solution:\n{solution}")
-])
-
 def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     """Solver agent function"""
-    prompt = solver.invoke({
-        "solver_messages": state["solver_messages"],
-        "input": state["solver_messages"][-1].content if state["solver_messages"] else state["verifier_messages"][-1].content
-    })
+    messages = [
+        ("system", "You are a mathematical problem solver. Your task is to solve math problems step by step, "
+                  "showing your work clearly. Provide your final answer as a number at the end of your response "
+                  "prefixed with 'ANSWER: '. Be thorough but concise."),
+    ]
+    
+    # Add history
+    messages.extend([(msg.type, msg.content) for msg in state["solver_messages"]])
+    
+    # Add latest input
+    latest_content = (state["solver_messages"][-1].content if state["solver_messages"] 
+                     else state["verifier_messages"][-1].content)
+    messages.append(("human", latest_content))
+    
+    prompt = ChatPromptTemplate.from_messages(messages)
     response = model.invoke(prompt)
     return {
         "current_solution": response.content,
@@ -65,10 +57,20 @@ def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
 
 def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     """Verifier agent function"""
-    prompt = verifier.invoke({
-        "verifier_messages": state["verifier_messages"],
-        "solution": state["current_solution"]
-    })
+    messages = [
+        ("system", "You are a mathematical solution verifier. Your job is to check if the solver's solution is correct. "
+                  "Look for any errors in logic or calculation. Respond with either:\n"
+                  "'VERIFIED: [explanation]' if the solution looks correct\n"
+                  "'NEEDS_REVISION: [explanation]' if you find any issues"),
+    ]
+    
+    # Add history
+    messages.extend([(msg.type, msg.content) for msg in state["verifier_messages"]])
+    
+    # Add solution to verify
+    messages.append(("human", f"Please verify this solution:\n{state['current_solution']}"))
+    
+    prompt = ChatPromptTemplate.from_messages(messages)
     response = model.invoke(prompt)
     return {
         "verifier_messages": [response]
