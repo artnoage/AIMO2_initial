@@ -88,15 +88,37 @@ or
 'NEEDS_REVISION: [specific issues found and what needs to be fixed]'"""
 
 # Create the chains
+def preprocess_template_vars(text: str) -> str:
+    """Replace any template-like variables in the text with escaped versions"""
+    # Find all template variables like {ABC} or {n}
+    var_pattern = r'\{([^{}]+)\}'
+    template_vars = set(re.findall(var_pattern, text))
+    
+    # Replace each with escaped version
+    processed_text = text
+    for var in template_vars:
+        if var != 'messages':  # Don't escape the special messages variable
+            processed_text = processed_text.replace(f"{{{var}}}", f"{{{{var_{var}}}}}")
+    
+    return processed_text
+
 def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
+    # Preprocess the problem text
+    processed_problem = preprocess_template_vars(problem)
+    
+    # Create the prompt with processed text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT.format(problem=problem, messages="{messages}"))
+        ("system", SOLVER_PROMPT.format(problem=processed_problem, messages="{messages}"))
     ])
     return prompt | model
 
 def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+    # Preprocess the problem text
+    processed_problem = preprocess_template_vars(problem)
+    
+    # Create the prompt with processed text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(problem=problem, messages="{messages}"))
+        ("system", VERIFIER_PROMPT.format(problem=processed_problem, messages="{messages}"))
     ])
     return prompt | model
 
@@ -209,12 +231,9 @@ def build_graph(solver_chain, verifier_chain):
 
 def process_problem(problem_text: str):
     """Process a single problem through the graph"""
-    # Escape any variables in the problem text
-    escaped_problem = problem_text.replace("{", "{{").replace("}", "}}")
-    
     # Create chains for this specific problem
-    solver_chain = create_solver_chain(escaped_problem)
-    verifier_chain = create_verifier_chain(escaped_problem)
+    solver_chain = create_solver_chain(problem_text)
+    verifier_chain = create_verifier_chain(problem_text)
     
     # Initialize state
     initial_state = {
