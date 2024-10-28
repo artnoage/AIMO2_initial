@@ -19,9 +19,6 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4o"
     master="openai/o1-mini-2024-09-12"
-# Default models
-SOLVER_MODEL = ModelOption.CLAUDE
-VERIFIER_MODEL = ModelOption.master
 # Define state schema
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
@@ -341,30 +338,62 @@ def process_problem(problem_text: str, ground_truth: int,
     return final_state
 
 if __name__ == "__main__":
-    # Load first 3 problems from AIME dataset
+    # Define verifier model (constant across all experiments)
+    VERIFIER_MODEL = ModelOption.master
+    
+    # Define solver models to test
+    solver_models = [
+        ModelOption.CLAUDE,
+        ModelOption.GEMINI_PRO,
+        ModelOption.GPT
+    ]
+    
+    # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[7:11]")
     
-    results = []
-    for example in dataset:
-        problem_id = example['id']
-        problem = example['problem']
-        print(f"\nProcessing problem {problem_id}...")
+    # Run experiments for each solver model
+    for solver_model in solver_models:
+        print(f"\n=== Starting experiment with {solver_model.value} as solver ===")
         
-        ground_truth = int(example['answer']) if example['answer'].isdigit() else None
-        result = process_problem(problem, ground_truth)
-        results.append({
-            'problem_id': problem_id,
-            'final_answer': result['final_answer'],
-            'ground_truth': int(example['answer']) if example['answer'].isdigit() else None
-        })
+        results = []
+        for example in dataset:
+            problem_id = example['id']
+            problem = example['problem']
+            print(f"\nProcessing problem {problem_id}...")
+            
+            ground_truth = int(example['answer']) if example['answer'].isdigit() else None
+            result = process_problem(
+                problem, 
+                ground_truth,
+                solver_model=solver_model,
+                verifier_model=VERIFIER_MODEL
+            )
+            
+            results.append({
+                'solver_model': solver_model.value,
+                'problem_id': problem_id,
+                'final_answer': result['final_answer'],
+                'ground_truth': int(example['answer']) if example['answer'].isdigit() else None
+            })
+            
+            # Save conversation with model name in filename
+            save_conversation_to_md(
+                result, 
+                f"{problem_id}_{solver_model.name.lower()}", 
+                example['problem'], 
+                example['solution']
+            )
         
-        # Save conversation after processing
-        save_conversation_to_md(result, problem_id, example['problem'], example['solution'])
-    
-    # Print summary
-    print("\nResults Summary:")
-    for result in results:
-        print(f"\nProblem {result['problem_id']}:")
-        print(f"Model Answer: {result['final_answer']}")
-        print(f"Ground Truth: {result['ground_truth']}")
-        print(f"Correct: {result['final_answer'] == result['ground_truth']}")
+        # Print summary for this model
+        print(f"\nResults Summary for {solver_model.value}:")
+        correct_count = 0
+        for result in results:
+            print(f"\nProblem {result['problem_id']}:")
+            print(f"Model Answer: {result['final_answer']}")
+            print(f"Ground Truth: {result['ground_truth']}")
+            is_correct = result['final_answer'] == result['ground_truth']
+            print(f"Correct: {is_correct}")
+            if is_correct:
+                correct_count += 1
+        
+        print(f"\nAccuracy for {solver_model.value}: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
