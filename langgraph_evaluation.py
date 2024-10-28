@@ -18,7 +18,8 @@ VERIFIER_MODEL = "anthropic/claude-3-sonnet"
 
 # Define state schema
 class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], add_messages]
+    solver_messages: Annotated[List[BaseMessage], add_messages]
+    verifier_messages: Annotated[List[BaseMessage], add_messages]
     current_solution: Annotated[str, "Current solution being worked on"]
     problem_id: Annotated[str, "ID of the current problem"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
@@ -52,19 +53,9 @@ verifier = ChatPromptTemplate.from_messages([
 
 def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     """Solver agent function"""
-    # Convert verifier messages to human messages for solver's view
-    solver_history = []
-    for msg in state["messages"]:
-        if isinstance(msg, AIMessage) and msg.content == state["current_solution"]:
-            continue
-        if isinstance(msg, AIMessage):
-            solver_history.append(HumanMessage(content=msg.content))
-        else:
-            solver_history.append(msg)
-    
     prompt = solver.invoke({
-        "solver_messages": solver_history,
-        "input": state["messages"][-1].content
+        "solver_messages": state["solver_messages"],
+        "input": state["solver_messages"][-1].content if state["solver_messages"] else state["verifier_messages"][-1].content
     })
     response = model.invoke(prompt)
     return {
@@ -74,35 +65,25 @@ def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
 
 def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     """Verifier agent function"""
-    # Convert solver messages to human messages for verifier's view
-    verifier_history = []
-    for msg in state["messages"]:
-        if isinstance(msg, AIMessage) and ("VERIFIED" in msg.content or "NEEDS_REVISION" in msg.content):
-            continue
-        if isinstance(msg, AIMessage):
-            verifier_history.append(HumanMessage(content=msg.content))
-        else:
-            verifier_history.append(msg)
-    
     prompt = verifier.invoke({
-        "verifier_messages": verifier_history,
+        "verifier_messages": state["verifier_messages"],
         "solution": state["current_solution"]
     })
     response = model.invoke(prompt)
     return {
-        "messages": [response]
+        "verifier_messages": [response]
     }
 
 def should_continue(state: AgentState) -> Union[str, None]:
     """Determine if we need another iteration"""
-    last_message = state["messages"][-1].content
+    last_message = state["verifier_messages"][-1].content
     if "NEEDS_REVISION" in last_message:
         return "solver"
     return "cleaner"
 
 def clean_answer(state: AgentState) -> AgentState:
     """Extract numerical answer from verifier's response"""
-    last_message = state["messages"][-1].content
+    last_message = state["verifier_messages"][-1].content
     if "VERIFIED" in last_message:
         # Try to extract a number from the solver's solution
         solution = state["current_solution"]
@@ -129,9 +110,14 @@ def save_conversation_to_md(state: AgentState):
     filename = f"conversation_{state['problem_id']}.md"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {state['problem_id']}\n\n")
-        for msg in state["messages"]:
-            role = "Human" if isinstance(msg, HumanMessage) else "Assistant"
-            f.write(f"## {role}\n\n{msg.content}\n\n")
+        f.write("## Solver Messages\n\n")
+        for msg in state["solver_messages"]:
+            role = "Human" if isinstance(msg, HumanMessage) else "Solver"
+            f.write(f"### {role}\n\n{msg.content}\n\n")
+        f.write("## Verifier Messages\n\n")
+        for msg in state["verifier_messages"]:
+            role = "Human" if isinstance(msg, HumanMessage) else "Verifier"
+            f.write(f"### {role}\n\n{msg.content}\n\n")
 
 # Build the graph
 workflow = Graph()
@@ -160,7 +146,8 @@ def process_problem(problem_text: str, problem_id: str):
     """Process a single problem through the graph"""
     # Initialize state
     initial_state = {
-        "messages": [HumanMessage(content=problem_text)],
+        "solver_messages": [HumanMessage(content=problem_text)],
+        "verifier_messages": [],
         "current_solution": "",
         "problem_id": problem_id,
         "final_answer": None
