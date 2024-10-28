@@ -5,7 +5,7 @@ from langgraph.graph.message import add_messages
 import re
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph import Graph
+from langgraph.graph import StateGraph, START, END
 from langchain_core.prompts import ChatPromptTemplate
 
 # Setup for OpenRouter
@@ -154,13 +154,13 @@ def save_conversation_to_md(state: AgentState, problem_id: str, solution: str):
 
 def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
-    workflow = Graph()
+    workflow = StateGraph(AgentState)
 
-    # Add nodes
-    workflow.add_node("solver", solve, {"solver_chain": solver_chain})
-    workflow.add_node("verifier", verify, {"verifier_chain": verifier_chain})
+    # Add nodes with partial application of chains
+    workflow.add_node("solver",  solve(solver_chain=solver_chain))
+    workflow.add_node("verifier", verify(verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
-    workflow.add_node("end", lambda x: x)  # End node that returns state unchanged
+    workflow.add_node("end", END)  # End node that returns state unchanged
 
     # Add edges
     workflow.set_entry_point("solver")
