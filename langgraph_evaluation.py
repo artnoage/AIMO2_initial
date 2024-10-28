@@ -1,5 +1,6 @@
 import os
-from functools import partial
+import time
+from functools import partial, wraps
 from typing import Annotated, TypedDict, Union, List
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
@@ -10,6 +11,30 @@ from langgraph.graph import StateGraph, START, END
 from langchain_core.prompts import ChatPromptTemplate
 
 from enum import Enum
+
+def retry_with_exponential_backoff(
+    max_retries: int = 3,
+    initial_delay: float = 1,
+    exponential_base: float = 2,
+    error_types: tuple = (Exception,)
+):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = initial_delay
+            for i in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except error_types as e:
+                    if i == max_retries - 1:  # Last attempt
+                        raise  # Re-raise the last exception
+                    print(f"Attempt {i + 1} failed with error: {str(e)}")
+                    print(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                    delay *= exponential_base  # Exponential backoff
+            return func(*args, **kwargs)  # Final attempt
+        return wrapper
+    return decorator
 
 # Setup for OpenRouter
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -290,6 +315,7 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
 
     return workflow
 
+@retry_with_exponential_backoff(max_retries=3, initial_delay=1)
 def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
                    verifier_model: ModelOption):
