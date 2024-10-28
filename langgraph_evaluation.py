@@ -137,21 +137,19 @@ def clean_answer(state: AgentState) -> AgentState:
         "final_answer": final_answer
     }
 
-def save_conversation_to_md(state: AgentState, problem_id: str, solution: str):
+def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, solution: str):
     """Save the conversation to a Markdown file"""
     filename = f"conversation_{problem_id}.md"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id}\n\n")
+        f.write("## Problem Statement\n\n")
+        f.write(f"{problem}\n\n")
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
-        f.write("## Solver Messages\n\n")
+        f.write("## Solver History\n\n")
         for msg in state["solver_messages"]:
-            role = "Human" if isinstance(msg, HumanMessage) else "Solver"
-            f.write(f"### {role}\n\n{msg.content}\n\n")
-        f.write("## Verifier Messages\n\n")
-        for msg in state["verifier_messages"]:
-            role = "Human" if isinstance(msg, HumanMessage) else "Verifier"
-            f.write(f"### {role}\n\n{msg.content}\n\n")
+            if isinstance(msg, AIMessage):  # Only show solver's responses
+                f.write(f"{msg.content}\n\n")
 
 def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
@@ -218,7 +216,7 @@ if __name__ == "__main__":
         })
         
         # Save conversation after processing
-        save_conversation_to_md(result, problem_id, example['solution'])
+        save_conversation_to_md(result, problem_id, example['problem'], example['solution'])
     
     # Print summary
     print("\nResults Summary:")
