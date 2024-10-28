@@ -17,10 +17,10 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GPT4 = "openai/gpt-4o"
+    GPT = "openai/gpt-4o"
     master="openai/o1-mini-2024-09-12"
 # Default models
-SOLVER_MODEL = ModelOption.CLAUDE
+SOLVER_MODEL = ModelOption.GPT
 VERIFIER_MODEL = ModelOption.master
 # Define state schema
 class AgentState(TypedDict):
@@ -332,7 +332,7 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:6]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[6:8]")
     
     results = []
     for example in dataset:
