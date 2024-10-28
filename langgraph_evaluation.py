@@ -8,6 +8,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph import print_graph
+from IPython.display import Image, display
 from langchain_core.prompts import ChatPromptTemplate
 
 from enum import Enum, auto
@@ -309,7 +310,11 @@ def process_problem(problem_text: str, ground_truth: int,
     
     # Print the graph visualization
     print("\nWorkflow Graph Structure:")
-    print_graph(workflow)
+    try:
+        display(Image(workflow.get_graph().draw_mermaid_png()))
+    except Exception:
+        # Fallback to basic print if visualization fails
+        print_graph(workflow)
     
     app = workflow.compile()
     
