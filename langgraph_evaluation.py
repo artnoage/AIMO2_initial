@@ -379,7 +379,11 @@ if __name__ == "__main__":
             print(f"\nProcessing problem {problem_id}...")
             
             ground_truth = int(example['answer']) if example['answer'].isdigit() else None
-            result = process_problem(
+            result = retry_with_exponential_backoff(
+                max_retries=3, 
+                initial_delay=2,
+                error_types=(Exception,)
+            )(process_problem)(
                 problem, 
                 ground_truth,
                 solver_model=solver_model,
