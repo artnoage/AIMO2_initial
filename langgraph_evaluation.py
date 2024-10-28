@@ -305,18 +305,18 @@ def process_problem(problem_text: str, ground_truth: int,
     
     # Build and compile graph for this problem
     workflow = build_graph(solver_chain, verifier_chain, ground_truth)
-    
+    app = workflow.compile()
     # Save the graph visualization
     print("\nWorkflow Graph Structure:")
     try:
-        graph_image = workflow.get_graph().draw_mermaid_png()
+        graph_image = app.get_graph().draw_mermaid_png()
         with open(f"workflow_graph_{ground_truth}.png", "wb") as f:
             f.write(graph_image)
         print(f"Graph saved as workflow_graph_{ground_truth}.png")
     except Exception as e:
         print(f"Could not save graph visualization: {e}")
     
-    app = workflow.compile()
+   
     
     # Run the graph
     final_state = app.invoke(initial_state)
