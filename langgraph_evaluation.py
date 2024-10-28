@@ -172,7 +172,7 @@ def process_problem(problem_text: str):
     
     # Initialize state
     initial_state = {
-        "solver_messages": [HumanMessage(content=problem_text)],
+        "solver_messages": [],
         "verifier_messages": [],
         "current_solution": "",
         "final_answer": None
