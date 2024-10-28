@@ -12,8 +12,8 @@ from langchain_core.prompts import ChatPromptTemplate
 # Setup for OpenRouter
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Both agents using claude-3-sonnet for now
-SOLVER_MODEL = "anthropic/claude-3-sonnet"
-VERIFIER_MODEL = "anthropic/claude-3-sonnet"
+SOLVER_MODEL = "anthropic/claude-3.5-sonnet"
+VERIFIER_MODEL = "anthropic/claude-3.5-sonnet"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -87,7 +87,8 @@ If the answer matches the ground truth AND the reasoning is correct, respond wit
 'VERIFIED: [Brief explanation of what you checked and why it's correct]'
 
 If the answer is wrong OR the reasoning has issues, respond with:
-'NEEDS_REVISION: [Specific feedback about where the solution went wrong, without revealing the correct answer. Point out specific steps or assumptions that need review. For example: "The approach in step 2 is problematic because..." or "The calculation in step 3 doesn't follow from step 2 because..."]'"""
+'NEEDS_REVISION: [Specific feedback about where the solution went wrong, without revealing the correct answer. DO NOT LEAK THE GROUND TRUTH TO THEY SOLVER.
+Point out specific steps or assumptions that need review. For example: "The approach in step 2 is problematic because..." or "The calculation in step 3 doesn't follow from step 2 because..."]'"""
 
 # Create the chains
 def preprocess_template_vars(text: str) -> str:
