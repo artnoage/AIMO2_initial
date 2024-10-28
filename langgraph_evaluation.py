@@ -9,11 +9,20 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.prompts import ChatPromptTemplate
 
+from enum import Enum, auto
+
 # Setup for OpenRouter
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-# Both agents using claude-3-sonnet for now
-SOLVER_MODEL = "anthropic/claude-3.5-sonnet:beta"
-VERIFIER_MODEL = "anthropic/claude-3.5-sonnet:beta"
+
+class ModelOption(Enum):
+    CLAUDE_3_SONNET = "anthropic/claude-3.5-sonnet:beta"
+    GEMINI_PRO = "google/gemini-pro-1.5"
+    GPT4 = "openai/gpt-4-turbo-preview"
+    MIXTRAL = "mistralai/mixtral-8x7b"
+
+# Default models
+SOLVER_MODEL = ModelOption.CLAUDE_3_SONNET
+VERIFIER_MODEL = ModelOption.CLAUDE_3_SONNET
 
 # Define state schema
 class AgentState(TypedDict):
@@ -24,9 +33,9 @@ class AgentState(TypedDict):
     iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
 
 # Initialize the models
-def get_model(model_name: str, temp: float = 0):
+def get_model(model: ModelOption, temp: float = 0):
     return ChatOpenAI(
-        model=model_name,
+        model=model.value,
         temperature=temp,
         api_key=os.getenv("OPENROUTER_API_KEY")
     )
@@ -111,7 +120,8 @@ def preprocess_template_vars(text: str) -> str:
     
     return processed_text
 
-def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
+def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
+    model = get_model(model_option)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
@@ -121,7 +131,8 @@ def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL
     ])
     return prompt | model
 
-def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL, temp=0.1)):
+def create_verifier_chain(problem: str, model_option: ModelOption = VERIFIER_MODEL):
+    model = get_model(model_option, temp=0.1)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
@@ -277,11 +288,13 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
 
     return workflow
 
-def process_problem(problem_text: str, ground_truth: int):
+def process_problem(problem_text: str, ground_truth: int, 
+                   solver_model: ModelOption = SOLVER_MODEL,
+                   verifier_model: ModelOption = VERIFIER_MODEL):
     """Process a single problem through the graph"""
     # Create chains for this specific problem
-    solver_chain = create_solver_chain(problem_text)
-    verifier_chain = create_verifier_chain(problem_text, ground_truth)
+    solver_chain = create_solver_chain(problem_text, solver_model)
+    verifier_chain = create_verifier_chain(problem_text, verifier_model)
     
     # Initialize state
     initial_state = {
