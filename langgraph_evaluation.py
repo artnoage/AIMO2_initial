@@ -245,11 +245,11 @@ def clean_answer(state: AgentState) -> AgentState:
         "final_answer": final_answer
     }
 
-def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, solution: str):
+def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, solution: str, solver_model: ModelOption):
     """Save the conversation to a Markdown file"""
     filename = f"conversation_{problem_id}.md"
     with open(filename, 'w', encoding='utf-8') as f:
-        f.write(f"# Problem {problem_id}\n\n")
+        f.write(f"# Problem {problem_id} - Solver: {solver_model.name}\n\n")
         f.write("## Problem Statement\n\n")
         f.write(f"{problem}\n\n")
         f.write("## Dataset Solution\n\n")
@@ -381,7 +381,8 @@ if __name__ == "__main__":
                 result, 
                 f"{problem_id}_{solver_model.name.lower()}", 
                 example['problem'], 
-                example['solution']
+                example['solution'],
+                solver_model
             )
         
         # Print summary for this model
