@@ -122,7 +122,7 @@ def preprocess_template_vars(text: str) -> str:
     
     return processed_text
 
-def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
+def create_solver_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
@@ -133,7 +133,7 @@ def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
     ])
     return prompt | model
 
-def create_verifier_chain(problem: str, model_option: ModelOption = VERIFIER_MODEL):
+def create_verifier_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
@@ -301,8 +301,8 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
     return workflow
 
 def process_problem(problem_text: str, ground_truth: int, 
-                   solver_model: ModelOption = SOLVER_MODEL,
-                   verifier_model: ModelOption = VERIFIER_MODEL):
+                   solver_model: ModelOption,
+                   verifier_model: ModelOption):
     """Process a single problem through the graph"""
     # Create chains for this specific problem
     solver_chain = create_solver_chain(problem_text, solver_model)
