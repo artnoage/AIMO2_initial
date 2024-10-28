@@ -20,6 +20,7 @@ class AgentState(TypedDict):
     verifier_messages: Annotated[List[BaseMessage], add_messages]
     current_solution: Annotated[str, "Current solution being worked on"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
+    iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
 
 # Initialize the models
 def get_model(model_name: str):
@@ -90,13 +91,14 @@ def verify(state: AgentState, verifier_chain):
     
     return {
         "solver_messages": [human_message],
-        "verifier_messages": [ai_message]
+        "verifier_messages": [ai_message],
+        "iteration_count": state["iteration_count"] + 1
     }
 
 def should_continue(state: AgentState) -> Union[str, None]:
     """Determine if we need another iteration"""
     last_message = state["verifier_messages"][-1].content
-    if "NEEDS_REVISION" in last_message:
+    if "NEEDS_REVISION" in last_message and state["iteration_count"] < 3:
         return "solver"
     return "cleaner"
 
@@ -177,7 +179,8 @@ def process_problem(problem_text: str):
         "solver_messages": [],
         "verifier_messages": [],
         "current_solution": "",
-        "final_answer": None
+        "final_answer": None,
+        "iteration_count": 0
     }
     
     # Build and compile graph for this problem
