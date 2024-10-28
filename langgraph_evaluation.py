@@ -148,8 +148,7 @@ def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, so
         f.write(f"{solution}\n\n")
         f.write("## Solver History\n\n")
         for msg in state["solver_messages"]:
-            if isinstance(msg, AIMessage):  # Only show solver's responses
-                f.write(f"{msg.content}\n\n")
+            f.write(f"{msg.content}\n\n")
 
 def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
