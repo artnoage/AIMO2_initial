@@ -17,8 +17,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 class ModelOption(Enum):
     CLAUDE_3_SONNET = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GPT4 = "openai/gpt-4-turbo-preview"
-    MIXTRAL = "mistralai/mixtral-8x7b"
+    GPT4 = "openai/gpt-4o"
 
 # Default models
 SOLVER_MODEL = ModelOption.CLAUDE_3_SONNET
@@ -172,14 +171,11 @@ def verify(state: AgentState, verifier_chain):
     
     # Get response from the verifier
     response = verifier_chain.invoke({"messages": messages_text})
-    verification_content = response.content
-    
-    # Censor the ground truth in the response
-    censored_content = verification_content.replace(str(ground_truth), "*****")
+
     
     # Create both AI and Human versions of the response
-    ai_message = AIMessage(content=verification_content)  # Keep original for verifier
-    human_message = HumanMessage(content=censored_content)  # Censored for solver
+    ai_message = AIMessage(content=response.content)  # Keep original for verifier
+    human_message = HumanMessage(content=response.content)  # Censored for solver
     
     return {
         "solver_messages": [human_message],
