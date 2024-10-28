@@ -49,7 +49,7 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 - Show all calculations explicitly
 - Never omit calculations for bravity.
 - Highlight any key insights or clever observations
-- Double-check your work
+- If some calculations seem hard, think if there is a clever way around it. 
 
 Provide your final answer as a number at the end of your response prefixed with 'ANSWER: '."""
 
@@ -77,14 +77,15 @@ Your job is to rigorously verify the solver's solution. Follow these steps:
 
 4. Validate the final answer:
     -Is a final answer to the actual question provided??
+    -Is it clear how the answer occurs from the calculations??
    - Does it make sense in the context?
    - Are the units correct (if applicable)?
    - Is it in the expected range?
 
 Respond with either:
-'VERIFIED: [detailed explanation of what you checked and why it's correct]' 
+'VERIFIED: [ Brief explanation of what you checked and why it's correct]' 
 or 
-'NEEDS_REVISION: [specific issues found and what needs to be fixed]'"""
+'NEEDS_REVISION: [specific issues found and what needs to be fixed. Dont be verbose, just pinpoint the main issue]'"""
 
 # Create the chains
 def preprocess_template_vars(text: str) -> str:
