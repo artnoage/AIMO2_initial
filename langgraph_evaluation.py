@@ -63,7 +63,7 @@ def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_M
 def solve(state: AgentState, solver_chain):
     """Solver agent function"""
     # Get response from the solver
-    response = solver_chain.invoke({})
+    response = solver_chain.invoke(state["solver_messages"])
     solution_content = response.content
     
     # Create both AI and Human versions of the response
@@ -78,11 +78,9 @@ def solve(state: AgentState, solver_chain):
 
 def verify(state: AgentState, verifier_chain):
     """Verifier agent function"""
-    # Create verification request
-    verification_request = f"Please verify this solution:\n{state['current_solution']}"
     
     # Get response from the verifier
-    response = verifier_chain.invoke({})
+    response = verifier_chain.invoke(state["verifier_messages"])
     verification_content = response.content
     
     # Create both AI and Human versions of the response
