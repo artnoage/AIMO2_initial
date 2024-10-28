@@ -61,18 +61,36 @@ verifier_chain = create_verifier_chain()
 
 def solve(state: AgentState):
     """Solver agent function"""
+    # Get response from the solver
     response = solver_chain.invoke(state["solver_messages"])
+    solution_content = response.content
+    
+    # Create both AI and Human versions of the response
+    ai_message = AIMessage(content=solution_content)
+    human_message = HumanMessage(content=solution_content)
+    
     return {
-        "current_solution": response.content
+        "current_solution": solution_content,
+        "solver_messages": [ai_message, human_message]
     }
 
 def verify(state: AgentState):
     """Verifier agent function"""
-    messages = state["verifier_messages"] + [
-        HumanMessage(content=f"Please verify this solution:\n{state['current_solution']}")
-    ]
+    # Create verification request
+    verification_request = f"Please verify this solution:\n{state['current_solution']}"
+    messages = state["verifier_messages"] + [HumanMessage(content=verification_request)]
+    
+    # Get response from the verifier
     response = verifier_chain.invoke(messages)
-    return {}
+    verification_content = response.content
+    
+    # Create both AI and Human versions of the response
+    ai_message = AIMessage(content=verification_content)
+    human_message = HumanMessage(content=verification_content)
+    
+    return {
+        "verifier_messages": [ai_message, human_message]
+    }
 
 def should_continue(state: AgentState) -> Union[str, None]:
     """Determine if we need another iteration"""
