@@ -1,5 +1,7 @@
 import os
-from typing import Annotated, Sequence, TypedDict, Union
+from typing import Annotated, Sequence, TypedDict, Union, List
+from datasets import load_dataset
+import re
 from typing_extensions import TypeVar
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
@@ -19,6 +21,8 @@ class AgentState(TypedDict):
     verifier_messages: Annotated[Sequence[BaseMessage], "Messages for the verifier"]
     current_solution: Annotated[str, "Current solution being worked on"]
     all_messages: Annotated[Sequence[BaseMessage], "All messages in the conversation"]
+    problem_id: Annotated[str, "ID of the current problem"]
+    final_answer: Annotated[Union[int, None], "Final numerical answer"]
 
 # Initialize the models
 def get_model(model_name: str):
@@ -77,7 +81,40 @@ def should_continue(state: AgentState) -> Union[str, None]:
     last_message = state["all_messages"][-1].content
     if "NEEDS_REVISION" in last_message:
         return "solver"
-    return "end"
+    return "cleaner"
+
+def clean_answer(state: AgentState) -> AgentState:
+    """Extract numerical answer from verifier's response"""
+    last_message = state["all_messages"][-1].content
+    if "VERIFIED" in last_message:
+        # Try to extract a number from the solver's solution
+        solution = state["current_solution"]
+        match = re.search(r"ANSWER:\s*(\d+)", solution)
+        if match:
+            final_answer = int(match.group(1))
+        else:
+            # Fallback to any number in the solution
+            match = re.search(r"\d+", solution)
+            final_answer = int(match.group()) if match else None
+    else:
+        final_answer = None
+    
+    # Save conversation to MD file
+    save_conversation_to_md(state)
+    
+    return {
+        **state,
+        "final_answer": final_answer
+    }
+
+def save_conversation_to_md(state: AgentState):
+    """Save the conversation to a Markdown file"""
+    filename = f"conversation_{state['problem_id']}.md"
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(f"# Problem {state['problem_id']}\n\n")
+        for msg in state["all_messages"]:
+            role = "Human" if isinstance(msg, HumanMessage) else "Assistant"
+            f.write(f"## {role}\n\n{msg.content}\n\n")
 
 # Build the graph
 workflow = Graph()
@@ -85,6 +122,7 @@ workflow = Graph()
 # Add nodes
 workflow.add_node("solver", solve)
 workflow.add_node("verifier", verify)
+workflow.add_node("cleaner", clean_answer)
 
 # Add edges
 workflow.add_edge("solver", "verifier")
@@ -93,21 +131,24 @@ workflow.add_conditional_edges(
     should_continue,
     {
         "solver": "solver",
-        "end": None
+        "cleaner": "cleaner"
     }
 )
+workflow.add_edge("cleaner", None)
 
 # Compile the graph
 app = workflow.compile()
 
-def process_problem(problem_text: str):
+def process_problem(problem_text: str, problem_id: str):
     """Process a single problem through the graph"""
     # Initialize state
     initial_state = {
         "solver_messages": [],
         "verifier_messages": [],
         "current_solution": "",
-        "all_messages": [HumanMessage(content=problem_text)]
+        "all_messages": [HumanMessage(content=problem_text)],
+        "problem_id": problem_id,
+        "final_answer": None
     }
     
     # Run the graph
@@ -115,9 +156,26 @@ def process_problem(problem_text: str):
     return final_state
 
 if __name__ == "__main__":
-    # Example usage
-    problem = "If a^2 + b^2 = 25 and ab = 12, find the value of (a+b)^2."
-    result = process_problem(problem)
-    print("\nFinal conversation:")
-    for msg in result["all_messages"]:
-        print(f"\n{'Bot' if isinstance(msg, AIMessage) else 'Human'}: {msg.content}")
+    # Load first 3 problems from AIME dataset
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:3]")
+    
+    results = []
+    for example in dataset:
+        problem_id = example['id']
+        problem = example['problem']
+        print(f"\nProcessing problem {problem_id}...")
+        
+        result = process_problem(problem, problem_id)
+        results.append({
+            'problem_id': problem_id,
+            'final_answer': result['final_answer'],
+            'ground_truth': int(example['answer']) if example['answer'].isdigit() else None
+        })
+    
+    # Print summary
+    print("\nResults Summary:")
+    for result in results:
+        print(f"\nProblem {result['problem_id']}:")
+        print(f"Model Answer: {result['final_answer']}")
+        print(f"Ground Truth: {result['ground_truth']}")
+        print(f"Correct: {result['final_answer'] == result['ground_truth']}")
