@@ -61,7 +61,7 @@ def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_M
     ])
     return prompt | model
 
-def solve(state: AgentState):
+def solve(state: AgentState, solver_chain):
     """Solver agent function"""
     # Get response from the solver
     response = solver_chain.invoke(state["solver_messages"])
@@ -76,7 +76,7 @@ def solve(state: AgentState):
         "solver_messages": [ai_message, human_message]
     }
 
-def verify(state: AgentState):
+def verify(state: AgentState, verifier_chain):
     """Verifier agent function"""
     # Create verification request
     verification_request = f"Please verify this solution:\n{state['current_solution']}"
@@ -143,9 +143,9 @@ def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
     workflow = Graph()
 
-    # Add nodes
-    workflow.add_node("solver", solve)
-    workflow.add_node("verifier", verify)
+    # Add nodes with partial application of chains
+    workflow.add_node("solver", lambda state: solve(state, solver_chain))
+    workflow.add_node("verifier", lambda state: verify(state, verifier_chain))
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
