@@ -1,6 +1,7 @@
 import os
 from typing import Annotated, Sequence, TypedDict, Union, List
 from datasets import load_dataset
+from langgraph.graph.message import add_messages
 import re
 from typing_extensions import TypeVar
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -17,7 +18,7 @@ VERIFIER_MODEL = "anthropic/claude-3-sonnet"
 
 # Define state schema
 class AgentState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], "All messages in the conversation"]
+    messages: Annotated[List[BaseMessage], add_messages]
     current_solution: Annotated[str, "Current solution being worked on"]
     problem_id: Annotated[str, "ID of the current problem"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
