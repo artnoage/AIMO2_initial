@@ -18,11 +18,10 @@ class ModelOption(Enum):
     CLAUDE_3_SONNET = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT4 = "openai/gpt-4o"
-
+    master="openai/o1-mini-2024-09-12"
 # Default models
-SOLVER_MODEL = ModelOption.CLAUDE_3_SONNET
-VERIFIER_MODEL = ModelOption.CLAUDE_3_SONNET
-
+SOLVER_MODEL = ModelOption.GEMINI_PRO
+VERIFIER_MODEL = ModelOption.master
 # Define state schema
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
@@ -132,7 +131,7 @@ def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
     return prompt | model
 
 def create_verifier_chain(problem: str, model_option: ModelOption = VERIFIER_MODEL):
-    model = get_model(model_option, temp=0.1)
+    model = get_model(model_option, temp=0.3)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
@@ -151,6 +150,7 @@ def solve(state: AgentState, solver_chain):
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     
     # Get response from the solver
+    print("I am solving")
     response = solver_chain.invoke({"messages": messages_text})
     solution_content = response.content
     
@@ -177,7 +177,7 @@ def verify(state: AgentState, verifier_chain):
     # Create both AI and Human versions of the response
     ai_message = AIMessage(content=response.content)  # Keep original for verifier
     human_message = HumanMessage(content=response.content)  # Censored for solver
-    
+    print("I am verifying")
     return {
         "solver_messages": [human_message],
         "verifier_messages": [ai_message],
@@ -309,24 +309,24 @@ def process_problem(problem_text: str, ground_truth: int,
     workflow = build_graph(solver_chain, verifier_chain, ground_truth)
     app = workflow.compile()
     # Save the graph visualization
-    print("\nWorkflow Graph Structure:")
-    try:
-        graph_image = app.get_graph().draw_mermaid_png()
-        with open(f"workflow_graph_{ground_truth}.png", "wb") as f:
-            f.write(graph_image)
-        print(f"Graph saved as workflow_graph_{ground_truth}.png")
-    except Exception as e:
-        print(f"Could not save graph visualization: {e}")
+    #print("\nWorkflow Graph Structure:")
+    #try:
+    #    graph_image = app.get_graph().draw_mermaid_png()
+    #    with open(f"workflow_graph_{ground_truth}.png", "wb") as f:
+    #        f.write(graph_image)
+    #    print(f"Graph saved as workflow_graph_{ground_truth}.png")
+    #except Exception as e:
+    #    print(f"Could not save graph visualization: {e}")
     
    
-    
+    print("solving problem")
     # Run the graph
     final_state = app.invoke(initial_state)
     return final_state
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:8]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:4]")
     
     results = []
     for example in dataset:
