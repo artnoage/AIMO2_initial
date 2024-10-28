@@ -109,22 +109,16 @@ def preprocess_template_vars(text: str) -> str:
     return processed_text
 
 def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
-    # Preprocess the problem text
-    processed_problem = preprocess_template_vars(problem)
-    
-    # Create the prompt template directly with the processed problem
+    # Create the prompt with the raw problem text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", processed_problem)
+        ("system", SOLVER_PROMPT.format(problem=problem, messages="{messages}"))
     ])
     return prompt | model
 
 def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
-    # Preprocess the problem text
-    processed_problem = preprocess_template_vars(problem)
-    
-    # Create the prompt template directly with the processed problem
+    # Create the prompt with the raw problem text
     prompt = ChatPromptTemplate.from_messages([
-        ("system", processed_problem)
+        ("system", VERIFIER_PROMPT.format(problem=problem, messages="{messages}"))
     ])
     return prompt | model
 
