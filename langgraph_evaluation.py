@@ -35,12 +35,18 @@ SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
 
 {problem}
 
+Previous messages:
+{messages}
+
 Solve this problem step by step, showing your work clearly. Provide your final answer as a number 
 at the end of your response prefixed with 'ANSWER: '. Be thorough but concise."""
 
 VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
 {problem}
+
+Previous messages:
+{messages}
 
 Your job is to check if the solver's solution is correct. Look for any errors in logic or calculation. 
 Respond with either:
@@ -50,13 +56,13 @@ Respond with either:
 # Create the chains
 def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT.format(problem=problem))
+        ("system", SOLVER_PROMPT.format(problem=problem, messages="{messages}"))
     ])
     return prompt | model
 
 def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(problem=problem))
+        ("system", VERIFIER_PROMPT.format(problem=problem, messages="{messages}"))
     ])
     return prompt | model
 
