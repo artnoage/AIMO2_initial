@@ -230,7 +230,7 @@ def process_problem(problem_text: str):
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[0,2,3]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[0:1] + train[2:4]")
     
     results = []
     for example in dataset:
