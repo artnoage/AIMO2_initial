@@ -57,12 +57,10 @@ VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
 {problem}
 
-[Ground truth answer: {ground_truth}]
-
 Previous messages:
 {messages}
 
-Your job is to rigorously verify the solver's solution and ensure it matches the known correct answer. Follow these steps:
+Your job is to rigorously verify the solver's solution. Follow these steps:
 
 1. Check the initial approach:
    - Is the chosen method appropriate?
@@ -123,15 +121,14 @@ def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL
     ])
     return prompt | model
 
-def create_verifier_chain(problem: str, ground_truth: int, model: ChatOpenAI = get_model(VERIFIER_MODEL, temp=0.1)):
+def create_verifier_chain(problem: str, model: ChatOpenAI = get_model(VERIFIER_MODEL, temp=0.1)):
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
-    # Create the prompt with the escaped problem text and ground truth
+    # Create the prompt with the escaped problem text
     prompt = ChatPromptTemplate.from_messages([
         ("system", VERIFIER_PROMPT.format(
             problem=escaped_problem,
-            ground_truth=ground_truth,
             messages="{messages}")
         )
     ])
@@ -156,7 +153,7 @@ def solve(state: AgentState, solver_chain):
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain, ground_truth: int):
+def verify(state: AgentState, verifier_chain):
     """Verifier agent function"""
     
     # Convert messages list to string
@@ -179,10 +176,23 @@ def verify(state: AgentState, verifier_chain, ground_truth: int):
         "iteration_count": state["iteration_count"] + 1
     }
 
-def should_continue(state: AgentState) -> Union[str, None]:
+def check_answer(state: AgentState, ground_truth: int) -> Union[str, None]:
+    """Check if the answer is correct and determine next step"""
+    if state["final_answer"] == ground_truth or state["iteration_count"] >= 3:
+        return END
+    
+    # Remove last messages and try verification again
+    if len(state["solver_messages"]) > 0:
+        state["solver_messages"].pop()
+    if len(state["verifier_messages"]) > 0:
+        state["verifier_messages"].pop()
+    
+    return "verifier"
+
+def should_continue(state: AgentState) -> str:
     """Determine if we need another iteration"""
     last_message = state["verifier_messages"][-1].content
-    if "NEEDS_REVISION" in last_message and state["iteration_count"] < 3:
+    if "NEEDS_REVISION" in last_message:
         return "solver"
     return "cleaner"
 
@@ -240,8 +250,9 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
 
     # Add nodes
     workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain, ground_truth=ground_truth))
+    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
+    workflow.add_node("checker", partial(check_answer, ground_truth=ground_truth))
 
     # Add edges
     workflow.set_entry_point("solver")
@@ -254,7 +265,15 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
             "cleaner": "cleaner"
         }
     )
-    workflow.add_edge("cleaner", END)
+    workflow.add_edge("cleaner", "checker")
+    workflow.add_conditional_edges(
+        "checker",
+        lambda x: x,
+        {
+            "verifier": "verifier",
+            END: END
+        }
+    )
 
     return workflow
 
