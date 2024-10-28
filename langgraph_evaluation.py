@@ -184,16 +184,16 @@ def verify(state: AgentState, verifier_chain):
         "iteration_count": state["iteration_count"] + 1
     }
 
-def check_answer(state: AgentState, ground_truth: int) -> Union[str, None]:
-    """Check if the answer is correct and determine next step"""
+def decide_next_step(state: AgentState, ground_truth: int) -> str:
+    """Determine if we should continue verification or end"""
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
     if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
         return END
     
-    print("\n🔄 Verifier was wrong - resampling verifier...\n")
+    print("\n🔄 Answer incorrect or unverified - trying again...\n")
     
-    # Remove last messages and try verification again
+    # Remove last messages for fresh verification attempt
     if len(state["solver_messages"]) > 0:
         state["solver_messages"].pop()
     if len(state["verifier_messages"]) > 0:
@@ -264,7 +264,6 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
     workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
     workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
-    workflow.add_node("checker", partial(check_answer, ground_truth=ground_truth))
 
     # Add edges
     workflow.set_entry_point("solver")
@@ -277,10 +276,9 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
             "cleaner": "cleaner"
         }
     )
-    workflow.add_edge("cleaner", "checker")
     workflow.add_conditional_edges(
-        "checker",
-        lambda x: x,
+        "cleaner",
+        partial(decide_next_step, ground_truth=ground_truth),
         {
             "verifier": "verifier",
             END: END
