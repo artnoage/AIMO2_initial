@@ -203,6 +203,10 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
 
 def should_continue(state: AgentState) -> str:
     """Determine if we need another iteration"""
+    # Check iteration count first
+    if state["iteration_count"] >= 2:
+        return "cleaner"
+        
     last_message = state["verifier_messages"][-1].content
     
     # Check for NEEDS and REVISION separately anywhere in the text
