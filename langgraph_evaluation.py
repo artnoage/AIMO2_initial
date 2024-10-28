@@ -7,7 +7,6 @@ import re
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from IPython.display import Image, display
 from langchain_core.prompts import ChatPromptTemplate
 
 from enum import Enum, auto
@@ -307,13 +306,15 @@ def process_problem(problem_text: str, ground_truth: int,
     # Build and compile graph for this problem
     workflow = build_graph(solver_chain, verifier_chain, ground_truth)
     
-    # Print the graph visualization
+    # Save the graph visualization
     print("\nWorkflow Graph Structure:")
     try:
-        display(Image(workflow.get_graph().draw_mermaid_png()))
-    except Exception:
-        # This requires some extra dependencies and is optional
-        pass
+        graph_image = workflow.get_graph().draw_mermaid_png()
+        with open(f"workflow_graph_{ground_truth}.png", "wb") as f:
+            f.write(graph_image)
+        print(f"Graph saved as workflow_graph_{ground_truth}.png")
+    except Exception as e:
+        print(f"Could not save graph visualization: {e}")
     
     app = workflow.compile()
     
