@@ -208,9 +208,17 @@ def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, so
         f.write(f"{problem}\n\n")
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
-        f.write("## Solver History\n\n")
-        for msg in state["solver_messages"]:
-            f.write(f"{msg.content}\n\n")
+        f.write("## Conversation History\n\n")
+        for i, (solver_msg, verifier_msg) in enumerate(zip(state["solver_messages"], state["verifier_messages"]), 1):
+            f.write(f"### Round {i}\n\n")
+            f.write("#### Solver's Solution\n")
+            f.write("```\n")
+            f.write(f"{solver_msg.content}\n")
+            f.write("```\n\n")
+            f.write("#### Verifier's Response\n")
+            f.write("```\n") 
+            f.write(f"{verifier_msg.content}\n")
+            f.write("```\n\n")
 
 def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
