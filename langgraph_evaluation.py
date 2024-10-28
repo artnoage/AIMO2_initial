@@ -34,73 +34,33 @@ def get_model(model_name: str):
 
 def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     """Solver agent function"""
-    # Combine all messages for context
-    all_messages = []
+    messages = [
+        ("system", "You are a mathematical problem solver. Your task is to solve math problems step by step, "
+                  "showing your work clearly. Provide your final answer as a number at the end of your response "
+                  "prefixed with 'ANSWER: '. Be thorough but concise.")
+    ]
     
-    # System message
-    all_messages.append(("system", "You are a mathematical problem solver. Your task is to solve math problems step by step, "
-                      "showing your work clearly. Provide your final answer as a number at the end of your response "
-                      "prefixed with 'ANSWER: '. Be thorough but concise."))
-    
-    # Add solver history
-    for msg in state["solver_messages"]:
-        all_messages.append((msg.type, msg.content))
-    
-    # Add verifier history
-    for msg in state["verifier_messages"]:
-        all_messages.append((msg.type, msg.content))
-    
-    # Add latest input
-    latest_content = (state["solver_messages"][-1].content if state["solver_messages"] 
-                     else state["verifier_messages"][-1].content)
-    all_messages.append(("human", latest_content))
-    
-    prompt = ChatPromptTemplate.from_messages(all_messages)
+    prompt = ChatPromptTemplate.from_messages(messages)
     response = model.invoke(prompt)
     
-    # Create both AI and Human versions of the response
-    ai_message = AIMessage(content=response.content)
-    human_message = HumanMessage(content=response.content)
-    
     return {
-        "current_solution": response.content,
-        "solver_messages": [ai_message],
-        "verifier_messages": [human_message]
+        "current_solution": response.content
     }
 
 def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     """Verifier agent function"""
-    # Combine all messages for context
-    all_messages = []
+    messages = [
+        ("system", "You are a mathematical solution verifier. Your job is to check if the solver's solution is correct. "
+                  "Look for any errors in logic or calculation. Respond with either:\n"
+                  "'VERIFIED: [explanation]' if the solution looks correct\n"
+                  "'NEEDS_REVISION: [explanation]' if you find any issues"),
+        ("human", f"Please verify this solution:\n{state['current_solution']}")
+    ]
     
-    # System message
-    all_messages.append(("system", "You are a mathematical solution verifier. Your job is to check if the solver's solution is correct. "
-                      "Look for any errors in logic or calculation. Respond with either:\n"
-                      "'VERIFIED: [explanation]' if the solution looks correct\n"
-                      "'NEEDS_REVISION: [explanation]' if you find any issues"))
-    
-    # Add solver history
-    for msg in state["solver_messages"]:
-        all_messages.append((msg.type, msg.content))
-    
-    # Add verifier history
-    for msg in state["verifier_messages"]:
-        all_messages.append((msg.type, msg.content))
-    
-    # Add solution to verify
-    all_messages.append(("human", f"Please verify this solution:\n{state['current_solution']}"))
-    
-    prompt = ChatPromptTemplate.from_messages(all_messages)
+    prompt = ChatPromptTemplate.from_messages(messages)
     response = model.invoke(prompt)
     
-    # Create both AI and Human versions of the response
-    ai_message = AIMessage(content=response.content)
-    human_message = HumanMessage(content=response.content)
-    
-    return {
-        "verifier_messages": [ai_message],
-        "solver_messages": [human_message]
-    }
+    return {}
 
 def should_continue(state: AgentState) -> Union[str, None]:
     """Determine if we need another iteration"""
