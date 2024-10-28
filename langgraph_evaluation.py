@@ -149,6 +149,7 @@ def build_graph(solver_chain, verifier_chain):
     workflow.add_node("solver", lambda state: solve(state, solver_chain))
     workflow.add_node("verifier", lambda state: verify(state, verifier_chain))
     workflow.add_node("cleaner", clean_answer)
+    workflow.add_node("end", lambda x: x)  # End node that returns state unchanged
 
     # Add edges
     workflow.set_entry_point("solver")
