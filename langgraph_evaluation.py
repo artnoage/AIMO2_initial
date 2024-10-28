@@ -20,7 +20,7 @@ class ModelOption(Enum):
     GPT = "openai/gpt-4o"
     master="openai/o1-mini-2024-09-12"
 # Default models
-SOLVER_MODEL = ModelOption.GPT
+SOLVER_MODEL = ModelOption.CLAUDE
 VERIFIER_MODEL = ModelOption.master
 # Define state schema
 class AgentState(TypedDict):
@@ -40,12 +40,12 @@ def get_model(model: ModelOption, temp: float = 0):
     )
 
 # Define system prompts
-SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
+SOLVER_PROMPT = """You are a mathematical problem solver, that tries to solve a math problem with
+the help of a verifier. 
+
+Here is the problem:
 
 {problem}
-
-Previous messages:
-{messages}
 
 Before solving, start with a brief analysis:
 1. What mathematical concepts is this problem testing?
@@ -59,14 +59,17 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it. 
 
-Never ask for confirmation. Just provide your final answer as a number at the end of your response prefixed with 'ANSWER: '."""
+Here is the correspondance with the verifier until now:
+{messages}
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
 
 VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
 {problem}
 
-Previous messages:
-{messages}
 
 Your job is to rigorously verify the solver's solution. Follow these steps:
 
@@ -89,7 +92,10 @@ Your job is to rigorously verify the solver's solution. Follow these steps:
    - Check if the reasoning is sound even if answer is correct
    - Ensure units and context are appropriate
 
-If the answer matches the ground truth AND the reasoning is correct, respond with:
+Here are the previous messages:
+{messages}
+
+If the answer seems correct respond with:
 'VERIFIED: [Brief explanation of what you checked and why it's correct]'
 
 If the answer is wrong OR the reasoning has issues, respond with:
@@ -336,7 +342,7 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[6:8]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[7:11]")
     
     results = []
     for example in dataset:
