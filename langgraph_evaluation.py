@@ -53,26 +53,34 @@ verifier = ChatPromptTemplate.from_messages([
 
 def solve(state: AgentState, model: ChatOpenAI = get_model(SOLVER_MODEL)):
     """Solver agent function"""
+    # Get the last message and convert verifier's message to human if it exists
+    last_message = state["all_messages"][-1]
+    if isinstance(last_message, AIMessage):
+        last_message = HumanMessage(content=last_message.content)
+    
     prompt = solver.invoke({
-        "solver_messages": state["solver_messages"],
-        "input": state["all_messages"][-1].content if state["all_messages"] else "No input provided"
+        "solver_messages": [*state["solver_messages"], last_message],
+        "input": last_message.content
     })
     response = model.invoke(prompt)
     return {
-        "solver_messages": [*state["solver_messages"], response],
+        "solver_messages": [*state["solver_messages"], last_message, response],
         "current_solution": response.content,
         "all_messages": [*state["all_messages"], response]
     }
 
 def verify(state: AgentState, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
     """Verifier agent function"""
+    # Convert solver's message to human message for the verifier
+    solver_message = HumanMessage(content=state["current_solution"])
+    
     prompt = verifier.invoke({
-        "verifier_messages": state["verifier_messages"],
+        "verifier_messages": [*state["verifier_messages"], solver_message],
         "solution": state["current_solution"]
     })
     response = model.invoke(prompt)
     return {
-        "verifier_messages": [*state["verifier_messages"], response],
+        "verifier_messages": [*state["verifier_messages"], solver_message, response],
         "all_messages": [*state["all_messages"], response]
     }
 
