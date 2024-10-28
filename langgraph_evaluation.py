@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from typing import Annotated, TypedDict, Union, List
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
@@ -157,8 +158,8 @@ def build_graph(solver_chain, verifier_chain):
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", solve, {"solver_chain": solver_chain})
-    workflow.add_node("verifier", verify, {"verifier_chain": verifier_chain})
+    workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
+    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
     workflow.add_node("end", END)  # End node that returns state unchanged
 
