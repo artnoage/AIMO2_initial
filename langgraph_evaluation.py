@@ -39,8 +39,18 @@ SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
 Previous messages:
 {messages}
 
-Solve this problem step by step, showing your work clearly. Provide your final answer as a number 
-at the end of your response prefixed with 'ANSWER: '. Be thorough but concise."""
+Before solving, start with a brief analysis:
+1. What mathematical concepts is this problem testing?
+2. What theoretical tools or formulas might be useful?
+3. Are there any tricks or simplifications that could make this problem easier?
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Highlight any key insights or clever observations
+- Double-check your work
+
+Provide your final answer as a number at the end of your response prefixed with 'ANSWER: '."""
 
 VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
@@ -49,10 +59,31 @@ VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 Previous messages:
 {messages}
 
-Your job is to check if the solver's solution is correct. Look for any errors in logic or calculation. 
+Your job is to rigorously verify the solver's solution. Follow these steps:
+
+1. Check the initial approach:
+   - Is the chosen method appropriate?
+   - Are all necessary concepts being used correctly?
+
+2. Verify calculations:
+   - Redo ALL numerical calculations independently
+   - Check for arithmetic errors
+   - Verify any algebraic manipulations
+
+3. Examine logic:
+   - Are all steps properly justified?
+   - Are there any gaps in reasoning?
+   - Are edge cases considered?
+
+4. Validate the final answer:
+   - Does it make sense in the context?
+   - Are the units correct (if applicable)?
+   - Is it in the expected range?
+
 Respond with either:
-'VERIFIED: [explanation]' if the solution looks correct
-'NEEDS_REVISION: [explanation]' if you find any issues"""
+'VERIFIED: [detailed explanation of what you checked and why it's correct]' 
+or 
+'NEEDS_REVISION: [specific issues found and what needs to be fixed]'"""
 
 # Create the chains
 def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL)):
