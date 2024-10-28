@@ -30,6 +30,7 @@ class AgentState(TypedDict):
     current_solution: Annotated[str, "Current solution being worked on"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
     iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
+    is_the_answer_correct: Annotated[bool, "Flag indicating if the current answer is correct"]
 
 # Initialize the models
 def get_model(model: ModelOption, temp: float = 0):
@@ -185,7 +186,9 @@ def verify(state: AgentState, verifier_chain):
 
 def check_answer(state: AgentState, ground_truth: int) -> Union[str, None]:
     """Check if the answer is correct and determine next step"""
-    if state["final_answer"] == ground_truth or state["iteration_count"] >= 3:
+    state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
+    
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
         return END
     
     print("\n🔄 Verifier was wrong - resampling verifier...\n")
@@ -300,7 +303,8 @@ def process_problem(problem_text: str, ground_truth: int,
         "verifier_messages": [],
         "current_solution": "",
         "final_answer": None,
-        "iteration_count": 0
+        "iteration_count": 0,
+        "is_the_answer_correct": False
     }
     
     # Build and compile graph for this problem
