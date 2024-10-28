@@ -39,8 +39,6 @@ SOLVER_PROMPT = """You are a mathematical problem solver. Here is the problem:
 Previous messages:
 {messages}
 
-Note: If you see variables in double curly braces like {{n}}, treat them as part of the problem text.
-
 Before solving, start with a brief analysis:
 1. What mathematical concepts is this problem testing?
 2. What theoretical tools or formulas might be useful?
