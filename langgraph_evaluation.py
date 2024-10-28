@@ -210,15 +210,18 @@ def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, so
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
         f.write("## Conversation History\n\n")
-        for i, (solver_msg, verifier_msg) in enumerate(zip(state["solver_messages"], state["verifier_messages"]), 1):
-            f.write(f"### Round {i}\n\n")
-            f.write("#### Solver's Solution\n")
+        messages = []
+        for i in range(len(state["solver_messages"])):
+            if i % 2 == 0:
+                messages.append(("Solver's Solution", state["solver_messages"][i].content))
+            else:
+                messages.append(("Verifier's Response", state["solver_messages"][i].content))
+                
+        for i, (role, content) in enumerate(messages, 1):
+            f.write(f"### Round {(i + 1) // 2}\n\n")
+            f.write(f"#### {role}\n")
             f.write("```\n")
-            f.write(f"{solver_msg.content}\n")
-            f.write("```\n\n")
-            f.write("#### Verifier's Response\n")
-            f.write("```\n") 
-            f.write(f"{verifier_msg.content}\n")
+            f.write(f"{content}\n")
             f.write("```\n\n")
 
 def build_graph(solver_chain, verifier_chain):
