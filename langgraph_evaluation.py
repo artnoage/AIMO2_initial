@@ -24,10 +24,10 @@ class AgentState(TypedDict):
     iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
 
 # Initialize the models
-def get_model(model_name: str):
+def get_model(model_name: str, temp: float = 0):
     return ChatOpenAI(
         model=model_name,
-        temperature=0,
+        temperature=temp,
         api_key=os.getenv("OPENROUTER_API_KEY")
     )
 
@@ -123,7 +123,7 @@ def create_solver_chain(problem: str, model: ChatOpenAI = get_model(SOLVER_MODEL
     ])
     return prompt | model
 
-def create_verifier_chain(problem: str, ground_truth: int, model: ChatOpenAI = get_model(VERIFIER_MODEL)):
+def create_verifier_chain(problem: str, ground_truth: int, model: ChatOpenAI = get_model(VERIFIER_MODEL, temp=0.1)):
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
