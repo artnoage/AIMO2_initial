@@ -166,9 +166,12 @@ def verify(state: AgentState, verifier_chain, ground_truth: int):
     response = verifier_chain.invoke({"messages": messages_text})
     verification_content = response.content
     
+    # Censor the ground truth in the response
+    censored_content = verification_content.replace(str(ground_truth), "*****")
+    
     # Create both AI and Human versions of the response
-    ai_message = AIMessage(content=verification_content)
-    human_message = HumanMessage(content=verification_content)
+    ai_message = AIMessage(content=verification_content)  # Keep original for verifier
+    human_message = HumanMessage(content=censored_content)  # Censored for solver
     
     return {
         "solver_messages": [human_message],
