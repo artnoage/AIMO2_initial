@@ -156,9 +156,9 @@ def build_graph(solver_chain, verifier_chain):
     """Build the workflow graph for a specific problem"""
     workflow = Graph()
 
-    # Add nodes with partial application of chains
-    workflow.add_node("solver", lambda state: solve(state, solver_chain))
-    workflow.add_node("verifier", lambda state: verify(state, verifier_chain))
+    # Add nodes
+    workflow.add_node("solver", solve, {"solver_chain": solver_chain})
+    workflow.add_node("verifier", verify, {"verifier_chain": verifier_chain})
     workflow.add_node("cleaner", clean_answer)
     workflow.add_node("end", lambda x: x)  # End node that returns state unchanged
 
