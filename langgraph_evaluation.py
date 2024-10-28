@@ -160,7 +160,8 @@ def build_graph(solver_chain, verifier_chain):
             "cleaner": "cleaner"
         }
     )
-    workflow.add_edge("cleaner", None)
+    workflow.add_edge("cleaner", "end")
+    workflow.set_finish_node("end")
 
     return workflow
 
