@@ -161,7 +161,6 @@ def build_graph(solver_chain, verifier_chain):
     workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
     workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
-    workflow.add_node("end", lambda x: x)  # End node that returns state unchanged
 
     # Add edges
     workflow.set_entry_point("solver")
@@ -174,8 +173,7 @@ def build_graph(solver_chain, verifier_chain):
             "cleaner": "cleaner"
         }
     )
-    workflow.add_edge("cleaner", "end")
-    workflow.set_finish_point("end")
+    workflow.add_edge("cleaner", END)
 
     return workflow
 
@@ -204,7 +202,7 @@ def process_problem(problem_text: str):
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:3]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:2]")
     
     results = []
     for example in dataset:
