@@ -151,6 +151,7 @@ def build_graph(solver_chain, verifier_chain):
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
+    workflow.set_entry_point("solver")
     workflow.add_edge("solver", "verifier")
     workflow.add_conditional_edges(
         "verifier",
