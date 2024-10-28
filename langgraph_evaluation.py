@@ -205,14 +205,14 @@ def should_continue(state: AgentState) -> str:
     """Determine if we need another iteration"""
     last_message = state["verifier_messages"][-1].content
     
-    # Check for either keyword in capitals
-    has_needs_revision = "NEEDS_REVISION" in last_message
+    # Check for NEEDS and REVISION separately anywhere in the text
+    needs_revision = "NEEDS" in last_message and "REVISION" in last_message
     has_verified = "VERIFIED" in last_message
     
-    if not (has_needs_revision or has_verified):
-        print("Warning: Verifier response contains neither VERIFIED nor NEEDS_REVISION")
+    if not (needs_revision or has_verified):
+        print("Warning: Verifier response contains neither VERIFIED nor both NEEDS and REVISION")
         
-    return "solver" if has_needs_revision else "cleaner"
+    return "solver" if needs_revision else "cleaner"
 
 def clean_answer(state: AgentState) -> AgentState:
     """Extract numerical answer from verifier's response"""
