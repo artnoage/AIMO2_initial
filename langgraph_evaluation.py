@@ -9,18 +9,18 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.prompts import ChatPromptTemplate
 
-from enum import Enum, auto
+from enum import Enum
 
 # Setup for OpenRouter
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 class ModelOption(Enum):
-    CLAUDE_3_SONNET = "anthropic/claude-3.5-sonnet:beta"
+    CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT4 = "openai/gpt-4o"
     master="openai/o1-mini-2024-09-12"
 # Default models
-SOLVER_MODEL = ModelOption.GEMINI_PRO
+SOLVER_MODEL = ModelOption.CLAUDE
 VERIFIER_MODEL = ModelOption.master
 # Define state schema
 class AgentState(TypedDict):
@@ -59,7 +59,7 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it. 
 
-Provide your final answer as a number at the end of your response prefixed with 'ANSWER: '."""
+Never ask for confirmation. Just provide your final answer as a number at the end of your response prefixed with 'ANSWER: '."""
 
 VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
@@ -120,7 +120,7 @@ def preprocess_template_vars(text: str) -> str:
     return processed_text
 
 def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
-    model = get_model(model_option)
+    model = get_model(model_option, temp=0.1)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
@@ -131,7 +131,7 @@ def create_solver_chain(problem: str, model_option: ModelOption = SOLVER_MODEL):
     return prompt | model
 
 def create_verifier_chain(problem: str, model_option: ModelOption = VERIFIER_MODEL):
-    model = get_model(model_option, temp=0.3)
+    model = get_model(model_option, temp=0.1)
     # First escape any literal curly braces
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     
@@ -188,7 +188,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     """Determine if we should continue verification or end"""
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
         return END
     
     print("\n🔄 Answer incorrect or unverified - trying again...\n")
@@ -332,7 +332,7 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Load first 3 problems from AIME dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:4]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[3:6]")
     
     results = []
     for example in dataset:
