@@ -7,6 +7,7 @@ import re
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.graph import print_graph
 from langchain_core.prompts import ChatPromptTemplate
 
 from enum import Enum, auto
@@ -305,6 +306,11 @@ def process_problem(problem_text: str, ground_truth: int,
     
     # Build and compile graph for this problem
     workflow = build_graph(solver_chain, verifier_chain, ground_truth)
+    
+    # Print the graph visualization
+    print("\nWorkflow Graph Structure:")
+    print_graph(workflow)
+    
     app = workflow.compile()
     
     # Run the graph
