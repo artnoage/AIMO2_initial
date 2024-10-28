@@ -191,7 +191,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     """Determine if we should continue verification or end"""
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
         return END
     
     print("\n🔄 Answer incorrect or unverified - trying again...\n")
@@ -207,7 +207,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
 def should_continue(state: AgentState) -> str:
     """Determine if we need another iteration"""
     # Check iteration count first
-    if state["iteration_count"] >= 2:
+    if state["iteration_count"] >= 3:
         return "cleaner"
         
     last_message = state["verifier_messages"][-1].content
@@ -223,27 +223,17 @@ def should_continue(state: AgentState) -> str:
 
 def clean_answer(state: AgentState) -> AgentState:
     """Extract numerical answer from verifier's response"""
-    last_message = state["verifier_messages"][-1].content
-    if "VERIFIED" in last_message:
-        # Try to extract a number from the solver's solution
-        solution = state["current_solution"]
-        match = re.search(r"ANSWER:\s*(\d+)", solution)
-        if match:
-            final_answer = int(match.group(1))
-        else:
-            # Fallback to any number in the solution
-            match = re.search(r"\d+", solution)
-            final_answer = int(match.group()) if match else None
+    # Try to extract a number from the solver's solution
+    solution = state["current_solution"]
+    match = re.search(r"ANSWER:\s*(\d+)", solution)
+    if match:
+        final_answer = int(match.group(1))
     else:
-        final_answer = None
+        # Fallback to any number in the solution
+        match = re.search(r"\d+", solution)
+        final_answer = int(match.group()) if match else None
     
-    # Note: This call will be handled in the main loop instead
-    pass
-    
-    return {
-        **state,
-        "final_answer": final_answer
-    }
+    return {"final_answer": final_answer}
 
 def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, solution: str, solver_model: ModelOption):
     """Save the conversation to a Markdown file"""
@@ -345,11 +335,12 @@ if __name__ == "__main__":
     solver_models = [
         ModelOption.CLAUDE,
         ModelOption.GEMINI_PRO,
-        ModelOption.GPT
+        ModelOption.GPT,
+        ModelOption.master
     ]
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[7:11]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[11:14]")
     
     # Run experiments for each solver model
     for solver_model in solver_models:
