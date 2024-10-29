@@ -1,5 +1,4 @@
 from vllm import LLM, SamplingParams
-from vllm.quantization import QuantConfig
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
@@ -14,20 +13,12 @@ class GenerateRequest(BaseModel):
 
 app = FastAPI()
 
-# Configure INT8 quantization
-quant_config = QuantConfig(
-    quantization_method="gptq",  # Use GPTQ method
-    bits=8,  # 8-bit quantization
-    group_size=128,  # Group size for quantization
-    desc_act=False,  # Whether to quantize activations
-)
-
-# Initialize the model with INT8 quantization
+# Initialize the model using the quantized version
 llm = LLM(
-    model="Qwen/Qwen2.5-Math-7B-Instruct",
-    quantization=quant_config,
+    model="./qwen-math-7b-W8A8-Dynamic-Per-Token",
     gpu_memory_utilization=0.90,
     max_model_len=4096,
+    add_bos_token=True  # Important for quantized models
 )
 
 @app.post("/generate")
