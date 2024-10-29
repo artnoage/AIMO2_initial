@@ -9,7 +9,7 @@ def test_completion():
     )
     
     completion = client.completions.create(
-        model="Qwen/Qwen2.5-1.5B-Instruct",
+        model="Qwen/Qwen2.5-Math-1.5B-Instruct",
         prompt="San Francisco is a",
         max_tokens=7,
         temperature=0
@@ -28,7 +28,7 @@ def test_chat():
     )
     
     chat_response = client.chat.completions.create(
-        model="Qwen/Qwen2.5-1.5B-Instruct",
+        model="Qwen/Qwen2.5-Math-1.5B-Instruct",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Tell me a joke about programming."}
