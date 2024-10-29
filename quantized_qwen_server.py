@@ -1,5 +1,4 @@
 from vllm import LLM, SamplingParams
-from vllm.engine.arg_utils import AsyncEngineArgs
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
@@ -15,13 +14,12 @@ class GenerateRequest(BaseModel):
 app = FastAPI()
 
 # Initialize the model with INT8 quantization
-engine_args = AsyncEngineArgs(
+llm = LLM(
+    model="Qwen/Qwen2.5-Math-7B-Instruct",
     quantization="awq",  # Enable INT8 quantization
     gpu_memory_utilization=0.90,
     max_model_len=8192,
 )
-
-llm = LLM(model="Qwen/Qwen2.5-Math-7B-Instruct", engine_args=engine_args)
 
 @app.post("/generate")
 async def generate(request: GenerateRequest):
