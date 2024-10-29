@@ -1,41 +1,44 @@
-from vllm import LLM, SamplingParams
+from openai import OpenAI
 
 def test_completion():
-    """Test basic text completion using vLLM directly"""
-    llm = LLM(model="Qwen/Qwen2.5-1.5B-Instruct")
-    
-    sampling_params = SamplingParams(
-        temperature=0.0,
-        max_tokens=7
+    """Test basic completion endpoint"""
+    # Configure the client to use local vLLM server
+    client = OpenAI(
+        api_key="EMPTY",  # Not needed for local server
+        base_url="http://localhost:8000/v1"
     )
     
-    prompt = "San Francisco is a"
-    outputs = llm.generate([prompt], sampling_params)
+    completion = client.completions.create(
+        model="Qwen/Qwen2.5-1.5B-Instruct",
+        prompt="San Francisco is a",
+        max_tokens=7,
+        temperature=0
+    )
     
     print("\nCompletion test:")
-    print(f"Prompt: '{prompt}'")
-    print(f"Response: {outputs[0].outputs[0].text}")
+    print(f"Prompt: 'San Francisco is a'")
+    print(f"Response: {completion.choices[0].text}")
 
 def test_chat():
-    """Test chat completion using vLLM directly"""
-    llm = LLM(model="Qwen/Qwen2.5-1.5B-Instruct")
+    """Test chat completion endpoint"""
+    # Configure the client to use local vLLM server
+    client = OpenAI(
+        api_key="EMPTY",  # Not needed for local server
+        base_url="http://localhost:8000/v1"
+    )
     
-    sampling_params = SamplingParams(
+    chat_response = client.chat.completions.create(
+        model="Qwen/Qwen2.5-1.5B-Instruct",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Tell me a joke about programming."}
+        ],
         temperature=0.7,
         max_tokens=100
     )
     
-    # Format chat messages into a prompt string
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Tell me a joke about programming."}
-    ]
-    prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
-    
-    outputs = llm.generate([prompt], sampling_params)
-    
     print("\nChat test:")
-    print(f"Response: {outputs[0].outputs[0].text}")
+    print(f"Response: {chat_response.choices[0].message.content}")
 
 if __name__ == "__main__":
     print("Testing vLLM server...")
