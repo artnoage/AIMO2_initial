@@ -18,7 +18,7 @@ llm = LLM(
     model="Qwen/Qwen2.5-Math-7B-Instruct",
     quantization="awq",  # Enable INT8 quantization
     gpu_memory_utilization=0.90,
-    max_model_len=8192,
+    max_model_len=4096,
 )
 
 @app.post("/generate")
