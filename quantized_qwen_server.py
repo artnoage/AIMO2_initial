@@ -16,13 +16,12 @@ app = FastAPI()
 
 # Initialize the model with INT8 quantization
 engine_args = AsyncEngineArgs(
-    model="Qwen/Qwen2.5-Math-7B-Instruct",
     quantization="awq",  # Enable INT8 quantization
     gpu_memory_utilization=0.90,
     max_model_len=8192,
 )
 
-llm = LLM(engine_args=engine_args)
+llm = LLM(model="Qwen/Qwen2.5-Math-7B-Instruct", engine_args=engine_args)
 
 @app.post("/generate")
 async def generate(request: GenerateRequest):
