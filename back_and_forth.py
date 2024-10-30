@@ -6,7 +6,7 @@ from typing import Annotated, TypedDict, Union, List
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from librarian import init_conversation_md, append_to_conversation_md
@@ -144,7 +144,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 1:
         return END
     
     return "verifier"
@@ -186,13 +186,11 @@ def process_problem(problem_text: str, ground_truth: int,
         verifier_prompt = VERIFIER_PROMPT_TEMPLATE.format(problem=problem_text)
 
         initial_state = {
-            "solver_messages": [HumanMessage(content=solver_prompt)],
-            "verifier_messages": [HumanMessage(content=verifier_prompt)],
+            "solver_messages": [SystemMessage(content=solver_prompt)],
+            "verifier_messages": [SystemMessage(content=verifier_prompt)],
             "solution": "",
             "iteration_count": 0,
-            "md_file": md_file,
-            "problem": problem_text
-        }
+            "md_file": md_file}
         
         workflow = build_graph(solver_model, verifier_model, ground_truth)
         app = workflow.compile()
