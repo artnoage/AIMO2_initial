@@ -240,32 +240,39 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
     except Exception as e:
         print(f"Error appending to markdown file: {e}")
 
-@retry_with_exponential_backoff(max_retries=3, initial_delay=1)
 def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
                    verifier_model: ModelOption):
     """Process a single problem through the graph"""
-    solver_chain = create_solver_chain(problem_text, solver_model)
-    verifier_chain = create_verifier_chain(problem_text, verifier_model)
-    
-    initial_state = {
-        "solver_messages": [],
-        "verifier_messages": [],
-        "current_solution": "",
-        "final_answer": None,
-        "iteration_count": 0,
-        "is_the_answer_correct": False
-    }
-    
-    # Initialize the markdown file
-    md_file = init_conversation_md(str(ground_truth), problem_text, "", solver_model)
-    
-    workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file)
-    app = workflow.compile()
-    
-    print("Solving problem...")
-    final_state = app.invoke(initial_state)
-    return final_state
+    try:
+        solver_chain = create_solver_chain(problem_text, solver_model)
+        verifier_chain = create_verifier_chain(problem_text, verifier_model)
+        
+        initial_state = {
+            "solver_messages": [],
+            "verifier_messages": [],
+            "current_solution": "",
+            "final_answer": None,
+            "iteration_count": 0,
+            "is_the_answer_correct": False
+        }
+        
+        # Initialize the markdown file
+        md_file = init_conversation_md(str(ground_truth), problem_text, "", solver_model)
+        
+        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file)
+        app = workflow.compile()
+        
+        print("Solving problem...")
+        final_state = app.invoke(initial_state)
+        return final_state
+    except Exception as e:
+        print(f"Error processing problem: {e}")
+        return {
+            "final_answer": None,
+            "iteration_count": 0,
+            "is_the_answer_correct": False
+        }
 
 if __name__ == "__main__":
     # Define models
