@@ -362,10 +362,35 @@ def process_problem(problem_text: str, ground_truth: int,
         solver2_chain = create_solver2_chain(problem_text, solver2_model)
         verifier_chain = create_verifier_chain(problem_text, verifier_model)
         
+        # Create initial system prompts
+        solver1_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem_text}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
+        verifier_prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{problem_text}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+
         initial_state = {
-            "solver1_messages": [],
+            "solver1_messages": [HumanMessage(content=solver1_prompt)],
             "solver2_messages": [],
-            "verifier_messages": [],
+            "verifier_messages": [HumanMessage(content=verifier_prompt)],
             "current_solution": "",
             "final_answer": None,
             "iteration_count": 0,
