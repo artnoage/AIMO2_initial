@@ -1,15 +1,15 @@
 import os
-import time
 import re
 from enum import Enum
-from functools import partial, wraps
+from functools import partial
 from typing import Annotated, TypedDict, Union, List
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph, END
+from librarian import init_conversation_md, append_to_conversation_md
 
 # Load environment variables from .env
 load_dotenv()
@@ -39,29 +39,6 @@ issue with the solution.
 Respond with:
 'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
-def retry_with_exponential_backoff(
-    max_retries: int = 3,
-    initial_delay: float = 1,
-    exponential_base: float = 2,
-    error_types: tuple = (Exception,)
-):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            delay = initial_delay
-            for i in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except error_types as e:
-                    if i == max_retries - 1:  # Last attempt
-                        raise  # Re-raise the last exception
-                    print(f"Attempt {i + 1} failed with error: {str(e)}")
-                    print(f"Retrying in {delay} seconds...")
-                    time.sleep(delay)
-                    delay *= exponential_base  # Exponential backoff
-            return func(*args, **kwargs)  # Final attempt
-        return wrapper
-    return decorator
 
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
@@ -197,7 +174,7 @@ def build_graph(solver_model: ModelOption, verifier_model: ModelOption, ground_t
 
     return workflow
 
-from librarian import init_conversation_md, append_to_conversation_md, format_text_blocks
+
 
 def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
