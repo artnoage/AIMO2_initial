@@ -123,14 +123,14 @@ def create_solver1_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER1_PROMPT.format(problem=escaped_problem, messages="{messages}"))
+        ("system", SOLVER1_PROMPT_TEMPLATE.format(problem=escaped_problem, messages="{messages}"))
     ])
     return prompt | model
 
 def create_solver2_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER2_PROMPT.format(
+        ("system", SOLVER2_PROMPT_TEMPLATE.format(
             problem="{problem}",
             solution="{solution}",
             feedback="{feedback}")
@@ -142,7 +142,7 @@ def create_verifier_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(
+        ("system", VERIFIER_PROMPT_TEMPLATE.format(
             problem=escaped_problem,
             messages="{messages}")
         )
