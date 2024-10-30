@@ -89,25 +89,7 @@ def solve(state: AgentState, solver):
     """Solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
-    # Add initial system message if this is the first iteration
-    if not state["solver_messages"]:
-        initial_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
-
-{state["problem"]}
-
-Then solve the problem step by step, showing your work clearly. Make sure to:
-- Explain your reasoning at each step
-- Show all calculations explicitly
-- Never omit calculations for brevity
-- Highlight any key insights or clever observations
-- If some calculations seem hard, think if there is a clever way around it
-
-Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '."""
-        state["solver_messages"].append(HumanMessage(content=initial_prompt))
-        messages = state["solver_messages"]
-    else:
-        messages = state["solver_messages"]
+    messages = state["solver_messages"]
     
     response = solver.invoke(messages)
     solution_content = response.content
@@ -135,19 +117,6 @@ def verify(state: AgentState, verifier):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
-    # Add initial system message if this is the first verification
-    if len(state["verifier_messages"]) == 1:  # Only has the solution
-        initial_prompt = f"""You are a mathematical solution verifier. For this problem:
-
-{state["problem"]}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
-issue with the solution.
-
-Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
-        state["verifier_messages"].insert(0, HumanMessage(content=initial_prompt))
-    
     response = verifier.invoke(state["verifier_messages"])
     
     ai_message = AIMessage(content=response.content)
@@ -329,9 +298,34 @@ def process_problem(problem_text: str, ground_truth: int,
         solver = create_solver(problem_text, solver_model)
         verifier = create_verifier(problem_text, verifier_model)
         
+        # Create initial system prompts
+        solver_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem_text}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
+        verifier_prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{problem_text}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+
         initial_state = {
-            "solver_messages": [],
-            "verifier_messages": [],
+            "solver_messages": [HumanMessage(content=solver_prompt)],
+            "verifier_messages": [HumanMessage(content=verifier_prompt)],
             "current_solution": "",
             "final_answer": None,
             "iteration_count": 0,
