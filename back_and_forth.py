@@ -45,7 +45,7 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "Qwen/Qwen2.5-Math-7B-Instruct"
+    LOCAL = "mistralai/Mathstral-7B-v0.1"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -78,8 +78,9 @@ def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
-    
+    print(state["solver_messages"])
     solver = get_model(model_option, temp=0.1)
+
     response = solver.invoke(state["solver_messages"])
     solution_content = response.content
     
