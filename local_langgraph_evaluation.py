@@ -140,7 +140,8 @@ def solve(state: AgentState, solver_chain):
         "Solver's Solution",
         solution_content,
         state["iteration_count"],
-        messages_text
+        messages_text,
+        state["problem"]
     )
     
     return {
@@ -164,7 +165,8 @@ def verify(state: AgentState, verifier_chain):
         "Verifier's Response",
         response.content,
         state["iteration_count"],
-        messages_text
+        messages_text,
+        state["problem"]
     )
     
     return {
@@ -235,7 +237,8 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
         f.write("## Conversation History\n\n")
     return filename
 
-def append_to_conversation_md(filename: str, role: str, content: str, round_num: int, messages: str = ""):
+def append_to_conversation_md(filename: str, role: str, content: str, round_num: int, 
+                            messages: str = "", problem: str = ""):
     """Append a new message to the conversation markdown file"""
     if not os.path.exists(filename):
         print(f"Warning: Markdown file {filename} not found")
@@ -243,18 +246,18 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
         
     try:
         with open(filename, 'a', encoding='utf-8') as f:
-            f.write(f"### Round {round_num}\n\n")
+            f.write(f"### Round {round_num + 1}\n\n")
             
             # Add the prompt that was used
             if role == "Solver's Solution":
                 prompt = SOLVER_PROMPT.format(problem=problem, messages=messages)
-                f.write("#### Solver Prompt\n")
+                f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(f"{prompt}\n")
                 f.write("```\n\n")
             elif role == "Verifier's Response":
                 prompt = VERIFIER_PROMPT.format(problem=problem, messages=messages)
-                f.write("#### Verifier Prompt\n")
+                f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(f"{prompt}\n")
                 f.write("```\n\n")
