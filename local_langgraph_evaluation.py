@@ -213,6 +213,10 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
     # Ensure the directory exists
     os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
     
+    # Format the prompts with the actual problem
+    solver_prompt = SOLVER_PROMPT.format(problem=problem, messages="")
+    verifier_prompt = VERIFIER_PROMPT.format(problem=problem, messages="")
+    
     # Create/overwrite the file with initial content
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id} - Solver: {solver_model.name}\n\n")
@@ -220,6 +224,15 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
         f.write(f"{problem}\n\n")
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
+        f.write("## Agent Prompts\n\n")
+        f.write("### Solver Prompt\n")
+        f.write("```\n")
+        f.write(f"{solver_prompt}\n")
+        f.write("```\n\n")
+        f.write("### Verifier Prompt\n")
+        f.write("```\n")
+        f.write(f"{verifier_prompt}\n")
+        f.write("```\n\n")
         f.write("## Conversation History\n\n")
     return filename
 
