@@ -329,7 +329,8 @@ if __name__ == "__main__":
             problem, 
             ground_truth,
             solver_model=SOLVER_MODEL,
-            verifier_model=VERIFIER_MODEL
+            verifier_model=VERIFIER_MODEL,
+            md_file=md_file
         )
         
         results.append({
