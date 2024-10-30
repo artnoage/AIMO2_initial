@@ -273,10 +273,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "is_the_answer_correct": False
         }
         
-        # Initialize the markdown file
-        md_file = init_conversation_md(str(ground_truth), problem_text, "", solver_model)
-        
-        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file)
+        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file=None)
         app = workflow.compile()
         
         print("Solving problem...")
@@ -307,6 +304,9 @@ if __name__ == "__main__":
         print(f"\nProcessing problem {problem_id}...")
         
         ground_truth = int(example['answer']) if example['answer'].isdigit() else None
+        # Initialize conversation file with problem and dataset solution
+        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL)
+        
         result = process_problem(
             problem, 
             ground_truth,
