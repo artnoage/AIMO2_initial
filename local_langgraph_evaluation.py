@@ -195,10 +195,9 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 5:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
         return END
     
-    print("\n🔄 Answer incorrect - getting verifier feedback...\n")
     return "verifier"
 
 def build_graph(solver_chain, verifier_chain, ground_truth: int):
@@ -276,7 +275,7 @@ def process_problem(problem_text: str, ground_truth: int,
 if __name__ == "__main__":
     # Define models
     SOLVER_MODEL = ModelOption.LOCAL
-    VERIFIER_MODEL = ModelOption.LOCAL
+    VERIFIER_MODEL = ModelOption.CLAUDE
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[11:14]")
