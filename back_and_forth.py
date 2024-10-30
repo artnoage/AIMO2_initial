@@ -25,9 +25,8 @@ SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. When given a 
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
 response prefixed with 'ANSWER: '."""
 
-VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. When given a problem and solution, your job is to verify if the solution is correct.
-If the solution is INCORRECT, analyze their solution and try to isolate the most important 
-issue with the solution.
+VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. When given a problem and solution which you know that is INCORRECT. Analyze the solution and try to isolate the most important 
+issue with it, giving helpful feedback to improve.
 
 Respond with:
 'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
@@ -195,7 +194,8 @@ def process_problem(problem_text: str, ground_truth: int,
             ],
             "verifier_messages": [
                 SystemMessage(content=VERIFIER_PROMPT_TEMPLATE),
-                HumanMessage(content=f"Here is the problem: {problem_text}")
+                HumanMessage(content=f"Here is the problem: {problem_text}"),
+                AIMessage(content="And what is the solution?")
             ],
             "solution": "",
             "iteration_count": 0,
