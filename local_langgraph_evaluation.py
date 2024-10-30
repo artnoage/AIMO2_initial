@@ -237,6 +237,37 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
         f.write("## Conversation History\n\n")
     return filename
 
+def format_text_blocks(text: str, max_line_length: int = 80) -> str:
+    """Format text into lines of maximum length while preserving paragraphs"""
+    paragraphs = text.split('\n\n')
+    formatted_paragraphs = []
+    
+    for paragraph in paragraphs:
+        if not paragraph.strip():
+            continue
+        
+        words = paragraph.split()
+        lines = []
+        current_line = []
+        current_length = 0
+        
+        for word in words:
+            word_length = len(word)
+            if current_length + word_length + len(current_line) <= max_line_length:
+                current_line.append(word)
+                current_length += word_length
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+                current_length = word_length
+                
+        if current_line:
+            lines.append(' '.join(current_line))
+            
+        formatted_paragraphs.append('\n'.join(lines))
+    
+    return '\n\n'.join(formatted_paragraphs)
+
 def append_to_conversation_md(filename: str, role: str, content: str, round_num: int, 
                             messages: str = "", problem: str = ""):
     """Append a new message to the conversation markdown file"""
@@ -253,20 +284,20 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
                 prompt = SOLVER_PROMPT.format(problem=problem, messages=messages)
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
-                f.write(f"{prompt}\n")
-                f.write("```\n\n")
+                f.write(format_text_blocks(prompt))
+                f.write("\n```\n\n")
             elif role == "Verifier's Response":
                 prompt = VERIFIER_PROMPT.format(problem=problem, messages=messages)
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
-                f.write(f"{prompt}\n")
-                f.write("```\n\n")
+                f.write(format_text_blocks(prompt))
+                f.write("\n```\n\n")
             
             # Add the agent's response
             f.write(f"#### {role}\n")
             f.write("```\n")
-            f.write(f"{content}\n")
-            f.write("```\n\n")
+            f.write(format_text_blocks(content))
+            f.write("\n```\n\n")
             f.flush()  # Force write to disk
     except Exception as e:
         print(f"Error appending to markdown file: {e}")
