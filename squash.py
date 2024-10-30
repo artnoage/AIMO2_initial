@@ -301,7 +301,7 @@ response prefixed with 'ANSWER: '.
 {problem}
 
 2. A previous solution attempt:
-{messages.split("Previous solution: ")[1].split("\\nFeedback:")[0]}
+{messages.split("Previous solution: ")[1].split(r"\nFeedback:")[0]}
 
 3. Feedback on what was wrong:
 {messages.split("Feedback: ")[1]}
