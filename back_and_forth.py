@@ -45,7 +45,7 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "mistralai/Mathstral-7B-v0.1"
+    LOCAL = "Qwen/Qwen2.5-Math-7B-Instruct"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -194,7 +194,7 @@ def process_problem(problem_text: str, ground_truth: int,
         verifier_prompt = VERIFIER_PROMPT_TEMPLATE.format(problem=problem_text)
 
         initial_state = {
-            "solver_messages": [SystemMessage(content=solver_prompt)],
+            "solver_messages": [SystemMessage(content=solver_prompt), HumanMessage(content="please proceed")],
             "verifier_messages": [SystemMessage(content=verifier_prompt)],
             "solution": "",
             "iteration_count": 0,
