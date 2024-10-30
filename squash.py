@@ -171,7 +171,7 @@ def solve1(state: AgentState, model_option: ModelOption):
     )
     
     return {
-        "current_solution": solution_content,
+        "solution": solution_content,
         "solver1_messages": [ai_message],
         "verifier_messages": [human_message]
     }
@@ -214,7 +214,7 @@ def solve2(state: AgentState, model_option: ModelOption):
     solver = get_model(model_option, temp=0.1)
     response = solver.invoke({
         "problem": state["problem"],
-        "solution": state["current_solution"],
+        "solution": state["solution"],
         "feedback": state["feedback"]
     })
     solution_content = response.content
@@ -341,7 +341,7 @@ Respond with:
             "solver1_messages": [HumanMessage(content=solver1_prompt)],
             "solver2_messages": [HumanMessage(content=solver2_prompt)],
             "verifier_messages": [HumanMessage(content=verifier_prompt)],
-            "current_solution": "",
+            "solution": "",
             "final_answer": None,
             "iteration_count": 0,
             "is_the_answer_correct": False,

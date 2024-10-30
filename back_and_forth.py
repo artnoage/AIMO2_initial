@@ -97,7 +97,7 @@ def solve(state: AgentState, model_option: ModelOption):
     )
     
     return {
-        "current_solution": solution_content,
+        "solution": solution_content,
         "solver_messages": [ai_message],
         "verifier_messages": [human_message]
     }
@@ -129,7 +129,7 @@ def verify(state: AgentState, model_option: ModelOption):
 
 def clean_answer(state: AgentState) -> AgentState:
     """Extract numerical answer from solver's solution"""
-    solution = state["current_solution"]
+    solution = state["solution"]
     match = re.search(r"ANSWER:\s*(\d+)", solution)
     if match:
         final_answer = int(match.group(1))
@@ -188,7 +188,7 @@ def process_problem(problem_text: str, ground_truth: int,
         initial_state = {
             "solver_messages": [HumanMessage(content=solver_prompt)],
             "verifier_messages": [HumanMessage(content=verifier_prompt)],
-            "current_solution": "",
+            "solution": "",
             "final_answer": None,
             "iteration_count": 0,
             "is_the_answer_correct": False,
