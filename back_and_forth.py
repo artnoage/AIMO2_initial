@@ -73,13 +73,10 @@ class ModelOption(Enum):
 # Define state schema
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
-    verifier_messages: Annotated[List[BaseMessage], add_messages]
-    current_solution: Annotated[str, "Current solution being worked on"]
+    verifier_messages: Annotated[List[BaseMessage], add_messages] 
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
-    iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
-    is_the_answer_correct: Annotated[bool, "Flag indicating if the current answer is correct"]
-    md_file: Annotated[str, "Path to markdown file for logging"]
-    problem: Annotated[str, "Original problem text"]
+    iteration_count: Annotated[int, "Counter for iterations"]
+    md_file: Annotated[str, "Path to markdown file"]
 
 # Initialize the models
 def get_model(model: ModelOption, temp: float = 0):
@@ -100,17 +97,13 @@ def get_model(model: ModelOption, temp: float = 0):
         )
 
 
-def create_agent(problem: str, model_option: ModelOption):
-    """Create an agent (solver or verifier) with the specified model"""
-    return get_model(model_option, temp=0.1)
-
-def solve(state: AgentState, solver):
+def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
-    messages = state["solver_messages"]
     
-    response = solver.invoke(messages)
+    solver = get_model(model_option, temp=0.1)
+    response = solver.invoke(state["solver_messages"])
     solution_content = response.content
     
     ai_message = AIMessage(content=solution_content)
@@ -132,10 +125,11 @@ def solve(state: AgentState, solver):
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier):
+def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
+    verifier = get_model(model_option, temp=0.1)
     response = verifier.invoke(state["verifier_messages"])
     
     ai_message = AIMessage(content=response.content)
@@ -184,8 +178,8 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
+    workflow.add_node("solver", partial(solve, model_option=solver_model))
+    workflow.add_node("verifier", partial(verify, model_option=verifier_model))
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
