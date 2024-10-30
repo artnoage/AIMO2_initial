@@ -96,6 +96,15 @@ def solve(state: AgentState, model_option: ModelOption):
         state["problem"]
     )
     
+    # Update markdown file
+    append_to_conversation_md(
+        state["md_file"], 
+        "Solver's Solution",
+        solution_content,
+        state["iteration_count"],
+        messages_text
+    )
+    
     return {
         "current_solution": solution_content,
         "solver_messages": [ai_message],
@@ -120,6 +129,15 @@ def verify(state: AgentState, model_option: ModelOption):
         state["iteration_count"],
         messages_text,
         state["problem"]
+    )
+    
+    # Update markdown file
+    append_to_conversation_md(
+        state["md_file"],
+        "Verifier's Response", 
+        response.content,
+        state["iteration_count"],
+        messages_text
     )
     
     return {
