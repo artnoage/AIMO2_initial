@@ -258,7 +258,8 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
 
 def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
-                   verifier_model: ModelOption):
+                   verifier_model: ModelOption,
+                   md_file: str = None):
     """Process a single problem through the graph"""
     try:
         solver_chain = create_solver_chain(problem_text, solver_model)
@@ -273,7 +274,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "is_the_answer_correct": False
         }
         
-        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file=None)
+        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file=md_file)
         app = workflow.compile()
         
         print("Solving problem...")
@@ -307,11 +308,15 @@ if __name__ == "__main__":
         # Initialize conversation file with problem and dataset solution
         md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL)
         
+        # Initialize conversation file with problem and dataset solution
+        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL)
+        
         result = process_problem(
             problem, 
             ground_truth,
             solver_model=SOLVER_MODEL,
-            verifier_model=VERIFIER_MODEL
+            verifier_model=VERIFIER_MODEL,
+            md_file=md_file
         )
         
         results.append({
