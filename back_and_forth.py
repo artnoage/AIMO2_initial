@@ -1,20 +1,43 @@
 import os
 import time
+import re
+from enum import Enum
 from functools import partial, wraps
-from dotenv import load_dotenv
-
-# Load environment variables from .env
-load_dotenv()
 from typing import Annotated, TypedDict, Union, List
+from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
-import re
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from langchain_core.prompts import ChatPromptTemplate
-from openai import OpenAI
-from enum import Enum
+
+# Load environment variables from .env
+load_dotenv()
+
+# Define system prompts as constants
+SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
+VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. For this problem:
+
+{problem}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
 def retry_with_exponential_backoff(
     max_retries: int = 3,
@@ -77,13 +100,9 @@ def get_model(model: ModelOption, temp: float = 0):
         )
 
 
-def create_solver(problem: str, model_option: ModelOption):
-    model = get_model(model_option, temp=0.1)
-    return model
-
-def create_verifier(problem: str, model_option: ModelOption):
-    model = get_model(model_option, temp=0.1)
-    return model
+def create_agent(problem: str, model_option: ModelOption):
+    """Create an agent (solver or verifier) with the specified model"""
+    return get_model(model_option, temp=0.1)
 
 def solve(state: AgentState, solver):
     """Solver agent function"""
@@ -192,33 +211,12 @@ def process_problem(problem_text: str, ground_truth: int,
                    md_file: str = None):
     """Process a single problem through the graph"""
     try:
-        solver = create_solver(problem_text, solver_model)
-        verifier = create_verifier(problem_text, verifier_model)
+        solver = create_agent(problem_text, solver_model)
+        verifier = create_agent(problem_text, verifier_model)
         
         # Create initial system prompts
-        solver_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
-
-{problem_text}
-
-Then solve the problem step by step, showing your work clearly. Make sure to:
-- Explain your reasoning at each step
-- Show all calculations explicitly
-- Never omit calculations for brevity
-- Highlight any key insights or clever observations
-- If some calculations seem hard, think if there is a clever way around it
-
-Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '."""
-
-        verifier_prompt = f"""You are a mathematical solution verifier. For this problem:
-
-{problem_text}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
-issue with the solution.
-
-Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+        solver_prompt = SOLVER_PROMPT_TEMPLATE.format(problem=problem_text)
+        verifier_prompt = VERIFIER_PROMPT_TEMPLATE.format(problem=problem_text)
 
         initial_state = {
             "solver_messages": [HumanMessage(content=solver_prompt)],
