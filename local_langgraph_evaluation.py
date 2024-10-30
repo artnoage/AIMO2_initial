@@ -133,8 +133,8 @@ def solve(state: AgentState, solver_chain, md_file: str = None):
     human_message = HumanMessage(content=solution_content)
     
     if md_file:
-        append_to_conversation_md(md_file, "Solver's Solution", solution_content, 
-                                state["iteration_count"] + 1)
+        append_to_conversation_md(md_file, "Solver's Solution", solution_content,
+                                state["iteration_count"] + 1, messages_text)
     
     return {
         "current_solution": solution_content,
@@ -153,7 +153,7 @@ def verify(state: AgentState, verifier_chain, md_file: str = None):
     
     if md_file:
         append_to_conversation_md(md_file, "Verifier's Response", response.content,
-                                state["iteration_count"] + 1)
+                                state["iteration_count"] + 1, messages_text)
     
     return {
         "solver_messages": [human_message],
@@ -213,10 +213,6 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
     # Ensure the directory exists
     os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
     
-    # Format the prompts with the actual problem
-    solver_prompt = SOLVER_PROMPT.format(problem=problem, messages="")
-    verifier_prompt = VERIFIER_PROMPT.format(problem=problem, messages="")
-    
     # Create/overwrite the file with initial content
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id} - Solver: {solver_model.name}\n\n")
@@ -224,19 +220,10 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
         f.write(f"{problem}\n\n")
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
-        f.write("## Agent Prompts\n\n")
-        f.write("### Solver Prompt\n")
-        f.write("```\n")
-        f.write(f"{solver_prompt}\n")
-        f.write("```\n\n")
-        f.write("### Verifier Prompt\n")
-        f.write("```\n")
-        f.write(f"{verifier_prompt}\n")
-        f.write("```\n\n")
         f.write("## Conversation History\n\n")
     return filename
 
-def append_to_conversation_md(filename: str, role: str, content: str, round_num: int):
+def append_to_conversation_md(filename: str, role: str, content: str, round_num: int, messages: str = ""):
     """Append a new message to the conversation markdown file"""
     if not os.path.exists(filename):
         print(f"Warning: Markdown file {filename} not found")
@@ -245,6 +232,22 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
     try:
         with open(filename, 'a', encoding='utf-8') as f:
             f.write(f"### Round {round_num}\n\n")
+            
+            # Add the prompt that was used
+            if role == "Solver's Solution":
+                prompt = SOLVER_PROMPT.format(problem=content, messages=messages)
+                f.write("#### Solver Prompt\n")
+                f.write("```\n")
+                f.write(f"{prompt}\n")
+                f.write("```\n\n")
+            elif role == "Verifier's Response":
+                prompt = VERIFIER_PROMPT.format(problem=content, messages=messages)
+                f.write("#### Verifier Prompt\n")
+                f.write("```\n")
+                f.write(f"{prompt}\n")
+                f.write("```\n\n")
+            
+            # Add the agent's response
             f.write(f"#### {role}\n")
             f.write("```\n")
             f.write(f"{content}\n")
