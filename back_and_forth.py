@@ -45,7 +45,7 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "Qwen/Qwen2.5-Math-7B-Instruct"
+    LOCAL = "mistralai/Mathstral-7B-v0.1"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -117,14 +117,6 @@ def verify(state: AgentState, model_option: ModelOption):
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
     
-    # Save state to test.md
-    with open('test.md', 'w') as f:
-        f.write(f"# Current State - Verifier Phase\n\n")
-        f.write(f"## Iteration {state['iteration_count']}\n\n")
-        f.write("### Verifier Messages:\n")
-        for msg in state["verifier_messages"]:
-            f.write(f"#### {msg.__class__.__name__}\n")
-            f.write(f"{msg.content}\n\n")
     
     verifier = get_model(model_option, temp=0.1)
     response = verifier.invoke(state["verifier_messages"])
@@ -164,7 +156,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 1:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
         return END
     
     return "verifier"
@@ -229,7 +221,7 @@ def process_problem(problem_text: str, ground_truth: int,
 if __name__ == "__main__":
     # Define models
     SOLVER_MODEL = ModelOption.LOCAL
-    VERIFIER_MODEL = ModelOption.CLAUDE
+    VERIFIER_MODEL = ModelOption.LOCAL
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[14:16]")
