@@ -47,6 +47,47 @@ class ModelOption(Enum):
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "Qwen/Qwen2.5-Math-7B-Instruct"
 
+# Define system prompts as constants
+SOLVER1_PROMPT_TEMPLATE = """You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
+SOLVER2_PROMPT_TEMPLATE = """You are a mathematical problem solver. Here is:
+
+1. The original problem:
+{problem}
+
+2. A previous solution attempt:
+{solution}
+
+3. Feedback on what was wrong:
+{feedback}
+
+Your task is to fix the solution based on the feedback. Focus specifically on addressing
+the issues mentioned in the feedback while keeping the correct parts of the original solution.
+
+Provide your complete revised solution, ending with your final answer prefixed with 'ANSWER: '."""
+
+VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. For this problem:
+
+{problem}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+
 # Define state schema
 class AgentState(TypedDict):
     solver1_messages: Annotated[List[BaseMessage], add_messages]
@@ -54,9 +95,8 @@ class AgentState(TypedDict):
     verifier_messages: Annotated[List[BaseMessage], add_messages]
     current_solution: Annotated[str, "Current solution being worked on"]
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
-    iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
-    is_the_answer_correct: Annotated[bool, "Flag indicating if the current answer is correct"]
-    md_file: Annotated[str, "Path to markdown file for logging"]
+    iteration_count: Annotated[int, "Counter for iterations"]
+    md_file: Annotated[str, "Path to markdown file"]
     problem: Annotated[str, "Original problem text"]
     feedback: Annotated[str, "Feedback from verifier"]
 
@@ -109,11 +149,13 @@ def create_verifier_chain(problem: str, model_option: ModelOption):
     ])
     return prompt | model
 
-def solve1(state: AgentState, solver1_chain):
+def solve1(state: AgentState, model_option: ModelOption):
     """First solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver1_messages"]])
     print("Solver 1...")
-    response = solver1_chain.invoke({"messages": messages_text})
+    
+    solver = get_model(model_option, temp=0.1)
+    response = solver.invoke(state["solver1_messages"])
     solution_content = response.content
     
     ai_message = AIMessage(content=solution_content)
@@ -125,8 +167,7 @@ def solve1(state: AgentState, solver1_chain):
         "Solver 1's Solution",
         solution_content,
         state["iteration_count"],
-        messages_text,
-        state["problem"]
+        messages_text
     )
     
     return {
@@ -135,11 +176,13 @@ def solve1(state: AgentState, solver1_chain):
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain):
+def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
-    response = verifier_chain.invoke({"messages": messages_text})
+    
+    verifier = get_model(model_option, temp=0.1)
+    response = verifier.invoke(state["verifier_messages"])
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
@@ -150,8 +193,7 @@ def verify(state: AgentState, verifier_chain):
         "Verifier's Response",
         response.content,
         state["iteration_count"],
-        messages_text,
-        state["problem"]
+        messages_text
     )
     
     # Extract feedback from verifier response
@@ -165,10 +207,12 @@ def verify(state: AgentState, verifier_chain):
         "feedback": feedback
     }
 
-def solve2(state: AgentState, solver2_chain):
+def solve2(state: AgentState, model_option: ModelOption):
     """Second solver agent function"""
     print("Solver 2...")
-    response = solver2_chain.invoke({
+    
+    solver = get_model(model_option, temp=0.1)
+    response = solver.invoke({
         "problem": state["problem"],
         "solution": state["current_solution"],
         "feedback": state["feedback"]
@@ -181,8 +225,7 @@ def solve2(state: AgentState, solver2_chain):
         "Solver 2's Solution",
         solution_content,
         state["iteration_count"],
-        f"Problem: {state['problem']}\nPrevious solution: {state['current_solution']}\nFeedback: {state['feedback']}",
-        state["problem"]
+        f"Problem: {state['problem']}\nPrevious solution: {state['current_solution']}\nFeedback: {state['feedback']}"
     )
     
     return {
@@ -198,14 +241,14 @@ def extract_answer(solution: str) -> Union[int, None]:
     match = re.search(r"\d+", solution)
     return int(match.group()) if match else None
 
-def build_graph(solver1_chain, solver2_chain, verifier_chain):
+def build_graph(solver1_model: ModelOption, solver2_model: ModelOption, verifier_model: ModelOption):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver1", partial(solve1, solver1_chain=solver1_chain))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
-    workflow.add_node("solver2", partial(solve2, solver2_chain=solver2_chain))
+    workflow.add_node("solver1", partial(solve1, model_option=solver1_model))
+    workflow.add_node("verifier", partial(verify, model_option=verifier_model))
+    workflow.add_node("solver2", partial(solve2, model_option=solver2_model))
 
     # Add edges
     workflow.set_entry_point("solver1")
