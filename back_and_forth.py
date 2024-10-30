@@ -203,7 +203,7 @@ def process_problem(problem_text: str, ground_truth: int,
     except Exception as e:
         print(f"Error processing problem: {e}")
         return {
-            "final_answer": None,
+            "solution": None,
             "iteration_count": 0,
             "is_the_answer_correct": False
         }
