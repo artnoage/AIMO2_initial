@@ -68,11 +68,17 @@ def get_model(model: ModelOption, temp: float = 0):
 
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function"""
-    messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
+    messages = state["solver_messages"]
+    
+    # Always keep first two messages and last two if more than 2 messages exist
+    if len(messages) > 2:
+        messages = messages[:2] + messages[-2:]
+    
+    messages_text = "\n".join([msg.content for msg in messages])
     print("Solving...")
     
     solver = get_model(model_option, temp=0.1)
-    response = solver.invoke(state["solver_messages"])
+    response = solver.invoke(messages)
     
     # Save state to test.md after getting the response
     with open('test.md', 'w') as f:
@@ -107,12 +113,17 @@ def solve(state: AgentState, model_option: ModelOption):
 
 def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
-    messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
+    messages = state["verifier_messages"]
+    
+    # Keep first three messages and last message if more than 3 messages exist
+    if len(messages) > 3:
+        messages = messages[:3] + [messages[-1]]
+    
+    messages_text = "\n".join([msg.content for msg in messages])
     print("Verifying...")
     
-    
     verifier = get_model(model_option, temp=0.1)
-    response = verifier.invoke(state["verifier_messages"])
+    response = verifier.invoke(messages)
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
