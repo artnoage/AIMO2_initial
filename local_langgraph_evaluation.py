@@ -211,6 +211,10 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int, md_file: str = 
 def init_conversation_md(problem_id: str, problem: str, solution: str, solver_model: ModelOption):
     """Initialize the markdown file with problem details"""
     filename = f"conversation_{problem_id}_local.md"
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+    
+    # Create/overwrite the file with initial content
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id} - Solver: {solver_model.name}\n\n")
         f.write("## Problem Statement\n\n")
@@ -222,12 +226,20 @@ def init_conversation_md(problem_id: str, problem: str, solution: str, solver_mo
 
 def append_to_conversation_md(filename: str, role: str, content: str, round_num: int):
     """Append a new message to the conversation markdown file"""
-    with open(filename, 'a', encoding='utf-8') as f:
-        f.write(f"### Round {round_num}\n\n")
-        f.write(f"#### {role}\n")
-        f.write("```\n")
-        f.write(f"{content}\n")
-        f.write("```\n\n")
+    if not os.path.exists(filename):
+        print(f"Warning: Markdown file {filename} not found")
+        return
+        
+    try:
+        with open(filename, 'a', encoding='utf-8') as f:
+            f.write(f"### Round {round_num}\n\n")
+            f.write(f"#### {role}\n")
+            f.write("```\n")
+            f.write(f"{content}\n")
+            f.write("```\n\n")
+            f.flush()  # Force write to disk
+    except Exception as e:
+        print(f"Error appending to markdown file: {e}")
 
 @retry_with_exponential_backoff(max_retries=3, initial_delay=1)
 def process_problem(problem_text: str, ground_truth: int, 
@@ -247,7 +259,7 @@ def process_problem(problem_text: str, ground_truth: int,
     }
     
     # Initialize the markdown file
-    md_file = init_conversation_md(problem_id, problem_text, "", solver_model)
+    md_file = init_conversation_md(str(ground_truth), problem_text, "", solver_model)
     
     workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file)
     app = workflow.compile()
