@@ -79,7 +79,10 @@ def solve(state: AgentState, model_option: ModelOption):
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
     
-    # Save state to test.md
+    solver = get_model(model_option, temp=0.1)
+    response = solver.invoke(state["solver_messages"])
+    
+    # Save state to test.md after getting the response
     with open('test.md', 'w') as f:
         f.write(f"# Current State - Solver Phase\n\n")
         f.write(f"## Iteration {state['iteration_count']}\n\n")
@@ -87,10 +90,8 @@ def solve(state: AgentState, model_option: ModelOption):
         for msg in state["solver_messages"]:
             f.write(f"#### {msg.__class__.__name__}\n")
             f.write(f"{msg.content}\n\n")
-    
-    solver = get_model(model_option, temp=0.1)
-
-    response = solver.invoke(state["solver_messages"])
+        f.write("### Solver Response:\n")
+        f.write(f"{response.content}\n\n")
     solution_content = response.content
     
     ai_message = AIMessage(content=solution_content)
