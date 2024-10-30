@@ -1,6 +1,10 @@
 import os
 import time
 from functools import partial, wraps
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 from typing import Annotated, TypedDict, Union, List
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
