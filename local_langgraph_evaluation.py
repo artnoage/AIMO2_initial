@@ -41,7 +41,7 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "local/Qwen2.5-Math-7B-Instruct"
+    LOCAL = "Qwen/Qwen2.5-Math-7B-Instruct"
 
 # Define state schema
 class AgentState(TypedDict):
