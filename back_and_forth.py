@@ -77,13 +77,23 @@ def get_model(model: ModelOption, temp: float = 0):
         )
 
 
-def create_solver_chain(problem: str, model_option: ModelOption):
+def create_solver(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
-    escaped_problem = problem.replace("{", "{{").replace("}", "}}")
-    prompt = ChatPromptTemplate.from_messages([
-        ("human", f"""You are a mathematical problem solver. Your goal is to solve this problem:
+    return model
 
-{escaped_problem}
+def create_verifier(problem: str, model_option: ModelOption):
+    model = get_model(model_option, temp=0.1)
+    return model
+
+def solve(state: AgentState, solver):
+    """Solver agent function"""
+    messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
+    print("Solving...")
+    # Add initial system message if this is the first iteration
+    if not state["solver_messages"]:
+        initial_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{state["problem"]}
 
 Then solve the problem step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
@@ -93,35 +103,13 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 - If some calculations seem hard, think if there is a clever way around it
 
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '.
-
-{"{messages}"}""")
-    ])
-    return prompt | model
-
-def create_verifier_chain(problem: str, model_option: ModelOption):
-    model = get_model(model_option, temp=0.1)
-    escaped_problem = problem.replace("{", "{{").replace("}", "}}")
-    prompt = ChatPromptTemplate.from_messages([
-        ("human", f"""You are a mathematical solution verifier. For this problem:
-
-{escaped_problem}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
-issue with the solution.
-
-Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
-
-{"{messages}"}""")
-    ])
-    return prompt | model
-
-def solve(state: AgentState, solver_chain):
-    """Solver agent function"""
-    messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
-    print("Solving...")
-    response = solver_chain.invoke({"messages": messages_text})
+response prefixed with 'ANSWER: '."""
+        state["solver_messages"].append(HumanMessage(content=initial_prompt))
+        messages = state["solver_messages"]
+    else:
+        messages = state["solver_messages"]
+    
+    response = solver.invoke(messages)
     solution_content = response.content
     
     ai_message = AIMessage(content=solution_content)
@@ -143,11 +131,24 @@ def solve(state: AgentState, solver_chain):
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain):
+def verify(state: AgentState, verifier):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
-    response = verifier_chain.invoke({"messages": messages_text})
+    # Add initial system message if this is the first verification
+    if len(state["verifier_messages"]) == 1:  # Only has the solution
+        initial_prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{state["problem"]}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+        state["verifier_messages"].insert(0, HumanMessage(content=initial_prompt))
+    
+    response = verifier.invoke(state["verifier_messages"])
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
