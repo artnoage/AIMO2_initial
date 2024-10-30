@@ -86,11 +86,10 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
-Here is the previous feedback if any:
-{messages}
-
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '."""
+response prefixed with 'ANSWER: '.
+
+{messages}"""
 
 VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
@@ -99,10 +98,10 @@ VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
 issue with the solution.
 
-{messages}
-
 Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
+
+{messages}"""
 
 def create_solver_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
