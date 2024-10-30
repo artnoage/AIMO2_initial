@@ -227,13 +227,13 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
             
             # Add the prompt that was used
             if role == "Solver's Solution":
-                prompt = SOLVER_PROMPT.format(problem=content, messages=messages)
+                prompt = SOLVER_PROMPT.format(problem=problem, messages=messages)
                 f.write("#### Solver Prompt\n")
                 f.write("```\n")
                 f.write(f"{prompt}\n")
                 f.write("```\n\n")
             elif role == "Verifier's Response":
-                prompt = VERIFIER_PROMPT.format(problem=content, messages=messages)
+                prompt = VERIFIER_PROMPT.format(problem=problem, messages=messages)
                 f.write("#### Verifier Prompt\n")
                 f.write("```\n")
                 f.write(f"{prompt}\n")
@@ -300,9 +300,6 @@ if __name__ == "__main__":
         # Initialize conversation file with problem and dataset solution
         md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL)
         
-        # Initialize conversation file with problem and dataset solution
-        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL)
-        
         result = process_problem(
             problem, 
             ground_truth,
@@ -312,11 +309,13 @@ if __name__ == "__main__":
         
         # Update conversation file with final state
         if result.get("current_solution"):
+            solver_messages = "\n".join([msg.content for msg in result.get("solver_messages", [])])
             append_to_conversation_md(md_file, "Solver's Solution", result["current_solution"],
-                                   result["iteration_count"], "")
+                                   result["iteration_count"], solver_messages)
         if result.get("verifier_messages") and result["verifier_messages"]:
+            verifier_messages = "\n".join([msg.content for msg in result.get("verifier_messages", [])])
             append_to_conversation_md(md_file, "Verifier's Response", result["verifier_messages"][-1].content,
-                                   result["iteration_count"], "")
+                                   result["iteration_count"], verifier_messages)
         
         results.append({
             'solver_model': SOLVER_MODEL.value,
