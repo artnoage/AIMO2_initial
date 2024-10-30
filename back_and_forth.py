@@ -173,7 +173,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     
     return "verifier"
 
-def build_graph(solver_chain, verifier_chain, ground_truth: int):
+def build_graph(solver_model: ModelOption, verifier_model: ModelOption, ground_truth: int):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
@@ -205,9 +205,6 @@ def process_problem(problem_text: str, ground_truth: int,
                    md_file: str = None):
     """Process a single problem through the graph"""
     try:
-        solver = create_agent(problem_text, solver_model)
-        verifier = create_agent(problem_text, verifier_model)
-        
         # Create initial system prompts
         solver_prompt = SOLVER_PROMPT_TEMPLATE.format(problem=problem_text)
         verifier_prompt = VERIFIER_PROMPT_TEMPLATE.format(problem=problem_text)
@@ -223,7 +220,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "problem": problem_text
         }
         
-        workflow = build_graph(solver, verifier, ground_truth)
+        workflow = build_graph(solver_model, verifier_model, ground_truth)
         app = workflow.compile()
         
         print("Solving problem...")
