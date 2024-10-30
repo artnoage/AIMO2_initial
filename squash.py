@@ -471,7 +471,7 @@ if __name__ == "__main__":
         
         ground_truth = int(example['answer']) if example['answer'].isdigit() else None
         # Initialize conversation file
-        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER1_MODEL)
+        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER1_MODEL.name, "_squash")
         
         result = process_problem(
             problem, 
