@@ -295,16 +295,21 @@ response prefixed with 'ANSWER: '.
                 f.write(format_text_blocks(prompt))
                 f.write("\n```\n\n")
             elif role == "Solver 2's Solution":
+                # Split messages using string operations instead of f-string with backslashes
+                solution_attempt = messages.split("Previous solution: ")[1]
+                solution_part = solution_attempt.split("Feedback:")[0].strip()
+                feedback_part = messages.split("Feedback: ")[1].strip()
+                
                 prompt = f"""You are a mathematical problem solver. Here is:
 
 1. The original problem:
 {problem}
 
 2. A previous solution attempt:
-{messages.split("Previous solution: ")[1].split(r"\nFeedback:")[0]}
+{solution_part}
 
 3. Feedback on what was wrong:
-{messages.split("Feedback: ")[1]}
+{feedback_part}
 
 Your task is to fix the solution based on the feedback. Focus specifically on addressing
 the issues mentioned in the feedback while keeping the correct parts of the original solution.
