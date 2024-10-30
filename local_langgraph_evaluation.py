@@ -293,7 +293,7 @@ if __name__ == "__main__":
     VERIFIER_MODEL = ModelOption.CLAUDE
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[12:14]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[14:16]")
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
