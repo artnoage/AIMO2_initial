@@ -122,7 +122,7 @@ def create_verifier_chain(problem: str, model_option: ModelOption):
     ])
     return prompt | model
 
-def solve(state: AgentState, solver_chain, md_file: str = None):
+def solve(state: AgentState, solver_chain):
     """Solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
@@ -132,17 +132,13 @@ def solve(state: AgentState, solver_chain, md_file: str = None):
     ai_message = AIMessage(content=solution_content)
     human_message = HumanMessage(content=solution_content)
     
-    if md_file:
-        append_to_conversation_md(md_file, "Solver's Solution", solution_content,
-                                state["iteration_count"] + 1, messages_text)
-    
     return {
         "current_solution": solution_content,
         "solver_messages": [ai_message],
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain, md_file: str = None):
+def verify(state: AgentState, verifier_chain):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
@@ -150,10 +146,6 @@ def verify(state: AgentState, verifier_chain, md_file: str = None):
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
-    
-    if md_file:
-        append_to_conversation_md(md_file, "Verifier's Response", response.content,
-                                state["iteration_count"] + 1, messages_text)
     
     return {
         "solver_messages": [human_message],
@@ -183,13 +175,13 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     
     return "verifier"
 
-def build_graph(solver_chain, verifier_chain, ground_truth: int, md_file: str = None):
+def build_graph(solver_chain, verifier_chain, ground_truth: int):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", partial(solve, solver_chain=solver_chain, md_file=md_file))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain, md_file=md_file))
+    workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
+    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
@@ -274,7 +266,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "is_the_answer_correct": False
         }
         
-        workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file=md_file)
+        workflow = build_graph(solver_chain, verifier_chain, ground_truth)
         app = workflow.compile()
         
         print("Solving problem...")
@@ -315,9 +307,16 @@ if __name__ == "__main__":
             problem, 
             ground_truth,
             solver_model=SOLVER_MODEL,
-            verifier_model=VERIFIER_MODEL,
-            md_file=md_file
+            verifier_model=VERIFIER_MODEL
         )
+        
+        # Update conversation file with final state
+        if result.get("current_solution"):
+            append_to_conversation_md(md_file, "Solver's Solution", result["current_solution"],
+                                   result["iteration_count"], "")
+        if result.get("verifier_messages") and result["verifier_messages"]:
+            append_to_conversation_md(md_file, "Verifier's Response", result["verifier_messages"][-1].content,
+                                   result["iteration_count"], "")
         
         results.append({
             'solver_model': SOLVER_MODEL.value,
