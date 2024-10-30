@@ -326,8 +326,8 @@ def process_problem(problem_text: str, ground_truth: int,
                    md_file: str = None):
     """Process a single problem through the graph"""
     try:
-        solver_chain = create_solver_chain(problem_text, solver_model)
-        verifier_chain = create_verifier_chain(problem_text, verifier_model)
+        solver = create_solver(problem_text, solver_model)
+        verifier = create_verifier(problem_text, verifier_model)
         
         initial_state = {
             "solver_messages": [],
@@ -340,7 +340,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "problem": problem_text
         }
         
-        workflow = build_graph(solver_chain, verifier_chain, ground_truth)
+        workflow = build_graph(solver, verifier, ground_truth)
         app = workflow.compile()
         
         print("Solving problem...")
