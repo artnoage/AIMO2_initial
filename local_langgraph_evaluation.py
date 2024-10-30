@@ -147,7 +147,7 @@ def create_verifier_chain(problem: str, model_option: ModelOption):
     ])
     return prompt | model
 
-def solve(state: AgentState, solver_chain):
+def solve(state: AgentState, solver_chain, md_file: str = None):
     """Solver agent function"""
     messages_text = "\n".join([msg.content for msg in state["solver_messages"]])
     print("Solving...")
@@ -157,13 +157,17 @@ def solve(state: AgentState, solver_chain):
     ai_message = AIMessage(content=solution_content)
     human_message = HumanMessage(content=solution_content)
     
+    if md_file:
+        append_to_conversation_md(md_file, "Solver's Solution", solution_content, 
+                                state["iteration_count"] + 1)
+    
     return {
         "current_solution": solution_content,
         "solver_messages": [ai_message],
         "verifier_messages": [human_message]
     }
 
-def verify(state: AgentState, verifier_chain):
+def verify(state: AgentState, verifier_chain, md_file: str = None):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
@@ -171,6 +175,10 @@ def verify(state: AgentState, verifier_chain):
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
+    
+    if md_file:
+        append_to_conversation_md(md_file, "Verifier's Response", response.content,
+                                state["iteration_count"] + 1)
     
     return {
         "solver_messages": [human_message],
@@ -200,13 +208,13 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     
     return "verifier"
 
-def build_graph(solver_chain, verifier_chain, ground_truth: int):
+def build_graph(solver_chain, verifier_chain, ground_truth: int, md_file: str = None):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", partial(solve, solver_chain=solver_chain))
-    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain))
+    workflow.add_node("solver", partial(solve, solver_chain=solver_chain, md_file=md_file))
+    workflow.add_node("verifier", partial(verify, verifier_chain=verifier_chain, md_file=md_file))
     workflow.add_node("cleaner", clean_answer)
 
     # Add edges
@@ -224,8 +232,8 @@ def build_graph(solver_chain, verifier_chain, ground_truth: int):
 
     return workflow
 
-def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, solution: str, solver_model: ModelOption):
-    """Save the conversation to a Markdown file"""
+def init_conversation_md(problem_id: str, problem: str, solution: str, solver_model: ModelOption):
+    """Initialize the markdown file with problem details"""
     filename = f"conversation_{problem_id}_local.md"
     with open(filename, 'w', encoding='utf-8') as f:
         f.write(f"# Problem {problem_id} - Solver: {solver_model.name}\n\n")
@@ -234,19 +242,16 @@ def save_conversation_to_md(state: AgentState, problem_id: str, problem: str, so
         f.write("## Dataset Solution\n\n")
         f.write(f"{solution}\n\n")
         f.write("## Conversation History\n\n")
-        
-        messages = []
-        for i in range(len(state["solver_messages"])):
-            messages.append(("Solver's Solution", state["solver_messages"][i].content))
-            if i < len(state["verifier_messages"]):
-                messages.append(("Verifier's Response", state["verifier_messages"][i].content))
-                
-        for i, (role, content) in enumerate(messages, 1):
-            f.write(f"### Round {(i + 1) // 2}\n\n")
-            f.write(f"#### {role}\n")
-            f.write("```\n")
-            f.write(f"{content}\n")
-            f.write("```\n\n")
+    return filename
+
+def append_to_conversation_md(filename: str, role: str, content: str, round_num: int):
+    """Append a new message to the conversation markdown file"""
+    with open(filename, 'a', encoding='utf-8') as f:
+        f.write(f"### Round {round_num}\n\n")
+        f.write(f"#### {role}\n")
+        f.write("```\n")
+        f.write(f"{content}\n")
+        f.write("```\n\n")
 
 @retry_with_exponential_backoff(max_retries=3, initial_delay=1)
 def process_problem(problem_text: str, ground_truth: int, 
@@ -265,7 +270,10 @@ def process_problem(problem_text: str, ground_truth: int,
         "is_the_answer_correct": False
     }
     
-    workflow = build_graph(solver_chain, verifier_chain, ground_truth)
+    # Initialize the markdown file
+    md_file = init_conversation_md(problem_id, problem_text, "", solver_model)
+    
+    workflow = build_graph(solver_chain, verifier_chain, ground_truth, md_file)
     app = workflow.compile()
     
     print("Solving problem...")
@@ -305,13 +313,6 @@ if __name__ == "__main__":
             'iterations': result['iteration_count']
         })
         
-        save_conversation_to_md(
-            result, 
-            f"{problem_id}", 
-            example['problem'], 
-            example['solution'],
-            SOLVER_MODEL
-        )
     
     # Print summary
     print("\nResults Summary:")
