@@ -76,10 +76,14 @@ def get_model(model: ModelOption, temp: float = 0):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-# Define system prompts
-SOLVER_PROMPT = """You are a mathematical problem solver. Your goal is to solve this problem:
 
-{problem}
+def create_solver_chain(problem: str, model_option: ModelOption):
+    model = get_model(model_option, temp=0.1)
+    escaped_problem = problem.replace("{", "{{").replace("}", "}}")
+    prompt = ChatPromptTemplate.from_messages([
+        ("human", f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{escaped_problem}
 
 Then solve the problem step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
@@ -91,25 +95,7 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
 response prefixed with 'ANSWER: '.
 
-{messages}"""
-
-VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
-
-{problem}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
-issue with the solution.
-
-Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
-
-{messages}"""
-
-def create_solver_chain(problem: str, model_option: ModelOption):
-    model = get_model(model_option, temp=0.1)
-    escaped_problem = problem.replace("{", "{{").replace("}", "}}")
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SOLVER_PROMPT.format(problem=escaped_problem, messages="{messages}"))
+{"{messages}"}""")
     ])
     return prompt | model
 
@@ -117,10 +103,17 @@ def create_verifier_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
     escaped_problem = problem.replace("{", "{{").replace("}", "}}")
     prompt = ChatPromptTemplate.from_messages([
-        ("system", VERIFIER_PROMPT.format(
-            problem=escaped_problem,
-            messages="{messages}")
-        )
+        ("human", f"""You are a mathematical solution verifier. For this problem:
+
+{escaped_problem}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
+
+{"{messages}"}""")
     ])
     return prompt | model
 
@@ -281,13 +274,37 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
             
             # Add the prompt that was used
             if role == "Solver's Solution":
-                prompt = SOLVER_PROMPT.format(problem=problem, messages=messages)
+                prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '.
+
+{messages}"""
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(format_text_blocks(prompt))
                 f.write("\n```\n\n")
             elif role == "Verifier's Response":
-                prompt = VERIFIER_PROMPT.format(problem=problem, messages=messages)
+                prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{problem}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
+
+{messages}"""
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(format_text_blocks(prompt))
