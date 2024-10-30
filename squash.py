@@ -78,51 +78,6 @@ def get_model(model: ModelOption, temp: float = 0):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-# Define system prompts
-SOLVER1_PROMPT = """You are a mathematical problem solver. Your goal is to solve this problem:
-
-{problem}
-
-Then solve the problem step by step, showing your work clearly. Make sure to:
-- Explain your reasoning at each step
-- Show all calculations explicitly
-- Never omit calculations for brevity
-- Highlight any key insights or clever observations
-- If some calculations seem hard, think if there is a clever way around it
-
-Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '.
-
-{messages}"""
-
-SOLVER2_PROMPT = """You are a mathematical problem solver. Here is:
-
-1. The original problem:
-{problem}
-
-2. A previous solution attempt:
-{solution}
-
-3. Feedback on what was wrong:
-{feedback}
-
-Your task is to fix the solution based on the feedback. Focus specifically on addressing
-the issues mentioned in the feedback while keeping the correct parts of the original solution.
-
-Provide your complete revised solution, ending with your final answer prefixed with 'ANSWER: '.
-"""
-
-VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
-
-{problem}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
-issue with the solution.
-
-Respond with:
-'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
-
-{messages}"""
 
 def create_solver1_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
