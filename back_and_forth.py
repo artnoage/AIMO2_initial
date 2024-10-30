@@ -15,11 +15,7 @@ from librarian import init_conversation_md, append_to_conversation_md
 load_dotenv()
 
 # Define system prompts as constants
-SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. Your goal is to solve this problem:
-
-{problem}
-
-Then solve the problem step by step, showing your work clearly. Make sure to:
+SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. When given a problem, solve it step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
 - Show all calculations explicitly
 - Never omit calculations for brevity
@@ -29,11 +25,8 @@ Then solve the problem step by step, showing your work clearly. Make sure to:
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
 response prefixed with 'ANSWER: '."""
 
-VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. For this problem:
-
-{problem}
-
-The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+VERIFIER_PROMPT_TEMPLATE = """You are a mathematical solution verifier. When given a problem and solution, your job is to verify if the solution is correct.
+If the solution is INCORRECT, analyze their solution and try to isolate the most important 
 issue with the solution.
 
 Respond with:
@@ -195,12 +188,15 @@ def process_problem(problem_text: str, ground_truth: int,
     """Process a single problem through the graph"""
     try:
         # Create initial system prompts
-        solver_prompt = SOLVER_PROMPT_TEMPLATE.format(problem=problem_text)
-        verifier_prompt = VERIFIER_PROMPT_TEMPLATE.format(problem=problem_text)
-
         initial_state = {
-            "solver_messages": [SystemMessage(content=solver_prompt), HumanMessage(content="please proceed")],
-            "verifier_messages": [SystemMessage(content=verifier_prompt)],
+            "solver_messages": [
+                SystemMessage(content=SOLVER_PROMPT_TEMPLATE),
+                HumanMessage(content=f"Here is the problem: {problem_text}")
+            ],
+            "verifier_messages": [
+                SystemMessage(content=VERIFIER_PROMPT_TEMPLATE),
+                HumanMessage(content=f"Here is the problem: {problem_text}")
+            ],
             "solution": "",
             "iteration_count": 0,
             "md_file": md_file}
