@@ -43,7 +43,7 @@ class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
     GPT = "openai/gpt-4o"
-    master="openai/o1-mini-2024-09-12"
+    master="openai/o1-preview-2024-09-12"
 # Define state schema
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
@@ -216,7 +216,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     """Determine if we should continue verification or end"""
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
         return END
     
     print("\n🔄 Answer incorrect or unverified - trying again...\n")
@@ -232,7 +232,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
 def should_continue(state: AgentState) -> str:
     """Determine if we need another iteration"""
     # Check iteration count first
-    if state["iteration_count"] >= 3:
+    if state["iteration_count"] >= 2:
         return "cleaner"
         
     last_message = state["verifier_messages"][-1].content
@@ -358,12 +358,7 @@ if __name__ == "__main__":
     VERIFIER_MODEL = ModelOption.master
     
     # Define solver models to test
-    solver_models = [
-        ModelOption.CLAUDE,
-        ModelOption.GEMINI_PRO,
-        ModelOption.GPT,
-        ModelOption.master
-    ]
+    solver_models = [ModelOption.master]
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[11:14]")
@@ -381,7 +376,7 @@ if __name__ == "__main__":
             ground_truth = int(example['answer']) if example['answer'].isdigit() else None
             result = retry_with_exponential_backoff(
                 max_retries=3, 
-                initial_delay=2,
+                initial_delay=5,
                 error_types=(Exception,)
             )(process_problem)(
                 problem, 

@@ -21,7 +21,7 @@ def test_math_problem():
 Provide your final answer as a single number."""
 
     chat_response = client.chat.completions.create(
-        model="Qwen/Qwen2.5-Math-1.5B-Instruct",
+        model="Qwen/Qwen2.5-Math-7B-Instruct",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": problem}
