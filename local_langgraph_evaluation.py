@@ -79,11 +79,6 @@ SOLVER_PROMPT = """You are a mathematical problem solver. Your goal is to solve 
 
 {problem}
 
-Before solving, start with a brief analysis:
-1. What mathematical concepts is this problem testing?
-2. What theoretical tools or formulas might be useful?
-3. Are there any tricks or simplifications that could make this problem easier?
-
 Then solve the problem step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
 - Show all calculations explicitly
@@ -101,36 +96,13 @@ VERIFIER_PROMPT = """You are a mathematical solution verifier. For this problem:
 
 {problem}
 
-The solver's current answer is INCORRECT. Your job is to analyze their solution and identify specific issues.
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
 
-Follow these steps:
-
-1. Check the initial approach:
-   - Is the chosen method appropriate?
-   - Are all necessary concepts being used correctly?
-
-2. Verify calculations:
-   - Look for numerical errors
-   - Check if formulas are applied correctly
-   - Verify intermediate results
-   
-3. Examine logic:
-   - Are all steps properly justified?
-   - Are there any gaps in reasoning?
-   - Are edge cases considered?
-   - Are there any invalid assumptions?
-
-4. Provide specific feedback:
-   - Point out exact locations of errors
-   - Explain why certain steps are problematic
-   - Suggest areas that need more careful consideration
-   - DO NOT reveal the correct answer
-
-Here is the solution to verify:
 {messages}
 
 Respond with:
-'FEEDBACK: [Detailed explanation of errors found and specific suggestions for improvement]'"""
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
 def create_solver_chain(problem: str, model_option: ModelOption):
     model = get_model(model_option, temp=0.1)
@@ -207,7 +179,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 3:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
         return END
     
     return "verifier"
@@ -290,7 +262,7 @@ if __name__ == "__main__":
     VERIFIER_MODEL = ModelOption.CLAUDE
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[11:14]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[12:14]")
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
