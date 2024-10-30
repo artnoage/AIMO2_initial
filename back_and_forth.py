@@ -81,9 +81,11 @@ def solve(state: AgentState, model_option: ModelOption):
     
     # Save state to test.md
     with open('test.md', 'w') as f:
-        f.write(f"# Solver Messages State\n\n")
+        f.write(f"# Current State - Solver Phase\n\n")
+        f.write(f"## Iteration {state['iteration_count']}\n\n")
+        f.write("### Solver Messages:\n")
         for msg in state["solver_messages"]:
-            f.write(f"## {msg.__class__.__name__}\n")
+            f.write(f"#### {msg.__class__.__name__}\n")
             f.write(f"{msg.content}\n\n")
     
     solver = get_model(model_option, temp=0.1)
@@ -114,6 +116,16 @@ def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
     messages_text = "\n".join([msg.content for msg in state["verifier_messages"]])
     print("Verifying...")
+    
+    # Save state to test.md
+    with open('test.md', 'w') as f:
+        f.write(f"# Current State - Verifier Phase\n\n")
+        f.write(f"## Iteration {state['iteration_count']}\n\n")
+        f.write("### Verifier Messages:\n")
+        for msg in state["verifier_messages"]:
+            f.write(f"#### {msg.__class__.__name__}\n")
+            f.write(f"{msg.content}\n\n")
+    
     verifier = get_model(model_option, temp=0.1)
     response = verifier.invoke(state["verifier_messages"])
     
