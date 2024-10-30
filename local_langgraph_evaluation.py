@@ -55,6 +55,8 @@ class AgentState(TypedDict):
     final_answer: Annotated[Union[int, None], "Final numerical answer"]
     iteration_count: Annotated[int, "Counter for solver-verifier iterations"]
     is_the_answer_correct: Annotated[bool, "Flag indicating if the current answer is correct"]
+    md_file: Annotated[str, "Path to markdown file for logging"]
+    problem: Annotated[str, "Original problem text"]
 
 # Initialize the models
 def get_model(model: ModelOption, temp: float = 0):
@@ -132,6 +134,15 @@ def solve(state: AgentState, solver_chain):
     ai_message = AIMessage(content=solution_content)
     human_message = HumanMessage(content=solution_content)
     
+    # Update markdown file
+    append_to_conversation_md(
+        state["md_file"], 
+        "Solver's Solution",
+        solution_content,
+        state["iteration_count"],
+        messages_text
+    )
+    
     return {
         "current_solution": solution_content,
         "solver_messages": [ai_message],
@@ -146,6 +157,15 @@ def verify(state: AgentState, verifier_chain):
     
     ai_message = AIMessage(content=response.content)
     human_message = HumanMessage(content=response.content)
+    
+    # Update markdown file
+    append_to_conversation_md(
+        state["md_file"],
+        "Verifier's Response",
+        response.content,
+        state["iteration_count"],
+        messages_text
+    )
     
     return {
         "solver_messages": [human_message],
@@ -263,7 +283,9 @@ def process_problem(problem_text: str, ground_truth: int,
             "current_solution": "",
             "final_answer": None,
             "iteration_count": 0,
-            "is_the_answer_correct": False
+            "is_the_answer_correct": False,
+            "md_file": md_file,
+            "problem": problem_text
         }
         
         workflow = build_graph(solver_chain, verifier_chain, ground_truth)
@@ -306,16 +328,6 @@ if __name__ == "__main__":
             solver_model=SOLVER_MODEL,
             verifier_model=VERIFIER_MODEL
         )
-        
-        # Update conversation file with final state
-        if result.get("current_solution"):
-            solver_messages = "\n".join([msg.content for msg in result.get("solver_messages", [])])
-            append_to_conversation_md(md_file, "Solver's Solution", result["current_solution"],
-                                   result["iteration_count"], solver_messages)
-        if result.get("verifier_messages") and result["verifier_messages"]:
-            verifier_messages = "\n".join([msg.content for msg in result.get("verifier_messages", [])])
-            append_to_conversation_md(md_file, "Verifier's Response", result["verifier_messages"][-1].content,
-                                   result["iteration_count"], verifier_messages)
         
         results.append({
             'solver_model': SOLVER_MODEL.value,
