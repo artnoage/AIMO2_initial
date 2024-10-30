@@ -320,23 +320,57 @@ def append_to_conversation_md(filename: str, role: str, content: str, round_num:
             
             # Add the prompt that was used
             if role == "Solver 1's Solution":
-                prompt = SOLVER1_PROMPT.format(problem=problem, messages=messages)
+                prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '.
+
+{messages}"""
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(format_text_blocks(prompt))
                 f.write("\n```\n\n")
             elif role == "Solver 2's Solution":
-                prompt = SOLVER2_PROMPT.format(
-                    problem=problem,
-                    solution=messages.split("Previous solution: ")[1].split("\nFeedback:")[0],
-                    feedback=messages.split("Feedback: ")[1]
-                )
+                prompt = f"""You are a mathematical problem solver. Here is:
+
+1. The original problem:
+{problem}
+
+2. A previous solution attempt:
+{messages.split("Previous solution: ")[1].split("\\nFeedback:")[0]}
+
+3. Feedback on what was wrong:
+{messages.split("Feedback: ")[1]}
+
+Your task is to fix the solution based on the feedback. Focus specifically on addressing
+the issues mentioned in the feedback while keeping the correct parts of the original solution.
+
+Provide your complete revised solution, ending with your final answer prefixed with 'ANSWER: '."""
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(format_text_blocks(prompt))
                 f.write("\n```\n\n")
             elif role == "Verifier's Response":
-                prompt = VERIFIER_PROMPT.format(problem=problem, messages=messages)
+                prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{problem}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'
+
+{messages}"""
                 f.write("#### Input Prompt\n")
                 f.write("```\n")
                 f.write(format_text_blocks(prompt))
@@ -387,9 +421,50 @@ issue with the solution.
 Respond with:
 'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
+        # Create initial system prompts
+        solver1_prompt = f"""You are a mathematical problem solver. Your goal is to solve this problem:
+
+{problem_text}
+
+Then solve the problem step by step, showing your work clearly. Make sure to:
+- Explain your reasoning at each step
+- Show all calculations explicitly
+- Never omit calculations for brevity
+- Highlight any key insights or clever observations
+- If some calculations seem hard, think if there is a clever way around it
+
+Never ask for confirmation. Just provide your final answer as a number at the end of your 
+response prefixed with 'ANSWER: '."""
+
+        solver2_prompt = f"""You are a mathematical problem solver. Here is:
+
+1. The original problem:
+{problem_text}
+
+2. A previous solution attempt:
+[Will be filled in during conversation]
+
+3. Feedback on what was wrong:
+[Will be filled in during conversation]
+
+Your task is to fix the solution based on the feedback. Focus specifically on addressing
+the issues mentioned in the feedback while keeping the correct parts of the original solution.
+
+Provide your complete revised solution, ending with your final answer prefixed with 'ANSWER: '."""
+
+        verifier_prompt = f"""You are a mathematical solution verifier. For this problem:
+
+{problem_text}
+
+The solver's current answer is INCORRECT. Your job is to analyze their solution and try to isolate the most important 
+issue with the solution.
+
+Respond with:
+'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
+
         initial_state = {
             "solver1_messages": [HumanMessage(content=solver1_prompt)],
-            "solver2_messages": [],
+            "solver2_messages": [HumanMessage(content=solver2_prompt)],
             "verifier_messages": [HumanMessage(content=verifier_prompt)],
             "current_solution": "",
             "final_answer": None,
