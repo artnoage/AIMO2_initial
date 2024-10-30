@@ -51,7 +51,7 @@ class ModelOption(Enum):
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     verifier_messages: Annotated[List[BaseMessage], add_messages] 
-    final_answer: Annotated[Union[int, None], "Final numerical answer"]
+    solution: Annotated[Union[int, None], "Final numerical answer"]
     iteration_count: Annotated[int, "Counter for iterations"]
     md_file: Annotated[str, "Path to markdown file"]
 
@@ -132,16 +132,16 @@ def clean_answer(state: AgentState) -> AgentState:
     solution = state["solution"]
     match = re.search(r"ANSWER:\s*(\d+)", solution)
     if match:
-        final_answer = int(match.group(1))
+        solution = int(match.group(1))
     else:
         match = re.search(r"\d+", solution)
-        final_answer = int(match.group()) if match else None
+        solution = int(match.group()) if match else None
     
-    return {"final_answer": final_answer}
+    return {"solution": solution}
 
 def decide_next_step(state: AgentState, ground_truth: int) -> str:
     """Determine if we should continue verification or end"""
-    state["is_the_answer_correct"] = (state["final_answer"] == ground_truth)
+    state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
     if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
@@ -189,9 +189,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "solver_messages": [HumanMessage(content=solver_prompt)],
             "verifier_messages": [HumanMessage(content=verifier_prompt)],
             "solution": "",
-            "final_answer": None,
             "iteration_count": 0,
-            "is_the_answer_correct": False,
             "md_file": md_file,
             "problem": problem_text
         }
@@ -242,7 +240,7 @@ if __name__ == "__main__":
             'solver_model': SOLVER_MODEL.value,
             'verifier_model': VERIFIER_MODEL.value,
             'problem_id': problem_id,
-            'final_answer': result['final_answer'],
+            'solution': result['solution'],
             'ground_truth': ground_truth,
             'iterations': result['iteration_count']
         })
@@ -254,10 +252,10 @@ if __name__ == "__main__":
     total_iterations = 0
     for result in results:
         print(f"\nProblem {result['problem_id']}:")
-        print(f"Model Answer: {result['final_answer']}")
+        print(f"Model Answer: {result['solution']}")
         print(f"Ground Truth: {result['ground_truth']}")
         print(f"Iterations: {result['iterations']}")
-        is_correct = result['final_answer'] == result['ground_truth']
+        is_correct = result['solution'] == result['ground_truth']
         print(f"Correct: {is_correct}")
         if is_correct:
             correct_count += 1
