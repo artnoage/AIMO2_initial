@@ -51,7 +51,7 @@ class ModelOption(Enum):
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     verifier_messages: Annotated[List[BaseMessage], add_messages] 
-    solution: Annotated[Union[int, None], "Final numerical answer"]
+    solution: Annotated[Union[int, str, None], "Final numerical answer"]
     iteration_count: Annotated[int, "Counter for iterations"]
     md_file: Annotated[str, "Path to markdown file"]
 
