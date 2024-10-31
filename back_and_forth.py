@@ -12,6 +12,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from librarian import init_conversation_md, append_to_conversation_md
+import tiktoken
 
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
@@ -104,8 +105,18 @@ def solve(state: AgentState, model_option: ModelOption):
     messages_text = "\n".join([msg.content for msg in messages])
     print("Solving...")
     
+    # Count input tokens
+    enc = tiktoken.get_encoding("cl100k_base")
+    input_text = "\n".join(msg.content for msg in messages)
+    input_tokens = len(enc.encode(input_text))
+    print(f"Input tokens to solver: {input_tokens}")
+    
     solver = get_model(model_option, temp=0.1)
     response = solver.invoke(messages)
+    
+    # Count output tokens
+    output_tokens = len(enc.encode(response.content))
+    print(f"Output tokens from solver: {output_tokens}")
     
     solution_content = response.content
     
@@ -149,8 +160,18 @@ def verify(state: AgentState, model_option: ModelOption):
     messages_text = "\n".join([msg.content for msg in messages])
     print("Verifying...")
     
+    # Count input tokens
+    enc = tiktoken.get_encoding("cl100k_base")
+    input_text = "\n".join(msg.content for msg in messages)
+    input_tokens = len(enc.encode(input_text))
+    print(f"Input tokens to verifier: {input_tokens}")
+    
     verifier = get_model(model_option, temp=0.1)
     response = verifier.invoke(messages)
+    
+    # Count output tokens
+    output_tokens = len(enc.encode(response.content))
+    print(f"Output tokens from verifier: {output_tokens}")
     
     # Create state summary
     state_summary = f"# Current State - Verifier Phase\n\n"

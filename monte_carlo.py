@@ -112,7 +112,17 @@ def solve(state: AgentState, model_option: ModelOption):
             return response.content
         
         try:
+            # Count input tokens
+            enc = tiktoken.get_encoding("cl100k_base")
+            input_text = "\n".join(msg.content for msg in messages)
+            input_tokens = len(enc.encode(input_text))
+            print(f"Input tokens to solver: {input_tokens}")
+            
             solution_content = single_attempt()
+            
+            # Count output tokens
+            output_tokens = len(enc.encode(solution_content))
+            print(f"Output tokens from solver: {output_tokens}")
             
             # Update markdown file
             append_to_conversation_md(
