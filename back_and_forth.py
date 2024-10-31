@@ -105,7 +105,7 @@ def solve(state: AgentState, model_option: ModelOption):
     response = solver.invoke(messages)
     
     # Save state to test.md after getting the response
-    os.makedirs('conversations', exist_ok=True)
+    os.makedirs(os.path.dirname('conversations/test.md'), exist_ok=True)
     with open('conversations/test.md', 'w') as f:
         f.write(f"# Current State - Solver Phase\n\n")
         f.write(f"## Iteration {state['iteration_count']}\n\n")
