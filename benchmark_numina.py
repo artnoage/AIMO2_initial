@@ -89,8 +89,6 @@ def main():
     # Load dataset and shuffle
     dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
     dataset = dataset.shuffle()
-    # Take first 100 examples
-    dataset = dataset.select(range(min(100, len(dataset))))
     
     # Print dataset information
     print("\nDataset Information:")
