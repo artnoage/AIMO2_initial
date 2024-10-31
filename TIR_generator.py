@@ -59,18 +59,33 @@ def get_model(model: ModelOption, temp: float = 0.1):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-def extract_answer_from_solution(solution: str, messages: Optional[str] = None) -> Optional[int]:
+def extract_answer_from_solution(solution: Optional[str], messages: Optional[str] = None) -> Optional[int]:
     """Extract answer from solution text (looking for \boxed{X})"""
+    # Handle None or non-string inputs
+    if not isinstance(solution, str):
+        print(f"Warning: solution is not a string (type: {type(solution)})")
+        solution = str(solution) if solution is not None else ""
+        
+    if messages is not None and not isinstance(messages, str):
+        print(f"Warning: messages is not a string (type: {type(messages)})")
+        messages = str(messages)
+    
     # Try solution first
-    match = re.search(r'\\boxed{(\d+)}', solution)
-    if match:
-        return int(match.group(1))
+    try:
+        match = re.search(r'\\boxed{(\d+)}', solution)
+        if match:
+            return int(match.group(1))
+    except Exception as e:
+        print(f"Error searching solution: {e}")
     
     # If not found and messages provided, try messages
     if messages:
-        match = re.search(r'\\boxed{(\d+)}', messages)
-        if match:
-            return int(match.group(1))
+        try:
+            match = re.search(r'\\boxed{(\d+)}', messages)
+            if match:
+                return int(match.group(1))
+        except Exception as e:
+            print(f"Error searching messages: {e}")
     
     # Print solution for troubleshooting
     print("Could not find ground truth. Solution text:")
