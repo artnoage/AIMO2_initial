@@ -31,9 +31,9 @@ def format_text_blocks(text: str, max_line_length: int = 80) -> str:
     
     return '\n\n'.join(formatted_paragraphs)
 
-def init_conversation_md(problem_id: str, problem: str, solution: str, solver_model_name: str, suffix: str = ""):
+def init_conversation_md(problem_id: str, problem: str, solution: str, solver_model_name: str, suffix: str = "", directory: str = ""):
     """Initialize the markdown file with problem details"""
-    filename = f"conversation_{problem_id}{suffix}.md"
+    filename = os.path.join(directory, f"conversation_{problem_id}{suffix}.md")
     # Ensure the directory exists
     os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
     

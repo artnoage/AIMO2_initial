@@ -253,7 +253,14 @@ if __name__ == "__main__":
         
         ground_truth = int(example['answer']) if example['answer'].isdigit() else None
         # Initialize conversation file with problem and dataset solution
-        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL.name, "_local", "conversations")
+        md_file = init_conversation_md(
+            problem_id=str(problem_id),
+            problem=problem,
+            solution=example['solution'],
+            solver_model_name=SOLVER_MODEL.name,
+            suffix="_local",
+            directory="conversations"
+        )
         
         result = process_problem(
             problem, 
