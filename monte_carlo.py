@@ -73,6 +73,7 @@ class AgentState(TypedDict):
     solution: Annotated[Union[int, str, None], "Final numerical answer"]
     attempt_count: Annotated[int, "Counter for solver attempts"]
     md_file: Annotated[str, "Path to markdown file"]
+    right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
 # Initialize the models
 def get_model(model: ModelOption, temp: float = 0.1):
@@ -97,6 +98,8 @@ def solve(state: AgentState, model_option: ModelOption):
     messages = state["solver_messages"]
     attempt_count = state["attempt_count"]
     all_solutions = []
+    individual_answers = []
+    right_answer_among_all = False
     
     while attempt_count < 10:
         print(f"Solving attempt {attempt_count + 1}/10...")
@@ -119,6 +122,14 @@ def solve(state: AgentState, model_option: ModelOption):
                 messages[-1].content
             )
             
+            # Extract numerical answer
+            answer_match = re.search(r"ANSWER:\s*(\d+)", solution_content)
+            if answer_match:
+                answer = int(answer_match.group(1))
+                individual_answers.append(answer)
+                if 'ground_truth' in state and answer == state['ground_truth']:
+                    right_answer_among_all = True
+            
             # Add this solution to our list with clear labeling
             all_solutions.append(f"=== Solution {attempt_count + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
             attempt_count += 1
@@ -133,7 +144,8 @@ def solve(state: AgentState, model_option: ModelOption):
     return {
         "solution": combined_solutions,
         "attempt_count": attempt_count,
-        "judge_messages": HumanMessage(content=combined_solutions)}
+        "judge_messages": HumanMessage(content=combined_solutions),
+        "right_answer_among_all": right_answer_among_all}
 
 @retry_with_delay(max_attempts=3, delay=30)
 def judge(state: AgentState, model_option: ModelOption):
@@ -305,6 +317,7 @@ if __name__ == "__main__":
         # Print running accuracy
         correct_so_far = sum(1 for r in results if r['solution'] == r['ground_truth'])
         print(f"Running Accuracy: {correct_so_far}/{len(results)} = {correct_so_far/len(results):.2%}")
+        print(f"Correct answer was among solutions: {result_entry.get('right_answer_among_all', False)}")
         print("-" * 50)
     
     # Print final summary
@@ -321,3 +334,12 @@ if __name__ == "__main__":
     
     print(f"\nFinal Results:")
     print(f"Accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
+    
+    # Analysis of judge performance
+    correct_in_solutions = sum(1 for r in results if r.get('right_answer_among_all', False))
+    if correct_in_solutions > correct_count:
+        missed_opportunities = correct_in_solutions - correct_count
+        print(f"\nJudge Performance Analysis:")
+        print(f"Problems where correct answer was among solutions: {correct_in_solutions}")
+        print(f"Times judge missed picking correct answer: {missed_opportunities}")
+        print(f"Judge accuracy when correct answer was available: {correct_count}/{correct_in_solutions} = {correct_count/correct_in_solutions:.2%}")
