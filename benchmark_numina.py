@@ -8,9 +8,8 @@ import tiktoken
 from tqdm import tqdm
 import json
 from datetime import datetime
-import threading
-from queue import Queue
-from concurrent.futures import ThreadPoolExecutor
+import asyncio
+from langchain_openai import AsyncChatOpenAI
 
 # Load environment variables
 load_dotenv()
@@ -41,7 +40,7 @@ response prefixed with 'ANSWER: '."""
 def get_model(model: ModelOption, temp: float = 0.1):
     """Initialize the model with OpenRouter"""
     if model == ModelOption.LOCAL:
-        return ChatOpenAI(
+        return AsyncChatOpenAI(
             model=model.value,
             temperature=temp,
             api_key="EMPTY",
@@ -49,7 +48,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
         )
     else:
         os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-        return ChatOpenAI(
+        return AsyncChatOpenAI(
             model=model.value,
             temperature=temp,
             api_key=os.getenv("OPENROUTER_API_KEY")
@@ -80,7 +79,7 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-def process_example(model, example, idx, enc, results_queue):
+async def process_example(model, example, idx, enc):
     """Process a single example using the model"""
     try:
         # Prepare input
@@ -94,7 +93,7 @@ def process_example(model, example, idx, enc, results_queue):
         input_tokens = len(enc.encode(input_text))
         
         # Get model response
-        response = model.invoke(messages)
+        response = await model.ainvoke(messages)
         solution = response.content
         
         # Count output tokens
@@ -106,7 +105,7 @@ def process_example(model, example, idx, enc, results_queue):
         
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {idx}")
-            return
+            return None
             
         is_correct = model_answer == correct_answer
         
@@ -121,7 +120,6 @@ def process_example(model, example, idx, enc, results_queue):
             'input_tokens': input_tokens,
             'output_tokens': output_tokens
         }
-        results_queue.put((idx, result))
         
         # Print result
         print(f"\nProblem {idx + 1}:")
@@ -129,10 +127,13 @@ def process_example(model, example, idx, enc, results_queue):
         print(f"Correct Answer: {correct_answer}")
         print(f"Correct: {is_correct}")
         
+        return result
+        
     except Exception as e:
         print(f"Error processing example {idx}: {e}")
+        return None
 
-def main():
+async def main():
     import argparse
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -141,8 +142,8 @@ def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--threads', type=int, default=8,
-                       help='Number of concurrent threads (default: 8)')
+    parser.add_argument('--concurrency', type=int, default=8,
+                       help='Number of concurrent tasks (default: 8)')
     args = parser.parse_args()
 
     # Load dataset and shuffle
@@ -177,29 +178,17 @@ def main():
     # Setup tokenizer for counting
     enc = tiktoken.get_encoding("cl100k_base")
     
+    # Process examples in batches
     results = []
-    results_queue = Queue()
-    
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
-        # Submit all tasks
-        futures = []
-        for idx, example in enumerate(dataset):
-            future = executor.submit(process_example, model, example, idx, enc, results_queue)
-            futures.append(future)
-        
-        # Create progress bar and wait for all futures
-        with tqdm(total=len(dataset)) as pbar:
-            for future in futures:
-                try:
-                    future.result()  # Wait for completion
-                except Exception as e:
-                    print(f"Thread failed: {e}")
-                
-            # Collect all results from queue
-            while not results_queue.empty():
-                idx, result = results_queue.get_nowait()
-                results.append(result)
-                pbar.update(1)
+    with tqdm(total=len(dataset)) as pbar:
+        for i in range(0, len(dataset), args.concurrency):
+            batch = dataset[i:i + args.concurrency]
+            tasks = [process_example(model, example, idx + i, enc) 
+                    for idx, example in enumerate(batch)]
+            
+            batch_results = await asyncio.gather(*tasks)
+            results.extend([r for r in batch_results if r is not None])
+            pbar.update(len(batch))
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
@@ -226,4 +215,4 @@ def main():
     save_results(results, args.model)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
