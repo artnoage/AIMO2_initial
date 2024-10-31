@@ -143,7 +143,7 @@ def main():
             # Store result
             result = {
                 'id': idx,
-                'question': example['question'],
+                'problem': example['problem'],
                 'model_solution': solution,
                 'model_answer': model_answer,
                 'correct_answer': correct_answer,
