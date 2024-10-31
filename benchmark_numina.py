@@ -66,9 +66,12 @@ def extract_answer_from_solution(solution: str) -> Optional[int]:
     return int(numbers[-1]) if numbers else None
 
 def save_results(results: list, model_name: str):
-    """Save results to a JSON file"""
+    """Save results to a JSON file in benchmark_results directory"""
+    # Create benchmark_results directory if it doesn't exist
+    os.makedirs('benchmark_results', exist_ok=True)
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"benchmark_results_{model_name}_{timestamp}.json"
+    filename = os.path.join('benchmark_results', f"benchmark_results_{model_name}_{timestamp}.json")
     
     with open(filename, 'w') as f:
         json.dump(results, f, indent=2)
