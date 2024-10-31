@@ -35,6 +35,7 @@ Respond with:
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
+    GEMINI_FREE="google/gemini-flash-1.5-exp"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
@@ -169,7 +170,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 10:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 6:
         return END
     
     return "verifier"
@@ -237,8 +238,8 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Define models
-    SOLVER_MODEL = ModelOption.GROQ
-    VERIFIER_MODEL = ModelOption.GROQ
+    SOLVER_MODEL = ModelOption.GEMINI_FREE
+    VERIFIER_MODEL = ModelOption.GEMINI_FREE
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
