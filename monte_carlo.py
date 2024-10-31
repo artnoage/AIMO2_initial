@@ -154,8 +154,17 @@ def judge(state: AgentState, model_option: ModelOption):
     
     print("Judge evaluating solutions...")
     
+    # Count input tokens
+    input_text = "\n".join(msg.content for msg in messages)
+    input_tokens = len(input_text.split())
+    print(f"Input tokens to judge: {input_tokens}")
+    
     judge = get_model(model_option, temp=0)
     response = judge.invoke(messages)
+    
+    # Count output tokens
+    output_tokens = len(response.content.split())
+    print(f"Output tokens from judge: {output_tokens}")
     
     # Update markdown file
     append_to_conversation_md(
