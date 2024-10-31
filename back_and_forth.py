@@ -13,7 +13,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from librarian import init_conversation_md, append_to_conversation_md
 
-def retry_with_delay(max_attempts: int = 3, delay: int = 20):
+def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -60,6 +60,7 @@ class ModelOption(Enum):
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
     GROQ = "llama-3.1-70b-versatile"
+    NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -77,13 +78,6 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1"
-        )
-    elif model == ModelOption.GROQ:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=os.getenv("GROQ_API_KEY"),
-            base_url="https://api.groq.com/openai/v1"
         )
     else:
         # OpenRouter setup
@@ -260,8 +254,8 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Define models
-    SOLVER_MODEL = ModelOption.GEMINI_FREE
-    VERIFIER_MODEL = ModelOption.GEMINI_FREE
+    SOLVER_MODEL = ModelOption.NOUS
+    VERIFIER_MODEL = ModelOption.NOUS
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
