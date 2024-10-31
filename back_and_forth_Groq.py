@@ -36,6 +36,7 @@ Respond with:
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO = "google/gemini-pro-1.5"
+    GEMINI_FREE="google/gemini-flash-1.5-exp"
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
