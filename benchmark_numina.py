@@ -84,22 +84,28 @@ def main():
                        default='NOUS', help='Model to benchmark')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--label', type=str, default='all',
-                       help='Filter problems by source label (default: all)')
+    parser.add_argument('--source', type=str, default='all',
+                       help='Filter problems by source (default: all)')
     args = parser.parse_args()
 
     # Load dataset and shuffle
     dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
     
-    # Filter by label if specified
-    if args.label.lower() != 'all':
-        dataset = dataset.filter(lambda x: x['source'] == args.label)
+    # Filter by source if specified
+    if args.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == args.source)
     
     dataset = dataset.shuffle()
     
     # Print dataset information
     print("\nDataset Information:")
-    print(f"Number of examples: {len(dataset)}")
+    num_examples = len(dataset)
+    print(f"Number of examples: {num_examples}")
+    
+    if num_examples == 0:
+        print("Error: Dataset is empty! Check your source filter and split arguments.")
+        return
+        
     print("\nAvailable keys in each example:")
     example = dataset[0]
     for key in example.keys():
