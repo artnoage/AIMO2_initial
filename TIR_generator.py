@@ -89,15 +89,44 @@ def extract_code_from_response(response: str) -> Optional[str]:
     return None
 
 def save_results(results: list, model_name: str):
-    """Save results to a JSON file in benchmark_results directory"""
-    os.makedirs('benchmark_results', exist_ok=True)
+    """Save results to JSON and Markdown files in TIR_data directory"""
+    os.makedirs('TIR_data', exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = os.path.join('benchmark_results', f"TIR_results_{model_name}_{timestamp}.json")
+    base_filename = f"TIR_results_{model_name}_{timestamp}"
     
-    with open(filename, 'w') as f:
+    # Save JSON
+    json_path = os.path.join('TIR_data', f"{base_filename}.json")
+    with open(json_path, 'w') as f:
         json.dump(results, f, indent=2)
-    print(f"\nResults saved to {filename}")
+    
+    # Save Markdown
+    md_path = os.path.join('TIR_data', f"{base_filename}.md")
+    with open(md_path, 'w') as f:
+        f.write(f"# TIR Results - {model_name}\n\n")
+        f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        
+        # Summary statistics
+        correct = sum(1 for r in results if r.get('is_correct'))
+        total = len(results)
+        f.write(f"## Summary\n")
+        f.write(f"- Total problems processed: {total}\n")
+        f.write(f"- Correct solutions: {correct}\n")
+        f.write(f"- Accuracy: {correct/total:.2%}\n\n")
+        
+        # Individual results
+        f.write("## Problem Solutions\n\n")
+        for result in results:
+            f.write(f"### Problem {result['id']}\n")
+            f.write(f"**Problem:**\n{result['problem']}\n\n")
+            f.write(f"**Generated Code:**\n```python\n{result['generated_code']}\n```\n\n")
+            f.write(f"**Model Answer:** {result['model_answer']}\n")
+            f.write(f"**Ground Truth:** {result['ground_truth']}\n")
+            f.write(f"**Correct:** {result['is_correct']}\n\n")
+            
+    print(f"\nResults saved to:")
+    print(f"- {json_path}")
+    print(f"- {md_path}")
 
 def main():
     import argparse
