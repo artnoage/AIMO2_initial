@@ -7,7 +7,6 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.prompts import ChatPromptTemplate
 import tiktoken
-from tqdm import tqdm
 import json
 from datetime import datetime
 
@@ -181,12 +180,10 @@ def main():
 
     # Process examples and prepare inputs
     example_data = []
-    with tqdm(total=len(dataset), desc="Preparing examples") as pbar:
-        for idx, example in enumerate(dataset):
-            result = process_example(example, idx, enc)
-            if result:
-                example_data.append(result)
-            pbar.update(1)
+    for idx, example in enumerate(dataset):
+        result = process_example(example, idx, enc)
+        if result:
+            example_data.append(result)
 
     # Prepare batch inputs
     inputs = [{"problem": ex["problem"]} for ex in example_data]
@@ -197,8 +194,7 @@ def main():
     processed = 0
     print(f"\nStarting processing of {total_examples} examples...")
     
-    with tqdm(total=total_examples, desc="Processing with model") as pbar:
-        for batch_num, batch_outputs in enumerate(chain.batch(
+    for batch_num, batch_outputs in enumerate(chain.batch(
             inputs, 
             {"max_concurrency": args.concurrency},
             batch_size=args.concurrency
@@ -219,9 +215,8 @@ def main():
                     print(f"Correct Answer: {result['correct_answer']}")
                     print(f"Correct: {result['is_correct']}")
                     print(f"Processed {processed}/{total_examples} examples")
-                pbar.update(1)  # Update progress for each processed example
             
-            print(f"Completed batch {batch_num + 1}")
+            print("hey")
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
