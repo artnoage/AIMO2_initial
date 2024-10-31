@@ -283,16 +283,31 @@ if __name__ == "__main__":
             md_file=md_file
         )
         
-        results.append({
+        # Store result
+        result_entry = {
             'solver_model': SOLVER_MODEL.value,
             'judge_model': JUDGE_MODEL.value,
             'problem_id': problem_id,
             'solution': result['solution'],
             'ground_truth': ground_truth,
             'num_attempts': result['attempt_count']
-        })
+        }
+        results.append(result_entry)
+        
+        # Print immediate result for this problem
+        is_correct = result_entry['solution'] == result_entry['ground_truth']
+        print(f"\nProblem {problem_id} Result:")
+        print(f"Model Answer: {result_entry['solution']}")
+        print(f"Ground Truth: {result_entry['ground_truth']}")
+        print(f"Number of Attempts: {result_entry['num_attempts']}")
+        print(f"Correct: {is_correct}")
+        
+        # Print running accuracy
+        correct_so_far = sum(1 for r in results if r['solution'] == r['ground_truth'])
+        print(f"Running Accuracy: {correct_so_far}/{len(results)} = {correct_so_far/len(results):.2%}")
+        print("-" * 50)
     
-    # Print summary
+    # Print final summary
     print("\nResults Summary:")
     correct_count = 0
     for result in results:
