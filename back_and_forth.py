@@ -237,8 +237,8 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     # Define models
-    SOLVER_MODEL = ModelOption.LOCAL
-    VERIFIER_MODEL = ModelOption.LOCAL
+    SOLVER_MODEL = ModelOption.GROQ
+    VERIFIER_MODEL = ModelOption.GROQ
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
