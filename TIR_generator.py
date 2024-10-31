@@ -59,11 +59,26 @@ def get_model(model: ModelOption, temp: float = 0.1):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-def extract_answer_from_solution(solution: str) -> Optional[int]:
+def extract_answer_from_solution(solution: str, messages: Optional[str] = None) -> Optional[int]:
     """Extract answer from solution text (looking for \boxed{X})"""
+    # Try solution first
     match = re.search(r'\\boxed{(\d+)}', solution)
     if match:
         return int(match.group(1))
+    
+    # If not found and messages provided, try messages
+    if messages:
+        match = re.search(r'\\boxed{(\d+)}', messages)
+        if match:
+            return int(match.group(1))
+    
+    # Print solution for troubleshooting
+    print("Could not find ground truth. Solution text:")
+    print(solution)
+    if messages:
+        print("\nMessages text:")
+        print(messages)
+    
     return None
 
 def extract_code_from_response(response: str) -> Optional[str]:
