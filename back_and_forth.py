@@ -107,31 +107,29 @@ def solve(state: AgentState, model_option: ModelOption):
     solver = get_model(model_option, temp=0.1)
     response = solver.invoke(messages)
     
-    # Save state to test.md after getting the response
-    os.makedirs(os.path.dirname('conversations/test.md'), exist_ok=True)
-    with open('conversations/test.md', 'w') as f:
-        f.write(f"# Current State - Solver Phase\n\n")
-        f.write(f"## Iteration {state['iteration_count']}\n\n")
-        f.write("### Solver Messages:\n")
-        for msg in state["solver_messages"]:
-            f.write(f"#### {msg.__class__.__name__}\n")
-            f.write(f"{msg.content}\n\n")
-        f.write("### Solver Response:\n")
-        f.write(f"{response.content}\n\n")
     solution_content = response.content
+    
+    # Create state summary
+    state_summary = f"# Current State - Solver Phase\n\n"
+    state_summary += f"## Iteration {state['iteration_count']}\n\n"
+    state_summary += "### Input Messages:\n"
+    for msg in messages:
+        state_summary += f"#### {msg.__class__.__name__}\n"
+        state_summary += f"{msg.content}\n\n"
+    state_summary += "### Solver Response:\n"
+    state_summary += f"{solution_content}\n\n"
+    
+    # Update markdown file with state information
+    append_to_conversation_md(
+        state["md_file"], 
+        "Solver State",
+        state_summary,
+        state["iteration_count"],
+        ""
+    )
     
     ai_message = AIMessage(content=solution_content)
     human_message = HumanMessage(content=solution_content)
-    
-    
-    # Update markdown file
-    append_to_conversation_md(
-        state["md_file"], 
-        "Solver's Solution",
-        solution_content,
-        state["iteration_count"],
-        messages_text
-    )
     
     return {
         "solution": solution_content,
@@ -154,17 +152,27 @@ def verify(state: AgentState, model_option: ModelOption):
     verifier = get_model(model_option, temp=0.1)
     response = verifier.invoke(messages)
     
-    ai_message = AIMessage(content=response.content)
-    human_message = HumanMessage(content=response.content)
+    # Create state summary
+    state_summary = f"# Current State - Verifier Phase\n\n"
+    state_summary += f"## Iteration {state['iteration_count']}\n\n"
+    state_summary += "### Input Messages:\n"
+    for msg in messages:
+        state_summary += f"#### {msg.__class__.__name__}\n"
+        state_summary += f"{msg.content}\n\n"
+    state_summary += "### Verifier Response:\n"
+    state_summary += f"{response.content}\n\n"
     
-    # Update markdown file
+    # Update markdown file with state information
     append_to_conversation_md(
         state["md_file"],
-        "Verifier's Response", 
-        response.content,
+        "Verifier State",
+        state_summary,
         state["iteration_count"],
-        messages_text
+        ""
     )
+    
+    ai_message = AIMessage(content=response.content)
+    human_message = HumanMessage(content=response.content)
     
     return {
         "solver_messages": [human_message],
