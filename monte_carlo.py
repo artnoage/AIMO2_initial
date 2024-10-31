@@ -102,8 +102,8 @@ def solve(state: AgentState, model_option: ModelOption):
     individual_answers = []
     right_answer_among_all = False
     
-    while attempt_count < 10:
-        print(f"Solving attempt {attempt_count + 1}/10...")
+    while attempt_count < 20:
+        print(f"Solving attempt {attempt_count + 1}/20...")
         
         @retry_with_delay(max_attempts=3, delay=30)
         def single_attempt():
