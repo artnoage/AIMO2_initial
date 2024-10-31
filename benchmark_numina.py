@@ -209,7 +209,7 @@ def main():
                     print(f"Model Answer: {result['model_answer']}")
                     print(f"Correct Answer: {result['correct_answer']}")
                     print(f"Correct: {result['is_correct']}")
-            pbar.update(len(batch_outputs))
+                pbar.update(1)  # Update progress for each processed example
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
