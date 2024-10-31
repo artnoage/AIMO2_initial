@@ -93,48 +93,53 @@ def get_model(model: ModelOption, temp: float = 0.1):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-@retry_with_delay(max_attempts=3, delay=30)
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function - runs multiple times"""
     messages = state["solver_messages"]
+    solutions = state["solutions"]
+    attempt_count = state["attempt_count"]
     
-    print(f"Solving attempt {state['attempt_count'] + 1}/10...")
-    
-    solver = get_model(model_option, temp=0.1)
-    response = solver.invoke(messages)
-    solution_content = response.content
-    
-    # Update markdown file
-    append_to_conversation_md(
-        state["md_file"],
-        f"Solver's Solution (Attempt {state['attempt_count'] + 1})",
-        solution_content,
-        state["attempt_count"],
-        messages[-1].content
-    )
-    
-    # Add this solution to our list
-    solutions = state["solutions"] + [solution_content]
-    attempt_count = state["attempt_count"] + 1
-    
-    if attempt_count < 10:
-        return {
-            "solutions": solutions,
-            "attempt_count": attempt_count
-        }
-    else:
-        # After 10 attempts, prepare message for judge
-        all_solutions = "\n\n===\n\n".join([f"Solution {i+1}:\n{sol}" for i, sol in enumerate(solutions)])
-        judge_message = HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{all_solutions}")
+    while attempt_count < 10:
+        print(f"Solving attempt {attempt_count + 1}/10...")
         
-        return {
-            "solutions": solutions,
-            "attempt_count": attempt_count,
-            "judge_messages": [
-                SystemMessage(content=JUDGE_PROMPT_TEMPLATE),
-                judge_message
-            ]
-        }
+        @retry_with_delay(max_attempts=3, delay=30)
+        def single_attempt():
+            solver = get_model(model_option, temp=0.1)
+            response = solver.invoke(messages)
+            return response.content
+        
+        try:
+            solution_content = single_attempt()
+            
+            # Update markdown file
+            append_to_conversation_md(
+                state["md_file"],
+                f"Solver's Solution (Attempt {attempt_count + 1})",
+                solution_content,
+                attempt_count,
+                messages[-1].content
+            )
+            
+            # Add this solution to our list
+            solutions.append(solution_content)
+            attempt_count += 1
+            
+        except Exception as e:
+            print(f"Failed attempt {attempt_count + 1}: {e}")
+            continue
+    
+    # After 10 attempts, prepare message for judge
+    all_solutions = "\n\n===\n\n".join([f"Solution {i+1}:\n{sol}" for i, sol in enumerate(solutions)])
+    judge_message = HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{all_solutions}")
+    
+    return {
+        "solutions": solutions,
+        "attempt_count": attempt_count,
+        "judge_messages": [
+            SystemMessage(content=JUDGE_PROMPT_TEMPLATE),
+            judge_message
+        ]
+    }
 
 @retry_with_delay(max_attempts=3, delay=30)
 def judge(state: AgentState, model_option: ModelOption):
