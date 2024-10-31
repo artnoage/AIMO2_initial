@@ -125,10 +125,13 @@ def main():
         
         try:
             # Extract ground truth
-            ground_truth = extract_answer_from_solution(example['solution'])
+            ground_truth = extract_answer_from_solution(
+                example['solution'],
+                example.get('messages')  # Pass messages if available
+            )
             if ground_truth is None:
-                print(f"Could not extract answer from problem {idx}, skipping...")
-                continue
+                print(f"Could not extract answer from problem {idx}")
+                ground_truth = "ERROR: Could not extract ground truth"
                 
             # Generate code solution
             messages = [
