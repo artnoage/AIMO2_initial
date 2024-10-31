@@ -1,15 +1,15 @@
 import os
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Dict
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage, SystemMessage
+from langchain.prompts import ChatPromptTemplate
 import tiktoken
 from tqdm import tqdm
 import json
 from datetime import datetime
-import asyncio
-from langchain_openai import AsyncChatOpenAI
 
 # Load environment variables
 load_dotenv()
@@ -40,7 +40,7 @@ response prefixed with 'ANSWER: '."""
 def get_model(model: ModelOption, temp: float = 0.1):
     """Initialize the model with OpenRouter"""
     if model == ModelOption.LOCAL:
-        return AsyncChatOpenAI(
+        return ChatOpenAI(
             model=model.value,
             temperature=temp,
             api_key="EMPTY",
@@ -48,7 +48,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
         )
     else:
         os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-        return AsyncChatOpenAI(
+        return ChatOpenAI(
             model=model.value,
             temperature=temp,
             api_key=os.getenv("OPENROUTER_API_KEY")
@@ -79,61 +79,53 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-async def process_example(model, example, idx, enc):
-    """Process a single example using the model"""
+def process_example(example: Dict, idx: int, enc) -> Optional[Dict]:
+    """Process a single example and prepare result dict"""
     try:
-        # Prepare input
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": example['problem']}
-        ]
-        
         # Count input tokens
-        input_text = "\n".join(msg["content"] for msg in messages)
+        input_text = f"{SYSTEM_PROMPT}\n{example['problem']}"
         input_tokens = len(enc.encode(input_text))
         
-        # Get model response
-        response = await model.ainvoke(messages)
-        solution = response.content
-        
-        # Count output tokens
-        output_tokens = len(enc.encode(solution))
-        
         # Extract answers from solutions
-        model_answer = extract_answer_from_solution(solution)
         correct_answer = extract_answer_from_solution(example['solution'])
         
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {idx}")
             return None
             
-        is_correct = model_answer == correct_answer
-        
-        # Store result
-        result = {
+        # Return dict with everything except model results
+        return {
             'id': idx,
             'problem': example['problem'],
-            'model_solution': solution,
-            'model_answer': model_answer,
             'correct_answer': correct_answer,
-            'is_correct': is_correct,
             'input_tokens': input_tokens,
-            'output_tokens': output_tokens
         }
-        
-        # Print result
-        print(f"\nProblem {idx + 1}:")
-        print(f"Model Answer: {model_answer}")
-        print(f"Correct Answer: {correct_answer}")
-        print(f"Correct: {is_correct}")
-        
-        return result
         
     except Exception as e:
         print(f"Error processing example {idx}: {e}")
         return None
 
-async def main():
+def process_model_result(result: Dict, example_data: Dict, enc) -> Optional[Dict]:
+    """Process model output and combine with example data"""
+    try:
+        solution = result.content
+        output_tokens = len(enc.encode(solution))
+        model_answer = extract_answer_from_solution(solution)
+        is_correct = model_answer == example_data['correct_answer']
+        
+        # Combine with example data
+        return {
+            **example_data,
+            'model_solution': solution,
+            'model_answer': model_answer,
+            'is_correct': is_correct,
+            'output_tokens': output_tokens
+        }
+    except Exception as e:
+        print(f"Error processing model result: {e}")
+        return None
+
+def main():
     import argparse
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -178,17 +170,46 @@ async def main():
     # Setup tokenizer for counting
     enc = tiktoken.get_encoding("cl100k_base")
     
-    # Process examples in batches
+    # Create the chat prompt template
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        ("user", "{problem}")
+    ])
+
+    # Create the chain
+    chain = prompt | model
+
+    # Process examples and prepare inputs
+    example_data = []
+    with tqdm(total=len(dataset), desc="Preparing examples") as pbar:
+        for idx, example in enumerate(dataset):
+            result = process_example(example, idx, enc)
+            if result:
+                example_data.append(result)
+            pbar.update(1)
+
+    # Prepare batch inputs
+    inputs = [{"problem": ex["problem"]} for ex in example_data]
+    
+    # Process batches
     results = []
-    with tqdm(total=len(dataset)) as pbar:
-        for i in range(0, len(dataset), args.concurrency):
-            batch = dataset[i:i + args.concurrency]
-            tasks = [process_example(model, example, idx + i, enc) 
-                    for idx, example in enumerate(batch)]
-            
-            batch_results = await asyncio.gather(*tasks)
-            results.extend([r for r in batch_results if r is not None])
-            pbar.update(len(batch))
+    with tqdm(total=len(inputs), desc="Processing with model") as pbar:
+        for batch_outputs in chain.batch(
+            inputs, 
+            {"max_concurrency": args.concurrency},
+            batch_size=args.concurrency
+        ):
+            # Process each result in the batch
+            for output, ex_data in zip(batch_outputs, example_data[len(results):len(results)+len(batch_outputs)]):
+                result = process_model_result(output, ex_data, enc)
+                if result:
+                    results.append(result)
+                    # Print progress
+                    print(f"\nProblem {result['id'] + 1}:")
+                    print(f"Model Answer: {result['model_answer']}")
+                    print(f"Correct Answer: {result['correct_answer']}")
+                    print(f"Correct: {result['is_correct']}")
+            pbar.update(len(batch_outputs))
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
@@ -215,4 +236,4 @@ async def main():
     save_results(results, args.model)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
