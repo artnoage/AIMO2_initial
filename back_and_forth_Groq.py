@@ -3,6 +3,7 @@ import re
 from enum import Enum
 from functools import partial
 from typing import Annotated, TypedDict, Union, List
+import time
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
@@ -87,6 +88,9 @@ def solve(state: AgentState, model_option: ModelOption):
     
     solver = get_model(model_option, temp=0.1)
     response = solver.invoke(messages)
+    
+    # Wait for 20 seconds after solver call
+    time.sleep(20)
     
     # Save state to test.md after getting the response
     os.makedirs('conversations', exist_ok=True)
