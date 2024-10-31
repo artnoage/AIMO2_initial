@@ -86,8 +86,14 @@ def main():
                        help='Dataset split to use (train/validation/test)')
     args = parser.parse_args()
 
-    # Load dataset
-    dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+    # Load dataset and sample randomly
+    full_dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+    
+    # Sample 100 random examples
+    import random
+    sample_size = min(100, len(full_dataset))
+    random_indices = random.sample(range(len(full_dataset)), sample_size)
+    dataset = full_dataset.select(random_indices)
     
     # Print dataset information
     print("\nDataset Information:")
