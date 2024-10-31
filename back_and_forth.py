@@ -54,9 +54,12 @@ Respond with:
 
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
+    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
+    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FREE="google/gemini-flash-1.5-exp"
-    GPT = "openai/gpt-4"
+    GEMINI_FLASH="google/gemini-flash-1.5"
+    GPT = "openai/gpt-4o"
+    GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
     GROQ = "llama-3.1-70b-versatile"
@@ -89,7 +92,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
         )
 
 
-@retry_with_delay(max_attempts=3, delay=20)
+@retry_with_delay(max_attempts=3, delay=30)
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function"""
     messages = state["solver_messages"]
@@ -136,7 +139,7 @@ def solve(state: AgentState, model_option: ModelOption):
         "verifier_messages": [human_message]
     }
 
-@retry_with_delay(max_attempts=3, delay=20)
+@retry_with_delay(max_attempts=3, delay=30)
 def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
     messages = state["verifier_messages"]
