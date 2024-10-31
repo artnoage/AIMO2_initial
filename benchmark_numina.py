@@ -130,7 +130,7 @@ def main():
             total_output_tokens += output_tokens
             
             # Extract answers from solutions
-            model_answer = extract_answer(solution)
+            model_answer = extract_answer_from_solution(solution)
             correct_answer = extract_answer_from_solution(example['solution'])
             if correct_answer is None:
                 print(f"Warning: Could not extract answer from solution for example {idx}")
