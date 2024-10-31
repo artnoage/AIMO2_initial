@@ -253,8 +253,16 @@ def process_problem(problem_text: str, ground_truth: int,
         }
 
 if __name__ == "__main__":
+    import argparse
+    
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Run math problem solver with specified model')
+    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
+                       default='NOUS', help='Solver model to use')
+    args = parser.parse_args()
+    
     # Define models
-    SOLVER_MODEL = ModelOption.NOUS
+    SOLVER_MODEL = ModelOption[args.solver]
     VERIFIER_MODEL = ModelOption.NOUS
     
     # Load dataset
