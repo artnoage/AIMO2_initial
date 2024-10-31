@@ -5,8 +5,11 @@ def main():
     # Load dataset
     dataset = load_dataset("AI-MO/NuminaMath-CoT", split='train')
     
-    # Sample 10 random indices
-    sample_indices = random.sample(range(len(dataset)), 10)
+    # Filter indices where source is "olympiads"
+    olympiad_indices = [i for i in range(len(dataset)) if dataset[i]['source'] == 'olympiads']
+    
+    # Sample 10 random indices from olympiad problems
+    sample_indices = random.sample(olympiad_indices, 10)
     
     # Print available fields from first example
     print("Available fields in dataset:")
