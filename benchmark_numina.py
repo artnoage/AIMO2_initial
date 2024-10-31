@@ -110,7 +110,7 @@ def main():
             # Prepare input
             messages = [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": example['question']}
+                {"role": "user", "content": example['problem']}
             ]
             
             # Count input tokens
@@ -161,11 +161,15 @@ def main():
     # Print final results
     print("\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
-    print(f"Final Accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
-    print(f"Total input tokens: {total_input_tokens}")
-    print(f"Total output tokens: {total_output_tokens}")
-    print(f"Average input tokens per problem: {total_input_tokens/len(results):.1f}")
-    print(f"Average output tokens per problem: {total_output_tokens/len(results):.1f}")
+    
+    if len(results) > 0:
+        print(f"Final Accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
+        print(f"Total input tokens: {total_input_tokens}")
+        print(f"Total output tokens: {total_output_tokens}")
+        print(f"Average input tokens per problem: {total_input_tokens/len(results):.1f}")
+        print(f"Average output tokens per problem: {total_output_tokens/len(results):.1f}")
+    else:
+        print("No examples were successfully processed")
     
     # Save results
     save_results(results, args.model)
