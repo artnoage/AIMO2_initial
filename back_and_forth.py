@@ -48,7 +48,7 @@ class AgentState(TypedDict):
     md_file: Annotated[str, "Path to markdown file"]
 
 # Initialize the models
-def get_model(model: ModelOption, temp: float = 0):
+def get_model(model: ModelOption, temp: float = 0.1):
     if model == ModelOption.LOCAL:
         return ChatOpenAI(
             model=model.value,
@@ -160,7 +160,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 2:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 10:
         return END
     
     return "verifier"
@@ -216,7 +216,7 @@ def process_problem(problem_text: str, ground_truth: int,
         app = workflow.compile()
         
         print("Solving problem...")
-        final_state = app.invoke(initial_state)
+        final_state = app.invoke(initial_state,{"recursion_limit": 200})
         return final_state
     except Exception as e:
         print(f"Error processing problem: {e}")
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     VERIFIER_MODEL = ModelOption.LOCAL
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[14:16]")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
