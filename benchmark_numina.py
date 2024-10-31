@@ -52,15 +52,18 @@ def get_model(model: ModelOption, temp: float = 0.1):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-def extract_answer(solution: str) -> Optional[int]:
-    """Extract numerical answer from solution text"""
+def extract_answer_from_solution(solution: str) -> Optional[int]:
+    """Extract numerical answer from the solution text by looking for the final number"""
     import re
-    match = re.search(r"ANSWER:\s*(\d+)", solution)
-    if match:
-        return int(match.group(1))
-    else:
-        match = re.search(r"\d+", solution)
-        return int(match.group()) if match else None
+    # Look for numbers after "answer is" or "answer:" case insensitive
+    answer_pattern = re.compile(r'(?:answer\s+is|answer:)\s*(-?\d+)', re.IGNORECASE)
+    matches = answer_pattern.findall(solution)
+    if matches:
+        # Return the last match as it's likely the final answer
+        return int(matches[-1])
+    # Fallback: look for the last number in the text
+    numbers = re.findall(r'-?\d+', solution)
+    return int(numbers[-1]) if numbers else None
 
 def save_results(results: list, model_name: str):
     """Save results to a JSON file"""
@@ -126,9 +129,12 @@ def main():
             output_tokens = len(enc.encode(solution))
             total_output_tokens += output_tokens
             
-            # Extract answer
+            # Extract answers from solutions
             model_answer = extract_answer(solution)
-            correct_answer = int(example['answer'])
+            correct_answer = extract_answer_from_solution(example['solution'])
+            if correct_answer is None:
+                print(f"Warning: Could not extract answer from solution for example {idx}")
+                continue
             is_correct = model_answer == correct_answer
             
             if is_correct:
