@@ -243,7 +243,8 @@ def process_problem(problem_text: str, ground_truth: int,
         return {
             "solution": None,
             "attempt_count": 0,
-            "solutions": []
+            "solutions": [],
+            "right_answer_among_all": False
         }
 
 if __name__ == "__main__":
