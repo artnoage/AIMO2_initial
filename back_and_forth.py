@@ -2,7 +2,9 @@ import os
 import re
 from enum import Enum
 from functools import partial
-from typing import Annotated, TypedDict, Union, List
+from typing import Annotated, TypedDict, Union, List, Callable
+import time
+from functools import wraps
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
@@ -10,6 +12,24 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from librarian import init_conversation_md, append_to_conversation_md
+
+def retry_with_delay(max_attempts: int = 3, delay: int = 20):
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    attempts += 1
+                    if attempts == max_attempts:
+                        raise e
+                    print(f"Attempt {attempts} failed. Waiting {delay} seconds before retry...")
+                    time.sleep(delay)
+            return None
+        return wrapper
+    return decorator
 
 # Load environment variables from .env
 load_dotenv()
@@ -75,6 +95,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
         )
 
 
+@retry_with_delay(max_attempts=3, delay=20)
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function"""
     messages = state["solver_messages"]
@@ -121,6 +142,7 @@ def solve(state: AgentState, model_option: ModelOption):
         "verifier_messages": [human_message]
     }
 
+@retry_with_delay(max_attempts=3, delay=20)
 def verify(state: AgentState, model_option: ModelOption):
     """Verifier agent function"""
     messages = state["verifier_messages"]
