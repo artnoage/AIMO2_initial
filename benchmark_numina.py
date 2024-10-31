@@ -8,6 +8,9 @@ import tiktoken
 from tqdm import tqdm
 import json
 from datetime import datetime
+import threading
+from queue import Queue
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -77,6 +80,58 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
+def process_example(model, example, idx, enc, results_queue):
+    """Process a single example using the model"""
+    try:
+        # Prepare input
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": example['problem']}
+        ]
+        
+        # Count input tokens
+        input_text = "\n".join(msg["content"] for msg in messages)
+        input_tokens = len(enc.encode(input_text))
+        
+        # Get model response
+        response = model.invoke(messages)
+        solution = response.content
+        
+        # Count output tokens
+        output_tokens = len(enc.encode(solution))
+        
+        # Extract answers from solutions
+        model_answer = extract_answer_from_solution(solution)
+        correct_answer = extract_answer_from_solution(example['solution'])
+        
+        if correct_answer is None:
+            print(f"Warning: Could not extract answer from solution for example {idx}")
+            return
+            
+        is_correct = model_answer == correct_answer
+        
+        # Store result
+        result = {
+            'id': idx,
+            'problem': example['problem'],
+            'model_solution': solution,
+            'model_answer': model_answer,
+            'correct_answer': correct_answer,
+            'is_correct': is_correct,
+            'input_tokens': input_tokens,
+            'output_tokens': output_tokens
+        }
+        results_queue.put((idx, result))
+        
+        # Print result
+        print(f"\nProblem {idx + 1}:")
+        print(f"Model Answer: {model_answer}")
+        print(f"Correct Answer: {correct_answer}")
+        print(f"Correct: {is_correct}")
+        
+    except Exception as e:
+        print(f"Error processing example {idx}: {e}")
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
@@ -86,6 +141,8 @@ def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
+    parser.add_argument('--threads', type=int, default=4,
+                       help='Number of concurrent threads (default: 4)')
     args = parser.parse_args()
 
     # Load dataset and shuffle
@@ -121,65 +178,39 @@ def main():
     enc = tiktoken.get_encoding("cl100k_base")
     
     results = []
-    correct_count = 0
-    total_input_tokens = 0
-    total_output_tokens = 0
+    results_queue = Queue()
     
-    for idx, example in enumerate(tqdm(dataset)):
-        try:
-            # Prepare input
-            messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": example['problem']}
-            ]
-            
-            # Count input tokens
-            input_text = "\n".join(msg["content"] for msg in messages)
-            input_tokens = len(enc.encode(input_text))
-            total_input_tokens += input_tokens
-            
-            # Get model response
-            response = model.invoke(messages)
-            solution = response.content
-            
-            # Count output tokens
-            output_tokens = len(enc.encode(solution))
-            total_output_tokens += output_tokens
-            
-            # Extract answers from solutions
-            model_answer = extract_answer_from_solution(solution)
-            correct_answer = extract_answer_from_solution(example['solution'])
-            if correct_answer is None:
-                print(f"Warning: Could not extract answer from solution for example {idx}")
-                continue
-            is_correct = model_answer == correct_answer
-            
-            if is_correct:
-                correct_count += 1
-            
-            # Store result
-            result = {
-                'id': idx,
-                'problem': example['problem'],
-                'model_solution': solution,
-                'model_answer': model_answer,
-                'correct_answer': correct_answer,
-                'is_correct': is_correct,
-                'input_tokens': input_tokens,
-                'output_tokens': output_tokens
-            }
-            results.append(result)
-            
-            # Print running statistics
-            print(f"\nProblem {idx + 1}:")
-            print(f"Model Answer: {model_answer}")
-            print(f"Correct Answer: {correct_answer}")
-            print(f"Correct: {is_correct}")
-            print(f"Running Accuracy: {correct_count}/{idx + 1} = {correct_count/(idx + 1):.2%}")
-            
-        except Exception as e:
-            print(f"Error processing example {idx}: {e}")
-            continue
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        # Submit all tasks
+        futures = []
+        for idx, example in enumerate(dataset):
+            future = executor.submit(process_example, model, example, idx, enc, results_queue)
+            futures.append(future)
+        
+        # Create progress bar
+        with tqdm(total=len(dataset)) as pbar:
+            completed = 0
+            while completed < len(dataset):
+                # Get result if available
+                try:
+                    idx, result = results_queue.get(timeout=1)
+                    results.append(result)
+                    completed += 1
+                    pbar.update(1)
+                except:
+                    # Check if any threads failed
+                    for future in futures:
+                        if future.done() and future.exception():
+                            print(f"Thread failed: {future.exception()}")
+                    continue
+    
+    # Sort results by ID to maintain order
+    results.sort(key=lambda x: x['id'])
+    
+    # Calculate final statistics
+    correct_count = sum(1 for r in results if r['is_correct'])
+    total_input_tokens = sum(r['input_tokens'] for r in results)
+    total_output_tokens = sum(r['output_tokens'] for r in results)
     
     # Print final results
     print("\nFinal Results:")
