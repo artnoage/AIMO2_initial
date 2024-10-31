@@ -12,6 +12,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 from librarian import init_conversation_md, append_to_conversation_md
+import tiktoken
 
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
@@ -154,16 +155,17 @@ def judge(state: AgentState, model_option: ModelOption):
     
     print("Judge evaluating solutions...")
     
-    # Count input tokens
+    # Count input tokens using tiktoken
+    enc = tiktoken.get_encoding("cl100k_base")  # This encoding works well for most models
     input_text = "\n".join(msg.content for msg in messages)
-    input_tokens = len(input_text.split())
+    input_tokens = len(enc.encode(input_text))
     print(f"Input tokens to judge: {input_tokens}")
     
     judge = get_model(model_option, temp=0)
     response = judge.invoke(messages)
     
-    # Count output tokens
-    output_tokens = len(response.content.split())
+    # Count output tokens using tiktoken
+    output_tokens = len(enc.encode(response.content))
     print(f"Output tokens from judge: {output_tokens}")
     
     # Update markdown file
