@@ -57,8 +57,8 @@ class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO_EXP = "google/gemini-pro-1.5-exp"
     GEMINI_FLASH_EXP="google/gemini-flash-1.5-exp"
-    GEMINI_PRO_EXP = "google/gemini-pro-1.5"
-    GEMINI_FLASH_EXP="google/gemini-flash-1.5"
+    GEMINI_PRO = "google/gemini-pro-1.5"
+    GEMINI_FLASH="google/gemini-flash-1.5"
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
@@ -103,7 +103,7 @@ def solve(state: AgentState, model_option: ModelOption):
         
         @retry_with_delay(max_attempts=3, delay=30)
         def single_attempt():
-            solver = get_model(model_option, temp=0.1)
+            solver = get_model(model_option, temp=0.2)
             response = solver.invoke(messages)
             return response.content
         
@@ -133,11 +133,7 @@ def solve(state: AgentState, model_option: ModelOption):
     return {
         "solution": combined_solutions,
         "attempt_count": attempt_count,
-        "judge_messages": [
-            SystemMessage(content=JUDGE_PROMPT_TEMPLATE),
-            HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{combined_solutions}")
-        ]
-    }
+        "judge_messages": HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{combined_solutions}")}
 
 @retry_with_delay(max_attempts=3, delay=30)
 def judge(state: AgentState, model_option: ModelOption):
@@ -146,7 +142,7 @@ def judge(state: AgentState, model_option: ModelOption):
     
     print("Judge evaluating solutions...")
     
-    judge = get_model(model_option, temp=0.1)
+    judge = get_model(model_option, temp=0)
     response = judge.invoke(messages)
     
     # Update markdown file
@@ -216,8 +212,7 @@ def process_problem(problem_text: str, ground_truth: int,
                 SystemMessage(content=SOLVER_PROMPT_TEMPLATE),
                 HumanMessage(content=f"Here is the problem: {problem_text}")
             ],
-            "judge_messages": [],
-            "solutions": [],
+            "judge_messages": [SystemMessage(content=JUDGE_PROMPT_TEMPLATE),HumanMessage(content=f"Here is the problem: {problem_text}"),AIMessage(content="Please provide solutions")],
             "solution": "",
             "attempt_count": 0,
             "md_file": md_file
@@ -243,9 +238,9 @@ if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Run math problem solver with Monte Carlo approach')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
-                       default='NOUS', help='Solver model to use')
+                       default='LOCAL', help='Solver model to use')
     parser.add_argument('--judge', type=str, choices=[model.name for model in ModelOption],
-                       default='NOUS', help='Judge model to use')
+                       default='GEMINI_PRO_FREE', help='Judge model to use')
     parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
                        help='Use same model for both solver and judge')
     args = parser.parse_args()
