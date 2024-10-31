@@ -89,7 +89,8 @@ def solve(state: AgentState, model_option: ModelOption):
     response = solver.invoke(messages)
     
     # Save state to test.md after getting the response
-    with open('test.md', 'w') as f:
+    os.makedirs('conversations', exist_ok=True)
+    with open('conversations/test.md', 'w') as f:
         f.write(f"# Current State - Solver Phase\n\n")
         f.write(f"## Iteration {state['iteration_count']}\n\n")
         f.write("### Solver Messages:\n")
@@ -252,7 +253,7 @@ if __name__ == "__main__":
         
         ground_truth = int(example['answer']) if example['answer'].isdigit() else None
         # Initialize conversation file with problem and dataset solution
-        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL.name, "_local")
+        md_file = init_conversation_md(str(problem_id), problem, example['solution'], SOLVER_MODEL.name, "_local", "conversations")
         
         result = process_problem(
             problem, 
