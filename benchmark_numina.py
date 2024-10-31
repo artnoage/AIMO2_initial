@@ -84,6 +84,8 @@ def main():
                        default='NOUS', help='Model to benchmark')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--label', type=str, default='all',
+                       help='Filter problems by source label (default: all)')
     args = parser.parse_args()
 
     # Load dataset and shuffle
