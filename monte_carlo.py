@@ -326,7 +326,8 @@ if __name__ == "__main__":
             'problem_id': problem_id,
             'solution': result['solution'],
             'ground_truth': ground_truth,
-            'num_attempts': result['attempt_count']
+            'num_attempts': result['attempt_count'],
+            'right_answer_among_all': result.get('right_answer_among_all', False)
         }
         results.append(result_entry)
         
