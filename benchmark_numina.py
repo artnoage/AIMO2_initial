@@ -193,23 +193,35 @@ def main():
     
     # Process batches
     results = []
-    with tqdm(total=len(inputs), desc="Processing with model") as pbar:
-        for batch_outputs in chain.batch(
+    total_examples = len(inputs)
+    processed = 0
+    print(f"\nStarting processing of {total_examples} examples...")
+    
+    with tqdm(total=total_examples, desc="Processing with model") as pbar:
+        for batch_num, batch_outputs in enumerate(chain.batch(
             inputs, 
             {"max_concurrency": args.concurrency},
             batch_size=args.concurrency
-        ):
+        )):
+            print(f"\nProcessing batch {batch_num + 1}...")
+            batch_size = len(batch_outputs)
+            print(f"Batch size: {batch_size}")
+            
             # Process each result in the batch
             for output, ex_data in zip(batch_outputs, example_data[len(results):len(results)+len(batch_outputs)]):
                 result = process_model_result(output, ex_data, enc)
                 if result:
                     results.append(result)
+                    processed += 1
                     # Print progress
                     print(f"\nProblem {result['id'] + 1}:")
                     print(f"Model Answer: {result['model_answer']}")
                     print(f"Correct Answer: {result['correct_answer']}")
                     print(f"Correct: {result['is_correct']}")
+                    print(f"Processed {processed}/{total_examples} examples")
                 pbar.update(1)  # Update progress for each processed example
+            
+            print(f"Completed batch {batch_num + 1}")
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
