@@ -227,7 +227,9 @@ def process_problem(problem_text: str, ground_truth: int,
             "judge_messages": [SystemMessage(content=JUDGE_PROMPT_TEMPLATE),HumanMessage(content=f"Here is the problem: {problem_text}"),AIMessage(content="Please provide solutions")],
             "solution": "",
             "attempt_count": 0,
-            "md_file": md_file
+            "md_file": md_file,
+            "ground_truth": ground_truth,
+            "right_answer_among_all": False
         }
         
         workflow = build_graph(solver_model, judge_model)
