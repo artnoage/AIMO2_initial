@@ -1,7 +1,7 @@
 import os
 import re
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langchain_openai import ChatOpenAI
