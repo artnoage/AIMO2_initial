@@ -27,12 +27,14 @@ class ModelOption(Enum):
 
 SYSTEM_PROMPT = """You are a Python code generator for mathematical problems. When given a problem and its solution:
 1. Analyze the problem and solution carefully
-2. Create a Python function that solves the problem
+2. Explain what concepts you are going to use for getting the answer.
+2. Create a Python function that solves the problem. The actuall ground truth should not be given to the code
+solving the issue in a trivial manner.
 3. The function should:
    - Take no arguments
-   - Return a single integer as the answer
+   - Return a type of answer that matches the real answer. 
+   . You can also use symbolic libraries. 
    - Use clear variable names and comments
-   - Include docstring explaining the approach
 4. Format your response as:
    ```python
    def solve():

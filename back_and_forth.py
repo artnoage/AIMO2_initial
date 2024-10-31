@@ -218,7 +218,7 @@ def decide_next_step(state: AgentState, ground_truth: int) -> str:
     state["is_the_answer_correct"] = (state["solution"] == ground_truth)
     
     # End if answer is correct or we've hit iteration limit
-    if state["is_the_answer_correct"] or state["iteration_count"] >= 6:
+    if state["is_the_answer_correct"] or state["iteration_count"] >= 4:
         return END
     
     return "verifier"
@@ -305,7 +305,7 @@ if __name__ == "__main__":
         VERIFIER_MODEL = ModelOption[args.verifier]
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:10]")
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
