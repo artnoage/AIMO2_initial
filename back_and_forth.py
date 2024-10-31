@@ -259,11 +259,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run math problem solver with specified model')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
                        default='NOUS', help='Solver model to use')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='NOUS', help='Verifier model to use')
+    parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
+                       help='Use same model for both solver and verifier')
     args = parser.parse_args()
     
     # Define models
-    SOLVER_MODEL = ModelOption[args.solver]
-    VERIFIER_MODEL = ModelOption.NOUS
+    if args.both:
+        SOLVER_MODEL = VERIFIER_MODEL = ModelOption[args.both]
+    else:
+        SOLVER_MODEL = ModelOption[args.solver]
+        VERIFIER_MODEL = ModelOption[args.verifier]
     
     # Load dataset
     dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
