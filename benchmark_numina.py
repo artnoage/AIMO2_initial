@@ -88,6 +88,11 @@ def main():
 
     # Load dataset and shuffle
     dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+    
+    # Filter by label if specified
+    if args.label.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == args.label)
+    
     dataset = dataset.shuffle()
     
     # Print dataset information
