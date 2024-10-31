@@ -272,7 +272,7 @@ if __name__ == "__main__":
             solution=example['solution'],
             solver_model_name=f"{SOLVER_MODEL.name}_MC",
             suffix="",
-            directory=f"conversations/monte_carlo/{SOLVER_MODEL.name.lower()}"
+            directory=f"monte_carlo/{SOLVER_MODEL.name.lower()}"
         )
         
         result = process_problem(

@@ -2,3 +2,4 @@
 .env
 .aider*
 conversations/
+monte_carlo/
