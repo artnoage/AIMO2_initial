@@ -8,6 +8,12 @@ def main():
     # Sample 10 random indices
     sample_indices = random.sample(range(len(dataset)), 10)
     
+    # Print available fields from first example
+    print("Available fields in dataset:")
+    example = dataset[0]
+    for key in example.keys():
+        print(f"- {key}")
+
     # Create markdown output
     markdown = "# Random Samples from NuminaMath-CoT Training Set\n\n"
     
@@ -17,8 +23,6 @@ def main():
         markdown += f"### Problem\n{example['problem']}\n\n"
         markdown += f"### Solution\n{example['solution']}\n\n"
         markdown += f"### Source\n{example['source']}\n\n"
-        markdown += f"### Level\n{example['level']}\n\n"
-        markdown += f"### Topic\n{example['topic']}\n\n"
         markdown += "---\n\n"
     
     # Write to file
