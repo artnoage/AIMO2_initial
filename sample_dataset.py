@@ -20,9 +20,11 @@ def main():
     for i, idx in enumerate(sample_indices, 1):
         example = dataset[idx]
         markdown += f"## Example {i} (Index: {idx})\n\n"
-        markdown += f"### Problem\n{example['problem']}\n\n"
-        markdown += f"### Solution\n{example['solution']}\n\n"
-        markdown += f"### Source\n{example['source']}\n\n"
+        
+        # Dynamically add all fields from the example
+        for field, value in example.items():
+            markdown += f"### {field.title()}\n{value}\n\n"
+            
         markdown += "---\n\n"
     
     # Write to file
