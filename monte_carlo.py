@@ -70,7 +70,6 @@ class ModelOption(Enum):
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     judge_messages: Annotated[List[BaseMessage], add_messages]
-    solutions: Annotated[List[str], "List of solutions from multiple attempts"]
     solution: Annotated[Union[int, str, None], "Final numerical answer"]
     attempt_count: Annotated[int, "Counter for solver attempts"]
     md_file: Annotated[str, "Path to markdown file"]
@@ -96,8 +95,8 @@ def get_model(model: ModelOption, temp: float = 0.1):
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function - runs multiple times"""
     messages = state["solver_messages"]
-    solutions = state["solutions"]
     attempt_count = state["attempt_count"]
+    all_solutions = []
     
     while attempt_count < 10:
         print(f"Solving attempt {attempt_count + 1}/10...")
@@ -121,23 +120,22 @@ def solve(state: AgentState, model_option: ModelOption):
             )
             
             # Add this solution to our list
-            solutions.append(solution_content)
+            all_solutions.append(f"Solution {attempt_count + 1}:\n{solution_content}")
             attempt_count += 1
             
         except Exception as e:
             print(f"Failed attempt {attempt_count + 1}: {e}")
             continue
     
-    # After 10 attempts, prepare message for judge
-    all_solutions = "\n\n===\n\n".join([f"Solution {i+1}:\n{sol}" for i, sol in enumerate(solutions)])
-    judge_message = HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{all_solutions}")
+    # After 10 attempts, combine all solutions into one message
+    combined_solutions = "\n\n===\n\n".join(all_solutions)
     
     return {
-        "solutions": solutions,
+        "solution": combined_solutions,
         "attempt_count": attempt_count,
         "judge_messages": [
             SystemMessage(content=JUDGE_PROMPT_TEMPLATE),
-            judge_message
+            HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{combined_solutions}")
         ]
     }
 
