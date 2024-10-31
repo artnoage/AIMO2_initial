@@ -123,7 +123,7 @@ def process_example(example: Dict, idx: int, enc, model: ChatOpenAI) -> Optional
         ])
         
         # Generate the solution using the model
-        response = model(prompt.to_string())
+        response = model(prompt.format_messages())
         
         # Extract the solution text from the response
         if hasattr(response, 'content'):
