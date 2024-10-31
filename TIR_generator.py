@@ -59,7 +59,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
             api_key=os.getenv("OPENROUTER_API_KEY")
         )
 
-def extract_answer_from_solution(solution: Optional[str], messages: Optional[str] = None) -> Optional[int]:
+def extract_answer_from_solution(solution: Optional[str], messages: Optional[str] = None) -> Optional[Union[int, str]]:
     """Extract answer from solution text (looking for \boxed{X})"""
     # Handle None or non-string inputs
     if not isinstance(solution, str):
@@ -72,18 +72,29 @@ def extract_answer_from_solution(solution: Optional[str], messages: Optional[str
     
     # Try solution first
     try:
-        match = re.search(r'\\boxed{(\d+)}', solution)
+        # Look for any content inside \boxed{}
+        match = re.search(r'\\boxed{([^}]+)}', solution)
         if match:
-            return int(match.group(1))
+            answer = match.group(1).strip()
+            # Try converting to int if possible
+            try:
+                return int(answer)
+            except ValueError:
+                return answer
     except Exception as e:
         print(f"Error searching solution: {e}")
     
     # If not found and messages provided, try messages
     if messages:
         try:
-            match = re.search(r'\\boxed{(\d+)}', messages)
+            match = re.search(r'\\boxed{([^}]+)}', messages)
             if match:
-                return int(match.group(1))
+                answer = match.group(1).strip()
+                # Try converting to int if possible
+                try:
+                    return int(answer)
+                except ValueError:
+                    return answer
         except Exception as e:
             print(f"Error searching messages: {e}")
     
