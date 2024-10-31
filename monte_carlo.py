@@ -119,16 +119,16 @@ def solve(state: AgentState, model_option: ModelOption):
                 messages[-1].content
             )
             
-            # Add this solution to our list
-            all_solutions.append(f"Solution {attempt_count + 1}:\n{solution_content}")
+            # Add this solution to our list with clear labeling
+            all_solutions.append(f"=== Solution {attempt_count + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
             attempt_count += 1
             
         except Exception as e:
             print(f"Failed attempt {attempt_count + 1}: {e}")
             continue
     
-    # After 10 attempts, combine all solutions into one message
-    combined_solutions = "\n\n===\n\n".join(all_solutions)
+    # After 10 attempts, combine all solutions into one message with a header
+    combined_solutions = "Here are all 10 solution attempts:\n\n" + "\n".join(all_solutions)
     
     return {
         "solution": combined_solutions,
