@@ -275,8 +275,8 @@ if __name__ == "__main__":
             problem=problem,
             solution=example['solution'],
             solver_model_name=SOLVER_MODEL.name,
-            suffix="_local",
-            directory="conversations"
+            suffix="",
+            directory=f"conversations/{SOLVER_MODEL.name.lower()}"
         )
         
         result = process_problem(
