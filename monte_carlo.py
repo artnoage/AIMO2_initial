@@ -55,8 +55,8 @@ Provide your final answer as a number prefixed with 'FINAL_ANSWER: '."""
 
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
-    GEMINI_PRO_EXP = "google/gemini-pro-1.5-exp"
-    GEMINI_FLASH_EXP="google/gemini-flash-1.5-exp"
+    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
+    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
     GEMINI_FLASH="google/gemini-flash-1.5"
     GPT = "openai/gpt-4o"
@@ -133,7 +133,7 @@ def solve(state: AgentState, model_option: ModelOption):
     return {
         "solution": combined_solutions,
         "attempt_count": attempt_count,
-        "judge_messages": HumanMessage(content=f"Here are 10 solutions to the problem:\n\n{combined_solutions}")}
+        "judge_messages": HumanMessage(content=combined_solutions)}
 
 @retry_with_delay(max_attempts=3, delay=30)
 def judge(state: AgentState, model_option: ModelOption):
@@ -253,7 +253,7 @@ if __name__ == "__main__":
         JUDGE_MODEL = ModelOption[args.judge]
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
+    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:10]")
     
     print(f"\n=== Starting Monte Carlo evaluation with {SOLVER_MODEL.value} as solver and {JUDGE_MODEL.value} as judge ===")
     
