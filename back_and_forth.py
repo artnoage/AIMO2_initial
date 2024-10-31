@@ -38,6 +38,7 @@ class ModelOption(Enum):
     GPT = "openai/gpt-4"
     MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
+    GROQ = "llama-3.1-70b-versatile"
 
 # Define state schema
 class AgentState(TypedDict):
@@ -55,6 +56,13 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1"
+        )
+    elif model == ModelOption.GROQ:
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key=os.getenv("GROQ_API_KEY"),
+            base_url="https://api.groq.com/openai/v1"
         )
     else:
         # OpenRouter setup
