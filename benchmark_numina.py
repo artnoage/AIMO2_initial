@@ -194,29 +194,25 @@ def main():
     processed = 0
     print(f"\nStarting processing of {total_examples} examples...")
     
-    for batch_num, batch_outputs in enumerate(chain.batch(
-            inputs, 
-            {"max_concurrency": args.concurrency},
-            batch_size=args.concurrency
-        )):
-            print(f"\nProcessing batch {batch_num + 1}...")
+    batch_config = {
+        "max_concurrency": args.concurrency,
+        "batch_size": args.concurrency
+    }
+    
+    for batch_outputs in chain.batch(inputs, config=batch_config):
             batch_size = len(batch_outputs)
-            print(f"Batch size: {batch_size}")
+            processed += batch_size
+            print(f"\nProcessing batch of {batch_size} examples ({processed}/{total_examples})")
             
             # Process each result in the batch
             for output, ex_data in zip(batch_outputs, example_data[len(results):len(results)+len(batch_outputs)]):
                 result = process_model_result(output, ex_data, enc)
                 if result:
                     results.append(result)
-                    processed += 1
                     # Print progress
-                    print(f"\nProblem {result['id'] + 1}:")
-                    print(f"Model Answer: {result['model_answer']}")
-                    print(f"Correct Answer: {result['correct_answer']}")
-                    print(f"Correct: {result['is_correct']}")
-                    print(f"Processed {processed}/{total_examples} examples")
+                    print(f"Problem {result['id'] + 1}: {'✓' if result['is_correct'] else '✗'}")
             
-            print("hey")
+            print(f"Batch complete - {processed}/{total_examples} examples processed")
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
