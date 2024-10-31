@@ -141,8 +141,8 @@ def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--threads', type=int, default=4,
-                       help='Number of concurrent threads (default: 4)')
+    parser.add_argument('--threads', type=int, default=8,
+                       help='Number of concurrent threads (default: 8)')
     args = parser.parse_args()
 
     # Load dataset and shuffle
@@ -187,22 +187,19 @@ def main():
             future = executor.submit(process_example, model, example, idx, enc, results_queue)
             futures.append(future)
         
-        # Create progress bar
+        # Create progress bar and wait for all futures
         with tqdm(total=len(dataset)) as pbar:
-            completed = 0
-            while completed < len(dataset):
-                # Get result if available
+            for future in futures:
                 try:
-                    idx, result = results_queue.get(timeout=1)
-                    results.append(result)
-                    completed += 1
-                    pbar.update(1)
-                except:
-                    # Check if any threads failed
-                    for future in futures:
-                        if future.done() and future.exception():
-                            print(f"Thread failed: {future.exception()}")
-                    continue
+                    future.result()  # Wait for completion
+                except Exception as e:
+                    print(f"Thread failed: {e}")
+                
+            # Collect all results from queue
+            while not results_queue.empty():
+                idx, result = results_queue.get_nowait()
+                results.append(result)
+                pbar.update(1)
     
     # Sort results by ID to maintain order
     results.sort(key=lambda x: x['id'])
