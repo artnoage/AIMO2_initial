@@ -70,20 +70,19 @@ def get_model(model: ModelOption, temp: float = 0.1):
             streaming=False
         )
 
-def extract_answer_from_solution(solution: str) -> Optional[int]:
+def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
-    Extract the numerical answer from the solution text by searching for patterns like
-    'ANSWER: 42' or 'answer is 42'. Falls back to the last number in the text if no pattern is found.
+    Extract the answer from the solution text by searching for patterns like
+    'ANSWER: X' or 'answer is X'. Returns the raw answer string.
     """
-    # Regex to find 'ANSWER: <number>' or 'answer is <number>'
-    answer_pattern = re.compile(r'(?:ANSWER:\s*|answer\s+is\s*)(-?\d+)', re.IGNORECASE)
+    # Regex to find 'ANSWER: X' or 'answer is X' where X can be any non-newline characters
+    answer_pattern = re.compile(r'(?:ANSWER:\s*|answer\s+is\s*)([^\n]+)', re.IGNORECASE)
     matches = answer_pattern.findall(solution)
     if matches:
-        return int(matches[-1])
+        # Return the last match, stripped of whitespace
+        return matches[-1].strip()
     
-    # Fallback: return the last number in the solution
-    numbers = re.findall(r'-?\d+', solution)
-    return int(numbers[-1]) if numbers else None
+    return None
 
 def save_results(results: list, model_name: str):
     """
@@ -142,7 +141,8 @@ def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        is_correct = model_answer == correct_answer
+        # Compare answers as strings to handle all types
+        is_correct = model_answer is not None and str(model_answer).strip() == str(correct_answer).strip()
         
         # Count output tokens
         output_tokens = len(enc.encode(solution))
