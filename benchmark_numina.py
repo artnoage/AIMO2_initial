@@ -110,14 +110,24 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
     - Determine correctness
     """
     try:
+        # Validate input data
+        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+            print(f"Error processing example {idx}: Invalid example format")
+            return None
+            
         # Prepare the input text
         input_text = f"{SYSTEM_PROMPT}\n{example['problem']}"
         input_tokens = len(enc.encode(input_text))
         
         # Extract the correct answer
-        correct_answer = extract_answer_from_solution(example['solution'])
-        if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {idx}")
+        try:
+            correct_answer = extract_answer_from_solution(example['solution'])
+            if correct_answer is None:
+                print(f"Warning: Could not extract answer from solution for example {idx}")
+                print(f"Solution text: {example['solution'][:100]}...")
+                return None
+        except Exception as e:
+            print(f"Error extracting answer from solution for example {idx}: {str(e)}")
             return None
         
         # Create the chat prompt
