@@ -5,8 +5,8 @@ import argparse
 from enum import Enum
 from typing import Optional, List, Dict
 from datetime import datetime
-import asyncio
 from typing import List, Dict, Optional
+from langchain_core.runnables import RunnableLambda
 
 from dotenv import load_dotenv
 from langchain.callbacks.base import BaseCallbackHandler
@@ -99,7 +99,7 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
+def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
     """
     Process a single example:
     - Count input tokens
@@ -137,7 +137,7 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         ])
         
         # Generate the solution using the model
-        response = model.invoke(prompt.format_messages())
+        response = model.invoke(prompt.format_messages())  # Synchronous invoke
         solution = response.content
         
         # Extract the model's answer from the solution
@@ -163,7 +163,7 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         print(f"Error processing example {idx}: {e}")
         return None
 
-async def main():
+def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -245,13 +245,11 @@ async def main():
     # Process examples in batches
     for i in range(0, total_examples, batch_size):
         batch = example_data[i:i + batch_size]
-        batch_tasks = [
-            process_example(ex, ex['id'], enc, model) 
-            for ex in batch
-        ]
+        # Create a runnable from process_example
+        process_runnable = RunnableLambda(lambda x: process_example(x, x['id'], enc, model))
         
-        # Wait for batch completion
-        batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+        # Process batch using RunnableLambda
+        batch_results = process_runnable.batch(batch)
         
         # Process batch results
         for j, result in enumerate(batch_results):
@@ -307,4 +305,4 @@ async def main():
         print(f"Error saving results: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
