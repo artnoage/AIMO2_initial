@@ -79,22 +79,11 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     Returns the raw answer string with LaTeX notation preserved.
     """
     # Try to find \boxed{X} LaTeX answers first (most specific)
-    boxed_pattern = re.compile(r'\\boxed\{([^{}]+)\}')
+    boxed_pattern = re.compile(r'\\boxed\{((?:[^{}]|{[^{}]*})*)\}')
     matches = boxed_pattern.findall(solution)
     if matches:
         # Return the last boxed answer, preserving LaTeX formatting
-        answer = matches[-1].strip()
-        # Handle nested braces in LaTeX expressions
-        brace_count = 0
-        for char in answer:
-            if char == '{':
-                brace_count += 1
-            elif char == '}':
-                brace_count -= 1
-        if brace_count > 0:
-            # Add missing closing braces
-            answer += '}' * brace_count
-        return answer
+        return matches[-1].strip()
     
     # Try to find multiple choice answers like (A), (B), etc.
     choice_pattern = re.compile(r'(?:answer is|therefore)[^(]*\(([A-E])\)', re.IGNORECASE)
