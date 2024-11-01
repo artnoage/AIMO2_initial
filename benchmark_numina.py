@@ -79,11 +79,26 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     Returns the raw answer string with LaTeX notation preserved.
     """
     # Try to find \boxed{X} LaTeX answers first (most specific)
-    boxed_pattern = re.compile(r'\\boxed\{((?:[^{}]|{[^{}]*})*)\}')
-    matches = boxed_pattern.findall(solution)
-    if matches:
-        # Return the last boxed answer, preserving LaTeX formatting
-        return matches[-1].strip()
+    def find_matching_brace(s: str, start: int) -> int:
+        """Find the matching closing brace for an opening brace at start position"""
+        count = 1
+        i = start + 1
+        while i < len(s) and count > 0:
+            if s[i] == '{':
+                count += 1
+            elif s[i] == '}':
+                count -= 1
+            i += 1
+        return i - 1 if count == 0 else -1
+
+    # Find all \boxed occurrences
+    boxed_starts = [m.start() for m in re.finditer(r'\\boxed\{', solution)]
+    for start in boxed_starts:
+        end = find_matching_brace(solution, start + 6)  # 6 is length of '\boxed{'
+        if end != -1:
+            # Extract content between braces
+            content = solution[start + 6:end].strip()
+            return content
     
     # Try to find multiple choice answers like (A), (B), etc.
     choice_pattern = re.compile(r'(?:answer is|therefore)[^(]*\(([A-E])\)', re.IGNORECASE)
