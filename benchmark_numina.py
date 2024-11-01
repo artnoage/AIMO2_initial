@@ -73,21 +73,16 @@ def get_model(model: ModelOption, temp: float = 0.1):
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the answer from the solution text by searching for patterns like:
-    - 'ANSWER: X' or 'answer is X'
     - LaTeX boxed answers: \boxed{X}
     - Multiple choice answers: (A), (B), etc.
+    - 'ANSWER: X' or 'answer is X'
     Returns the raw answer string with LaTeX notation preserved.
     """
-    # Try to find \boxed{X} LaTeX answers first
+    # Try to find \boxed{X} LaTeX answers first (most specific)
     boxed_pattern = re.compile(r'\\boxed{([^}]+)}')
     matches = boxed_pattern.findall(solution)
     if matches:
-        return matches[-1].strip()
-    
-    # Try to find 'ANSWER: X' or 'answer is X' patterns
-    answer_pattern = re.compile(r'(?:ANSWER:\s*|answer\s+is\s*)([^\n]+)', re.IGNORECASE)
-    matches = answer_pattern.findall(solution)
-    if matches:
+        # Return the last boxed answer
         return matches[-1].strip()
     
     # Try to find multiple choice answers like (A), (B), etc.
@@ -95,6 +90,14 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     matches = choice_pattern.findall(solution)
     if matches:
         return matches[-1].strip()
+    
+    # Try to find 'ANSWER: X' or 'answer is X' patterns (most general)
+    answer_pattern = re.compile(r'(?:ANSWER:\s*|answer\s+is\s*)([^\n]+)', re.IGNORECASE)
+    matches = answer_pattern.findall(solution)
+    if matches:
+        # Clean up any trailing periods or whitespace
+        answer = matches[-1].strip().rstrip('.')
+        return answer
     
     return None
 
