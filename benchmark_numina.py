@@ -5,9 +5,11 @@ import argparse
 from enum import Enum
 from typing import Optional, List, Dict
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
+from typing import List, Dict, Optional
 
 from dotenv import load_dotenv
+from langchain.callbacks.base import BaseCallbackHandler
 from datasets import load_dataset
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
@@ -39,7 +41,7 @@ SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, 
 Never ask for confirmation. Just provide your final answer as a number at the end of your 
 response prefixed with 'ANSWER: '."""
 
-def get_model(model: ModelOption, temp: float = 0.1) -> ChatOpenAI:
+def get_model(model: ModelOption, temp: float = 0.1):
     """
     Initialize the ChatOpenAI model based on the selected ModelOption.
     For LOCAL models, it connects to a local endpoint.
@@ -51,7 +53,8 @@ def get_model(model: ModelOption, temp: float = 0.1) -> ChatOpenAI:
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1",
-            request_timeout=60  # Added timeout
+            request_timeout=60,  # Added timeout
+            streaming=False
         )
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
@@ -63,7 +66,8 @@ def get_model(model: ModelOption, temp: float = 0.1) -> ChatOpenAI:
             temperature=temp,
             api_key=openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
-            request_timeout=60  # Added timeout
+            request_timeout=60,  # Added timeout
+            streaming=False
         )
 
 def extract_answer_from_solution(solution: str) -> Optional[int]:
@@ -95,7 +99,7 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-def process_example(example: Dict, idx: int, enc, model: ChatOpenAI) -> Optional[Dict]:
+async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
     """
     Process a single example:
     - Count input tokens
@@ -149,7 +153,7 @@ def process_example(example: Dict, idx: int, enc, model: ChatOpenAI) -> Optional
         print(f"Error processing example {idx}: {e}")
         return None
 
-def main():
+async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -222,35 +226,41 @@ def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    # Initialize ThreadPoolExecutor for multi-threaded processing
+    # Initialize async batch processing
     results = []
     total_examples = len(example_data)
-    processed = 0
-    print(f"\nStarting processing of {total_examples} examples with concurrency={args.concurrency}...")
+    batch_size = args.concurrency
+    print(f"\nStarting processing of {total_examples} examples with batch_size={batch_size}...")
 
-    with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        # Submit all tasks to the executor
-        future_to_example = {
-            executor.submit(process_example, ex, ex['id'], enc, model): ex for ex in example_data
-        }
+    # Process examples in batches
+    for i in range(0, total_examples, batch_size):
+        batch = example_data[i:i + batch_size]
+        batch_tasks = [
+            process_example(ex, ex['id'], enc, model) 
+            for ex in batch
+        ]
         
-        for future in as_completed(future_to_example):
-            ex = future_to_example[future]
+        # Wait for batch completion
+        batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
+        
+        # Process batch results
+        for j, result in enumerate(batch_results):
+            ex = batch[j]
             try:
-                result = future.result()
-                if result:
+                if isinstance(result, Exception):
+                    print(f"Problem {ex['id'] + 1}: Exception occurred: {result}")
+                elif result:
                     results.append(result)
-                    # Indicate success or failure
                     status = '✓' if result['is_correct'] else '✗'
                     print(f"Problem {result['id'] + 1}: {status}")
                 else:
                     print(f"Problem {ex['id'] + 1}: Failed to process.")
             except Exception as e:
                 print(f"Problem {ex['id'] + 1}: Exception occurred: {e}")
-            finally:
-                processed += 1
-                # Optional: Display progress
-                print(f"Progress: {processed}/{total_examples} examples processed", end='\r')
+        
+        # Show batch progress
+        processed = min(i + batch_size, total_examples)
+        print(f"Progress: {processed}/{total_examples} examples processed")
 
     if not results:
         print("\nNo examples were successfully processed.")
@@ -287,4 +297,4 @@ def main():
         print(f"Error saving results: {e}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
