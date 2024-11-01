@@ -123,17 +123,8 @@ def process_example(example: Dict, idx: int, enc, model: ChatOpenAI) -> Optional
         ])
         
         # Generate the solution using the model
-        response = model(prompt.format_messages())
-        
-        # Extract the solution text from the response
-        if hasattr(response, 'content'):
-            solution = response.content
-        elif isinstance(response, dict) and 'choices' in response:
-            # Adjust based on the actual response structure
-            solution = response['choices'][0]['message']['content']
-        else:
-            print(f"Unexpected response format for example {idx}: {response}")
-            return None
+        response = model.invoke(prompt.format_messages())
+        solution = response.content
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
