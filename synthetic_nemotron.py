@@ -19,11 +19,10 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem and partial solution, complete the solution.
-Make sure to:
-- Follow the reasoning pattern shown in the partial solution
-- Complete the remaining steps clearly
-- Provide your final answer inside \\boxed{}"""
+SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem and partial solution as a hint.
+Analyzer the problem and understand the techniques that are needed. 
+Do a step by step new proof (you are allowed to copy parts)
+Provide the final answer in the end \\boxed{}"""
 
 def get_model(temp: float = 0.1):
     """Initialize the NEMOTRON model"""
