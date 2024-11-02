@@ -263,18 +263,19 @@ async def main():
             })
             print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
     
-            # Save intermediate results
-            intermediate_filename = os.path.join('synthetic_results', 
-                f"synthetic_intermediate_{args.solver}_{args.verifier}_{start_time.strftime('%Y%m%d_%H%M%S')}.json")
-            output_data = {
-                'results': results,
-                'error_rate_points': error_rate_points,
-                'current_error_rate': current_error_rate
-            }
-            os.makedirs('synthetic_results', exist_ok=True)
-            with open(intermediate_filename, 'w') as f:
-                json.dump(output_data, f, indent=2)
-            print(f"Saved intermediate results to {intermediate_filename}")
+            # Save intermediate results every 100 examples
+            if len(results) % 100 == 0:
+                intermediate_filename = os.path.join('synthetic_results', 
+                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
+                output_data = {
+                    'results': results,
+                    'error_rate_points': error_rate_points,
+                    'current_error_rate': current_error_rate
+                }
+                os.makedirs('synthetic_results', exist_ok=True)
+                with open(intermediate_filename, 'w') as f:
+                    json.dump(output_data, f, indent=2)
+                print(f"\nSaved intermediate results after {len(results)} examples")
             
             # Save current batch of augmented data
             if current_batch:
