@@ -348,7 +348,7 @@ async def main():
     # Save the results to JSON files
     try:
         # Save benchmark results
-        save_results(results, args.model)
+        save_results(results, args.solver)
         
         # Create augmented dataset
         augmented_data = []
