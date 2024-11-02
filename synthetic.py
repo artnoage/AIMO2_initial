@@ -218,12 +218,12 @@ async def main():
     # Create a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(args.max_concurrent)
 
-    async def process_with_semaphore(example):
+    async def process_with_semaphore(example, running_id):
         async with semaphore:
             return await process_example(example, running_id, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
-    tasks = [process_with_semaphore(ex) for ex in example_data]
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
