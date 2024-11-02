@@ -190,6 +190,9 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         return None
 
 async def main():
+    # Start timing the entire process
+    start_time = datetime.now()
+    
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -300,6 +303,12 @@ async def main():
         save_results(results, args.model)
     except Exception as e:
         print(f"Error saving results: {e}")
+
+    # Calculate and print timing information
+    end_time = datetime.now()
+    total_duration = end_time - start_time
+    print(f"\nTotal execution time: {total_duration}")
+    print(f"Average time per example: {total_duration.total_seconds() / len(results):.2f} seconds")
 
 if __name__ == "__main__":
     asyncio.run(main())
