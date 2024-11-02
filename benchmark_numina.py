@@ -35,7 +35,7 @@ class ModelOption(Enum):
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
-
+    SAMBA= "Meta-Llama-3.1-405B-Instruct"
 SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
 the tools you have to use. After, solve it step by step, 
 showing your work clearly. Make sure to:
@@ -57,6 +57,12 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1")
+    elif model==ModelOption.SAMBA:
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key= os.getenv("SAMBANOVA_API_KEY"),
+            base_url="https://api.sambanova.ai/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
@@ -221,9 +227,6 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         print(f"Extracted Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
-        
-        # Wait for 6 seconds
-        await asyncio.sleep(6)
         
         # Return the result
         return {
