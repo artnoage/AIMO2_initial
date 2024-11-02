@@ -46,6 +46,10 @@ def main():
         if (idx + 1) % 100 == 0:
             print(f"Progress: {idx + 1}/{total_examples}")
 
+    # Initialize token range counters
+    tokens_0_1024 = 0
+    tokens_1024_2048 = 0
+    
     # Print summary
     print("\nSummary:")
     print(f"Total examples processed: {total_examples}")
@@ -54,6 +58,19 @@ def main():
     if examples_with_messages > 0:
         avg_tokens = total_tokens / examples_with_messages
         print(f"Average tokens per example with messages: {avg_tokens:.1f}")
+        
+    # Count examples in token ranges
+    for idx, example in enumerate(dataset):
+        if 'messages' in example and example['messages']:
+            tokens = count_tokens_in_messages(example['messages'])
+            if 0 <= tokens <= 1024:
+                tokens_0_1024 += 1
+            elif 1024 < tokens <= 2048:
+                tokens_1024_2048 += 1
+    
+    print("\nToken Range Distribution:")
+    print(f"0-1024 tokens: {tokens_0_1024} examples")
+    print(f"1024-2048 tokens: {tokens_1024_2048} examples")
 
 if __name__ == "__main__":
     main()
