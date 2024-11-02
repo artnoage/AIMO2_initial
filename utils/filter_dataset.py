@@ -62,7 +62,7 @@ def main():
     })
 
     # Save locally first
-    output_dir = "numina_olympiads"
+    output_dir = "../numina_olympiads"
     os.makedirs(output_dir, exist_ok=True)
     
     # Create dataset_info.json
