@@ -54,10 +54,21 @@ def main():
     # Try to push to Hugging Face Hub
     try:
         # Note: This requires being logged in with huggingface-cli login
-        filtered_dataset_dict.push_to_hub(
-            "Numina-Olympiads",
+        api.create_repo(
+            repo_id="Numina-Olympiads",
             private=True,
-            description="Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers"
+            repo_type="dataset"
+        )
+        filtered_dataset_dict.push_to_hub("Numina-Olympiads")
+        # Update the dataset card
+        with open("README.md", "w") as f:
+            f.write("# Numina-Olympiads\n\n")
+            f.write("Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers\n")
+        api.upload_file(
+            path_or_fileobj="README.md",
+            path_in_repo="README.md",
+            repo_id="Numina-Olympiads",
+            repo_type="dataset"
         )
         print("\nSuccessfully pushed dataset to Hugging Face Hub as 'Numina-Olympiads'")
     except Exception as e:
