@@ -46,9 +46,10 @@ def main():
         if (idx + 1) % 100 == 0:
             print(f"Progress: {idx + 1}/{total_examples}")
 
-    # Initialize token range counters
+    # Initialize counters
     tokens_0_1024 = 0
     tokens_1024_2048 = 0
+    messages_with_box = 0
     
     # Print summary
     print("\nSummary:")
@@ -68,9 +69,19 @@ def main():
             elif 1024 < tokens <= 2048:
                 tokens_1024_2048 += 1
     
+    # Count messages with \box
+    for idx, example in enumerate(dataset):
+        if 'messages' in example and example['messages']:
+            for message in example['messages']:
+                if isinstance(message, dict) and 'content' in message:
+                    if '\\box' in message['content']:
+                        messages_with_box += 1
+                        break  # Count only once per example
+                        
     print("\nToken Range Distribution:")
     print(f"0-1024 tokens: {tokens_0_1024} examples")
     print(f"1024-2048 tokens: {tokens_1024_2048} examples")
+    print(f"\nExamples with \\box notation: {messages_with_box}")
 
 if __name__ == "__main__":
     main()
