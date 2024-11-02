@@ -310,19 +310,18 @@ async def main():
             }
             current_batch.append(augmented_example)
             
-            # Save intermediate results every 100 points
-            if len(results) % 100 == 0:
-                current_error_rate = calculate_error_rate(results)
-                error_rate_points.append({
-                    'examples_processed': len(results),
-                    'error_rate': current_error_rate,
-                    'timestamp': datetime.now().isoformat()
-                })
-                print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
-                
-                # Save intermediate results
-                intermediate_filename = os.path.join('benchmark_results', 
-                    f"benchmark_intermediate_{len(results)}.json")
+            # Save intermediate results every time we process more examples
+            current_error_rate = calculate_error_rate(results)
+            error_rate_points.append({
+                'examples_processed': len(results),
+                'error_rate': current_error_rate,
+                'timestamp': datetime.now().isoformat()
+            })
+            print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+    
+            # Save intermediate results
+            intermediate_filename = os.path.join('benchmark_results', 
+                f"benchmark_intermediate_{args.solver}_{args.verifier}_{start_time.strftime('%Y%m%d_%H%M%S')}.json")
                 output_data = {
                     'results': results,
                     'error_rate_points': error_rate_points,
