@@ -302,7 +302,7 @@ async def main():
     # Save results
     os.makedirs('../synthetic_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('synthetic_results', f"synthetic_nemotron_{timestamp}.json")
+    results_filename = os.path.join('../synthetic_results', f"synthetic_nemotron_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
