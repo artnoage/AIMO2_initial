@@ -76,9 +76,9 @@ def main():
     }
     
     dataset_info = {
-        "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers",
-        "citation": "",
-        "homepage": "",
+        "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers in LaTeX format",
+        "citation": "@misc{numina2024,\n  author={AI-MO},\n  title={NuminaMath-CoT Dataset},\n  year={2024}\n}",
+        "homepage": "https://huggingface.co/datasets/AI-MO/NuminaMath-CoT",
         "license": "mit",
         "features": features_json,
         "splits": {
@@ -88,7 +88,20 @@ def main():
                 "num_examples": len(filtered_dataset),
                 "dataset_name": "Numina-Olympiads"
             }
-        }
+        },
+        "tags": [
+            "mathematics",
+            "olympiads",
+            "problem-solving",
+            "latex"
+        ],
+        "metrics": [
+            {
+                "name": "filtered_ratio",
+                "type": "ratio",
+                "value": len(filtered_dataset) / len(dataset)
+            }
+        ]
     }
     
     # Save dataset_info.json
@@ -127,8 +140,19 @@ size_categories:
   - 1K<n<10K
 task_categories:
   - text-generation
+  - mathematical-reasoning
 task_ids:
   - math-word-problems
+  - olympiad-math
+tags:
+  - mathematics
+  - olympiads
+  - problem-solving
+  - latex
+metrics:
+  - name: filtered_ratio
+    type: ratio 
+    value: {len(filtered_dataset) / len(dataset):.3f}
 ---
 
 # Numina-Olympiads
