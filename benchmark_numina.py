@@ -379,7 +379,7 @@ async def main():
         os.makedirs('../augmented_datasets', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         augmented_filename = os.path.join('augmented_datasets', 
-                                        f"augmented_dataset_{args.model}_{args.dataset}_{timestamp}.json")
+                                        f"augmented_dataset_{args.solver}_{args.dataset}_{timestamp}.json")
         
         with open(augmented_filename, 'w') as f:
             json.dump(augmented_data, f, indent=2)
