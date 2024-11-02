@@ -261,14 +261,14 @@ async def main():
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
-    for i in range(0, len(example_data), 20):
-        batch = example_data[i:i + 20]
+    for i in range(0, len(example_data), 1000):
+        batch = example_data[i:i + 1000]
         # Process batch concurrently
         batch_results = await asyncio.gather(
             *[process_example(ex, ex['id'], enc, model) for ex in batch]
         )
         results.extend([r for r in batch_results if r])
-        print(f"Progress: {min(i + 20, total_examples)}/{total_examples} examples processed")
+        print(f"Progress: {min(i + 1000, total_examples)}/{total_examples} examples processed")
 
     if not results:
         print("\nNo examples were successfully processed.")
