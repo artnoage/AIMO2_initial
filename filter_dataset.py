@@ -1,9 +1,12 @@
 import os
 import argparse
-from datasets import load_dataset
+from datasets import load_dataset, Dataset, DatasetDict
+from huggingface_hub import HfApi
 from benchmark_numina import extract_answer_from_solution
 
 def main():
+    # Initialize Hugging Face API
+    api = HfApi()
     parser = argparse.ArgumentParser(description='Filter NuminaMath-CoT dataset for olympiads with valid answers')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
@@ -32,13 +35,34 @@ def main():
     filtered_dataset = olympiads_dataset.filter(has_valid_answer)
     print(f"After filtering for valid answers: {len(filtered_dataset)}")
 
-    # Save the filtered dataset
-    output_dir = "filtered_datasets"
+    # Convert to Hugging Face dataset format
+    filtered_dataset_dict = DatasetDict({
+        args.split: Dataset.from_dict({
+            'problem': filtered_dataset['problem'],
+            'solution': filtered_dataset['solution'],
+            'source': filtered_dataset['source'],
+            'answer': [extract_answer_from_solution(sol) for sol in filtered_dataset['solution']]
+        })
+    })
+
+    # Save locally first
+    output_dir = "numina_olympiads"
     os.makedirs(output_dir, exist_ok=True)
-    
-    output_path = os.path.join(output_dir, f"olympiads_{args.split}.json")
-    filtered_dataset.to_json(output_path)
-    print(f"\nFiltered dataset saved to: {output_path}")
+    filtered_dataset_dict.save_to_disk(output_dir)
+    print(f"\nDataset saved locally to: {output_dir}")
+
+    # Try to push to Hugging Face Hub
+    try:
+        # Note: This requires being logged in with huggingface-cli login
+        filtered_dataset_dict.push_to_hub(
+            "Numina-Olympiads",
+            private=True,
+            description="Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers"
+        )
+        print("\nSuccessfully pushed dataset to Hugging Face Hub as 'Numina-Olympiads'")
+    except Exception as e:
+        print(f"\nFailed to push to Hugging Face Hub: {e}")
+        print("You can still use the locally saved dataset")
 
     # Print some statistics
     print("\nSample problems from filtered dataset:")
