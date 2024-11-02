@@ -134,18 +134,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
     try:
         # Validate input data
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            print(f"Error processing example {idx}: Invalid example format")
+            print(f"Error processing example {running_id}: Invalid example format")
             return None
             
         # Extract the correct answer
         try:
             correct_answer = extract_answer_from_solution(example['solution'])
             if correct_answer is None:
-                print(f"Warning: Could not extract answer from solution for example {idx}")
+                print(f"Warning: Could not extract answer from solution for example {running_id}")
                 print(f"Solution text: {example['solution']}...")
                 return None
         except Exception as e:
-            print(f"Error extracting answer from solution for example {idx}: {str(e)}")
+            print(f"Error extracting answer from solution for example {running_id}: {str(e)}")
             return None
         # Create the chat prompt
         prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
@@ -161,7 +161,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {idx + 1}: {status}")
+        print(f"\nProblem {running_id + 1}: {status}")
         print(f"Extracted Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -179,7 +179,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         }
         
     except Exception as e:
-        print(f"Error processing example {idx}: {e}")
+        print(f"Error processing example {running_id}: {e}")
         return None
 
 async def main():
@@ -276,12 +276,12 @@ async def main():
     # Create a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(args.max_concurrent)
 
-    async def process_with_semaphore(example):
+    async def process_with_semaphore(example, running_id):
         async with semaphore:
             return await process_example(example, running_id, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
-    tasks = [process_with_semaphore(ex) for ex in example_data]
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
