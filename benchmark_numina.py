@@ -251,7 +251,7 @@ async def main():
     print(f"\nStarting processing of {total_examples} examples in batches of 8...")
 
     # Process examples in chunks of 8
-    for i in range(0, len(example_data), 8):
+    for i in range(0, len(example_data), 20):
         batch = example_data[i:i + 8]
         # Process batch concurrently
         batch_results = await asyncio.gather(
