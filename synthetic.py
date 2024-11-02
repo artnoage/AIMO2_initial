@@ -236,7 +236,7 @@ async def main():
             results.append(result)
             # Add to current batch
             augmented_example = {
-                'id': result['id'],
+                'id': dataset[result['id']]['id'],  # Use actual problem ID from dataset
                 'problem': result['problem'],
                 'partial_solution': result['partial_solution'],
                 'model_solution': result['model_solution'],

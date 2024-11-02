@@ -367,7 +367,7 @@ async def main():
         augmented_data = []
         for result in results:
             augmented_example = {
-                'id': result['id'],
+                'id': dataset[result['id']]['id'],  # Use actual problem ID from dataset
                 'problem': result['problem'],
                 'solution': dataset[result['id']]['solution'],  # Original solution
                 'model_response': result['model_solution'],  # Full model response
