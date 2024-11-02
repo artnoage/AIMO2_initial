@@ -36,16 +36,29 @@ def main():
     filtered_dataset = olympiads_dataset.filter(has_valid_answer)
     print(f"After filtering for valid answers: {len(filtered_dataset)}")
 
-    # Convert to Hugging Face dataset format
-    # Create dataset with IDs
+    # Convert to Hugging Face dataset format with explicit schema
+    from datasets import Features, Value
+    
+    features = Features({
+        'id': Value('int64'),
+        'problem': Value('string'),
+        'solution': Value('string'), 
+        'source': Value('string'),
+        'answer': Value('string')
+    })
+    
+    # Create dataset with IDs and explicit schema
     filtered_dataset_dict = DatasetDict({
-        args.split: Dataset.from_dict({
-            'id': list(range(len(filtered_dataset))),  # Add sequential IDs
-            'problem': filtered_dataset['problem'],
-            'solution': filtered_dataset['solution'],
-            'source': filtered_dataset['source'],
-            'answer': [extract_answer_from_solution(sol) for sol in filtered_dataset['solution']]
-        })
+        args.split: Dataset.from_dict(
+            {
+                'id': list(range(len(filtered_dataset))),
+                'problem': filtered_dataset['problem'],
+                'solution': filtered_dataset['solution'],
+                'source': filtered_dataset['source'],
+                'answer': [extract_answer_from_solution(sol) for sol in filtered_dataset['solution']]
+            },
+            features=features
+        )
     })
 
     # Save locally first
