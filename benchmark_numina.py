@@ -303,7 +303,7 @@ async def main():
                 
                 # Save intermediate results
                 os.makedirs('benchmark_results', exist_ok=True)
-                intermediate_filename = os.path.join('benchmark_results', 
+                intermediate_filename = os.path.join('../benchmark_results', 
                     f"benchmark_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
                 
                 # Create intermediate augmented dataset
