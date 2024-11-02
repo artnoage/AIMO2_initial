@@ -77,7 +77,7 @@ def main():
     
     dataset_info = {
         "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers in LaTeX format",
-        "citation": "@misc{numina2024,\n  author={AI-MO},\n  title={NuminaMath-CoT Dataset},\n  year={2024}\n}",
+        "citation": "@misc{numina2024,\n  author={AI-MO},\n  title={NuminaMath-CoT Dataset},\n  year={2024},\n  howpublished={\\url{https://huggingface.co/datasets/AI-MO/NuminaMath-CoT}}\n}",
         "homepage": "https://huggingface.co/datasets/AI-MO/NuminaMath-CoT",
         "license": "mit",
         "features": features_json,
@@ -91,17 +91,32 @@ def main():
         },
         "tags": [
             "mathematics",
-            "olympiads",
+            "olympiads", 
             "problem-solving",
-            "latex"
+            "latex",
+            "mathematical-reasoning",
+            "math-word-problems",
+            "olympiad-math"
+        ],
+        "task_categories": [
+            "text-generation",
+            "mathematical-reasoning"
+        ],
+        "task_ids": [
+            "math-word-problems",
+            "olympiad-math"  
         ],
         "metrics": [
             {
                 "name": "filtered_ratio",
                 "type": "ratio",
-                "value": len(filtered_dataset) / len(dataset)
+                "value": len(filtered_dataset) / len(dataset),
+                "description": "Ratio of filtered dataset size to original dataset size"
             }
-        ]
+        ],
+        "paper_authors": ["AI-MO"],
+        "dataset_size": None,
+        "config_name": args.split
     }
     
     # Save dataset_info.json
@@ -133,26 +148,40 @@ def main():
         
         # Update the dataset card
         readme_content = f"""---
-language: en
+annotations_creators:
+  - expert-generated
+language:
+  - en
+language_creators:
+  - expert-generated
 license: mit
+multilinguality:
+  - monolingual
 pretty_name: Numina-Olympiads
 size_categories:
   - 1K<n<10K
+source_datasets:
+  - AI-MO/NuminaMath-CoT
 task_categories:
   - text-generation
   - mathematical-reasoning
 task_ids:
   - math-word-problems
   - olympiad-math
+paperswithcode_id: numina-olympiads
 tags:
   - mathematics
   - olympiads
   - problem-solving
   - latex
+  - mathematical-reasoning
+  - math-word-problems
+  - olympiad-math
 metrics:
   - name: filtered_ratio
     type: ratio 
     value: {len(filtered_dataset) / len(dataset):.3f}
+    description: Ratio of filtered dataset size to original dataset size
 ---
 
 # Numina-Olympiads
