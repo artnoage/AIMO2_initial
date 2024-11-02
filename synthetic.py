@@ -138,7 +138,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'problem': example['problem'],
             'partial_solution': partial_solution,
             'correct_answer': correct_answer,
-            'model_solution': solution,
+            'model_response': solution,
             'model_answer': model_answer,
             'is_correct': is_correct
         }
@@ -249,7 +249,7 @@ async def main():
                 'problem': result['problem'],
                 'solution': example_map[result['id']]['solution'],
                 'partial_solution': result['partial_solution'],
-                'model_solution': result['model_solution'],
+                'model_response': result['model_response'],
                 'is_correct': result['is_correct']
             }
             current_batch.append(augmented_example)
