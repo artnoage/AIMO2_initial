@@ -2,6 +2,7 @@ import os
 import argparse
 from datasets import load_dataset
 import tiktoken
+from benchmark_numina import extract_answer_from_solution
 
 def count_tokens_in_messages(messages):
     """Count tokens in all messages using tiktoken"""
@@ -50,6 +51,7 @@ def main():
     tokens_0_1024 = 0
     tokens_1024_2048 = 0
     messages_with_box = 0
+    examples_with_answers = 0
     
     # Print summary
     print("\nSummary:")
@@ -78,10 +80,19 @@ def main():
                         messages_with_box += 1
                         break  # Count only once per example
                         
+    # Count examples with extractable answers
+    for idx, example in enumerate(dataset):
+        if 'solution' in example:
+            answer = extract_answer_from_solution(example['solution'])
+            if answer is not None:
+                examples_with_answers += 1
+                print(f"Example {idx + 1} answer: {answer}")
+
     print("\nToken Range Distribution:")
     print(f"0-1024 tokens: {tokens_0_1024} examples")
     print(f"1024-2048 tokens: {tokens_1024_2048} examples")
     print(f"\nExamples with \\box notation: {messages_with_box}")
+    print(f"Examples with extractable answers: {examples_with_answers}")
 
 if __name__ == "__main__":
     main()
