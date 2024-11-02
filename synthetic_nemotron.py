@@ -60,29 +60,17 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
     """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
-        print("\nSkipping comparison - one or both answers are None")
         return False
         
-    print("\n=== Answer Comparison ===")
-    print(f"Model Answer: {model_answer}")
-    print(f"Correct Answer: {correct_answer}")
-    
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given two answers to a math problem, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Are these two mathematical answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
-        print("\nAsking model to verify...")
         response = await model.ainvoke(comparison_prompt)
-        result = response.content.strip().lower() == 'yes'
-        print(f"Model's response: {response.content}")
-        print(f"Comparison result: {'Equivalent' if result else 'Different'}")
-        print("=" * 30)
-        return result
-    except Exception as e:
-        print(f"\nError during comparison: {e}")
-        print("=" * 30)
+        return response.content.strip().lower() == 'yes'
+    except Exception:
         return False
 
 def get_partial_solution(solution: str) -> str:
@@ -116,15 +104,7 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         response = await model.ainvoke(prompt)
         solution = response.content
         model_answer = extract_answer_from_solution(solution)
-
-        print(f"\n\nProcessing Problem {idx + 1}:")
-        print(f"Problem text: {example['problem'][:200]}...")
-        
         is_correct = await compare_math_answers(model_answer, correct_answer, model)
-        
-        status = '✓' if is_correct else '✗'
-        print(f"\nFinal Result for Problem {idx + 1}: {status}")
-        print("-" * 80)
         
         return {
             'id': idx,
