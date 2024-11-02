@@ -179,8 +179,8 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        # Use model to compare answers
-        is_correct = await compare_math_answers(model_answer, correct_answer, model)
+        # Compare answers using robust comparison
+        is_correct = compare_math_answers(model_answer, correct_answer)
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
