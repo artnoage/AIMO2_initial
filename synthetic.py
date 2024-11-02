@@ -112,7 +112,7 @@ def get_partial_solution(solution: str) -> str:
         return solution
     return '\n'.join(lines[:-2])
 
-async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
+async def process_example(example: Dict, idx: int, solver_model, verifier_model) -> Optional[Dict]:
     """Process a single example"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -133,10 +133,10 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
             HumanMessage(content=combined_prompt)
         ]
         
-        response = await model.ainvoke(prompt)
+        response = await solver_model.ainvoke(prompt)
         solution = response.content
         model_answer = extract_answer_from_solution(solution)
-        is_correct = await compare_math_answers(model_answer, correct_answer, model)
+        is_correct = await compare_math_answers(model_answer, correct_answer, verifier_model)
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
@@ -163,8 +163,10 @@ async def main():
     start_time = datetime.now()
     
     parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
-    parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to benchmark')
+    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
+                       default='NEMOTRON', help='Model to use for solving problems')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -197,8 +199,9 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    model = get_model(ModelOption[args.model], temp=0.1)
-    print(f"\nBenchmarking {args.model} model on {args.split} split...")
+    solver_model = get_model(ModelOption[args.solver], temp=0.1)
+    verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
+    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     example_data = [{'id': idx, 'problem': ex['problem'], 'solution': ex['solution']} 
                    for idx, ex in enumerate(dataset)]
@@ -220,7 +223,7 @@ async def main():
 
     async def process_with_semaphore(example):
         async with semaphore:
-            return await process_example(example, example['id'], model)
+            return await process_example(example, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
