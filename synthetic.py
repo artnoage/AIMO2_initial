@@ -77,14 +77,14 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None
 
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
     """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
         return False
         
     comparison_prompt = [
-        SystemMessage(content="You are a mathematical answer validator. Given two answers to a math problem, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Are these two mathematical answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
@@ -124,7 +124,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         response = await solver_model.ainvoke(prompt)
         solution = response.content
         model_answer = extract_answer_from_solution(solution)
-        is_correct = await compare_math_answers(model_answer, correct_answer, verifier_model)
+        is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
