@@ -78,11 +78,22 @@ def normalize_math_answer(answer: str) -> str:
     
     return answer
 
-def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str]) -> bool:
-    """Compare two mathematical answers after normalization"""
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
+    """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
         return False
-    return normalize_math_answer(model_answer) == normalize_math_answer(correct_answer)
+        
+    comparison_prompt = [
+        SystemMessage(content="You are a mathematical answer validator. Given two answers to a math problem, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+        HumanMessage(content=f"Are these two mathematical answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+    ]
+    
+    try:
+        response = await model.ainvoke(comparison_prompt)
+        return response.content.strip().lower() == 'yes'
+    except Exception as e:
+        print(f"Error comparing answers: {e}")
+        return False
 
 def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last two lines"""
