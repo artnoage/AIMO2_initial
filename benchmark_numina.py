@@ -304,7 +304,7 @@ async def main():
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': example_data[result['id']]['solution'],
+                'solution': next((ex['solution'] for ex in example_data if ex['id'] == result['id']), None),
                 'model_response': result['model_solution'],
                 'is_correct': result['is_correct']
             }
