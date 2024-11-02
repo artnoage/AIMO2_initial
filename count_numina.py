@@ -37,6 +37,11 @@ def main():
         print(f"{feature_name}: {feature_info}")
     print("-" * 40)
 
+    # Wait for 10 seconds to allow reading the features
+    import time
+    print("\nWaiting 10 seconds to allow reading the features...")
+    time.sleep(10)
+
     # Initialize counters
     total_examples = len(dataset)
     total_tokens = 0
