@@ -1,11 +1,13 @@
 import os
 import re
 import json
+import asyncio
 import argparse
 from enum import Enum
 from typing import Optional, List, Dict
 from datetime import datetime
 from typing import List, Dict, Optional
+from itertools import islice
 from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
@@ -117,7 +119,7 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
+async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
     """
     Process a single example:
     - Count input tokens
@@ -179,7 +181,7 @@ def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
         print(f"Error processing example {idx}: {e}")
         return None
 
-def main():
+async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
@@ -243,15 +245,21 @@ def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    # Process examples serially
+    # Process examples in parallel batches of 8
     results = []
     total_examples = len(example_data)
-    print(f"\nStarting processing of {total_examples} examples...")
+    print(f"\nStarting processing of {total_examples} examples in batches of 8...")
 
-    # Process each example
-    for i, example in enumerate(example_data):
-        try:
-            result = process_example(example, example['id'], enc, model)
+    async def process_batch(batch):
+        return await asyncio.gather(*[process_example(ex, ex['id'], enc, model) for ex in batch])
+
+    # Process in batches of 8
+    processed = 0
+    while processed < len(example_data):
+        batch = example_data[processed:processed + 8]
+        batch_results = await process_batch(batch)
+        
+        for result in batch_results:
             if result:
                 results.append(result)
                 status = '✓' if result['is_correct'] else '✗'
@@ -260,13 +268,11 @@ def main():
                 print(f"Model's Answer: {result['model_answer']}")
                 print("-" * 80)
             else:
-                print(f"Problem {example['id'] + 1}: Failed to process.")
+                print(f"Problem {processed + 1}: Failed to process.")
                 print("-" * 80)
-        except Exception as e:
-            print(f"Problem {example['id'] + 1}: Exception occurred: {e}")
-            print("-" * 80)
-        # Show progress
-        print(f"Progress: {i + 1}/{total_examples} examples processed")
+                
+        processed += len(batch)
+        print(f"Progress: {processed}/{total_examples} examples processed")
 
     if not results:
         print("\nNo examples were successfully processed.")
@@ -303,4 +309,4 @@ def main():
         print(f"Error saving results: {e}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
