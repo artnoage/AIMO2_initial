@@ -223,7 +223,7 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         print("-" * 80)
         
         # Wait for 6 seconds
-        time.sleep(6)
+        await asyncio.sleep(6)
         
         # Return the result
         return {
