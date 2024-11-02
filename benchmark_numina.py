@@ -298,12 +298,6 @@ async def main():
 
     print(f"\nBenchmarking {args.model} on {args.split} split...")
 
-    # Initialize the tokenizer for token counting
-    try:
-        enc = tiktoken.get_encoding("cl100k_base")
-    except Exception as e:
-        print(f"Error initializing tokenizer: {e}")
-        return
 
     # Prepare the list of examples to process
     example_data = []
@@ -329,7 +323,7 @@ async def main():
         batch = example_data[i:i + args.batch_size]
         # Process batch concurrently
         batch_results = await asyncio.gather(
-            *[process_example(ex, ex['id'], enc, model) for ex in batch]
+            *[process_example(ex, ex['id'], model) for ex in batch]
         )
         valid_results = [r for r in batch_results if r]
         results.extend(valid_results)
