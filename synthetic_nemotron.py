@@ -148,12 +148,12 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--batch-size', type=int, default=1,
-                       help='Batch size for concurrent processing (default: 1)')
+    parser.add_argument('--max-concurrent', type=int, default=4,
+                       help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
 
-    if args.batch_size < 1:
-        print("Error: Batch size must be at least 1")
+    if args.max_concurrent < 1:
+        print("Error: Maximum concurrent problems must be at least 1")
         return
 
     try:
@@ -182,18 +182,28 @@ async def main():
     example_data = [{'id': idx, 'problem': ex['problem'], 'solution': ex['solution']} 
                    for idx, ex in enumerate(dataset)]
     
+    # Process examples with controlled concurrency
     results = []
-    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
+    total_examples = len(example_data)
+    print(f"\nStarting processing of {total_examples} examples...")
 
-    for i in range(0, len(example_data), args.batch_size):
-        batch = example_data[i:i + args.batch_size]
-        batch_results = await asyncio.gather(
-            *[process_example(ex, ex['id'], model) for ex in batch]
-        )
-        valid_results = [r for r in batch_results if r]
-        results.extend(valid_results)
-        progress_bar.update(len(batch))
+    # Create a semaphore to limit concurrency
+    semaphore = asyncio.Semaphore(args.max_concurrent)
+
+    async def process_with_semaphore(example):
+        async with semaphore:
+            return await process_example(example, example['id'], model)
+
+    # Create tasks for all examples
+    tasks = [process_with_semaphore(ex) for ex in example_data]
     
+    # Process all examples with progress bar
+    progress_bar = tqdm(total=total_examples, desc="Processing examples")
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+        if result:
+            results.append(result)
+        progress_bar.update(1)
     progress_bar.close()
 
     if not results:
