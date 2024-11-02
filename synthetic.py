@@ -5,6 +5,7 @@ import asyncio
 import argparse
 from enum import Enum
 from typing import Optional, List, Dict
+from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data
 
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
@@ -228,12 +229,33 @@ async def main():
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
     
+    # Initialize augmented dataset filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    augmented_filename = os.path.join('augmented_datasets', 
+                                    f"synthetic_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
+    
+    # Check if user wants to proceed with augmented data handling
+    if not handle_augmented_data_file(augmented_filename):
+        print("Operation cancelled by user.")
+        return
+        
     # Process all examples with progress bar
     progress_bar = tqdm(total=total_examples, desc="Processing examples")
+    current_batch = []
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
             results.append(result)
+            # Add to current batch
+            augmented_example = {
+                'id': result['id'],
+                'problem': result['problem'],
+                'partial_solution': result['partial_solution'],
+                'model_solution': result['model_solution'],
+                'is_correct': result['is_correct']
+            }
+            current_batch.append(augmented_example)
+            
             # Save intermediate results every 2000 points
             if len(results) % 2000 == 0:
                 current_error_rate = calculate_error_rate(results)
@@ -256,6 +278,11 @@ async def main():
                 with open(intermediate_filename, 'w') as f:
                     json.dump(output_data, f, indent=2)
                 print(f"Saved intermediate results to {intermediate_filename}")
+                
+                # Save current batch of augmented data
+                if current_batch:
+                    save_augmented_data(current_batch, augmented_filename, len(results))
+                    current_batch = []
         progress_bar.update(1)
     progress_bar.close()
 
