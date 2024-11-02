@@ -30,7 +30,7 @@ def main():
         if 'solution' not in example:
             return False
         answer = extract_answer_from_solution(example['solution'])
-        return answer is not None
+        return answer is not None and answer.strip() != ""
 
     filtered_dataset = olympiads_dataset.filter(has_valid_answer)
     print(f"After filtering for valid answers: {len(filtered_dataset)}")
