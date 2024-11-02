@@ -191,14 +191,17 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    # Create example data with dataset IDs
+    # Create example data with dataset IDs and build lookup map
     example_data = []
+    example_map = {}
     for ex in dataset:
-        example_data.append({
+        example = {
             'id': ex['id'],
             'problem': ex['problem'],
             'solution': ex['solution']
-        })
+        }
+        example_data.append(example)
+        example_map[ex['id']] = example
     
     def calculate_error_rate(results):
         if not results:
@@ -244,7 +247,7 @@ async def main():
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': example_data[result['id']]['solution'],
+                'solution': example_map[result['id']]['solution'],
                 'partial_solution': result['partial_solution'],
                 'model_solution': result['model_solution'],
                 'is_correct': result['is_correct']
