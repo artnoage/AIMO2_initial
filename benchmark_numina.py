@@ -365,7 +365,7 @@ async def main():
     os.makedirs('benchmark_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_filename = os.path.join('benchmark_results', 
-                                  f"benchmark_{args.solver}_{args.verifier}_{timestamp}.json")
+                                  f"benchmark_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
