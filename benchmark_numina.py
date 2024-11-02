@@ -121,13 +121,14 @@ def save_results(results: list, model_name: str):
 
 async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
     """
-    Process a single example:
+    Process a single example and print its results immediately:
     - Count input tokens
     - Extract the correct answer from the solution
     - Generate the solution using the model
     - Extract the model's answer
     - Count output tokens
     - Determine correctness
+    - Print results
     """
     try:
         # Validate input data
@@ -165,7 +166,14 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         # Count output tokens
         output_tokens = len(enc.encode(solution))
         
-        # Compile the result
+        # Print results immediately
+        status = '✓' if is_correct else '✗'
+        print(f"\nProblem {idx + 1}: {status}")
+        print(f"Extracted Answer: {correct_answer}")
+        print(f"Model's Answer: {model_answer}")
+        print("-" * 80)
+
+        # Return the result
         return {
             'id': idx,
             'problem': example['problem'],
@@ -245,32 +253,18 @@ async def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    # Process examples in parallel batches of 8
+    # Process all examples concurrently in batches of 8
     results = []
     total_examples = len(example_data)
-    print(f"\nStarting processing of {total_examples} examples in batches of 8...")
+    print(f"\nStarting processing of {total_examples} examples...")
 
-    # Process examples in chunks of 8
-    for i in range(0, len(example_data), 20):
+    for i in range(0, len(example_data), 8):
         batch = example_data[i:i + 8]
         # Process batch concurrently
         batch_results = await asyncio.gather(
             *[process_example(ex, ex['id'], enc, model) for ex in batch]
         )
-        
-        # Process results from this batch
-        for result in batch_results:
-            if result:
-                results.append(result)
-                status = '✓' if result['is_correct'] else '✗'
-                print(f"\nProblem {result['id'] + 1}: {status}")
-                print(f"Extracted Answer: {result['correct_answer']}")
-                print(f"Model's Answer: {result['model_answer']}")
-                print("-" * 80)
-            else:
-                print(f"Problem {i + batch_results.index(result) + 1}: Failed to process.")
-                print("-" * 80)
-        
+        results.extend([r for r in batch_results if r])
         print(f"Progress: {min(i + 8, total_examples)}/{total_examples} examples processed")
 
     if not results:
