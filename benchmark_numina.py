@@ -92,11 +92,11 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     for start in boxed_starts:
         end = find_matching_brace(solution, start + 6)  # 6 is length of '\boxed{'
         if end != -1:
-            # Extract content between braces
+            # Extract content between braces without adding any braces
             content = solution[start + 6:end].strip()
-            # Only add braces if they're not already present
-            if not (content.startswith('{') and content.endswith('}')):
-                content = "{" + content + "}"
+            # Remove any existing braces
+            if content.startswith('{') and content.endswith('}'):
+                content = content[1:-1].strip()
             return content
     
     return None
