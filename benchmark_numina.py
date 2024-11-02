@@ -153,7 +153,7 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         # Generate the solution using the model
-        response = model.ainvoke(prompt)  # Synchronous invoke
+        response = await model.ainvoke(prompt)  # Await the async response
         solution = response.content
         
         # Extract the model's answer from the solution
