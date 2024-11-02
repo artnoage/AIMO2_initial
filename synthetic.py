@@ -191,8 +191,15 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    example_data = [{'id': ex['id'], 'problem': ex['problem'], 'solution': ex['solution']} 
-                   for ex in dataset]
+    # Create example data with both running index and original id
+    example_data = []
+    for idx, ex in enumerate(dataset):
+        example_data.append({
+            'running_id': idx,
+            'original_id': ex['id'],
+            'problem': ex['problem'],
+            'solution': ex['solution']
+        })
     
     def calculate_error_rate(results):
         if not results:
@@ -211,7 +218,7 @@ async def main():
 
     async def process_with_semaphore(example):
         async with semaphore:
-            return await process_example(example, example['id'], solver_model, verifier_model)
+            return await process_example(example, example['running_id'], solver_model, verifier_model)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
@@ -236,7 +243,7 @@ async def main():
             results.append(result)
             # Add to current batch
             augmented_example = {
-                'id': dataset[result['id']]['id'],  # Use actual problem ID from dataset
+                'id': result['original_id'],  # Use the stored original ID
                 'problem': result['problem'],
                 'partial_solution': result['partial_solution'],
                 'model_solution': result['model_solution'],
