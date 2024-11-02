@@ -50,6 +50,35 @@ def main():
     # Save locally first
     output_dir = "numina_olympiads"
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Create dataset_info.json
+    dataset_info = {
+        "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers",
+        "citation": "",
+        "homepage": "",
+        "license": "mit",
+        "features": {
+            "id": {"dtype": "int32", "_type": "Value"},
+            "problem": {"dtype": "string", "_type": "Value"},
+            "solution": {"dtype": "string", "_type": "Value"},
+            "source": {"dtype": "string", "_type": "Value"},
+            "answer": {"dtype": "string", "_type": "Value"}
+        },
+        "splits": {
+            args.split: {
+                "name": args.split,
+                "num_bytes": None,
+                "num_examples": len(filtered_dataset),
+                "dataset_name": "Numina-Olympiads"
+            }
+        }
+    }
+    
+    # Save dataset_info.json
+    with open(os.path.join(output_dir, "dataset_info.json"), "w") as f:
+        json.dump(dataset_info, f, indent=2)
+    
+    # Save the dataset
     filtered_dataset_dict.save_to_disk(output_dir)
     print(f"\nDataset saved locally to: {output_dir}")
 
