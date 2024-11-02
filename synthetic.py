@@ -191,11 +191,11 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    # Create example data with sequential IDs
+    # Create example data with dataset IDs
     example_data = []
-    for idx, ex in enumerate(dataset):
+    for ex in dataset:
         example_data.append({
-            'id': idx,
+            'id': ex['id'],
             'problem': ex['problem'],
             'solution': ex['solution']
         })

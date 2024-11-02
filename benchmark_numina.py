@@ -249,9 +249,9 @@ async def main():
 
     # Prepare the list of examples to process
     example_data = []
-    for idx, example in enumerate(dataset):
+    for example in dataset:
         processed = {
-            'id': idx,  # Generate sequential ID
+            'id': example['id'],  # Use dataset ID
             'problem': example['problem'],
             'solution': example['solution']
         }
