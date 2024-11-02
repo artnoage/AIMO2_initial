@@ -264,8 +264,6 @@ async def main():
     if args.batch_size < 1:
         print("Error: Batch size must be at least 1")
         return
-    if args.batch_size > 20:
-        print("Warning: Large batch sizes may cause memory issues")
     args = parser.parse_args()
 
     # Load the dataset based on selection
