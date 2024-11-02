@@ -231,7 +231,7 @@ async def main():
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    augmented_filename = os.path.join('../augmented_datasets', 
+    augmented_filename = os.path.join('augmented_datasets', 
                                     f"synthetic_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
@@ -267,7 +267,7 @@ async def main():
                 print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
                 
                 # Save intermediate results
-                intermediate_filename = os.path.join('../synthetic_results', 
+                intermediate_filename = os.path.join('synthetic_results', 
                     f"synthetic_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
                 output_data = {
                     'results': results,
@@ -300,9 +300,9 @@ async def main():
     print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
 
     # Save results
-    os.makedirs('../synthetic_results', exist_ok=True)
+    os.makedirs('synthetic_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('../synthetic_results', f"synthetic_nemotron_{timestamp}.json")
+    results_filename = os.path.join('synthetic_results', f"synthetic_nemotron_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
