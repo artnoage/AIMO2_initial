@@ -310,9 +310,33 @@ async def main():
     else:
         print("No examples were successfully processed.")
 
-    # Save the results to a JSON file
+    # Save the results to JSON files
     try:
+        # Save benchmark results
         save_results(results, args.model)
+        
+        # Create augmented dataset
+        augmented_data = []
+        for result in results:
+            augmented_example = {
+                'id': result['id'],
+                'problem': result['problem'],
+                'solution': dataset[result['id']]['solution'],  # Original solution
+                'model_answer': result['model_answer'],
+                'is_correct': result['is_correct']
+            }
+            augmented_data.append(augmented_example)
+            
+        # Save augmented dataset
+        os.makedirs('augmented_datasets', exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        augmented_filename = os.path.join('augmented_datasets', 
+                                        f"augmented_dataset_{args.model}_{args.dataset}_{timestamp}.json")
+        
+        with open(augmented_filename, 'w') as f:
+            json.dump(augmented_data, f, indent=2)
+        print(f"\nAugmented dataset saved to {augmented_filename}")
+        
     except Exception as e:
         print(f"Error saving results: {e}")
 
