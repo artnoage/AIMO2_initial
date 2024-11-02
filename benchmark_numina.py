@@ -120,7 +120,7 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     except Exception:
         return False
 
-async def process_example(example: Dict, idx: int, solver_model, verifier_model) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -168,7 +168,7 @@ async def process_example(example: Dict, idx: int, solver_model, verifier_model)
         
         # Return the result
         return {
-            'id': idx,
+            'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'model_solution': solution,
@@ -278,7 +278,7 @@ async def main():
 
     async def process_with_semaphore(example):
         async with semaphore:
-            return await process_example(example, example['id'], solver_model, verifier_model)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
