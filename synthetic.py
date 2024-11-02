@@ -234,7 +234,7 @@ async def main():
         result = await coro
         if result:
             results.append(result)
-            # Calculate error rate every 2000 points
+            # Save intermediate results every 2000 points
             if len(results) % 2000 == 0:
                 current_error_rate = calculate_error_rate(results)
                 error_rate_points.append({
@@ -243,6 +243,19 @@ async def main():
                     'timestamp': datetime.now().isoformat()
                 })
                 print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+                
+                # Save intermediate results
+                intermediate_filename = os.path.join('synthetic_results', 
+                    f"synthetic_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
+                output_data = {
+                    'results': results,
+                    'error_rate_points': error_rate_points,
+                    'current_error_rate': current_error_rate
+                }
+                os.makedirs('synthetic_results', exist_ok=True)
+                with open(intermediate_filename, 'w') as f:
+                    json.dump(output_data, f, indent=2)
+                print(f"Saved intermediate results to {intermediate_filename}")
         progress_bar.update(1)
     progress_bar.close()
 

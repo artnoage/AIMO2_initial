@@ -268,6 +268,33 @@ async def main():
         result = await coro
         if result:
             results.append(result)
+            # Save intermediate results every 2000 points
+            if len(results) % 2000 == 0:
+                correct_count = sum(1 for r in results if r['is_correct'])
+                current_accuracy = (correct_count / len(results)) * 100
+                print(f"\nIntermediate Accuracy at {len(results)} examples: {current_accuracy:.2f}%")
+                
+                # Save intermediate results
+                os.makedirs('benchmark_results', exist_ok=True)
+                intermediate_filename = os.path.join('benchmark_results', 
+                    f"benchmark_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
+                
+                # Create intermediate augmented dataset
+                augmented_data = []
+                for res in results:
+                    augmented_example = {
+                        'id': res['id'],
+                        'problem': res['problem'],
+                        'solution': dataset[res['id']]['solution'],
+                        'model_response': res['model_solution'],
+                        'is_correct': res['is_correct']
+                    }
+                    augmented_data.append(augmented_example)
+                
+                with open(intermediate_filename, 'w') as f:
+                    json.dump(augmented_data, f, indent=2)
+                print(f"Saved intermediate results to {intermediate_filename}")
+                
         progress_bar.update(1)
     progress_bar.close()
 
