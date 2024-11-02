@@ -271,8 +271,8 @@ async def main():
     print(f"\nStarting processing of {total_examples} examples...")
 
     progress_bar = tqdm(total=total_examples, desc="Processing examples")
-    for i in range(0, len(example_data), 1000):
-        batch = example_data[i:i + 1000]
+    for i in range(0, len(example_data), 500):
+        batch = example_data[i:i + 500]
         # Process batch concurrently
         batch_results = await asyncio.gather(
             *[process_example(ex, ex['id'], enc, model) for ex in batch]
