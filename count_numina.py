@@ -29,6 +29,14 @@ def main():
         print(f"Error loading dataset: {e}")
         return
 
+    # Print dataset features
+    print("\nDataset Features:")
+    print("-" * 40)
+    features = dataset.features
+    for feature_name, feature_info in features.items():
+        print(f"{feature_name}: {feature_info}")
+    print("-" * 40)
+
     # Initialize counters
     total_examples = len(dataset)
     total_tokens = 0
