@@ -100,11 +100,11 @@ def get_partial_solution(solution: str) -> str:
         return solution
     return '\n'.join(lines[:-2])
 
-async def process_example(example: Dict, idx: int, solver_model, verifier_model) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, solver_model, verifier_model) -> Optional[Dict]:
     """Process a single example"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            print(f"Error processing example {idx}: Invalid example format")
+            print(f"Error processing example {running_id}: Invalid example format")
             return None
             
         correct_answer = extract_answer_from_solution(example['solution'])
@@ -191,12 +191,11 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    # Create example data with both running index and original id
+    # Create example data with sequential IDs
     example_data = []
     for idx, ex in enumerate(dataset):
         example_data.append({
-            'running_id': idx,
-            'original_id': ex['id'],
+            'id': idx,
             'problem': ex['problem'],
             'solution': ex['solution']
         })
@@ -218,7 +217,7 @@ async def main():
 
     async def process_with_semaphore(example):
         async with semaphore:
-            return await process_example(example, example['running_id'], solver_model, verifier_model)
+            return await process_example(example, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
@@ -243,7 +242,7 @@ async def main():
             results.append(result)
             # Add to current batch
             augmented_example = {
-                'id': result['original_id'],  # Use the stored original ID
+                'id': result['id'],
                 'problem': result['problem'],
                 'partial_solution': result['partial_solution'],
                 'model_solution': result['model_solution'],
