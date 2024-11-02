@@ -106,7 +106,7 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     except Exception:
         return False
 
-async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
+async def process_example(example: Dict, idx: int, solver_model, verifier_model) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -137,13 +137,13 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         # Generate the solution using the model
-        response = await model.ainvoke(prompt)  # Await the async response
+        response = await solver_model.ainvoke(prompt)  # Await the async response
         solution = response.content
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
         # Compare answers using model verification
-        is_correct = await compare_math_answers(model_answer, correct_answer, model)
+        is_correct = await compare_math_answers(model_answer, correct_answer, verifier_model)
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
@@ -174,8 +174,10 @@ async def main():
     
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
-    parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
-                       default='NOUS', help='Model to benchmark')
+    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
+                       default='NOUS', help='Model to use for solving problems')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='NOUS', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -220,14 +222,15 @@ async def main():
         print("Error: Dataset is empty! Check your source filter and split arguments.")
         return
 
-    # Initialize the model
+    # Initialize the models
     try:
-        model = get_model(ModelOption[args.model])
+        solver_model = get_model(ModelOption[args.solver])
+        verifier_model = get_model(ModelOption[args.verifier])
     except Exception as e:
-        print(f"Error initializing model: {e}")
+        print(f"Error initializing models: {e}")
         return
 
-    print(f"\nBenchmarking {args.model} on {args.split} split...")
+    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
 
     # Prepare the list of examples to process
@@ -254,7 +257,7 @@ async def main():
 
     async def process_with_semaphore(example):
         async with semaphore:
-            return await process_example(example, example['id'], model)
+            return await process_example(example, example['id'], solver_model, verifier_model)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex) for ex in example_data]
