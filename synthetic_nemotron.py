@@ -68,7 +68,11 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     ]
     
     try:
+        print(f"\nVerification Question:")
+        print(f"Answer 1: {model_answer}")
+        print(f"Answer 2: {correct_answer}")
         response = await model.ainvoke(comparison_prompt)
+        print(f"Model's verification response: {response.content}")
         return response.content.strip().lower() == 'yes'
     except Exception as e:
         print(f"Error comparing answers: {e}")
