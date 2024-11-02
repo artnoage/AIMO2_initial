@@ -16,7 +16,6 @@ from datasets import load_dataset
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
-import tiktoken
 from tqdm import tqdm
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
@@ -121,7 +120,60 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
+def normalize_math_answer(answer: str) -> str:
+    """
+    Normalize a mathematical answer for comparison by:
+    - Removing all whitespace
+    - Converting to lowercase
+    - Removing LaTeX formatting commands
+    - Normalizing common mathematical notations
+    """
+    if not answer:
+        return ""
+    
+    # Remove all whitespace
+    answer = ''.join(answer.split())
+    
+    # Convert to lowercase
+    answer = answer.lower()
+    
+    # Remove common LaTeX commands
+    latex_commands = [r'\text', r'\left', r'\right', r'\begin', r'\end', 
+                     r'\frac', r'\sqrt', r'\cdot']
+    for cmd in latex_commands:
+        answer = answer.replace(cmd, '')
+    
+    # Normalize mathematical notations
+    replacements = {
+        '{': '',
+        '}': '',
+        '\\': '',
+        '÷': '/',
+        '×': '*',
+        '⋅': '*',
+        '−': '-',
+        '–': '-',
+        '—': '-',
+    }
+    for old, new in replacements.items():
+        answer = answer.replace(old, new)
+    
+    return answer
+
+def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str]) -> bool:
+    """
+    Compare two mathematical answers after normalization.
+    Returns True if they are equivalent, False otherwise.
+    """
+    if model_answer is None or correct_answer is None:
+        return False
+    
+    normalized_model = normalize_math_answer(model_answer)
+    normalized_correct = normalize_math_answer(correct_answer)
+    
+    return normalized_model == normalized_correct
+
+async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -138,10 +190,6 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
             print(f"Error processing example {idx}: Invalid example format")
             return None
             
-        # Prepare the input text
-        input_text = f"{SYSTEM_PROMPT}\n{example['problem']}"
-        input_tokens = len(enc.encode(input_text))
-        
         # Extract the correct answer
         try:
             correct_answer = extract_answer_from_solution(example['solution'])
@@ -161,12 +209,8 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        # Check if model_answer is contained within correct_answer
-        is_correct = (model_answer is not None and 
-                     str(model_answer).strip() in str(correct_answer).strip())
-        
-        # Count output tokens
-        output_tokens = len(enc.encode(solution))
+        # Compare answers using robust comparison
+        is_correct = compare_math_answers(model_answer, correct_answer)
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
@@ -183,8 +227,8 @@ async def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]
             'model_solution': solution,
             'model_answer': model_answer,
             'is_correct': is_correct,
-            'input_tokens': input_tokens,
-            'output_tokens': output_tokens
+            'normalized_model_answer': normalize_math_answer(model_answer) if model_answer else None,
+            'normalized_correct_answer': normalize_math_answer(correct_answer) if correct_answer else None
         }
         
     except Exception as e:
@@ -208,6 +252,14 @@ async def main():
                        help='Dataset to use: original (AI-MO/NuminaMath-CoT) or filtered (Numina-Olympiads)')
     parser.add_argument('--batch-size', type=int, default=1,
                        help='Batch size for concurrent processing (default: 1)')
+    args = parser.parse_args()
+
+    # Validate batch size
+    if args.batch_size < 1:
+        print("Error: Batch size must be at least 1")
+        return
+    if args.batch_size > 20:
+        print("Warning: Large batch sizes may cause memory issues")
     args = parser.parse_args()
 
     # Load the dataset based on selection
@@ -293,8 +345,6 @@ async def main():
 
     # Calculate final statistics
     correct_count = sum(1 for r in results if r['is_correct'])
-    total_input_tokens = sum(r['input_tokens'] for r in results)
-    total_output_tokens = sum(r['output_tokens'] for r in results)
 
     # Print final results
     print("\n\nFinal Results:")
@@ -302,13 +352,7 @@ async def main():
     
     if len(results) > 0:
         accuracy = (correct_count / len(results)) * 100
-        avg_input_tokens = total_input_tokens / len(results)
-        avg_output_tokens = total_output_tokens / len(results)
         print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
-        print(f"Total input tokens: {total_input_tokens}")
-        print(f"Total output tokens: {total_output_tokens}")
-        print(f"Average input tokens per problem: {avg_input_tokens:.1f}")
-        print(f"Average output tokens per problem: {avg_output_tokens:.1f}")
     else:
         print("No examples were successfully processed.")
 
