@@ -204,8 +204,8 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    example_data = [{'id': idx, 'problem': ex['problem'], 'solution': ex['solution']} 
-                   for idx, ex in enumerate(dataset)]
+    example_data = [{'id': ex['id'], 'problem': ex['problem'], 'solution': ex['solution']} 
+                   for ex in dataset]
     
     def calculate_error_rate(results):
         if not results:
@@ -299,10 +299,10 @@ async def main():
     print(f"Total examples processed: {len(results)}")
     print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
 
-    # Save results
+    # Save final results
     os.makedirs('synthetic_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('synthetic_results', f"synthetic_nemotron_{timestamp}.json")
+    results_filename = os.path.join('synthetic_results', f"synthetic_{args.solver}_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
@@ -313,6 +313,10 @@ async def main():
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
     print(f"\nResults saved to {results_filename}")
+    
+    # Save final augmented data batch
+    if current_batch:
+        save_augmented_data(current_batch, augmented_filename, len(results))
     
     # Print error rate progression
     print("\nError Rate Progression:")
