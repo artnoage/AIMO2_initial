@@ -17,6 +17,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
 from tqdm import tqdm
+import time
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
@@ -220,7 +221,10 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         print(f"Extracted Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
-
+        
+        # Wait for 6 seconds
+        time.sleep(6)
+        
         # Return the result
         return {
             'id': idx,
