@@ -82,7 +82,7 @@ def save_results(results: list, model_name: str):
     Save the benchmarking results to a JSON file within the benchmark_results directory.
     The filename includes the model name and a timestamp for uniqueness.
     """
-    os.makedirs('benchmark_results', exist_ok=True)
+    os.makedirs('../benchmark_results', exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join('benchmark_results', f"benchmark_results_{model_name}_{timestamp}.json")
@@ -265,7 +265,7 @@ async def main():
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    augmented_filename = os.path.join('augmented_datasets', 
+    augmented_filename = os.path.join('../augmented_datasets', 
                                     f"benchmark_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
@@ -303,7 +303,7 @@ async def main():
                 
                 # Save intermediate results
                 os.makedirs('benchmark_results', exist_ok=True)
-                intermediate_filename = os.path.join('benchmark_results', 
+                intermediate_filename = os.path.join('../benchmark_results', 
                     f"benchmark_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
                 
                 # Create intermediate augmented dataset
@@ -363,7 +363,7 @@ async def main():
             augmented_data.append(augmented_example)
             
         # Save augmented dataset
-        os.makedirs('augmented_datasets', exist_ok=True)
+        os.makedirs('../augmented_datasets', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         augmented_filename = os.path.join('augmented_datasets', 
                                         f"augmented_dataset_{args.model}_{args.dataset}_{timestamp}.json")
