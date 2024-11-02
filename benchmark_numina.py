@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data
-from .synthetic import ModelOption  # Import ModelOption from synthetic.py
+from utils.utils import ModelOption
 
 def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
     """Load intermediate results from saved JSON files"""
