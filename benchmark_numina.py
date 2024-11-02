@@ -160,8 +160,8 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
             'model_solution': solution,
             'model_answer': model_answer,
             'is_correct': is_correct,
-            'normalized_model_answer': normalize_math_answer(model_answer) if model_answer else None,
-            'normalized_correct_answer': normalize_math_answer(correct_answer) if correct_answer else None
+            'model_answer_raw': model_answer,
+            'correct_answer_raw': correct_answer
         }
         
     except Exception as e:
