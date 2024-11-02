@@ -331,12 +331,12 @@ async def main():
             with open(intermediate_filename, 'w') as f:
                 json.dump(output_data, f, indent=2)
             print(f"Saved intermediate results to {intermediate_filename}")
-                
-                # Save current batch of augmented data
-                if current_batch:
-                    save_augmented_data(current_batch, augmented_filename, len(results))
-                    current_batch = []
-                
+            
+            # Save current batch of augmented data
+            if current_batch:
+                save_augmented_data(current_batch, augmented_filename, len(results))
+                current_batch = []
+            
         progress_bar.update(1)
     progress_bar.close()
 
