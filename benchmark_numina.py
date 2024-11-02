@@ -169,8 +169,9 @@ def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        # Compare answers as strings to handle all types
-        is_correct = model_answer is not None and str(model_answer).strip() == str(correct_answer).strip()
+        # Check if model_answer is contained within correct_answer
+        is_correct = (model_answer is not None and 
+                     str(model_answer).strip() in str(correct_answer).strip())
         
         # Count output tokens
         output_tokens = len(enc.encode(solution))
