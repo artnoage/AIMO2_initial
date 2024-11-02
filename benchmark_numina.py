@@ -206,6 +206,8 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered'],
                        help='Dataset to use: original (AI-MO/NuminaMath-CoT) or filtered (Numina-Olympiads)')
+    parser.add_argument('--batch-size', type=int, default=1,
+                       help='Batch size for concurrent processing (default: 1)')
     args = parser.parse_args()
 
     # Load the dataset based on selection
@@ -271,8 +273,8 @@ async def main():
     print(f"\nStarting processing of {total_examples} examples...")
 
     progress_bar = tqdm(total=total_examples, desc="Processing examples")
-    for i in range(0, len(example_data), 500):
-        batch = example_data[i:i + 500]
+    for i in range(0, len(example_data), args.batch_size):
+        batch = example_data[i:i + args.batch_size]
         # Process batch concurrently
         batch_results = await asyncio.gather(
             *[process_example(ex, ex['id'], enc, model) for ex in batch]
