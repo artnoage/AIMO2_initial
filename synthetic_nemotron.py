@@ -56,27 +56,6 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             return solution[start + 1:end].strip()
     return None
 
-def normalize_math_answer(answer: str) -> str:
-    """Normalize mathematical answer for comparison"""
-    if not answer:
-        return ""
-    
-    answer = ''.join(answer.split())
-    answer = answer.lower()
-    
-    latex_commands = [r'\text', r'\left', r'\right', r'\begin', r'\end', 
-                     r'\frac', r'\sqrt', r'\cdot']
-    for cmd in latex_commands:
-        answer = answer.replace(cmd, '')
-    
-    replacements = {
-        '{': '', '}': '', '\\': '', '÷': '/',
-        '×': '*', '⋅': '*', '−': '-', '–': '-', '—': '-',
-    }
-    for old, new in replacements.items():
-        answer = answer.replace(old, new)
-    
-    return answer
 
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
     """Use the model to compare two mathematical answers"""
@@ -126,7 +105,7 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         response = await model.ainvoke(prompt)
         solution = response.content
         model_answer = extract_answer_from_solution(solution)
-        is_correct = compare_math_answers(model_answer, correct_answer)
+        is_correct = compare_math_answers(model_answer, correct_answer,model)
         
         status = '✓' if is_correct else '✗'
         print(f"\nProblem {idx + 1}: {status}")
@@ -141,9 +120,7 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
             'correct_answer': correct_answer,
             'model_solution': solution,
             'model_answer': model_answer,
-            'is_correct': is_correct,
-            'normalized_model_answer': normalize_math_answer(model_answer) if model_answer else None,
-            'normalized_correct_answer': normalize_math_answer(correct_answer) if correct_answer else None
+            'is_correct': is_correct
         }
         
     except Exception as e:
