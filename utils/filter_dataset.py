@@ -2,7 +2,7 @@ import os
 import argparse
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
-from benchmark_numina import extract_answer_from_solution
+from utils.utils import extract_answer_from_solution
 
 def main():
     # Initialize Hugging Face API
