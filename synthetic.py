@@ -204,7 +204,7 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
-    example_data = [{'id': int(dataset[idx]['id']), 'problem': ex['problem'], 'solution': ex['solution']} 
+    example_data = [{'id': idx, 'problem': ex['problem'], 'solution': ex['solution']} 
                    for idx, ex in enumerate(dataset)]
     
     def calculate_error_rate(results):
