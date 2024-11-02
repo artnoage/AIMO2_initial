@@ -71,13 +71,7 @@ def main():
         "citation": "",
         "homepage": "",
         "license": "mit",
-        "features": {
-            "id": {"dtype": "int32", "_type": "Value"},
-            "problem": {"dtype": "string", "_type": "Value"},
-            "solution": {"dtype": "string", "_type": "Value"},
-            "source": {"dtype": "string", "_type": "Value"},
-            "answer": {"dtype": "string", "_type": "Value"}
-        },
+        "features": features,  # Use the same features object defined above
         "splits": {
             args.split: {
                 "name": args.split,
