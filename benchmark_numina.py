@@ -17,6 +17,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
 import tiktoken
+from tqdm import tqdm
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
@@ -269,14 +270,17 @@ async def main():
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
+    progress_bar = tqdm(total=total_examples, desc="Processing examples")
     for i in range(0, len(example_data), 1000):
         batch = example_data[i:i + 1000]
         # Process batch concurrently
         batch_results = await asyncio.gather(
             *[process_example(ex, ex['id'], enc, model) for ex in batch]
         )
-        results.extend([r for r in batch_results if r])
-        print(f"Progress: {min(i + 1000, total_examples)}/{total_examples} examples processed")
+        valid_results = [r for r in batch_results if r]
+        results.extend(valid_results)
+        progress_bar.update(len(batch))
+    progress_bar.close()
 
     if not results:
         print("\nNo examples were successfully processed.")
