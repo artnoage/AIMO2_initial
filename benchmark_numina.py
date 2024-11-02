@@ -310,8 +310,8 @@ async def main():
             }
             current_batch.append(augmented_example)
             
-            # Save intermediate results every 2000 points
-            if len(results) % 2000 == 0:
+            # Save intermediate results every 100 points
+            if len(results) % 100 == 0:
                 current_error_rate = calculate_error_rate(results)
                 error_rate_points.append({
                     'examples_processed': len(results),
