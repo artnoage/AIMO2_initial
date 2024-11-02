@@ -362,7 +362,7 @@ async def main():
                 'id': result['id'],
                 'problem': result['problem'],
                 'solution': dataset[result['id']]['solution'],  # Original solution
-                'model_answer': result['model_answer'],
+                'model_response': result['model_solution'],  # Full model response
                 'is_correct': result['is_correct']
             }
             augmented_data.append(augmented_example)
