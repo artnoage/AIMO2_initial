@@ -33,14 +33,16 @@ class ModelOption(Enum):
     LOCAL = "mistralai/Mathstral-7B-v0.1"
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
+    NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
 
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, solve it step by step, 
+SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
+the tools you have to use. After, solve it step by step, 
 showing your work clearly. Make sure to:
 - Explain your reasoning at each step
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
-Never ask for confirmation. Just provide your final answer inside \\boxed{}"""
+In the end provide your final answer inside \\boxed{}"""
 
 def get_model(model: ModelOption, temp: float = 0.1):
     """
