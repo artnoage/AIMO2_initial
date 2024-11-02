@@ -36,8 +36,10 @@ def main():
     print(f"After filtering for valid answers: {len(filtered_dataset)}")
 
     # Convert to Hugging Face dataset format
+    # Create dataset with IDs
     filtered_dataset_dict = DatasetDict({
         args.split: Dataset.from_dict({
+            'id': list(range(len(filtered_dataset))),  # Add sequential IDs
             'problem': filtered_dataset['problem'],
             'solution': filtered_dataset['solution'],
             'source': filtered_dataset['source'],
