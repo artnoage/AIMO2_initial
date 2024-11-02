@@ -17,7 +17,7 @@ def count_tokens_in_messages(messages):
 
 def main():
     parser = argparse.ArgumentParser(description='Count tokens in NuminaMath-CoT dataset messages')
-    parser.add_argument('--split', type=str, default='test',
+    parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     args = parser.parse_args()
 
