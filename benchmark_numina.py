@@ -15,6 +15,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from datasets import load_dataset
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
+from huggingface_hub import HfApi
 import tiktoken
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
@@ -201,11 +202,18 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
+    parser.add_argument('--dataset', type=str, default='filtered',
+                       choices=['original', 'filtered'],
+                       help='Dataset to use: original (AI-MO/NuminaMath-CoT) or filtered (Numina-Olympiads)')
     args = parser.parse_args()
 
-    # Load the dataset
+    # Load the dataset based on selection
     try:
-        dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        if args.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        else:  # filtered
+            username = HfApi().whoami()["name"]
+            dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
