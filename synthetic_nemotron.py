@@ -60,22 +60,29 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
     """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
+        print("\nSkipping comparison - one or both answers are None")
         return False
         
+    print("\n=== Answer Comparison ===")
+    print(f"Model Answer: {model_answer}")
+    print(f"Correct Answer: {correct_answer}")
+    
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given two answers to a math problem, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Are these two mathematical answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
-        print(f"\nVerification Question:")
-        print(f"Answer 1: {model_answer}")
-        print(f"Answer 2: {correct_answer}")
+        print("\nAsking model to verify...")
         response = await model.ainvoke(comparison_prompt)
-        print(f"Model's verification response: {response.content}")
-        return response.content.strip().lower() == 'yes'
+        result = response.content.strip().lower() == 'yes'
+        print(f"Model's response: {response.content}")
+        print(f"Comparison result: {'Equivalent' if result else 'Different'}")
+        print("=" * 30)
+        return result
     except Exception as e:
-        print(f"Error comparing answers: {e}")
+        print(f"\nError during comparison: {e}")
+        print("=" * 30)
         return False
 
 def get_partial_solution(solution: str) -> str:
