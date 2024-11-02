@@ -216,13 +216,6 @@ def main():
     if num_examples == 0:
         print("Error: Dataset is empty! Check your source filter and split arguments.")
         return
-        
-    print("\nAvailable keys in each example:")
-    example = dataset[0]
-    for key in example.keys():
-        print(f"- {key}: {type(example[key]).__name__}")
-        if isinstance(example[key], str):
-            print(f"  Sample value: {example[key][:100]}...")
 
     # Initialize the model
     try:
