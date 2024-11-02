@@ -300,11 +300,11 @@ async def main():
         result = await coro
         if result:
             results.append(result)
-            # Add to current batch
+            # Add to current batch using data we already have
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': dataset[result['id']]['solution'],
+                'solution': example_data[result['id']]['solution'],
                 'model_response': result['model_solution'],
                 'is_correct': result['is_correct']
             }
