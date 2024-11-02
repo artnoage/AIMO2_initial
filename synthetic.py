@@ -307,7 +307,12 @@ async def main():
     output_data = {
         'results': results,
         'error_rate_points': error_rate_points,
-        'final_error_rate': calculate_error_rate(results)
+        'final_error_rate': calculate_error_rate(results),
+        'accuracy': {
+            'correct_count': correct_count,
+            'total_count': len(results),
+            'accuracy_percentage': (correct_count / len(results) * 100) if results else 0
+        }
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
