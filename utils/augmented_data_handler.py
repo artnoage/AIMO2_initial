@@ -28,7 +28,7 @@ def handle_augmented_data_file(filename: str) -> bool:
 
 def save_augmented_data(data: List[Dict], filename: str, examples_processed: int) -> None:
     """Save augmented data to file"""
-    os.makedirs('augmented_datasets', exist_ok=True)
+    os.makedirs('../augmented_datasets', exist_ok=True)
     
     # If file exists and we're appending, load existing data first
     existing_data = []
