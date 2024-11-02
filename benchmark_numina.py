@@ -285,7 +285,7 @@ async def main():
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    augmented_filename = os.path.join('../augmented_datasets', 
+    augmented_filename = os.path.join('augmented_datasets', 
                                     f"benchmark_augmented_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
