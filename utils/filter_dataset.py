@@ -66,12 +66,21 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Create dataset_info.json
+    # Convert features to dictionary format
+    features_dict = {
+        'id': {'dtype': 'int64', '_type': 'Value'},
+        'problem': {'dtype': 'string', '_type': 'Value'},
+        'solution': {'dtype': 'string', '_type': 'Value'},
+        'source': {'dtype': 'string', '_type': 'Value'},
+        'answer': {'dtype': 'string', '_type': 'Value'}
+    }
+    
     dataset_info = {
         "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers",
         "citation": "",
         "homepage": "",
         "license": "mit",
-        "features": features,  # Use the same features object defined above
+        "features": features_dict,
         "splits": {
             args.split: {
                 "name": args.split,
