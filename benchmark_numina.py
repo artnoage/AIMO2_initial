@@ -204,8 +204,6 @@ def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--concurrency', type=int, default=4,
-                       help='Number of concurrent tasks (default: 4)')
     args = parser.parse_args()
 
     # Load the dataset
@@ -268,39 +266,26 @@ def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    # Initialize async batch processing
+    # Process examples serially
     results = []
     total_examples = len(example_data)
-    batch_size = args.concurrency
-    print(f"\nStarting processing of {total_examples} examples with batch_size={batch_size}...")
+    print(f"\nStarting processing of {total_examples} examples...")
 
-    # Process examples in batches
-    for i in range(0, total_examples, batch_size):
-        batch = example_data[i:i + batch_size]
-        # Create a runnable from process_example
-        process_runnable = RunnableLambda(lambda x: process_example(x, x['id'], enc, model))
+    # Process each example
+    for i, example in enumerate(example_data):
+        try:
+            result = process_example(example, example['id'], enc, model)
+            if result:
+                results.append(result)
+                status = '✓' if result['is_correct'] else '✗'
+                print(f"Problem {result['id'] + 1}: {status}")
+            else:
+                print(f"Problem {example['id'] + 1}: Failed to process.")
+        except Exception as e:
+            print(f"Problem {example['id'] + 1}: Exception occurred: {e}")
         
-        # Process batch using RunnableLambda
-        batch_results = process_runnable.batch(batch)
-        
-        # Process batch results
-        for j, result in enumerate(batch_results):
-            ex = batch[j]
-            try:
-                if isinstance(result, Exception):
-                    print(f"Problem {ex['id'] + 1}: Exception occurred: {result}")
-                elif result:
-                    results.append(result)
-                    status = '✓' if result['is_correct'] else '✗'
-                    print(f"Problem {result['id'] + 1}: {status}")
-                else:
-                    print(f"Problem {ex['id'] + 1}: Failed to process.")
-            except Exception as e:
-                print(f"Problem {ex['id'] + 1}: Exception occurred: {e}")
-        
-        # Show batch progress
-        processed = min(i + batch_size, total_examples)
-        print(f"Progress: {processed}/{total_examples} examples processed")
+        # Show progress
+        print(f"Progress: {i + 1}/{total_examples} examples processed")
 
     if not results:
         print("\nNo examples were successfully processed.")
