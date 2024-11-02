@@ -218,7 +218,8 @@ async def main():
     
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    augmented_filename = os.path.join('../augmented_datasets', 
+    os.makedirs('augmented_datasets', exist_ok=True)
+    augmented_filename = os.path.join('augmented_datasets', 
                                     f"synthetic_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
