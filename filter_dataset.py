@@ -53,21 +53,42 @@ def main():
 
     # Try to push to Hugging Face Hub
     try:
-        # Note: This requires being logged in with huggingface-cli login
-        api.create_repo(
-            repo_id="Numina-Olympiads",
-            private=True,
-            repo_type="dataset"
-        )
-        filtered_dataset_dict.push_to_hub("Numina-Olympiads")
+        # Get the username from huggingface-cli
+        username = api.whoami()["name"]
+        repo_id = f"{username}/Numina-Olympiads"
+        
+        # Create or get the repository
+        try:
+            api.create_repo(
+                repo_id=repo_id,
+                private=True,
+                repo_type="dataset"
+            )
+        except Exception as repo_error:
+            print(f"Note: Repository may already exist: {repo_error}")
+        
+        # Push the dataset
+        filtered_dataset_dict.push_to_hub(repo_id)
+        
         # Update the dataset card
+        readme_content = f"""# Numina-Olympiads
+
+Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers.
+
+## Dataset Information
+- Split: {args.split}
+- Original size: {len(dataset)}
+- Filtered size: {len(filtered_dataset)}
+- Source: olympiads
+- All examples contain valid boxed answers
+"""
         with open("README.md", "w") as f:
-            f.write("# Numina-Olympiads\n\n")
-            f.write("Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers\n")
+            f.write(readme_content)
+            
         api.upload_file(
             path_or_fileobj="README.md",
             path_in_repo="README.md",
-            repo_id="Numina-Olympiads",
+            repo_id=repo_id,
             repo_type="dataset"
         )
         print("\nSuccessfully pushed dataset to Hugging Face Hub as 'Numina-Olympiads'")
