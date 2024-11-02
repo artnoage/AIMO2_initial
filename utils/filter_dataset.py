@@ -2,13 +2,13 @@ import os
 import argparse
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
-from utils.utils import extract_answer_from_solution
+from utils import extract_answer_from_solution
 
 def main():
     # Initialize Hugging Face API
     api = HfApi()
     parser = argparse.ArgumentParser(description='Filter NuminaMath-CoT dataset for olympiads with valid answers')
-    parser.add_argument('--split', type=str, default='test',
+    parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     args = parser.parse_args()
 
