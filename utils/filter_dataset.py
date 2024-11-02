@@ -66,13 +66,13 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
     
     # Create dataset_info.json
-    # Convert features to dictionary format
-    features_dict = {
-        'id': {'dtype': 'int64', '_type': 'Value'},
-        'problem': {'dtype': 'string', '_type': 'Value'},
-        'solution': {'dtype': 'string', '_type': 'Value'},
-        'source': {'dtype': 'string', '_type': 'Value'},
-        'answer': {'dtype': 'string', '_type': 'Value'}
+    # Define features using datasets.Features
+    features = {
+        'id': Value(dtype='int64', id=None),
+        'problem': Value(dtype='string', id=None),
+        'solution': Value(dtype='string', id=None),
+        'source': Value(dtype='string', id=None),
+        'answer': Value(dtype='string', id=None)
     }
     
     dataset_info = {
@@ -80,7 +80,7 @@ def main():
         "citation": "",
         "homepage": "",
         "license": "mit",
-        "features": features_dict,
+        "features": features,
         "splits": {
             args.split: {
                 "name": args.split,
