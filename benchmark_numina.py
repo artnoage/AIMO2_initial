@@ -286,7 +286,7 @@ async def main():
     # Initialize augmented dataset filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"benchmark_augmented_{timestamp}.json")
+                                    f"benchmark_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
@@ -365,7 +365,7 @@ async def main():
     os.makedirs('benchmark_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_filename = os.path.join('benchmark_results', 
-                                  f"benchmark_{timestamp}.json")
+                                  f"benchmark_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
