@@ -250,15 +250,15 @@ async def main():
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples in batches of 8...")
 
-    async def process_batch(batch):
-        return await asyncio.gather(*[process_example(ex, ex['id'], enc, model) for ex in batch])
-
-    # Process in batches of 8
-    processed = 0
-    while processed < len(example_data):
-        batch = example_data[processed:processed + 8]
-        batch_results = await process_batch(batch)
+    # Process examples in chunks of 8
+    for i in range(0, len(example_data), 8):
+        batch = example_data[i:i + 8]
+        # Process batch concurrently
+        batch_results = await asyncio.gather(
+            *[process_example(ex, ex['id'], enc, model) for ex in batch]
+        )
         
+        # Process results from this batch
         for result in batch_results:
             if result:
                 results.append(result)
@@ -268,11 +268,10 @@ async def main():
                 print(f"Model's Answer: {result['model_answer']}")
                 print("-" * 80)
             else:
-                print(f"Problem {processed + 1}: Failed to process.")
+                print(f"Problem {i + batch_results.index(result) + 1}: Failed to process.")
                 print("-" * 80)
-                
-        processed += len(batch)
-        print(f"Progress: {processed}/{total_examples} examples processed")
+        
+        print(f"Progress: {min(i + 8, total_examples)}/{total_examples} examples processed")
 
     if not results:
         print("\nNo examples were successfully processed.")
