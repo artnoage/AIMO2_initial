@@ -266,7 +266,10 @@ def main():
             if result:
                 results.append(result)
                 status = '✓' if result['is_correct'] else '✗'
-                print(f"Problem {result['id'] + 1}: {status}")
+                print(f"\nProblem {result['id'] + 1}: {status}")
+                print(f"Model Response:\n{result['model_solution']}")
+                print(f"Extracted Answer: {result['model_answer']}")
+                print("-" * 80)
             else:
                 print(f"Problem {example['id'] + 1}: Failed to process.")
         except Exception as e:
