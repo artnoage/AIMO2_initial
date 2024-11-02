@@ -266,15 +266,15 @@ async def main():
             # Save intermediate results
             intermediate_filename = os.path.join('synthetic_results', 
                 f"synthetic_intermediate_{args.solver}_{args.verifier}_{start_time.strftime('%Y%m%d_%H%M%S')}.json")
-                output_data = {
-                    'results': results,
-                    'error_rate_points': error_rate_points,
-                    'current_error_rate': current_error_rate
-                }
-                os.makedirs('synthetic_results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"Saved intermediate results to {intermediate_filename}")
+            output_data = {
+                'results': results,
+                'error_rate_points': error_rate_points,
+                'current_error_rate': current_error_rate
+            }
+            os.makedirs('synthetic_results', exist_ok=True)
+            with open(intermediate_filename, 'w') as f:
+                json.dump(output_data, f, indent=2)
+            print(f"Saved intermediate results to {intermediate_filename}")
                 
                 # Save current batch of augmented data
                 if current_batch:
