@@ -138,6 +138,13 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         model_answer = extract_answer_from_solution(solution)
         is_correct = await compare_math_answers(model_answer, correct_answer, model)
         
+        # Print results for this example
+        status = '✓' if is_correct else '✗'
+        print(f"\nProblem {idx + 1}: {status}")
+        print(f"Expected Answer: {correct_answer}")
+        print(f"Model's Answer: {model_answer}")
+        print("-" * 80)
+        
         return {
             'id': idx,
             'problem': example['problem'],
