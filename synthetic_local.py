@@ -134,9 +134,6 @@ async def process_example(example: Dict, idx: int, model, num_responses: int = 3
         print(f"Model Answers: {[r['answer'] for r in responses]}")
         print("-" * 80)
         
-        # Wait for 6 seconds
-        await asyncio.sleep(6)
-        
         return {
             'id': idx,
             'problem': example['problem'],
@@ -193,11 +190,25 @@ async def main():
     results = []
     progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     
-    for example in example_data:
-        result = await process_example(example, example['id'], model, args.responses)
-        if result:
-            results.append(result)
-        progress_bar.update(1)
+    parser.add_argument('--batch-size', type=int, default=1,
+                       help='Batch size for concurrent processing (default: 1)')
+    args = parser.parse_args()
+
+    # Validate batch size
+    if args.batch_size < 1:
+        print("Error: Batch size must be at least 1")
+        return
+
+    # Process all examples concurrently in batches
+    for i in range(0, len(example_data), args.batch_size):
+        batch = example_data[i:i + args.batch_size]
+        # Process batch concurrently
+        batch_results = await asyncio.gather(
+            *[process_example(ex, ex['id'], model, args.responses) for ex in batch]
+        )
+        valid_results = [r for r in batch_results if r]
+        results.extend(valid_results)
+        progress_bar.update(len(batch))
     
     progress_bar.close()
 
