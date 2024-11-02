@@ -90,58 +90,21 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-def normalize_math_answer(answer: str) -> str:
-    """
-    Normalize a mathematical answer for comparison by:
-    - Removing all whitespace
-    - Converting to lowercase
-    - Removing LaTeX formatting commands
-    - Normalizing common mathematical notations
-    """
-    if not answer:
-        return ""
-    
-    # Remove all whitespace
-    answer = ''.join(answer.split())
-    
-    # Convert to lowercase
-    answer = answer.lower()
-    
-    # Remove common LaTeX commands
-    latex_commands = [r'\text', r'\left', r'\right', r'\begin', r'\end', 
-                     r'\frac', r'\sqrt', r'\cdot']
-    for cmd in latex_commands:
-        answer = answer.replace(cmd, '')
-    
-    # Normalize mathematical notations
-    replacements = {
-        '{': '',
-        '}': '',
-        '\\': '',
-        '÷': '/',
-        '×': '*',
-        '⋅': '*',
-        '−': '-',
-        '–': '-',
-        '—': '-',
-    }
-    for old, new in replacements.items():
-        answer = answer.replace(old, new)
-    
-    return answer
-
-def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str]) -> bool:
-    """
-    Compare two mathematical answers after normalization.
-    Returns True if they are equivalent, False otherwise.
-    """
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], model) -> bool:
+    """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
         return False
+        
+    comparison_prompt = [
+        SystemMessage(content="You are a mathematical answer validator. Given two answers to a math problem, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+        HumanMessage(content=f"Are these two mathematical answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+    ]
     
-    normalized_model = normalize_math_answer(model_answer)
-    normalized_correct = normalize_math_answer(correct_answer)
-    
-    return normalized_model == normalized_correct
+    try:
+        response = await model.ainvoke(comparison_prompt)
+        return response.content.strip().lower() == 'yes'
+    except Exception:
+        return False
 
 async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
     """
@@ -179,8 +142,8 @@ async def process_example(example: Dict, idx: int, model) -> Optional[Dict]:
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        # Compare answers using robust comparison
-        is_correct = compare_math_answers(model_answer, correct_answer)
+        # Compare answers using model verification
+        is_correct = await compare_math_answers(model_answer, correct_answer, model)
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
