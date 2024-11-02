@@ -226,7 +226,7 @@ async def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     os.makedirs('augmented_datasets', exist_ok=True)
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"synthetic_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
+                                    f"synthetic_numina_augmented_{args.solver}_{args.verifier}_{args.split}_{timestamp}.json")
     
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
@@ -296,7 +296,8 @@ async def main():
     # Save final results
     os.makedirs('synthetic_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('synthetic_results', f"synthetic_{args.solver}_{timestamp}.json")
+    results_filename = os.path.join('synthetic_results', 
+                                  f"synthetic_numina_{args.solver}_{args.verifier}_{args.split}_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
