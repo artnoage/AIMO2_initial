@@ -49,20 +49,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-class ModelOption(Enum):
-    CLAUDE = "anthropic/claude-3.5-sonnet:beta"
-    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
-    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
-    GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FLASH="google/gemini-flash-1.5"
-    GPT = "openai/gpt-4o"
-    GPT_MINI="openai/gpt-4o-mini"
-    MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "mistralai/Mathstral-7B-v0.1"
-    GROQ = "llama-3.1-70b-versatile"
-    NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
-    NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
-    SAMBA= "Meta-Llama-3.1-405B-Instruct"
+from utils.utils import ModelOption
 SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
 the tools you have to use. After, solve it step by step, 
 showing your work clearly. Make sure to:

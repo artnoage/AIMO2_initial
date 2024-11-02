@@ -12,18 +12,7 @@ from datetime import datetime
 # Load environment variables
 load_dotenv()
 
-class ModelOption(Enum):
-    CLAUDE = "anthropic/claude-3.5-sonnet:beta"
-    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
-    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
-    GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FLASH="google/gemini-flash-1.5"
-    GPT = "openai/gpt-4o"
-    GPT_MINI="openai/gpt-4o-mini"
-    MASTER = "openai/o1-preview-2024-09-12"
-    LOCAL = "mistralai/Mathstral-7B-v0.1"
-    GROQ = "llama-3.1-70b-versatile"
-    NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
+from utils.utils import ModelOption
 
 SYSTEM_PROMPT = """You are a Python code generator for mathematical problems. When given a problem and its solution:
 1. Analyze the problem and solution carefully
