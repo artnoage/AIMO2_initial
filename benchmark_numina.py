@@ -21,25 +21,23 @@ load_dotenv()
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
-    GEMINI_FLASH_FREE = "google/gemini-flash-1.5-exp"
+    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FLASH = "google/gemini-flash-1.5"
-    GPT = "gpt-4"  # Corrected model name
-    GPT_MINI = "gpt-4-mini"  # Assuming this is the intended name
-    MASTER = "o1-preview-2024-09-12"  # Ensure this is the correct model name
+    GEMINI_FLASH="google/gemini-flash-1.5"
+    GPT = "openai/gpt-4o"
+    GPT_MINI="openai/gpt-4o-mini"
+    MASTER = "openai/o1-preview-2024-09-12"
     LOCAL = "mistralai/Mathstral-7B-v0.1"
     GROQ = "llama-3.1-70b-versatile"
-    NOUS = "nousresearch/hermes-3-llama-3.1-405b:free"
+    NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
 
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, solve it step by step, showing your work clearly. Make sure to:
+SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, solve it step by step, 
+showing your work clearly. Make sure to:
 - Explain your reasoning at each step
-- Show all calculations explicitly
-- Never omit calculations for brevity
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
-Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '."""
+Never ask for confirmation. Just provide your final answer inside \\boxed{}"""
 
 def get_model(model: ModelOption, temp: float = 0.1):
     """
@@ -144,18 +142,16 @@ def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
             correct_answer = extract_answer_from_solution(example['solution'])
             if correct_answer is None:
                 print(f"Warning: Could not extract answer from solution for example {idx}")
-                print(f"Solution text: {example['solution'][:100]}...")
+                print(f"Solution text: {example['solution']}...")
                 return None
         except Exception as e:
             print(f"Error extracting answer from solution for example {idx}: {str(e)}")
             return None
-        print("Answer Extracted")
         # Create the chat prompt
         prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         # Generate the solution using the model
         response = model.invoke(prompt)  # Synchronous invoke
-        print("Response Extracted")
         solution = response.content
         
         # Extract the model's answer from the solution
@@ -260,14 +256,15 @@ def main():
                 results.append(result)
                 status = '✓' if result['is_correct'] else '✗'
                 print(f"\nProblem {result['id'] + 1}: {status}")
-                print(f"Model Response:\n{result['model_solution']}")
-                print(f"Extracted Answer: {result['model_answer']}")
+                print(f"Extracted Answer: {result['correct_answer']}")
+                print(f"Model's Answer: {result['model_answer']}")
                 print("-" * 80)
             else:
                 print(f"Problem {example['id'] + 1}: Failed to process.")
+                print("-" * 80)
         except Exception as e:
             print(f"Problem {example['id'] + 1}: Exception occurred: {e}")
-        
+            print("-" * 80)
         # Show progress
         print(f"Progress: {i + 1}/{total_examples} examples processed")
 
