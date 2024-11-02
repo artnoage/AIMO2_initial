@@ -266,7 +266,7 @@ async def main():
                 
                 # Save intermediate results
                 intermediate_filename = os.path.join('synthetic_results', 
-                    f"synthetic_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
+                    f"synthetic_intermediate_{len(results)}.json")
                 output_data = {
                     'results': results,
                     'error_rate_points': error_rate_points,
@@ -301,7 +301,7 @@ async def main():
     os.makedirs('synthetic_results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_filename = os.path.join('synthetic_results', 
-                                  f"synthetic_numina_{args.solver}_{args.verifier}_{args.split}_{timestamp}.json")
+                                  f"synthetic_{timestamp}.json")
     
     # Save results with error rate points
     output_data = {
