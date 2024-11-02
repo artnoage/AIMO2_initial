@@ -94,7 +94,10 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
         if end != -1:
             # Extract content between braces
             content = solution[start + 6:end].strip()
-            return "{" + content + "}"
+            # Only add braces if they're not already present
+            if not (content.startswith('{') and content.endswith('}')):
+                content = "{" + content + "}"
+            return content
     
     return None
 
