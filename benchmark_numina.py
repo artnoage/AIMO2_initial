@@ -238,7 +238,7 @@ async def main():
     example_data = []
     for idx, example in enumerate(dataset):
         processed = {
-            'id': idx,
+            'id': int(dataset[idx]['id']),  # Use original dataset ID
             'problem': example['problem'],
             'solution': example['solution']
         }
