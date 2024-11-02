@@ -247,7 +247,7 @@ async def main():
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': example_map[running_id]['solution'],
+                'solution': example_map[result['id']]['solution'],
                 'partial_solution': result['partial_solution'],
                 'model_solution': result['model_solution'],
                 'is_correct': result['is_correct']
