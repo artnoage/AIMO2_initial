@@ -109,7 +109,7 @@ async def process_example(example: Dict, running_id: int, solver_model, verifier
             
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {idx}")
+            print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
         # Combine problem with partial solution
@@ -128,13 +128,13 @@ async def process_example(example: Dict, running_id: int, solver_model, verifier
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {idx + 1}: {status}")
+        print(f"\nProblem {running_id + 1}: {status}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
         
         return {
-            'id': idx,
+            'id': running_id,
             'problem': example['problem'],
             'partial_solution': partial_solution,
             'correct_answer': correct_answer,
@@ -144,7 +144,7 @@ async def process_example(example: Dict, running_id: int, solver_model, verifier
         }
         
     except Exception as e:
-        print(f"Error processing example {idx}: {e}")
+        print(f"Error processing example {running_id}: {e}")
         return None
 
 async def main():
