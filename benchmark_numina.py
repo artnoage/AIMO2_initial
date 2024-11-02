@@ -7,14 +7,14 @@ from typing import Optional, List, Dict
 from datetime import datetime
 from typing import List, Dict, Optional
 from langchain_core.runnables import RunnableLambda
-
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
 from langchain.callbacks.base import BaseCallbackHandler
 from datasets import load_dataset
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 import tiktoken
-
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
@@ -52,10 +52,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
             model=model.value,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:8000/v1",
-            request_timeout=60,  # Added timeout
-            streaming=False
-        )
+            base_url="http://localhost:8000/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
@@ -64,11 +61,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
         return ChatOpenAI(
             model=model.value,
             temperature=temp,
-            api_key=openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1",
-            request_timeout=60,  # Added timeout
-            streaming=False
-        )
+            api_key=openrouter_api_key)
 
 import re
 from typing import Optional
@@ -156,15 +149,13 @@ def process_example(example: Dict, idx: int, enc, model) -> Optional[Dict]:
         except Exception as e:
             print(f"Error extracting answer from solution for example {idx}: {str(e)}")
             return None
-        
+        print("Answer Extracted")
         # Create the chat prompt
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", SYSTEM_PROMPT),
-            ("user", example['problem'])
-        ])
+        prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         # Generate the solution using the model
-        response = model.invoke(prompt.format_messages())  # Synchronous invoke
+        response = model.invoke(prompt)  # Synchronous invoke
+        print("Response Extracted")
         solution = response.content
         
         # Extract the model's answer from the solution
