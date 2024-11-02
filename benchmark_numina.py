@@ -72,13 +72,9 @@ def get_model(model: ModelOption, temp: float = 0.1):
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
-    Extract the answer from the solution text by searching for patterns like:
-    - LaTeX boxed answers: \boxed{X}
-    - Multiple choice answers: (A), (B), etc.
-    - 'ANSWER: X' or 'answer is X'
-    Returns the raw answer string with LaTeX notation preserved.
+    Extract the answer from the solution text by searching for LaTeX boxed answers: \boxed{X}
+    Returns the raw answer string with LaTeX notation preserved, or None if no boxed answer is found.
     """
-    # Try to find \boxed{X} LaTeX answers first (most specific)
     def find_matching_brace(s: str, start: int) -> int:
         """Find the matching closing brace for an opening brace at start position"""
         count = 1
@@ -99,20 +95,6 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             # Extract content between braces
             content = solution[start + 6:end].strip()
             return content
-    
-    # Try to find multiple choice answers like (A), (B), etc.
-    choice_pattern = re.compile(r'(?:answer is|therefore)[^(]*\(([A-E])\)', re.IGNORECASE)
-    matches = choice_pattern.findall(solution)
-    if matches:
-        return matches[-1].strip()
-    
-    # Try to find 'ANSWER: X' or 'answer is X' patterns (most general)
-    answer_pattern = re.compile(r'(?:ANSWER:\s*|answer\s+is\s*)([^\n]+)', re.IGNORECASE)
-    matches = answer_pattern.findall(solution)
-    if matches:
-        # Clean up any trailing periods or whitespace
-        answer = matches[-1].strip().rstrip('.')
-        return answer
     
     return None
 
