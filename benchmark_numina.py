@@ -261,8 +261,15 @@ async def main():
         print("No valid examples to process after initial filtering.")
         return
 
+    def calculate_error_rate(results):
+        if not results:
+            return 0.0
+        correct_count = sum(1 for r in results if r['is_correct'])
+        return 1.0 - (correct_count / len(results))
+
     # Process examples with controlled concurrency
     results = []
+    error_rate_points = []
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
@@ -305,35 +312,31 @@ async def main():
             
             # Save intermediate results every 2000 points
             if len(results) % 2000 == 0:
-                correct_count = sum(1 for r in results if r['is_correct'])
-                current_accuracy = (correct_count / len(results)) * 100
-                print(f"\nIntermediate Accuracy at {len(results)} examples: {current_accuracy:.2f}%")
+                current_error_rate = calculate_error_rate(results)
+                error_rate_points.append({
+                    'examples_processed': len(results),
+                    'error_rate': current_error_rate,
+                    'timestamp': datetime.now().isoformat()
+                })
+                print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+                
+                # Save intermediate results
+                intermediate_filename = os.path.join('benchmark_results', 
+                    f"benchmark_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
+                output_data = {
+                    'results': results,
+                    'error_rate_points': error_rate_points,
+                    'current_error_rate': current_error_rate
+                }
+                os.makedirs('benchmark_results', exist_ok=True)
+                with open(intermediate_filename, 'w') as f:
+                    json.dump(output_data, f, indent=2)
+                print(f"Saved intermediate results to {intermediate_filename}")
                 
                 # Save current batch of augmented data
                 if current_batch:
                     save_augmented_data(current_batch, augmented_filename, len(results))
                     current_batch = []
-                
-                # Save intermediate results
-                os.makedirs('benchmark_results', exist_ok=True)
-                intermediate_filename = os.path.join('../benchmark_results', 
-                    f"benchmark_intermediate_{args.solver}_{args.verifier}_{len(results)}.json")
-                
-                # Create intermediate augmented dataset
-                augmented_data = []
-                for res in results:
-                    augmented_example = {
-                        'id': res['id'],
-                        'problem': res['problem'],
-                        'solution': dataset[res['id']]['solution'],
-                        'model_response': res['model_solution'],
-                        'is_correct': res['is_correct']
-                    }
-                    augmented_data.append(augmented_example)
-                
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(augmented_data, f, indent=2)
-                print(f"Saved intermediate results to {intermediate_filename}")
                 
         progress_bar.update(1)
     progress_bar.close()
@@ -358,35 +361,29 @@ async def main():
     else:
         print("No examples were successfully processed.")
 
-    # Save the results to JSON files
-    try:
-        # Save benchmark results
-        save_results(results, args.solver)
-        
-        # Create augmented dataset
-        augmented_data = []
-        for result in results:
-            augmented_example = {
-                'id': dataset[result['id']]['id'],  # Use actual problem ID from dataset
-                'problem': result['problem'],
-                'solution': dataset[result['id']]['solution'],  # Original solution
-                'model_response': result['model_solution'],  # Full model response
-                'is_correct': result['is_correct']
-            }
-            augmented_data.append(augmented_example)
-            
-        # Save augmented dataset
-        os.makedirs('../augmented_datasets', exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        augmented_filename = os.path.join('augmented_datasets', 
-                                        f"augmented_dataset_{args.solver}_{args.dataset}_{timestamp}.json")
-        
-        with open(augmented_filename, 'w') as f:
-            json.dump(augmented_data, f, indent=2)
-        print(f"\nAugmented dataset saved to {augmented_filename}")
-        
-    except Exception as e:
-        print(f"Error saving results: {e}")
+    # Save final results
+    os.makedirs('benchmark_results', exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_filename = os.path.join('benchmark_results', f"benchmark_{args.solver}_{timestamp}.json")
+    
+    # Save results with error rate points
+    output_data = {
+        'results': results,
+        'error_rate_points': error_rate_points,
+        'final_error_rate': calculate_error_rate(results)
+    }
+    with open(results_filename, 'w') as f:
+        json.dump(output_data, f, indent=2)
+    print(f"\nResults saved to {results_filename}")
+    
+    # Save final augmented data batch
+    if current_batch:
+        save_augmented_data(current_batch, augmented_filename, len(results))
+    
+    # Print error rate progression
+    print("\nError Rate Progression:")
+    for point in error_rate_points:
+        print(f"After {point['examples_processed']} examples: {point['error_rate']:.4f}")
 
     # Calculate and print timing information
     end_time = datetime.now()
