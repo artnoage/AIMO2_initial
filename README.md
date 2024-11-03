@@ -85,9 +85,13 @@ python synthetic.py --solver MODEL --verifier MODEL
 ## Results
 
 Results are saved in different directories:
-- `benchmark_results/`: Benchmark results and metrics
-- `synthetic_results/`: Synthetic solving results
+- `results/`: All benchmark and synthetic results including:
+  - Final results with error rates
+  - Intermediate results every 100 examples
+  - Error rate progression data
 - `augmented_datasets/`: Generated datasets with model responses
+  - Includes automatic backup of corrupted files
+  - Supports both append and replace modes
 - `conversations/`: Detailed solving process logs
 
 ## Requirements
