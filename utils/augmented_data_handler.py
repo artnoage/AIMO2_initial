@@ -26,6 +26,15 @@ def handle_augmented_data_file(filename: str) -> bool:
             return True
         print("Invalid choice. Please try again.")
 
+def get_existing_ids(filename: str) -> set:
+    """Get set of existing IDs from augmented data file"""
+    if not os.path.exists(filename):
+        return set()
+        
+    with open(filename, 'r') as f:
+        existing_data = json.load(f)
+        return {item['id'] for item in existing_data}
+
 def save_augmented_data(data: List[Dict], filename: str, examples_processed: int) -> None:
     """Save augmented data to file"""
     os.makedirs('../augmented_datasets', exist_ok=True)

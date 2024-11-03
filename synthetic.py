@@ -230,6 +230,19 @@ async def main():
     augmented_filename = os.path.join('augmented_datasets', 
                                     f"synthetic_augmented_{args.solver}_{args.verifier}.json")
     
+    # Get existing IDs to skip
+    existing_ids = get_existing_ids(augmented_filename)
+    if existing_ids:
+        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
+    
+    # Filter out examples with existing IDs
+    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
+    if not example_data:
+        print("All examples have already been processed!")
+        return
+        
+    print(f"\nWill process {len(example_data)} new examples")
+    
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
         print("Operation cancelled by user.")
