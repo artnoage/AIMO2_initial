@@ -144,17 +144,28 @@ async def judge(state: AgentState, model_option: ModelOption):
         "solution": response.content
     }
 
-def clean_answer(state: AgentState) -> AgentState:
-    """Extract numerical answer from judge's evaluation"""
+async def verify(state: AgentState, model_option: ModelOption):
+    """Verify the judge's solution against the ground truth"""
     solution = state["solution"]
-    match = re.search(r"FINAL_ANSWER:\s*(\d+)", solution)
-    if match:
-        solution = int(match.group(1))
-    else:
-        match = re.search(r"\d+", solution)
-        solution = int(match.group()) if match else None
+    ground_truth = state.get("ground_truth")
     
-    return {"solution": solution}
+    if not solution or not ground_truth:
+        return {"solution": None}
+        
+    verifier = get_model(model_option, temp=0)
+    
+    verification_prompt = [
+        SystemMessage(content="You are a mathematical solution verifier. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+        HumanMessage(content=f"Are these two answers equivalent?\nAnswer 1: {solution}\nAnswer 2: {ground_truth}")
+    ]
+    
+    try:
+        response = await verifier.ainvoke(verification_prompt)
+        is_correct = response.content.strip().lower() == 'yes'
+        return {"solution": solution, "is_correct": is_correct}
+    except Exception as e:
+        print(f"Verification failed: {e}")
+        return {"solution": None, "is_correct": False}
 
 def decide_next_step(state: AgentState) -> str:
     """Determine if we should continue solving or move to judging"""
@@ -162,14 +173,14 @@ def decide_next_step(state: AgentState) -> str:
         return "solver"
     return "judge"
 
-def build_graph(solver_model: ModelOption, judge_model: ModelOption, num_samples: int):
+def build_graph(solver_model: ModelOption, judge_model: ModelOption, verifier_model: ModelOption, num_samples: int):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
     workflow.add_node("solver", partial(solve, model_option=solver_model, num_samples=num_samples))
     workflow.add_node("judge", partial(judge, model_option=judge_model))
-    workflow.add_node("cleaner", clean_answer)
+    workflow.add_node("verifier", partial(verify, model_option=verifier_model))
 
     # Add edges
     workflow.set_entry_point("solver")
@@ -181,14 +192,15 @@ def build_graph(solver_model: ModelOption, judge_model: ModelOption, num_samples
             "judge": "judge"
         }
     )
-    workflow.add_edge("judge", "cleaner")
-    workflow.add_edge("cleaner", END)
+    workflow.add_edge("judge", "verifier")
+    workflow.add_edge("verifier", END)
 
     return workflow
 
 async def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
                    judge_model: ModelOption,
+                   verifier_model: ModelOption,
                    md_file: str = None,
                    num_samples: int = 20):
     """Process a single problem through the graph"""
@@ -207,7 +219,7 @@ async def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
         
-        workflow = build_graph(solver_model, judge_model, num_samples)
+        workflow = build_graph(solver_model, judge_model, verifier_model, num_samples)
         app = workflow.compile()
         
         print("Processing problem with Monte Carlo approach...")
@@ -229,7 +241,9 @@ async def main():
     parser.add_argument('--judge', type=str, choices=[model.name for model in ModelOption],
                        default='NEMOTRON', help='Judge model to use')
     parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
-                       help='Use same model for both solver and judge')
+                       help='Use same model for solver, judge, and verifier')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='NEMOTRON', help='Verifier model to use')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--max-examples', type=int, default=100,
@@ -242,10 +256,11 @@ async def main():
     
     # Define models
     if args.both:
-        SOLVER_MODEL = JUDGE_MODEL = ModelOption[args.both]
+        SOLVER_MODEL = JUDGE_MODEL = VERIFIER_MODEL = ModelOption[args.both]
     else:
         SOLVER_MODEL = ModelOption[args.solver]
         JUDGE_MODEL = ModelOption[args.judge]
+        VERIFIER_MODEL = ModelOption[args.verifier]
     
     # Load dataset
     try:
@@ -287,6 +302,7 @@ async def main():
                 ground_truth,
                 solver_model=SOLVER_MODEL,
                 judge_model=JUDGE_MODEL,
+                verifier_model=VERIFIER_MODEL,
                 md_file=md_file,
                 num_samples=args.samples
             )
