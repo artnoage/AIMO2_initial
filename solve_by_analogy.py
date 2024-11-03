@@ -166,9 +166,9 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Solve math problems by analogy')
     parser.add_argument('--teacher', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL_ORIGINAL_Q', help='Model to use as teacher')
+                       default='NEMOTRON', help='Model to use as teacher')
     parser.add_argument('--student', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL_ORIGINAL_Q', help='Model to use as student')
+                       default='NEMOTRON', help='Model to use as student')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
@@ -177,7 +177,7 @@ async def main():
                        help='Maximum number of examples to process')
     args = parser.parse_args()
 
-    # Load dataset
+    # Load the dataset based on selection
     try:
         username = HfApi().whoami()["name"]
         dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
@@ -185,11 +185,15 @@ async def main():
         print(f"Error loading dataset: {e}")
         return
 
+    # Shuffle and limit examples
+    dataset = dataset.shuffle(seed=42)
+    dataset = dataset.select(range(min(args.max_examples, len(dataset))))
+
     # Initialize models
     try:
         teacher_model = get_model(ModelOption[args.teacher])
-        student_model = get_model(ModelOption[args.student])
-        verifier_model = get_model(ModelOption[args.verifier])
+        student_model = get_model(ModelOption[args.student],temp=0)
+        verifier_model = get_model(ModelOption[args.verifier],temp=0)
     except Exception as e:
         print(f"Error initializing models: {e}")
         return
