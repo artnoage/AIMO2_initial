@@ -1,6 +1,4 @@
-import os
 import re
-from enum import Enum
 from functools import partial
 from typing import Annotated, TypedDict, Union, List, Callable
 import time
@@ -9,10 +7,11 @@ from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
-from librarian import init_conversation_md, append_to_conversation_md
+from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
+from utils.utils import get_model
+from utils.utils import ModelOption
 
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
@@ -53,7 +52,7 @@ Respond with:
 'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
 
-from utils.utils import ModelOption
+
 
 # Define state schema
 class AgentState(TypedDict):
@@ -63,7 +62,6 @@ class AgentState(TypedDict):
     iteration_count: Annotated[int, "Counter for iterations"]
     md_file: Annotated[str, "Path to markdown file"]
 
-from utils.utils import get_model
 
 
 @retry_with_delay(max_attempts=3, delay=30)
