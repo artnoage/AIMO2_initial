@@ -14,7 +14,7 @@ def handle_augmented_data_file(filename: str) -> bool:
     while True:
         response = input(f"\nFile {filename} already exists. Choose action:\n"
                         "1. Cancel operation\n"
-                        "2. Replace file completely\n"
+                        "2. Replace file completely (will create backup)\n"
                         "3. Append new entries\n"
                         "Choice (1-3): ").strip()
                         
@@ -22,7 +22,10 @@ def handle_augmented_data_file(filename: str) -> bool:
             return False
         elif response in ["2", "3"]:
             if response == "2":
-                os.remove(filename)
+                # Create backup before removing
+                backup_name = f"{filename}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                os.rename(filename, backup_name)
+                print(f"Created backup: {backup_name}")
             return True
         print("Invalid choice. Please try again.")
 
