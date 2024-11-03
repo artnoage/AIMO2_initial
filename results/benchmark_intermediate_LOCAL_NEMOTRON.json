@@ -3,6 +3,10 @@
     {
       "examples_processed": 100,
       "error_rate": 0.72
+    },
+    {
+      "examples_processed": 200,
+      "error_rate": 0.6950000000000001
     }
   ]
 }
