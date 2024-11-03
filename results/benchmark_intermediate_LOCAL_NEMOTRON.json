@@ -7,6 +7,658 @@
     {
       "examples_processed": 200,
       "error_rate": 0.6950000000000001
+    },
+    {
+      "examples_processed": 300,
+      "error_rate": 0.7166666666666667
+    },
+    {
+      "examples_processed": 400,
+      "error_rate": 0.7150000000000001
+    },
+    {
+      "examples_processed": 500,
+      "error_rate": 0.708
+    },
+    {
+      "examples_processed": 600,
+      "error_rate": 0.7050000000000001
+    },
+    {
+      "examples_processed": 700,
+      "error_rate": 0.7157142857142857
+    },
+    {
+      "examples_processed": 800,
+      "error_rate": 0.71625
+    },
+    {
+      "examples_processed": 900,
+      "error_rate": 0.7122222222222222
+    },
+    {
+      "examples_processed": 1000,
+      "error_rate": 0.7130000000000001
+    },
+    {
+      "examples_processed": 1100,
+      "error_rate": 0.7181818181818183
+    },
+    {
+      "examples_processed": 1200,
+      "error_rate": 0.7191666666666667
+    },
+    {
+      "examples_processed": 1300,
+      "error_rate": 0.7238461538461538
+    },
+    {
+      "examples_processed": 1400,
+      "error_rate": 0.7214285714285714
+    },
+    {
+      "examples_processed": 1500,
+      "error_rate": 0.7226666666666667
+    },
+    {
+      "examples_processed": 1600,
+      "error_rate": 0.721875
+    },
+    {
+      "examples_processed": 1700,
+      "error_rate": 0.7188235294117646
+    },
+    {
+      "examples_processed": 1800,
+      "error_rate": 0.7166666666666667
+    },
+    {
+      "examples_processed": 1900,
+      "error_rate": 0.7178947368421053
+    },
+    {
+      "examples_processed": 2000,
+      "error_rate": 0.7185
+    },
+    {
+      "examples_processed": 2100,
+      "error_rate": 0.7161904761904763
+    },
+    {
+      "examples_processed": 2200,
+      "error_rate": 0.7186363636363636
+    },
+    {
+      "examples_processed": 2300,
+      "error_rate": 0.7156521739130435
+    },
+    {
+      "examples_processed": 2400,
+      "error_rate": 0.7150000000000001
+    },
+    {
+      "examples_processed": 2500,
+      "error_rate": 0.712
+    },
+    {
+      "examples_processed": 2600,
+      "error_rate": 0.7142307692307692
+    },
+    {
+      "examples_processed": 2700,
+      "error_rate": 0.7133333333333334
+    },
+    {
+      "examples_processed": 2800,
+      "error_rate": 0.7146428571428571
+    },
+    {
+      "examples_processed": 2900,
+      "error_rate": 0.7155172413793103
+    },
+    {
+      "examples_processed": 3000,
+      "error_rate": 0.7170000000000001
+    },
+    {
+      "examples_processed": 3100,
+      "error_rate": 0.717741935483871
+    },
+    {
+      "examples_processed": 3200,
+      "error_rate": 0.7175
+    },
+    {
+      "examples_processed": 3300,
+      "error_rate": 0.7175757575757575
+    },
+    {
+      "examples_processed": 3400,
+      "error_rate": 0.7179411764705883
+    },
+    {
+      "examples_processed": 3500,
+      "error_rate": 0.7194285714285714
+    },
+    {
+      "examples_processed": 3600,
+      "error_rate": 0.7213888888888889
+    },
+    {
+      "examples_processed": 3700,
+      "error_rate": 0.7243243243243243
+    },
+    {
+      "examples_processed": 3800,
+      "error_rate": 0.726578947368421
+    },
+    {
+      "examples_processed": 3900,
+      "error_rate": 0.7256410256410256
+    },
+    {
+      "examples_processed": 4000,
+      "error_rate": 0.7242500000000001
+    },
+    {
+      "examples_processed": 4100,
+      "error_rate": 0.7219512195121951
+    },
+    {
+      "examples_processed": 4200,
+      "error_rate": 0.7242857142857143
+    },
+    {
+      "examples_processed": 4300,
+      "error_rate": 0.7253488372093023
+    },
+    {
+      "examples_processed": 4400,
+      "error_rate": 0.7268181818181818
+    },
+    {
+      "examples_processed": 4500,
+      "error_rate": 0.7275555555555555
+    },
+    {
+      "examples_processed": 4600,
+      "error_rate": 0.7284782608695652
+    },
+    {
+      "examples_processed": 4700,
+      "error_rate": 0.7287234042553192
+    },
+    {
+      "examples_processed": 4800,
+      "error_rate": 0.72875
+    },
+    {
+      "examples_processed": 4900,
+      "error_rate": 0.7285714285714286
+    },
+    {
+      "examples_processed": 5000,
+      "error_rate": 0.729
+    },
+    {
+      "examples_processed": 5100,
+      "error_rate": 0.7298039215686274
+    },
+    {
+      "examples_processed": 5200,
+      "error_rate": 0.7276923076923076
+    },
+    {
+      "examples_processed": 5300,
+      "error_rate": 0.7279245283018868
+    },
+    {
+      "examples_processed": 5400,
+      "error_rate": 0.7268518518518519
+    },
+    {
+      "examples_processed": 5500,
+      "error_rate": 0.7272727272727273
+    },
+    {
+      "examples_processed": 5600,
+      "error_rate": 0.7273214285714286
+    },
+    {
+      "examples_processed": 5700,
+      "error_rate": 0.7266666666666667
+    },
+    {
+      "examples_processed": 5800,
+      "error_rate": 0.7268965517241379
+    },
+    {
+      "examples_processed": 5900,
+      "error_rate": 0.7254237288135593
+    },
+    {
+      "examples_processed": 6000,
+      "error_rate": 0.725
+    },
+    {
+      "examples_processed": 6100,
+      "error_rate": 0.7263934426229508
+    },
+    {
+      "examples_processed": 6200,
+      "error_rate": 0.7275806451612903
+    },
+    {
+      "examples_processed": 6300,
+      "error_rate": 0.7269841269841271
+    },
+    {
+      "examples_processed": 6400,
+      "error_rate": 0.72703125
+    },
+    {
+      "examples_processed": 6500,
+      "error_rate": 0.7284615384615385
+    },
+    {
+      "examples_processed": 6600,
+      "error_rate": 0.7281818181818183
+    },
+    {
+      "examples_processed": 6700,
+      "error_rate": 0.7271641791044776
+    },
+    {
+      "examples_processed": 6800,
+      "error_rate": 0.7279411764705883
+    },
+    {
+      "examples_processed": 6900,
+      "error_rate": 0.7285507246376812
+    },
+    {
+      "examples_processed": 7000,
+      "error_rate": 0.7292857142857143
+    },
+    {
+      "examples_processed": 7100,
+      "error_rate": 0.7295774647887324
+    },
+    {
+      "examples_processed": 7200,
+      "error_rate": 0.7304166666666667
+    },
+    {
+      "examples_processed": 7300,
+      "error_rate": 0.7301369863013698
+    },
+    {
+      "examples_processed": 7400,
+      "error_rate": 0.7308108108108108
+    },
+    {
+      "examples_processed": 7500,
+      "error_rate": 0.7302666666666666
+    },
+    {
+      "examples_processed": 7600,
+      "error_rate": 0.7303947368421053
+    },
+    {
+      "examples_processed": 7700,
+      "error_rate": 0.7301298701298702
+    },
+    {
+      "examples_processed": 7800,
+      "error_rate": 0.7302564102564102
+    },
+    {
+      "examples_processed": 7900,
+      "error_rate": 0.7311392405063291
+    },
+    {
+      "examples_processed": 8000,
+      "error_rate": 0.731
+    },
+    {
+      "examples_processed": 8100,
+      "error_rate": 0.7307407407407407
+    },
+    {
+      "examples_processed": 8200,
+      "error_rate": 0.7317073170731707
+    },
+    {
+      "examples_processed": 8300,
+      "error_rate": 0.7324096385542169
+    },
+    {
+      "examples_processed": 8400,
+      "error_rate": 0.7322619047619048
+    },
+    {
+      "examples_processed": 8500,
+      "error_rate": 0.7321176470588235
+    },
+    {
+      "examples_processed": 8600,
+      "error_rate": 0.7332558139534884
+    },
+    {
+      "examples_processed": 8700,
+      "error_rate": 0.7328735632183908
+    },
+    {
+      "examples_processed": 8800,
+      "error_rate": 0.7327272727272727
+    },
+    {
+      "examples_processed": 8900,
+      "error_rate": 0.7324719101123596
+    },
+    {
+      "examples_processed": 9000,
+      "error_rate": 0.7314444444444445
+    },
+    {
+      "examples_processed": 9100,
+      "error_rate": 0.7312087912087912
+    },
+    {
+      "examples_processed": 9200,
+      "error_rate": 0.731195652173913
+    },
+    {
+      "examples_processed": 9300,
+      "error_rate": 0.7313978494623656
+    },
+    {
+      "examples_processed": 9400,
+      "error_rate": 0.731063829787234
+    },
+    {
+      "examples_processed": 9500,
+      "error_rate": 0.7312631578947368
+    },
+    {
+      "examples_processed": 9600,
+      "error_rate": 0.7305208333333333
+    },
+    {
+      "examples_processed": 9700,
+      "error_rate": 0.7308247422680412
+    },
+    {
+      "examples_processed": 9800,
+      "error_rate": 0.7316326530612245
+    },
+    {
+      "examples_processed": 9900,
+      "error_rate": 0.7317171717171718
+    },
+    {
+      "examples_processed": 10000,
+      "error_rate": 0.7319
+    },
+    {
+      "examples_processed": 10100,
+      "error_rate": 0.7322772277227723
+    },
+    {
+      "examples_processed": 10200,
+      "error_rate": 0.7323529411764707
+    },
+    {
+      "examples_processed": 10300,
+      "error_rate": 0.7328155339805825
+    },
+    {
+      "examples_processed": 10400,
+      "error_rate": 0.7323076923076923
+    },
+    {
+      "examples_processed": 10500,
+      "error_rate": 0.7319047619047618
+    },
+    {
+      "examples_processed": 10600,
+      "error_rate": 0.7323584905660377
+    },
+    {
+      "examples_processed": 10700,
+      "error_rate": 0.7329906542056075
+    },
+    {
+      "examples_processed": 10800,
+      "error_rate": 0.7332407407407407
+    },
+    {
+      "examples_processed": 10900,
+      "error_rate": 0.7332110091743119
+    },
+    {
+      "examples_processed": 11000,
+      "error_rate": 0.732909090909091
+    },
+    {
+      "examples_processed": 11100,
+      "error_rate": 0.732972972972973
+    },
+    {
+      "examples_processed": 11200,
+      "error_rate": 0.7335714285714285
+    },
+    {
+      "examples_processed": 11300,
+      "error_rate": 0.7333628318584071
+    },
+    {
+      "examples_processed": 11400,
+      "error_rate": 0.7340350877192983
+    },
+    {
+      "examples_processed": 11500,
+      "error_rate": 0.7345217391304348
+    },
+    {
+      "examples_processed": 11600,
+      "error_rate": 0.7345689655172414
+    },
+    {
+      "examples_processed": 11700,
+      "error_rate": 0.7349572649572649
+    },
+    {
+      "examples_processed": 11800,
+      "error_rate": 0.7345762711864408
+    },
+    {
+      "examples_processed": 11900,
+      "error_rate": 0.734873949579832
+    },
+    {
+      "examples_processed": 12000,
+      "error_rate": 0.73475
+    },
+    {
+      "examples_processed": 12100,
+      "error_rate": 0.7352892561983471
+    },
+    {
+      "examples_processed": 12200,
+      "error_rate": 0.7355737704918033
+    },
+    {
+      "examples_processed": 12300,
+      "error_rate": 0.7355284552845529
+    },
+    {
+      "examples_processed": 12400,
+      "error_rate": 0.7356451612903225
+    },
+    {
+      "examples_processed": 12500,
+      "error_rate": 0.73584
+    },
+    {
+      "examples_processed": 12600,
+      "error_rate": 0.7365079365079366
+    },
+    {
+      "examples_processed": 12700,
+      "error_rate": 0.737007874015748
+    },
+    {
+      "examples_processed": 12800,
+      "error_rate": 0.7371875
+    },
+    {
+      "examples_processed": 12900,
+      "error_rate": 0.7369767441860465
+    },
+    {
+      "examples_processed": 13000,
+      "error_rate": 0.7370769230769231
+    },
+    {
+      "examples_processed": 13100,
+      "error_rate": 0.7370992366412215
+    },
+    {
+      "examples_processed": 13200,
+      "error_rate": 0.7370454545454546
+    },
+    {
+      "examples_processed": 13300,
+      "error_rate": 0.7372932330827068
+    },
+    {
+      "examples_processed": 13400,
+      "error_rate": 0.7372388059701492
+    },
+    {
+      "examples_processed": 13500,
+      "error_rate": 0.7379259259259259
+    },
+    {
+      "examples_processed": 13600,
+      "error_rate": 0.7382352941176471
+    },
+    {
+      "examples_processed": 13700,
+      "error_rate": 0.7384671532846716
+    },
+    {
+      "examples_processed": 13800,
+      "error_rate": 0.7386231884057971
+    },
+    {
+      "examples_processed": 13900,
+      "error_rate": 0.7387769784172662
+    },
+    {
+      "examples_processed": 14000,
+      "error_rate": 0.7390714285714286
+    },
+    {
+      "examples_processed": 14100,
+      "error_rate": 0.7390070921985816
+    },
+    {
+      "examples_processed": 14200,
+      "error_rate": 0.7391549295774649
+    },
+    {
+      "examples_processed": 14300,
+      "error_rate": 0.7388811188811188
+    },
+    {
+      "examples_processed": 14400,
+      "error_rate": 0.7393055555555555
+    },
+    {
+      "examples_processed": 14500,
+      "error_rate": 0.7390344827586207
+    },
+    {
+      "examples_processed": 14600,
+      "error_rate": 0.7385616438356164
+    },
+    {
+      "examples_processed": 14700,
+      "error_rate": 0.7383673469387755
+    },
+    {
+      "examples_processed": 14800,
+      "error_rate": 0.7384459459459459
+    },
+    {
+      "examples_processed": 14900,
+      "error_rate": 0.7381208053691275
+    },
+    {
+      "examples_processed": 15000,
+      "error_rate": 0.7376
+    },
+    {
+      "examples_processed": 15100,
+      "error_rate": 0.7379470198675497
+    },
+    {
+      "examples_processed": 15200,
+      "error_rate": 0.7378947368421053
+    },
+    {
+      "examples_processed": 15300,
+      "error_rate": 0.7379738562091503
+    },
+    {
+      "examples_processed": 15400,
+      "error_rate": 0.7382467532467533
+    },
+    {
+      "examples_processed": 15500,
+      "error_rate": 0.7381935483870967
+    },
+    {
+      "examples_processed": 15600,
+      "error_rate": 0.7381410256410257
+    },
+    {
+      "examples_processed": 15700,
+      "error_rate": 0.7380254777070063
+    },
+    {
+      "examples_processed": 15800,
+      "error_rate": 0.7379113924050633
+    },
+    {
+      "examples_processed": 15900,
+      "error_rate": 0.7380503144654088
+    },
+    {
+      "examples_processed": 16000,
+      "error_rate": 0.7379375
+    },
+    {
+      "examples_processed": 16100,
+      "error_rate": 0.7384472049689441
+    },
+    {
+      "examples_processed": 16200,
+      "error_rate": 0.7383333333333333
+    },
+    {
+      "examples_processed": 16300,
+      "error_rate": 0.7380981595092024
+    },
+    {
+      "examples_processed": 16400,
+      "error_rate": 0.7384146341463415
+    },
+    {
+      "examples_processed": 16500,
+      "error_rate": 0.7386666666666667
     }
   ]
 }
