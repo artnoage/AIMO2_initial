@@ -81,7 +81,7 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
             all_solutions.append(f"=== Solution {attempt + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
             
         except Exception as e:
-            print(f"Failed attempt {attempt_count + 1}: {e}")
+            print(f"Failed attempt {attempt + 1}: {e}")
             continue
     
     # After 10 attempts, combine all solutions into one message with a header
