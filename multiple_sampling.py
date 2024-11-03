@@ -106,11 +106,11 @@ async def judge(state: AgentState, model_option: ModelOption) -> Dict:
         messages[-1].content
     )
     
-    return {"solution": answer, "attempt_count": attempt_count}
-    
+    # Extract answer from response
     solution = response.content
     answer = extract_answer_from_solution(solution)
-    return {"solution": answer}
+    
+    return {"solution": answer, "attempt_count": attempt_count}
 
 async def verify(state: AgentState, model_option: ModelOption) -> Dict:
     """Verify the judge's solution against the ground truth"""
