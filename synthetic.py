@@ -266,23 +266,19 @@ async def main():
             }
             current_batch.append(augmented_example)
             
-            # Save intermediate results every time we process more examples
-            current_error_rate = calculate_error_rate(results)
-            error_rate_points.append({
-                'examples_processed': len(results),
-                'error_rate': current_error_rate,
-                'timestamp': datetime.now().isoformat()
-            })
-            print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
-    
-            # Save intermediate results every 100 examples
+            # Save error rate every 100 examples
             if len(results) % 100 == 0:
+                current_error_rate = calculate_error_rate(results)
+                error_rate_points.append({
+                    'examples_processed': len(results),
+                    'error_rate': current_error_rate
+                })
+                print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+                
                 intermediate_filename = os.path.join('synthetic_results', 
                     f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
                 output_data = {
-                    'results': results,
-                    'error_rate_points': error_rate_points,
-                    'current_error_rate': current_error_rate
+                    'error_rate_points': error_rate_points
                 }
                 os.makedirs('synthetic_results', exist_ok=True)
                 with open(intermediate_filename, 'w') as f:
@@ -315,16 +311,16 @@ async def main():
     results_filename = os.path.join('synthetic_results', 
                                   f"synthetic_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
-    # Save results with error rate points
+    # Save final error rate and points
+    final_error_rate = calculate_error_rate(results)
+    error_rate_points.append({
+        'examples_processed': len(results),
+        'error_rate': final_error_rate
+    })
+    
     output_data = {
-        'results': results,
         'error_rate_points': error_rate_points,
-        'final_error_rate': calculate_error_rate(results),
-        'accuracy': {
-            'correct_count': correct_count,
-            'total_count': len(results),
-            'accuracy_percentage': (correct_count / len(results) * 100) if results else 0
-        }
+        'final_error_rate': final_error_rate
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
