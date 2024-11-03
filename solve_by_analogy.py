@@ -24,7 +24,6 @@ TEACHER_SYSTEM_PROMPT = """You are a mathematics teacher. When given a problem:
 1. First analyze its key components and solution approach
 2. Create a similar problem that uses the same concepts but with different numbers/context
 3. Solve your created problem step by step, showing clear work
-4. Provide your final answer inside \boxed{}
 
 Format your response as:
 SIMILAR PROBLEM: [your created problem]
@@ -135,9 +134,9 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Solve math problems by analogy')
     parser.add_argument('--teacher', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use as teacher')
+                       default='LOCAL_ORIGINAL_Q', help='Model to use as teacher')
     parser.add_argument('--student', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use as student')
+                       default='LOCAL_ORIGINAL_Q', help='Model to use as student')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--max-examples', type=int, default=10,
