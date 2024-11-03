@@ -63,23 +63,7 @@ class AgentState(TypedDict):
     iteration_count: Annotated[int, "Counter for iterations"]
     md_file: Annotated[str, "Path to markdown file"]
 
-# Initialize the models
-def get_model(model: ModelOption, temp: float = 0.1):
-    if model == ModelOption.LOCAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:8000/v1"
-        )
-    else:
-        # OpenRouter setup
-        os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=os.getenv("OPENROUTER_API_KEY")
-        )
+from utils.utils import get_model
 
 
 @retry_with_delay(max_attempts=3, delay=30)

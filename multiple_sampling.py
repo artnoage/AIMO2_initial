@@ -65,23 +65,7 @@ class AgentState(TypedDict):
     md_file: Annotated[str, "Path to markdown file"]
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
-# Initialize the models
-def get_model(model: ModelOption, temp: float = 0.1):
-    if model == ModelOption.LOCAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:8000/v1"
-        )
-    else:
-        # OpenRouter setup
-        os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=os.getenv("OPENROUTER_API_KEY")
-        )
+from utils.utils import get_model
 
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function - runs multiple times"""
