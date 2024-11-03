@@ -1,3 +1,10 @@
 .venv/
 .env
 .aider*
+conversations/
+monte_carlo/
+results/
+numina_olympiads/
+augmented_datasets/
+__pycache__
+model_1iteration
