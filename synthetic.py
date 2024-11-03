@@ -5,7 +5,7 @@ import asyncio
 import argparse
 from enum import Enum
 from typing import Optional, List, Dict
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data
+from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 
 from utils.utils import ModelOption
 from datetime import datetime
