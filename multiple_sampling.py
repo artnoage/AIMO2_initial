@@ -162,12 +162,12 @@ def decide_next_step(state: AgentState) -> str:
         return "solver"
     return "judge"
 
-def build_graph(solver_model: ModelOption, judge_model: ModelOption):
+def build_graph(solver_model: ModelOption, judge_model: ModelOption, num_samples: int):
     """Build the workflow graph"""
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", partial(solve, model_option=solver_model, num_samples=args.samples))
+    workflow.add_node("solver", partial(solve, model_option=solver_model, num_samples=num_samples))
     workflow.add_node("judge", partial(judge, model_option=judge_model))
     workflow.add_node("cleaner", clean_answer)
 
@@ -206,7 +206,7 @@ async def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
         
-        workflow = build_graph(solver_model, judge_model)
+        workflow = build_graph(solver_model, judge_model, args.samples)
         app = workflow.compile()
         
         print("Processing problem with Monte Carlo approach...")
