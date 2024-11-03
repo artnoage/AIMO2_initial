@@ -246,14 +246,14 @@ if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Run math problem solver with Monte Carlo approach')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
-                       default='LOCAL', help='Solver model to use')
+                       default='NEMOTRON', help='Solver model to use')
     parser.add_argument('--judge', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_PRO_FREE', help='Judge model to use')
+                       default='NEMOTRON', help='Judge model to use')
     parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
                        help='Use same model for both solver and judge')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--max-examples', type=int, default=10,
+    parser.add_argument('--max-examples', type=int, default=100,
                        help='Maximum number of examples to process')
     args = parser.parse_args()
     
