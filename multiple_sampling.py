@@ -126,7 +126,7 @@ async def verify(state: AgentState, model_option: ModelOption) -> Dict:
     verifier = get_model(model_option, temp=0)
     verification_prompt = [
         SystemMessage(content="You are a mathematical solution verifier. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Are these two answers equivalent?\nAnswer 1: {solution}\nAnswer 2: {ground_truth}")
+        HumanMessage(content=f"Problem:\n{state['solver_messages'][-1].content}\n\nAre these two answers equivalent?\nAnswer 1: {solution}\nAnswer 2: {ground_truth}")
     ]
     
     response = await verifier.ainvoke(verification_prompt)
