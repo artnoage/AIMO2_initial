@@ -275,12 +275,12 @@ async def main():
                 })
                 print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
                 
-                intermediate_filename = os.path.join('synthetic_results', 
+                intermediate_filename = os.path.join('results', 
                     f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
                 output_data = {
                     'error_rate_points': error_rate_points
                 }
-                os.makedirs('synthetic_results', exist_ok=True)
+                os.makedirs('results', exist_ok=True)
                 with open(intermediate_filename, 'w') as f:
                     json.dump(output_data, f, indent=2)
                 print(f"\nSaved intermediate results after {len(results)} examples")
@@ -306,9 +306,9 @@ async def main():
     print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
 
     # Save final results
-    os.makedirs('synthetic_results', exist_ok=True)
+    os.makedirs('results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('synthetic_results', 
+    results_filename = os.path.join('results', 
                                   f"synthetic_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save final error rate and points
