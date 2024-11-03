@@ -266,6 +266,10 @@ if __name__ == "__main__":
                        default='NOUS', help='Verifier model to use')
     parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
                        help='Use same model for both solver and verifier')
+    parser.add_argument('--split', type=str, default='train',
+                       help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--max-examples', type=int, default=10,
+                       help='Maximum number of examples to process')
     args = parser.parse_args()
     
     # Define models
@@ -276,7 +280,16 @@ if __name__ == "__main__":
         VERIFIER_MODEL = ModelOption[args.verifier]
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:10]")
+    try:
+        username = HfApi().whoami()["name"]
+        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        return
+
+    # Shuffle and limit examples
+    dataset = dataset.shuffle(seed=42)
+    dataset = dataset.select(range(min(args.max_examples, len(dataset))))
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
