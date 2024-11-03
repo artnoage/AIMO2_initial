@@ -59,30 +59,25 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
     for attempt in range(num_samples):
         print(f"Solving attempt {attempt + 1}/{num_samples}...")
         
-        try:
-            solver = get_model(model_option, temp=0.2)
-            response = await solver.ainvoke(messages)
-            solution_content = response.content
-            
-            append_to_conversation_md(
-                state["md_file"],
-                f"Solver's Solution (Attempt {attempt + 1})",
-                solution_content,
-                attempt,
-                messages[-1].content
-            )
-            
-            answer = extract_answer_from_solution(solution_content)
-            if answer:
-                individual_answers.append(answer)
-                if 'ground_truth' in state and answer == state['ground_truth']:
-                    right_answer_among_all = True
-            
-            all_solutions.append(f"=== Solution {attempt + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
-            
-        except Exception as e:
-            print(f"Failed attempt {attempt + 1}: {e}")
-            continue
+        solver = get_model(model_option, temp=0.2)
+        response = await solver.ainvoke(messages)
+        solution_content = response.content
+        
+        append_to_conversation_md(
+            state["md_file"],
+            f"Solver's Solution (Attempt {attempt + 1})",
+            solution_content,
+            attempt,
+            messages[-1].content
+        )
+        
+        answer = extract_answer_from_solution(solution_content)
+        if answer:
+            individual_answers.append(answer)
+            if 'ground_truth' in state and answer == state['ground_truth']:
+                right_answer_among_all = True
+        
+        all_solutions.append(f"=== Solution {attempt + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
     
     # After 10 attempts, combine all solutions into one message with a header
     combined_solutions = "Here are all 10 solution attempts:\n\n" + "\n".join(all_solutions)
