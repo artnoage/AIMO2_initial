@@ -272,6 +272,8 @@ async def main():
     # Process all examples with progress bar
     for coro in asyncio.as_completed(tasks):
         result = await coro
+        progress_bar.update(1)
+        progress_bar.update(1)
         if result:
             # Store result
             result_entry = {
@@ -309,6 +311,7 @@ async def main():
         if is_correct:
             correct_count += 1
     
+    progress_bar.close()
     print(f"\nFinal Results:")
     print(f"Accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
     

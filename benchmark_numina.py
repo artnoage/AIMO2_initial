@@ -336,6 +336,7 @@ async def main():
     correct_count = sum(1 for r in results if r['is_correct'])
 
     # Print final results
+    progress_bar.close()
     print("\n\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
     
