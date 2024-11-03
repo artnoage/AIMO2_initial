@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
-from utils.utils import ModelOption
+from utils.utils import ModelOption, get_model
 from typing import List, Dict, Optional
 from itertools import islice
 from langchain_core.runnables import RunnableLambda
@@ -62,33 +62,6 @@ showing your work clearly. Make sure to:
 
 In the end provide your final answer inside \\boxed{}"""
 
-def get_model(model: ModelOption, temp: float = 0.1):
-    """
-    Initialize the ChatOpenAI model based on the selected ModelOption.
-    For LOCAL models, it connects to a local endpoint.
-    For other models, it uses the OpenRouter API.
-    """
-    if model == ModelOption.LOCAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:8000/v1")
-    elif model==ModelOption.SAMBA:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key= os.getenv("SAMBANOVA_API_KEY"),
-            base_url="https://api.sambanova.ai/v1")
-    else:
-        openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-        if not openrouter_api_key:
-            raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
-        
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=openrouter_api_key)
 
 
 
