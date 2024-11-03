@@ -189,7 +189,8 @@ def build_graph(solver_model: ModelOption, judge_model: ModelOption, num_samples
 async def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
                    judge_model: ModelOption,
-                   md_file: str = None):
+                   md_file: str = None,
+                   num_samples: int = 20):
     """Process a single problem through the graph"""
     try:
         # Create initial messages
@@ -206,7 +207,7 @@ async def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
         
-        workflow = build_graph(solver_model, judge_model, args.samples)
+        workflow = build_graph(solver_model, judge_model, num_samples)
         app = workflow.compile()
         
         print("Processing problem with Monte Carlo approach...")
@@ -286,7 +287,8 @@ async def main():
                 ground_truth,
                 solver_model=SOLVER_MODEL,
                 judge_model=JUDGE_MODEL,
-                md_file=md_file
+                md_file=md_file,
+                num_samples=args.samples
             )
 
     # Process examples concurrently
