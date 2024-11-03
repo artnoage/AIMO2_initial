@@ -9,6 +9,7 @@ from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
 from typing import List, Dict, Optional
+from benchmark_numina import compare_math_answers
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -241,7 +242,8 @@ async def main():
             json.dump({
                 'teacher_model': args.teacher,
                 'student_model': args.student,
-                'accuracy': accuracy,
+                'initial_accuracy': (initial_correct/len(results))*100,
+                'final_accuracy': (demo_correct/len(results))*100,
                 'results': results
             }, f, indent=2)
         print(f"\nResults saved to {filename}")
