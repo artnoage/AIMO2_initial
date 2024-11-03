@@ -1,11 +1,10 @@
 import re
 import os
-from functools import partial
 import asyncio
 import argparse
-from typing import Annotated, TypedDict, Union, List
+from functools import partial
+from typing import Annotated, TypedDict, Union, List, Dict
 from huggingface_hub import HfApi
-from functools import wraps
 from tqdm import tqdm
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -14,8 +13,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langgraph.graph import StateGraph, END
 from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
-from utils.utils import ModelOption
-from utils.utils import get_model
+from utils.utils import ModelOption, get_model
 
 
 # Load environment variables from .env
@@ -52,8 +50,8 @@ class AgentState(TypedDict):
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
 
-async def solve(state: AgentState, model_option: ModelOption, num_samples: int = 20):
-    """Solver agent function - runs multiple times"""
+async def solve(state: AgentState, model_option: ModelOption, num_samples: int = 20) -> Dict:
+    """Solver agent function - generates multiple solution attempts"""
     messages = state["solver_messages"]
     attempt_count = state["attempt_count"]
     all_solutions = []
@@ -64,21 +62,10 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
         print(f"Solving attempt {attempt_count + 1}/{num_samples}...")
         
         try:
-            # Count input tokens
-            enc = tiktoken.get_encoding("cl100k_base")
-            input_text = "\n".join(msg.content for msg in messages)
-            input_tokens = len(enc.encode(input_text))
-            print(f"Input tokens to solver: {input_tokens}")
-            
             solver = get_model(model_option, temp=0.2)
             response = await solver.ainvoke(messages)
             solution_content = response.content
             
-            # Count output tokens
-            output_tokens = len(enc.encode(solution_content))
-            print(f"Output tokens from solver: {output_tokens}")
-            
-            # Update markdown file
             append_to_conversation_md(
                 state["md_file"],
                 f"Solver's Solution (Attempt {attempt_count + 1})",
@@ -87,7 +74,6 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
                 messages[-1].content
             )
             
-            # Extract numerical answer
             answer_match = re.search(r"ANSWER:\s*(\d+)", solution_content)
             if answer_match:
                 answer = int(answer_match.group(1))
@@ -95,7 +81,6 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
                 if 'ground_truth' in state and answer == state['ground_truth']:
                     right_answer_among_all = True
             
-            # Add this solution to our list with clear labeling
             all_solutions.append(f"=== Solution {attempt_count + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
             attempt_count += 1
             
@@ -112,26 +97,14 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
         "judge_messages": HumanMessage(content=combined_solutions),
         "right_answer_among_all": right_answer_among_all}
 
-async def judge(state: AgentState, model_option: ModelOption):
+async def judge(state: AgentState, model_option: ModelOption) -> Dict:
     """Judge agent function - evaluates all solutions"""
     messages = state["judge_messages"]
-    
     print("Judge evaluating solutions...")
-    
-    # Count input tokens using tiktoken
-    enc = tiktoken.get_encoding("cl100k_base")  # This encoding works well for most models
-    input_text = "\n".join(msg.content for msg in messages)
-    input_tokens = len(enc.encode(input_text))
-    print(f"Input tokens to judge: {input_tokens}")
     
     judge = get_model(model_option, temp=0)
     response = await judge.ainvoke(messages)
     
-    # Count output tokens using tiktoken
-    output_tokens = len(enc.encode(response.content))
-    print(f"Output tokens from judge: {output_tokens}")
-    
-    # Update markdown file
     append_to_conversation_md(
         state["md_file"],
         "Judge's Evaluation",
@@ -140,32 +113,25 @@ async def judge(state: AgentState, model_option: ModelOption):
         messages[-1].content
     )
     
-    return {
-        "solution": response.content
-    }
+    return {"solution": response.content}
 
-async def verify(state: AgentState, model_option: ModelOption):
+async def verify(state: AgentState, model_option: ModelOption) -> Dict:
     """Verify the judge's solution against the ground truth"""
     solution = state["solution"]
     ground_truth = state.get("ground_truth")
     
     if not solution or not ground_truth:
-        return {"solution": None}
+        return {"solution": None, "is_correct": False}
         
     verifier = get_model(model_option, temp=0)
-    
     verification_prompt = [
         SystemMessage(content="You are a mathematical solution verifier. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Are these two answers equivalent?\nAnswer 1: {solution}\nAnswer 2: {ground_truth}")
     ]
     
-    try:
-        response = await verifier.ainvoke(verification_prompt)
-        is_correct = response.content.strip().lower() == 'yes'
-        return {"solution": solution, "is_correct": is_correct}
-    except Exception as e:
-        print(f"Verification failed: {e}")
-        return {"solution": None, "is_correct": False}
+    response = await verifier.ainvoke(verification_prompt)
+    is_correct = response.content.strip().lower() == 'yes'
+    return {"solution": solution, "is_correct": is_correct}
 
 def decide_next_step(state: AgentState) -> str:
     """Determine if we should continue solving or move to judging"""
