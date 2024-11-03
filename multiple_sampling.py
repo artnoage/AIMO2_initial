@@ -3,7 +3,8 @@ import os
 import asyncio
 import argparse
 from functools import partial
-from typing import Annotated, TypedDict, Union, List, Dict
+from typing import Annotated, TypedDict, Union, List, Dict, Optional
+from utils.utils import extract_answer_from_solution
 from huggingface_hub import HfApi
 from tqdm import tqdm
 from dotenv import load_dotenv
@@ -28,16 +29,15 @@ SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. When given a 
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
-Never ask for confirmation. Just provide your final answer as a number at the end of your 
-response prefixed with 'ANSWER: '."""
+In the end provide your final answer inside \boxed{}"""
 
-JUDGE_PROMPT_TEMPLATE = """You are a mathematical solution judge. You will be given 10 different solutions to the same problem. Your task is to:
+JUDGE_PROMPT_TEMPLATE = """You are a mathematical solution judge. You will be given multiple different solutions to the same problem. Your task is to:
 1. Review all solutions carefully
 2. Identify the most common answer if there is one
 3. Evaluate the reasoning in solutions that arrived at this answer
 4. Make a final determination of the most likely correct answer
 
-Provide your final answer as a number prefixed with 'FINAL_ANSWER: '."""
+Provide your final answer inside \boxed{}"""
 
 
 # Define state schema
@@ -74,9 +74,8 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
                 messages[-1].content
             )
             
-            answer_match = re.search(r"ANSWER:\s*(\d+)", solution_content)
-            if answer_match:
-                answer = int(answer_match.group(1))
+            answer = extract_answer_from_solution(solution_content)
+            if answer:
                 individual_answers.append(answer)
                 if 'ground_truth' in state and answer == state['ground_truth']:
                     right_answer_among_all = True
@@ -113,7 +112,9 @@ async def judge(state: AgentState, model_option: ModelOption) -> Dict:
         messages[-1].content
     )
     
-    return {"solution": response.content}
+    solution = response.content
+    answer = extract_answer_from_solution(solution)
+    return {"solution": answer}
 
 async def verify(state: AgentState, model_option: ModelOption) -> Dict:
     """Verify the judge's solution against the ground truth"""
