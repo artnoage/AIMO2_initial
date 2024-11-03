@@ -175,6 +175,8 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--max-examples', type=int, default=10,
                        help='Maximum number of examples to process')
+    parser.add_argument('--max-concurrent', type=int, default=4,
+                       help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
 
     # Load the dataset based on selection
@@ -212,12 +214,23 @@ async def main():
             'solution': example['solution']
         })
 
-    # Process examples
+    # Create a semaphore to limit concurrency
+    semaphore = asyncio.Semaphore(args.max_concurrent)
+
+    async def process_with_semaphore(example, running_id):
+        async with semaphore:
+            return await process_example(example, running_id, teacher_model, student_model, verifier_model)
+
+    # Process examples concurrently
     results = []
     progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     
-    for i, example in enumerate(example_data):
-        result = await process_example(example, i, teacher_model, student_model, verifier_model)
+    # Create tasks for all examples
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+    
+    # Process all examples with progress bar
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
         if result:
             results.append(result)
         progress_bar.update(1)
