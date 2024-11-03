@@ -60,11 +60,26 @@ async def get_teacher_demonstration(problem: str, teacher_model) -> Dict:
         "demonstration_answer": extract_answer_from_solution(solution)
     }
 
-async def get_student_solution(original_problem: str, demonstration: Dict, student_model) -> str:
-    """Get student's solution using the demonstration"""
-    prompt = [
+async def get_student_solutions(original_problem: str, demonstration: Dict, student_model) -> Tuple[str, str]:
+    """Get student's solutions both before and after seeing the demonstration"""
+    # First attempt without demonstration
+    initial_prompt = [
         SystemMessage(content=STUDENT_SYSTEM_PROMPT),
-        HumanMessage(content=f"""Original Problem to Solve:
+        HumanMessage(content=f"""Here is a problem to solve:
+{original_problem}
+
+Solve it step by step, showing your work.""")
+    ]
+    
+    initial_response = await student_model.ainvoke(initial_prompt)
+    initial_solution = initial_response.content
+    
+    # Second attempt with demonstration
+    demo_prompt = [
+        SystemMessage(content=STUDENT_SYSTEM_PROMPT),
+        HumanMessage(content=f"""Let's try this problem again with a helpful example.
+
+Original Problem to Solve:
 {original_problem}
 
 Similar Problem for Reference:
@@ -76,10 +91,12 @@ Solution to Similar Problem:
 Now solve the original problem using similar reasoning.""")
     ]
     
-    response = await student_model.ainvoke(prompt)
-    return response.content
+    demo_response = await student_model.ainvoke(demo_prompt)
+    demo_solution = demo_response.content
+    
+    return initial_solution, demo_solution
 
-async def process_example(example: Dict, running_id: int, teacher_model, student_model) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, teacher_model, student_model, verifier_model) -> Optional[Dict]:
     """Process a single example using the teacher-student approach"""
     try:
         print(f"\nProcessing Problem {running_id + 1}")
@@ -94,35 +111,49 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
         print("Getting teacher's demonstration...")
         demonstration = await get_teacher_demonstration(example['problem'], teacher_model)
         
-        # Get student's solution
-        print("Getting student's solution...")
-        student_solution = await get_student_solution(
+        # Get student's solutions (both attempts)
+        print("Getting student's solutions...")
+        initial_solution, demo_solution = await get_student_solutions(
             example['problem'], 
             demonstration,
             student_model
         )
         
-        # Extract student's answer
-        student_answer = extract_answer_from_solution(student_solution)
+        # Extract answers
+        initial_answer = extract_answer_from_solution(initial_solution)
+        demo_answer = extract_answer_from_solution(demo_solution)
         
-        # Determine correctness
-        is_correct = student_answer == correct_answer
+        # Use NEMOTRON to verify both answers
+        initial_correct = await compare_math_answers(
+            initial_answer, correct_answer, example['problem'], verifier_model
+        )
+        demo_correct = await compare_math_answers(
+            demo_answer, correct_answer, example['problem'], verifier_model
+        )
         
         # Print results
-        status = '✓' if is_correct else '✗'
-        print(f"\nResult: {status}")
+        print("\nResults:")
+        print(f"Initial attempt: {'✓' if initial_correct else '✗'}")
+        print(f"After demonstration: {'✓' if demo_correct else '✗'}")
         print(f"Correct Answer: {correct_answer}")
-        print(f"Student's Answer: {student_answer}")
+        print(f"Initial Answer: {initial_answer}")
+        print(f"Final Answer: {demo_answer}")
+        if not initial_correct and demo_correct:
+            print("✨ Demonstration helped!")
         print("-" * 80)
         
         return {
             'id': example['id'],
             'problem': example['problem'],
             'teacher_demonstration': demonstration,
-            'student_solution': student_solution,
+            'initial_solution': initial_solution,
+            'demo_solution': demo_solution,
             'correct_answer': correct_answer,
-            'student_answer': student_answer,
-            'is_correct': is_correct
+            'initial_answer': initial_answer,
+            'demo_answer': demo_answer,
+            'initial_correct': initial_correct,
+            'demo_correct': demo_correct,
+            'demonstration_helped': not initial_correct and demo_correct
         }
         
     except Exception as e:
@@ -137,6 +168,8 @@ async def main():
                        default='LOCAL_ORIGINAL_Q', help='Model to use as teacher')
     parser.add_argument('--student', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL_Q', help='Model to use as student')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--max-examples', type=int, default=10,
@@ -155,6 +188,7 @@ async def main():
     try:
         teacher_model = get_model(ModelOption[args.teacher])
         student_model = get_model(ModelOption[args.student])
+        verifier_model = get_model(ModelOption[args.verifier])
     except Exception as e:
         print(f"Error initializing models: {e}")
         return
@@ -178,7 +212,7 @@ async def main():
     progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     
     for i, example in enumerate(example_data):
-        result = await process_example(example, i, teacher_model, student_model)
+        result = await process_example(example, i, teacher_model, student_model, verifier_model)
         if result:
             results.append(result)
         progress_bar.update(1)
@@ -187,12 +221,15 @@ async def main():
 
     # Calculate statistics
     if results:
-        correct_count = sum(1 for r in results if r['is_correct'])
-        accuracy = (correct_count / len(results)) * 100
+        initial_correct = sum(1 for r in results if r['initial_correct'])
+        demo_correct = sum(1 for r in results if r['demo_correct'])
+        helped_count = sum(1 for r in results if r['demonstration_helped'])
         
         print("\nFinal Results:")
         print(f"Total examples processed: {len(results)}")
-        print(f"Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
+        print(f"Initial accuracy: {initial_correct}/{len(results)} = {(initial_correct/len(results))*100:.2f}%")
+        print(f"Final accuracy: {demo_correct}/{len(results)} = {(demo_correct/len(results))*100:.2f}%")
+        print(f"Demonstration helped in {helped_count} cases ({(helped_count/len(results))*100:.2f}%)")
         
         # Save results
         os.makedirs('results', exist_ok=True)
