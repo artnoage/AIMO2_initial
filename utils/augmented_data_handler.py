@@ -31,9 +31,20 @@ def get_existing_ids(filename: str) -> set:
     if not os.path.exists(filename):
         return set()
         
-    with open(filename, 'r') as f:
-        existing_data = json.load(f)
-        return {item['id'] for item in existing_data}
+    try:
+        with open(filename, 'r') as f:
+            existing_data = json.load(f)
+            return {item['id'] for item in existing_data}
+    except json.JSONDecodeError as e:
+        print(f"\nWarning: Could not parse existing augmented data file ({str(e)})")
+        print("The file may be corrupted. Backing it up and starting fresh.")
+        
+        # Backup the problematic file
+        backup_name = f"{filename}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        os.rename(filename, backup_name)
+        print(f"Backed up to: {backup_name}")
+        
+        return set()
 
 def save_augmented_data(data: List[Dict], filename: str, examples_processed: int) -> None:
     """Save augmented data to file"""
