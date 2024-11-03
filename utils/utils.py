@@ -11,7 +11,7 @@ class ModelOption(Enum):
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
-    #LOCAL = "mistralai/Mathstral-7B-v0.1"
+    LOCAL_ORIGINAL = "mistralai/Mathstral-7B-v0.1"
     LOCAL = "model_1iteration/"
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"

@@ -8,6 +8,20 @@ from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption
+from typing import List, Dict, Optional
+from itertools import islice
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from dotenv import load_dotenv
+from langchain.callbacks.base import BaseCallbackHandler
+from datasets import load_dataset
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from huggingface_hub import HfApi
+from tqdm import tqdm
+import time
+from utils.utils import extract_answer_from_solution
+from utils.utils import ModelOption
 
 def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
     """Load intermediate results from saved JSON files"""
@@ -33,23 +47,12 @@ def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOp
             intermediate_accuracies.append(accuracy)
     
     return intermediate_results, intermediate_timestamps, intermediate_accuracies
-from typing import List, Dict, Optional
-from itertools import islice
-from langchain_core.runnables import RunnableLambda
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from dotenv import load_dotenv
-from langchain.callbacks.base import BaseCallbackHandler
-from datasets import load_dataset
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from huggingface_hub import HfApi
-from tqdm import tqdm
-import time
+
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-from utils.utils import ModelOption
+
 SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
 the tools you have to use. After, solve it step by step, 
 showing your work clearly. Make sure to:
@@ -87,7 +90,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key=openrouter_api_key)
 
-from utils.utils import extract_answer_from_solution
+
 
 
 def save_results(results: list, model_name: str):
