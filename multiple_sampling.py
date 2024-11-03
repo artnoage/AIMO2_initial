@@ -1,6 +1,8 @@
 import re
+import os
 from enum import Enum
 from functools import partial
+import asyncio
 from typing import Annotated, TypedDict, Union, List, Callable
 import time
 from functools import wraps
@@ -14,26 +16,22 @@ import tiktoken
 from utils.utils import ModelOption
 
 from utils.utils import get_model
-def retry_with_delay(max_attempts: int = 3, delay: int = 30):
-    def decorator(func: Callable):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            attempts = 0
-            while attempts < max_attempts:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    attempts += 1
-                    if attempts == max_attempts:
-                        raise e
-                    print(f"Attempt {attempts} failed. Waiting {delay} seconds before retry...")
-                    time.sleep(delay)
-            return None
-        return wrapper
-    return decorator
+async def retry_with_delay(func, *args, max_attempts: int = 3, delay: int = 30):
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            return await func(*args)
+        except Exception as e:
+            attempts += 1
+            if attempts == max_attempts:
+                raise e
+            print(f"Attempt {attempts} failed. Waiting {delay} seconds before retry...")
+            await asyncio.sleep(delay)
+    return None
 
 # Load environment variables from .env
 load_dotenv()
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 # Define system prompts as constants
 SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. When given a problem, solve it step by step, showing your work clearly. Make sure to:
@@ -65,7 +63,7 @@ class AgentState(TypedDict):
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
 
-def solve(state: AgentState, model_option: ModelOption):
+async def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function - runs multiple times"""
     messages = state["solver_messages"]
     attempt_count = state["attempt_count"]
@@ -76,12 +74,6 @@ def solve(state: AgentState, model_option: ModelOption):
     while attempt_count < 20:
         print(f"Solving attempt {attempt_count + 1}/20...")
         
-        @retry_with_delay(max_attempts=3, delay=30)
-        def single_attempt():
-            solver = get_model(model_option, temp=0.2)
-            response = solver.invoke(messages)
-            return response.content
-        
         try:
             # Count input tokens
             enc = tiktoken.get_encoding("cl100k_base")
@@ -89,7 +81,9 @@ def solve(state: AgentState, model_option: ModelOption):
             input_tokens = len(enc.encode(input_text))
             print(f"Input tokens to solver: {input_tokens}")
             
-            solution_content = single_attempt()
+            solver = get_model(model_option, temp=0.2)
+            response = await retry_with_delay(solver.ainvoke, messages)
+            solution_content = response.content
             
             # Count output tokens
             output_tokens = len(enc.encode(solution_content))
@@ -130,7 +124,7 @@ def solve(state: AgentState, model_option: ModelOption):
         "right_answer_among_all": right_answer_among_all}
 
 @retry_with_delay(max_attempts=3, delay=30)
-def judge(state: AgentState, model_option: ModelOption):
+async def judge(state: AgentState, model_option: ModelOption):
     """Judge agent function - evaluates all solutions"""
     messages = state["judge_messages"]
     
@@ -143,7 +137,7 @@ def judge(state: AgentState, model_option: ModelOption):
     print(f"Input tokens to judge: {input_tokens}")
     
     judge = get_model(model_option, temp=0)
-    response = judge.invoke(messages)
+    response = await retry_with_delay(judge.ainvoke, messages)
     
     # Count output tokens using tiktoken
     output_tokens = len(enc.encode(response.content))
