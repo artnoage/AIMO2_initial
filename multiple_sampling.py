@@ -95,13 +95,18 @@ async def judge(state: AgentState, model_option: ModelOption) -> Dict:
     judge = get_model(model_option, temp=0)
     response = await judge.ainvoke(messages)
     
+    # Increment attempt count
+    attempt_count = state.get("attempt_count", 0) + 1
+    
     append_to_conversation_md(
         state["md_file"],
         "Judge's Evaluation",
         response.content,
-        state["attempt_count"],
+        attempt_count,
         messages[-1].content
     )
+    
+    return {"solution": answer, "attempt_count": attempt_count}
     
     solution = response.content
     answer = extract_answer_from_solution(solution)
@@ -171,7 +176,8 @@ async def process_problem(problem_text: str, ground_truth: int,
             "solution": "",
             "md_file": md_file,
             "ground_truth": ground_truth,
-            "right_answer_among_all": False
+            "right_answer_among_all": False,
+            "attempt_count": 0
         }
         
         workflow = build_graph(solver_model, judge_model, verifier_model, num_samples)
