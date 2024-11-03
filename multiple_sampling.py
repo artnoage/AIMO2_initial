@@ -186,7 +186,7 @@ def build_graph(solver_model: ModelOption, judge_model: ModelOption):
 
     return workflow
 
-def process_problem(problem_text: str, ground_truth: int, 
+async def process_problem(problem_text: str, ground_truth: int, 
                    solver_model: ModelOption,
                    judge_model: ModelOption,
                    md_file: str = None):
@@ -210,7 +210,7 @@ def process_problem(problem_text: str, ground_truth: int,
         app = workflow.compile()
         
         print("Processing problem with Monte Carlo approach...")
-        final_state = app.invoke(initial_state, {"recursion_limit": 200})
+        final_state = await app.ainvoke(initial_state, {"recursion_limit": 200})
         return final_state
     except Exception as e:
         print(f"Error processing problem: {e}")
