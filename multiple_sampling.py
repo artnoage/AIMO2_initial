@@ -158,7 +158,7 @@ async def process_problem(problem_text: str, ground_truth: int,
                    judge_model: ModelOption,
                    verifier_model: ModelOption,
                    md_file: str = None,
-                   num_samples: int = 20):
+                   num_samples: int = 2):
     """Process a single problem through the graph"""
     try:
         # Create initial messages
@@ -201,11 +201,11 @@ async def main():
                        default='NEMOTRON', help='Verifier model to use')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--max-examples', type=int, default=100,
+    parser.add_argument('--max-examples', type=int, default=4,
                        help='Maximum number of examples to process')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--samples', type=int, default=20,
+    parser.add_argument('--samples', type=int, default=2,
                        help='Number of samples to generate per problem (default: 20)')
     args = parser.parse_args()
     
@@ -272,8 +272,6 @@ async def main():
     # Process all examples with progress bar
     for coro in asyncio.as_completed(tasks):
         result = await coro
-        progress_bar.update(1)
-        progress_bar.update(1)
         if result:
             # Store result
             result_entry = {
@@ -311,7 +309,6 @@ async def main():
         if is_correct:
             correct_count += 1
     
-    progress_bar.close()
     print(f"\nFinal Results:")
     print(f"Accuracy: {correct_count}/{len(results)} = {correct_count/len(results):.2%}")
     
