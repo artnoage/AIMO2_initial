@@ -2,7 +2,7 @@
   "error_rate_points": [
     {
       "examples_processed": 100,
-      "error_rate": 0.7
+      "error_rate": 0.72
     }
   ]
 }
