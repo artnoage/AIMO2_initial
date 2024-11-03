@@ -6,6 +6,7 @@ import asyncio
 from typing import Annotated, TypedDict, Union, List, Callable
 import time
 from functools import wraps
+from tqdm import tqdm
 from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
@@ -233,7 +234,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
 
-if __name__ == "__main__":
+async def run():
     import argparse
     from huggingface_hub import HfApi
     
@@ -249,6 +250,8 @@ if __name__ == "__main__":
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--max-examples', type=int, default=100,
                        help='Maximum number of examples to process')
+    parser.add_argument('--max-concurrent', type=int, default=4,
+                       help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
     
     # Define models
