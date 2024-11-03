@@ -45,7 +45,6 @@ class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     judge_messages: Annotated[List[BaseMessage], add_messages]
     solution: Annotated[Union[int, str, None], "Final numerical answer"]
-    attempt_count: Annotated[int, "Counter for solver attempts"]
     md_file: Annotated[str, "Path to markdown file"]
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
@@ -53,13 +52,12 @@ class AgentState(TypedDict):
 async def solve(state: AgentState, model_option: ModelOption, num_samples: int = 20) -> Dict:
     """Solver agent function - generates multiple solution attempts"""
     messages = state["solver_messages"]
-    attempt_count = state["attempt_count"]
     all_solutions = []
     individual_answers = []
     right_answer_among_all = False
     
-    while attempt_count < num_samples:
-        print(f"Solving attempt {attempt_count + 1}/{num_samples}...")
+    for attempt in range(num_samples):
+        print(f"Solving attempt {attempt + 1}/{num_samples}...")
         
         try:
             solver = get_model(model_option, temp=0.2)
@@ -68,9 +66,9 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
             
             append_to_conversation_md(
                 state["md_file"],
-                f"Solver's Solution (Attempt {attempt_count + 1})",
+                f"Solver's Solution (Attempt {attempt + 1})",
                 solution_content,
-                attempt_count,
+                attempt,
                 messages[-1].content
             )
             
@@ -80,8 +78,7 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
                 if 'ground_truth' in state and answer == state['ground_truth']:
                     right_answer_among_all = True
             
-            all_solutions.append(f"=== Solution {attempt_count + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
-            attempt_count += 1
+            all_solutions.append(f"=== Solution {attempt + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
             
         except Exception as e:
             print(f"Failed attempt {attempt_count + 1}: {e}")
@@ -92,7 +89,6 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
     
     return {
         "solution": combined_solutions,
-        "attempt_count": attempt_count,
         "judge_messages": HumanMessage(content=combined_solutions),
         "right_answer_among_all": right_answer_among_all}
 
@@ -136,8 +132,6 @@ async def verify(state: AgentState, model_option: ModelOption) -> Dict:
 
 def decide_next_step(state: AgentState) -> str:
     """Determine if we should continue solving or move to judging"""
-    if state["attempt_count"] < 10:
-        return "solver"
     return "judge"
 
 def build_graph(solver_model: ModelOption, judge_model: ModelOption, verifier_model: ModelOption, num_samples: int):
@@ -180,7 +174,6 @@ async def process_problem(problem_text: str, ground_truth: int,
             ],
             "judge_messages": [SystemMessage(content=JUDGE_PROMPT_TEMPLATE),HumanMessage(content=f"Here is the problem: {problem_text}"),AIMessage(content="Please provide solutions")],
             "solution": "",
-            "attempt_count": 0,
             "md_file": md_file,
             "ground_truth": ground_truth,
             "right_answer_among_all": False
@@ -292,7 +285,6 @@ async def main():
                 'problem_id': result.get('id'),
                 'solution': result.get('solution'),
                 'ground_truth': result.get('ground_truth'),
-                'num_attempts': result.get('attempt_count'),
                 'right_answer_among_all': result.get('right_answer_among_all', False)
             }
         results.append(result_entry)
@@ -302,7 +294,6 @@ async def main():
         print(f"\nProblem {result_entry['problem_id']} Result:")
         print(f"Model Answer: {result_entry['solution']}")
         print(f"Ground Truth: {result_entry['ground_truth']}")
-        print(f"Number of Attempts: {result_entry['num_attempts']}")
         print(f"Correct: {is_correct}")
         
         # Print running accuracy
