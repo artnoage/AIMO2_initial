@@ -241,6 +241,7 @@ def process_problem(problem_text: str, ground_truth: int,
 
 if __name__ == "__main__":
     import argparse
+    from huggingface_hub import HfApi
     
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Run math problem solver with Monte Carlo approach')
@@ -269,7 +270,7 @@ if __name__ == "__main__":
         dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
-        return
+        exit(1)
 
     # Shuffle and limit examples
     dataset = dataset.shuffle(seed=42)
