@@ -52,7 +52,7 @@ class AgentState(TypedDict):
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
 
-async def solve(state: AgentState, model_option: ModelOption):
+async def solve(state: AgentState, model_option: ModelOption, num_samples: int = 20):
     """Solver agent function - runs multiple times"""
     messages = state["solver_messages"]
     attempt_count = state["attempt_count"]
@@ -60,8 +60,8 @@ async def solve(state: AgentState, model_option: ModelOption):
     individual_answers = []
     right_answer_among_all = False
     
-    while attempt_count < 20:
-        print(f"Solving attempt {attempt_count + 1}/20...")
+    while attempt_count < num_samples:
+        print(f"Solving attempt {attempt_count + 1}/{num_samples}...")
         
         try:
             # Count input tokens
@@ -167,7 +167,7 @@ def build_graph(solver_model: ModelOption, judge_model: ModelOption):
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("solver", partial(solve, model_option=solver_model))
+    workflow.add_node("solver", partial(solve, model_option=solver_model, num_samples=args.samples))
     workflow.add_node("judge", partial(judge, model_option=judge_model))
     workflow.add_node("cleaner", clean_answer)
 
@@ -235,6 +235,8 @@ async def main():
                        help='Maximum number of examples to process')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
+    parser.add_argument('--samples', type=int, default=20,
+                       help='Number of samples to generate per problem (default: 20)')
     args = parser.parse_args()
     
     # Define models
