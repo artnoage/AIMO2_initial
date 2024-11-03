@@ -1,4 +1,3 @@
-import os
 import re
 from enum import Enum
 from functools import partial
@@ -9,11 +8,12 @@ from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
-from librarian import init_conversation_md, append_to_conversation_md
+from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
+from utils.utils import ModelOption
 
+from utils.utils import get_model
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
         @wraps(func)
@@ -54,7 +54,6 @@ JUDGE_PROMPT_TEMPLATE = """You are a mathematical solution judge. You will be gi
 
 Provide your final answer as a number prefixed with 'FINAL_ANSWER: '."""
 
-from utils.utils import ModelOption
 
 # Define state schema
 class AgentState(TypedDict):
@@ -65,7 +64,6 @@ class AgentState(TypedDict):
     md_file: Annotated[str, "Path to markdown file"]
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
-from utils.utils import get_model
 
 def solve(state: AgentState, model_option: ModelOption):
     """Solver agent function - runs multiple times"""
