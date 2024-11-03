@@ -284,9 +284,8 @@ async def main():
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
     # Initialize augmented dataset filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"benchmark_augmented_{args.solver}_{args.verifier}_{timestamp}.json")
+                                    f"benchmark_augmented_{args.solver}_{args.verifier}.json")
     
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
