@@ -1,12 +1,10 @@
 import re
 import os
-from enum import Enum
 from functools import partial
 import asyncio
 import argparse
-from typing import Annotated, TypedDict, Union, List, Callable
+from typing import Annotated, TypedDict, Union, List
 from huggingface_hub import HfApi
-import time
 from functools import wraps
 from tqdm import tqdm
 from dotenv import load_dotenv
@@ -17,20 +15,8 @@ from langgraph.graph import StateGraph, END
 from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
 from utils.utils import ModelOption
-
 from utils.utils import get_model
-async def retry_with_delay(func, *args, max_attempts: int = 3, delay: int = 30):
-    attempts = 0
-    while attempts < max_attempts:
-        try:
-            return await func(*args)
-        except Exception as e:
-            attempts += 1
-            if attempts == max_attempts:
-                raise e
-            print(f"Attempt {attempts} failed. Waiting {delay} seconds before retry...")
-            await asyncio.sleep(delay)
-    return None
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -85,7 +71,7 @@ async def solve(state: AgentState, model_option: ModelOption):
             print(f"Input tokens to solver: {input_tokens}")
             
             solver = get_model(model_option, temp=0.2)
-            response = await retry_with_delay(solver.ainvoke, messages)
+            response = await solver.ainvoke(messages)
             solution_content = response.content
             
             # Count output tokens
@@ -126,7 +112,6 @@ async def solve(state: AgentState, model_option: ModelOption):
         "judge_messages": HumanMessage(content=combined_solutions),
         "right_answer_among_all": right_answer_among_all}
 
-@retry_with_delay(max_attempts=3, delay=30)
 async def judge(state: AgentState, model_option: ModelOption):
     """Judge agent function - evaluates all solutions"""
     messages = state["judge_messages"]
@@ -140,7 +125,7 @@ async def judge(state: AgentState, model_option: ModelOption):
     print(f"Input tokens to judge: {input_tokens}")
     
     judge = get_model(model_option, temp=0)
-    response = await retry_with_delay(judge.ainvoke, messages)
+    response = await judge.ainvoke(messages)
     
     # Count output tokens using tiktoken
     output_tokens = len(enc.encode(response.content))
@@ -362,3 +347,6 @@ async def main():
         print(f"Problems where correct answer was among solutions: {correct_in_solutions}")
         print(f"Times judge missed picking correct answer: {missed_opportunities}")
         print(f"Judge accuracy when correct answer was available: {correct_count}/{correct_in_solutions} = {correct_count/correct_in_solutions:.2%}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
