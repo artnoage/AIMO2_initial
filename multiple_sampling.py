@@ -234,11 +234,8 @@ def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
 
-async def run():
-    import argparse
-    from huggingface_hub import HfApi
-    
-    # Set up argument parser
+if __name__ == "__main__":
+    asyncio.run(main())
     parser = argparse.ArgumentParser(description='Run math problem solver with Monte Carlo approach')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
                        default='NEMOTRON', help='Solver model to use')
@@ -275,31 +272,45 @@ async def run():
     
     print(f"\n=== Starting Monte Carlo evaluation with {SOLVER_MODEL.value} as solver and {JUDGE_MODEL.value} as judge ===")
     
+    # Create a semaphore to limit concurrency
+    semaphore = asyncio.Semaphore(args.max_concurrent)
+
+    async def process_with_semaphore(example):
+        async with semaphore:
+            problem_id = example['id']
+            problem = example['problem']
+            print(f"\nProcessing problem {problem_id}...")
+            
+            ground_truth = int(example['answer']) if example['answer'].isdigit() else None
+            
+            # Initialize conversation file
+            md_file = init_conversation_md(
+                problem_id=str(problem_id),
+                problem=problem,
+                solution=example['solution'],
+                solver_model_name=f"{SOLVER_MODEL.name}_MC",
+                suffix="",
+                directory=f"monte_carlo/{SOLVER_MODEL.name.lower()}"
+            )
+            
+            return await process_problem(
+                problem, 
+                ground_truth,
+                solver_model=SOLVER_MODEL,
+                judge_model=JUDGE_MODEL,
+                md_file=md_file
+            )
+
+    # Process examples concurrently
     results = []
-    for example in dataset:
-        problem_id = example['id']
-        problem = example['problem']
-        print(f"\nProcessing problem {problem_id}...")
-        
-        ground_truth = int(example['answer']) if example['answer'].isdigit() else None
-        
-        # Initialize conversation file
-        md_file = init_conversation_md(
-            problem_id=str(problem_id),
-            problem=problem,
-            solution=example['solution'],
-            solver_model_name=f"{SOLVER_MODEL.name}_MC",
-            suffix="",
-            directory=f"monte_carlo/{SOLVER_MODEL.name.lower()}"
-        )
-        
-        result = process_problem(
-            problem, 
-            ground_truth,
-            solver_model=SOLVER_MODEL,
-            judge_model=JUDGE_MODEL,
-            md_file=md_file
-        )
+    progress_bar = tqdm(total=len(dataset), desc="Processing examples")
+    
+    # Create tasks for all examples
+    tasks = [process_with_semaphore(ex) for ex in dataset]
+    
+    # Process all examples with progress bar
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
         
         # Store result
         result_entry = {
