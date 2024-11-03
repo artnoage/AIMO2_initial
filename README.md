@@ -80,7 +80,12 @@ python synthetic.py --solver MODEL --verifier MODEL
 - `--both MODEL`: Use same model for solver and verifier/judge
 - `--split SPLIT`: Choose dataset split (train/validation/test)
 - `--source SOURCE`: Filter problems by source
-- `--max-concurrent N`: Set maximum concurrent problems
+- `--max-concurrent N`: Set maximum concurrent problems (default: 4)
+
+The framework includes robust error handling:
+- Automatic backup of corrupted JSON files
+- Graceful handling of parsing errors
+- Progress preservation on interruption
 
 ## Results
 
