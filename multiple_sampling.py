@@ -3,7 +3,9 @@ import os
 from enum import Enum
 from functools import partial
 import asyncio
+import argparse
 from typing import Annotated, TypedDict, Union, List, Callable
+from huggingface_hub import HfApi
 import time
 from functools import wraps
 from tqdm import tqdm
@@ -234,8 +236,7 @@ def process_problem(problem_text: str, ground_truth: int,
             "right_answer_among_all": False
         }
 
-if __name__ == "__main__":
-    asyncio.run(main())
+async def main():
     parser = argparse.ArgumentParser(description='Run math problem solver with Monte Carlo approach')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption], 
                        default='NEMOTRON', help='Solver model to use')
@@ -311,22 +312,22 @@ if __name__ == "__main__":
     # Process all examples with progress bar
     for coro in asyncio.as_completed(tasks):
         result = await coro
-        
-        # Store result
-        result_entry = {
-            'solver_model': SOLVER_MODEL.value,
-            'judge_model': JUDGE_MODEL.value,
-            'problem_id': problem_id,
-            'solution': result['solution'],
-            'ground_truth': ground_truth,
-            'num_attempts': result['attempt_count'],
-            'right_answer_among_all': result.get('right_answer_among_all', False)
-        }
+        if result:
+            # Store result
+            result_entry = {
+                'solver_model': SOLVER_MODEL.value,
+                'judge_model': JUDGE_MODEL.value,
+                'problem_id': result.get('id'),
+                'solution': result.get('solution'),
+                'ground_truth': result.get('ground_truth'),
+                'num_attempts': result.get('attempt_count'),
+                'right_answer_among_all': result.get('right_answer_among_all', False)
+            }
         results.append(result_entry)
         
         # Print immediate result for this problem
         is_correct = result_entry['solution'] == result_entry['ground_truth']
-        print(f"\nProblem {problem_id} Result:")
+        print(f"\nProblem {result_entry['problem_id']} Result:")
         print(f"Model Answer: {result_entry['solution']}")
         print(f"Ground Truth: {result_entry['ground_truth']}")
         print(f"Number of Attempts: {result_entry['num_attempts']}")
