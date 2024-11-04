@@ -187,7 +187,7 @@ async def main():
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=5,
                        help='Maximum number of attempts to get correct solution (default: 5)')
-    parser.add_argument('--max-verify', type=int, default=3,
+    parser.add_argument('--max-verify', type=int, default=1,
                        help='Maximum verification attempts per answer (default: 3)')
     args = parser.parse_args()
 
