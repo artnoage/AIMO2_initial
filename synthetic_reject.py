@@ -80,6 +80,13 @@ def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOp
     
     return intermediate_results, intermediate_timestamps, intermediate_accuracies
 
+def calculate_error_rate(results):
+    """Calculate error rate from results"""
+    if not results:
+        return 0.0
+    correct_count = sum(1 for r in results if r['is_correct'])
+    return correct_count / len(results)
+
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
     """Use the model to compare two mathematical answers"""
     if model_answer is None or correct_answer is None:
