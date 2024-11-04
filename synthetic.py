@@ -80,8 +80,8 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-3])
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
-    """Process a single example"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, max_attempts: int) -> Optional[Dict]:
+    """Process a single example with multiple attempts"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -101,16 +101,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             HumanMessage(content=combined_prompt)
         ]
         
-        # First attempt
-        response = await solver_model.ainvoke(prompt)
-        solution = response.content
-        model_answer = extract_answer_from_solution(solution)
-        is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+        # Multiple attempts until correct or max attempts reached
+        attempts = 0
+        is_correct = False
+        solution = None
+        model_answer = None
         
-        
+        while attempts < max_attempts and not is_correct:
+            attempts += 1
+            response = await solver_model.ainvoke(prompt)
+            solution = response.content
+            model_answer = extract_answer_from_solution(solution)
+            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+            if is_correct:
+                break
+                
         # Print results for this example
+        attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status} ")
+        print(f"\nProblem {running_id + 1}: {status}{attempts_str}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -143,6 +152,8 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=100,
                        help='Maximum number of concurrent problems (default: 4)')
+    parser.add_argument('--max-attempts', type=int, default=1,
+                       help='Maximum number of attempts to get correct solution (default: 1)')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -202,7 +213,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.max_attempts)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
