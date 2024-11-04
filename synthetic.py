@@ -69,14 +69,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             HumanMessage(content=combined_prompt)
         ]
         
+        # First attempt
         response = await solver_model.ainvoke(prompt)
         solution = response.content
         model_answer = extract_answer_from_solution(solution)
         is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
+        # If first attempt fails, try once more
+        if not is_correct:
+            print(f"\nProblem {running_id + 1}: First attempt failed, trying again...")
+            response = await solver_model.ainvoke(prompt)
+            solution = response.content
+            model_answer = extract_answer_from_solution(solution)
+            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+        
         # Print results for this example
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}")
+        print(f"\nProblem {running_id + 1}: {status} {'(second attempt)' if not is_correct else ''}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
