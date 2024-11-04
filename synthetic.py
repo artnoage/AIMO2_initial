@@ -110,7 +110,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status} {'(second attempt)' if not is_correct else ''}")
+        print(f"\nProblem {running_id + 1}: {status} ")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -136,7 +136,7 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='NEMOTRON', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for verifying answers')
+                       default='GEMINI_FLASH', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='test',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
