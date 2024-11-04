@@ -320,6 +320,8 @@ async def main():
         print(f"Problems where correct answer was among solutions: {correct_in_solutions}")
         print(f"Times judge missed picking correct answer: {missed_opportunities}")
         print(f"Judge accuracy when correct answer was available: {correct_count}/{correct_in_solutions} = {correct_count/correct_in_solutions:.2%}")
+    
+    progress_bar.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
