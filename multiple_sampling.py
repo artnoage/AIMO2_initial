@@ -113,8 +113,23 @@ async def judge(state: AgentState, model_option: ModelOption) -> Dict:
     )
     
     # Extract answer from response
-    solution = response.content
-    answer = extract_answer_from_solution(solution)
+    answer = extract_answer_from_solution(response.content)
+    if answer:
+        # Try to convert string representations of lists to actual numbers
+        try:
+            # Remove brackets and split by comma if it's a list
+            if answer.startswith('[') and answer.endswith(']'):
+                answer = answer.strip('[]')
+                if ',' in answer:
+                    answer = [int(x.strip()) for x in answer.split(',')]
+                else:
+                    answer = int(answer)
+            else:
+                # Try converting to integer if it's not a list
+                answer = int(answer)
+        except ValueError:
+            # If conversion fails, keep original string
+            pass
     
     return {"solution": answer, "attempt_count": attempt_count}
 
