@@ -97,7 +97,7 @@ Now solve the original problem using similar reasoning.""")
     demo_response = await student_model.ainvoke(demo_prompt)
     demo_solution = demo_response.content
     
-    return initial_solution, demo_solution
+    return initial_solutions, demo_solution
 
 async def process_example(example: Dict, running_id: int, teacher_model, student_model, verifier_model, initial_tries: int = 1) -> Optional[Dict]:
     """Process a single example using the teacher-student approach"""
