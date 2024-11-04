@@ -3,10 +3,8 @@ import re
 import json
 import asyncio
 import argparse
-from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
 from typing import List, Dict, Optional
 from benchmark_numina import compare_math_answers
@@ -113,7 +111,6 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
             return None
             
         # Get student's initial solutions without demonstrations
-        print("Getting initial solutions...")
         initial_solutions = []
         for _ in range(initial_tries):
             solutions = await get_student_solutions(
@@ -126,7 +123,6 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
             initial_solutions.extend(solutions[0])
         
         # Get solutions with progressive demonstrations
-        print("Getting solutions with demonstrations...")
         demo_solutions = []
         demonstrations = []  # Collect all demonstrations
         for demo_round in range(demo_tries):
@@ -147,7 +143,7 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
         # Extract answers from all attempts
         initial_answers = [extract_answer_from_solution(sol) for sol in initial_solutions]
         demo_answers = [extract_answer_from_solution(sol) for sol in demo_solutions]
-        
+        print(initial_answers,demo_answers)
         # Use NEMOTRON to verify all answers
         initial_corrects = []
         for initial_answer in initial_answers:
