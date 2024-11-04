@@ -19,10 +19,34 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem and partial solution as a hint.
-Analyzer the problem and understand the techniques that are needed. 
-Do a step by step new proof (you are allowed to copy parts)
-Provide the final answer in the end \\boxed{}"""
+SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with partial solutions as hints.
+
+PROCESS:
+▪ Silently analyze given hint for useful techniques
+▪ Develop independent complete solution
+
+REQUIRED:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
+
+PROHIBITED:
+▪ Problem restatement
+▪ Any references to the partial solution
+
+FORMAT:
+
+Analysis:
+Categorize the problem and mention the tools and theorems you are about to use. 
+
+PROOF:
+Example step format:
+Step 1. x + 2 = 5         [Subtract 2 from both sides]         [Algebraic property of equality]
+Step 2. x = 3             [Simplify]                          [Arithmetic]
+Your actual numbered steps here...
+
+ANSWER:
+\boxed{result}"""
 
 
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
@@ -82,6 +106,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             solution = response.content
             model_answer = extract_answer_from_solution(solution)
             is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+        if not is_correct:
+            print(f"\nProblem {running_id + 1}: First attempt failed, trying again...")
+            response = await solver_model.ainvoke(prompt)
+            solution = response.content
+            model_answer = extract_answer_from_solution(solution)
+            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
@@ -116,7 +146,7 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=16,
+    parser.add_argument('--max-concurrent', type=int, default=100,
                        help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
 
