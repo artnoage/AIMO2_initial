@@ -136,6 +136,10 @@ async def process_example(
         print(f"Number of solutions: {len(solutions)}")
         print(f"Correct Answer: {correct_answer}")
         print(f"Final Answer: {final_answer}")
+        if any(s['is_correct'] for s in solutions):
+            print("✓ Correct answer was among initial solutions!")
+        else:
+            print("✗ Correct answer was not in initial solutions")
         print("-" * 80)
         
         # Calculate statistics about initial solutions
