@@ -9,7 +9,6 @@ from datasets import load_dataset
 from huggingface_hub import HfApi
 from langchain_core.messages import SystemMessage, HumanMessage
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 
 # Load environment variables
 load_dotenv()
