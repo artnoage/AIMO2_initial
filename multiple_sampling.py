@@ -47,9 +47,12 @@ async def get_multiple_solutions(problem: str, solver_model, n_attempts: int) ->
             solution = response.content
             answer = extract_answer_from_solution(solution)
             if answer:
+                # Verify this solution immediately
+                is_correct = await verify_answer(problem, answer, correct_answer, verifier_model)
                 solutions.append({
                     'solution': solution,
-                    'answer': answer
+                    'answer': answer,
+                    'is_correct': is_correct
                 })
         except Exception as e:
             print(f"Error getting solution: {e}")
@@ -135,13 +138,19 @@ async def process_example(
         print(f"Final Answer: {final_answer}")
         print("-" * 80)
         
+        # Calculate statistics about initial solutions
+        correct_in_initial = any(s['is_correct'] for s in solutions)
+        num_correct_initial = sum(1 for s in solutions if s['is_correct'])
+        
         return {
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'solutions': solutions,
             'final_answer': final_answer,
-            'is_correct': is_correct
+            'is_correct': is_correct,
+            'correct_in_initial': correct_in_initial,
+            'num_correct_initial': num_correct_initial
         }
         
     except Exception as e:
@@ -231,10 +240,18 @@ async def main():
         correct_count = sum(1 for r in results if r['is_correct'])
         accuracy = (correct_count / len(results)) * 100
         
+        # Calculate additional statistics
+        correct_in_initial_count = sum(1 for r in results if r['correct_in_initial'])
+        total_correct_initial = sum(r['num_correct_initial'] for r in results)
+        avg_correct_per_problem = total_correct_initial / len(results)
+        
         print("\nFinal Results:")
         print(f"Total examples: {len(results)}")
-        print(f"Correct: {correct_count}")
-        print(f"Accuracy: {accuracy:.2f}%")
+        print(f"Correct final answers: {correct_count}")
+        print(f"Final accuracy: {accuracy:.2f}%")
+        print(f"Problems with correct answer in initial solutions: {correct_in_initial_count}")
+        print(f"Percentage with correct initial: {(correct_in_initial_count/len(results))*100:.2f}%")
+        print(f"Average correct solutions per problem: {avg_correct_per_problem:.2f}")
         
         # Save results
         os.makedirs('results', exist_ok=True)
