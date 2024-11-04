@@ -29,7 +29,7 @@ SOLVER_PROMPT_TEMPLATE = """You are a mathematical problem solver. When given a 
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
-In the end provide your final answer inside \boxed{}"""
+In the end provide your final answer inside \\boxed{}"""
 
 JUDGE_PROMPT_TEMPLATE = """You are a mathematical solution judge. You will be given multiple different solutions to the same problem. Your task is to:
 1. Review all solutions carefully
@@ -37,7 +37,7 @@ JUDGE_PROMPT_TEMPLATE = """You are a mathematical solution judge. You will be gi
 3. Evaluate the reasoning in solutions that arrived at this answer
 4. Make a final determination of the most likely correct answer
 
-Provide your final answer inside \boxed{}"""
+Provide your final answer inside \\boxed{}"""
 
 
 # Define state schema
