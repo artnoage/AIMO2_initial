@@ -44,7 +44,7 @@ Provide your final answer inside \\boxed{}"""
 class AgentState(TypedDict):
     solver_messages: Annotated[List[BaseMessage], add_messages]
     judge_messages: Annotated[List[BaseMessage], add_messages]
-    solution: Annotated[Union[int, str, None], "Final numerical answer"]
+    solution: Annotated[Optional[str], "Final answer"]
     md_file: Annotated[str, "Path to markdown file"]
     right_answer_among_all: Annotated[bool, "Whether correct answer appeared in any attempt"]
 
@@ -151,7 +151,7 @@ def build_graph(solver_model: ModelOption, judge_model: ModelOption, verifier_mo
 
     return workflow
 
-async def process_problem(problem_text: str, ground_truth: int, 
+async def process_problem(problem_text: str, ground_truth: str, 
                    solver_model: ModelOption,
                    judge_model: ModelOption,
                    verifier_model: ModelOption,
