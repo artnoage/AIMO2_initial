@@ -56,8 +56,8 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
-    """Use two verifier models to validate mathematical answers"""
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model, max_verify_attempts: int = 3) -> tuple[bool, bool, bool]:
+    """Use two verifier models to validate mathematical answers with retries"""
     if model_answer is None or correct_answer is None:
         return False, False, False
         
@@ -68,18 +68,26 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     ]
     
     try:
-        # First verification checks equivalence with partial answer
-        first_response = await verifier_model.ainvoke(comparison_prompt)
-        first_result = first_response.content.strip().lower() == 'yes'
+        # First verification with retries
+        first_result = False
+        for _ in range(max_verify_attempts):
+            first_response = await verifier_model.ainvoke(comparison_prompt)
+            first_result = first_response.content.strip().lower() == 'yes'
+            if first_result:
+                break
             
-        # Second verification checks if model answer is mathematically correct
+        # Second verification with retries - note swapped order of answers
         second_prompt = [
             SystemMessage(content="You are a mathematical answer validator. Given a problem and a proposed answer, respond ONLY with 'yes' if the answer is mathematically correct according to the given correct answer, or 'no' if it is incorrect. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nProposed answer: {model_answer}\nCorrect answer: {correct_answer}\n\nIs the proposed answer mathematically correct?")
+            HumanMessage(content=f"Problem:\n{problem}\n\nCorrect answer: {correct_answer}\nProposed answer: {model_answer}\n\nIs the proposed answer mathematically correct?")
         ]
         
-        second_response = await second_verifier_model.ainvoke(second_prompt)
-        second_result = second_response.content.strip().lower() == 'yes'
+        second_result = False
+        for _ in range(max_verify_attempts):
+            second_response = await second_verifier_model.ainvoke(second_prompt)
+            second_result = second_response.content.strip().lower() == 'yes'
+            if second_result:
+                break
         
         return first_result and second_result, first_result, second_result
         
@@ -94,7 +102,7 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-4])
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int, max_verify_attempts: int = 3) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -130,7 +138,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             partial_answer = extract_answer_from_solution(partial_solution)
             is_correct, first_verify, second_verify = await compare_math_answers(
                 model_answer, correct_answer, partial_answer, 
-                example["problem"], verifier_model, second_verifier_model
+                example["problem"], verifier_model, second_verifier_model,
+                max_verify_attempts
             )
             if first_verify != second_verify:
                 verifier_disagreements += 1
@@ -177,7 +186,9 @@ async def main():
     parser.add_argument('--max-concurrent', type=int, default=100,
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=5,
-                       help='Maximum number of attempts to get correct solution (default: 1)')
+                       help='Maximum number of attempts to get correct solution (default: 5)')
+    parser.add_argument('--max-verify', type=int, default=3,
+                       help='Maximum verification attempts per answer (default: 3)')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -238,7 +249,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts, args.max_verify)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
