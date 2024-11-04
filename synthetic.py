@@ -300,15 +300,18 @@ async def main():
                                   f"synthetic_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save final error rate and points
-    final_error_rate = calculate_error_rate(results)
+    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
+    final_cumulative_error_rate = calculate_error_rate(results)
     error_rate_points.append({
         'examples_processed': len(results),
-        'error_rate': final_error_rate
+        'batch_error_rate': final_batch_error_rate,
+        'cumulative_error_rate': final_cumulative_error_rate
     })
     
     output_data = {
         'error_rate_points': error_rate_points,
-        'final_error_rate': final_error_rate
+        'final_batch_error_rate': final_batch_error_rate,
+        'final_cumulative_error_rate': final_cumulative_error_rate
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
