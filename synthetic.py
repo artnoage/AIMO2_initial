@@ -57,26 +57,26 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> bool:
-    """Use two verifier models to compare mathematical answers"""
+    """Use two verifier models to validate mathematical answers"""
     if model_answer is None or correct_answer is None:
         return False
         
-    # First verification against partial answer
+    # First verification against partial answer for equivalence
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {partial_answer}")
     ]
     
     try:
-        # First verification
+        # First verification checks equivalence with partial answer
         first_response = await verifier_model.ainvoke(comparison_prompt)
         if first_response.content.strip().lower() != 'yes':
             return False
             
-        # If first verification passes, do second verification against actual answer
+        # Second verification checks if model answer is mathematically correct
         second_prompt = [
-            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and a proposed answer, respond ONLY with 'yes' if the answer is mathematically correct according to the given correct answer, or 'no' if it is incorrect. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nProposed answer: {model_answer}\nCorrect answer: {correct_answer}\n\nIs the proposed answer mathematically correct?")
         ]
         
         second_response = await second_verifier_model.ainvoke(second_prompt)
