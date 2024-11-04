@@ -16,10 +16,10 @@ load_dotenv()
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 # System prompts for each role
-SOLVER_PROMPT = """You are a mathematical problem solver. When given a problem, solve it step by step, showing your work clearly. Make sure to:
+SOLVER_PROMPT = """You are a mathematical problem solver. When given a problem, 
+solve it step by step, showing your work clearly. Make sure to:
 - Explain your reasoning at each step
 - Show all calculations explicitly
-- Never omit calculations for brevity
 - Highlight any key insights or clever observations
 - If some calculations seem hard, think if there is a clever way around it
 
