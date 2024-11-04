@@ -76,9 +76,9 @@ def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
     otherwise return first line"""
     lines = solution.strip().split('\n\n')
-    if len(lines) <= 3:
+    if len(lines) <= 4:
         return lines[0]
-    return '\n\n'.join(lines[:-3])
+    return '\n\n'.join(lines[:-4])
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, max_attempts: int) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
@@ -152,7 +152,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=100,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-attempts', type=int, default=1,
+    parser.add_argument('--max-attempts', type=int, default=5,
                        help='Maximum number of attempts to get correct solution (default: 1)')
     args = parser.parse_args()
 
@@ -180,7 +180,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0)
+    solver_model = get_model(ModelOption[args.solver], temp=0.2)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
