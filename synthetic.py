@@ -56,7 +56,7 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 
-async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model, max_verify_attempts: int = 3) -> tuple[bool, bool, bool]:
+async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
     """Use two verifier models to validate mathematical answers with retries"""
     if model_answer is None or correct_answer is None or model_solution is None:
         return False, False, False
@@ -68,13 +68,9 @@ async def compare_math_answers(model_answer: Optional[str], model_solution: Opti
     ]
     
     try:
-        # First verification with retries - just comparing answers
-        first_result = False
-        for _ in range(max_verify_attempts):
-            first_response = await verifier_model.ainvoke(comparison_prompt)
-            first_result = first_response.content.strip().lower() == 'yes'
-            if first_result:
-                break
+        # First verification - just comparing answers
+        first_response = await verifier_model.ainvoke(comparison_prompt)
+        first_result = first_response.content.strip().lower() == 'yes'
             
         # Second verification checks if the full solution is correct
         second_prompt = [
@@ -82,12 +78,8 @@ async def compare_math_answers(model_answer: Optional[str], model_solution: Opti
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
         
-        second_result = False
-        for _ in range(max_verify_attempts):
-            second_response = await second_verifier_model.ainvoke(second_prompt)
-            second_result = second_response.content.strip().lower() == 'yes'
-            if second_result:
-                break
+        second_response = await second_verifier_model.ainvoke(second_prompt)
+        second_result = second_response.content.strip().lower() == 'yes'
         
         return first_result and second_result, first_result, second_result
         
@@ -102,7 +94,7 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-4])
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int, max_verify_attempts: int = 3) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -138,8 +130,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             partial_answer = extract_answer_from_solution(partial_solution)
             is_correct, first_verify, second_verify = await compare_math_answers(
                 model_answer, solution, correct_answer,
-                example["problem"], verifier_model, second_verifier_model,
-                max_verify_attempts
+                example["problem"], verifier_model, second_verifier_model
             )
             if first_verify != second_verify:
                 verifier_disagreements += 1
@@ -187,8 +178,6 @@ async def main():
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=5,
                        help='Maximum number of attempts to get correct solution (default: 5)')
-    parser.add_argument('--max-verify', type=int, default=1,
-                       help='Maximum verification attempts per answer (default: 3)')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -249,7 +238,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts, args.max_verify)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
