@@ -12,6 +12,8 @@ from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
 from utils.utils import get_model
 from utils.utils import ModelOption
+import argparse
+from huggingface_hub import HfApi
 
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
@@ -256,8 +258,6 @@ def process_problem(problem_text: str, ground_truth: int,
         }
 
 if __name__ == "__main__":
-    import argparse
-    from huggingface_hub import HfApi
     
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Run math problem solver with specified model')
