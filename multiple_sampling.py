@@ -35,7 +35,7 @@ Provide your final answer inside \\boxed{}"""
 
 VERIFIER_PROMPT = """You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."""
 
-async def get_multiple_solutions(problem: str, solver_model, n_attempts: int) -> List[Dict]:
+async def get_multiple_solutions(problem: str, solver_model, verifier_model, correct_answer: str, n_attempts: int) -> List[Dict]:
     """Get multiple solution attempts from the solver model"""
     solutions = []
     prompt = [SystemMessage(content=SOLVER_PROMPT),
@@ -116,7 +116,7 @@ async def process_example(
             return None
             
         # Get multiple solutions
-        solutions = await get_multiple_solutions(example['problem'], solver_model, n_attempts)
+        solutions = await get_multiple_solutions(example['problem'], solver_model, verifier_model, correct_answer, n_attempts)
         if not solutions:
             print(f"Warning: No valid solutions generated for example {running_id}")
             return None
