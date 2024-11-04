@@ -206,6 +206,9 @@ async def main():
                        default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--dataset', type=str, default='filtered',
+                       choices=['original', 'filtered', 'aime'],
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
     parser.add_argument('--max-examples', type=int, default=10,
                        help='Maximum number of examples to process')
     parser.add_argument('--max-concurrent', type=int, default=4,
@@ -218,8 +221,13 @@ async def main():
 
     # Load the dataset based on selection
     try:
-        username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+        if args.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        elif args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
+        else:  # filtered
+            username = HfApi().whoami()["name"]
+            dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
