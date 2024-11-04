@@ -4,17 +4,14 @@ import json
 import asyncio
 import argparse
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
-
-from utils.utils import ModelOption, get_model
+from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
-from typing import List, Dict, Optional
-from itertools import islice
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from typing import  Dict, Optional
+from langchain_core.messages import  HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
-from langchain_openai import ChatOpenAI
 from huggingface_hub import HfApi
 from tqdm import tqdm
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -26,28 +23,6 @@ SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem a
 Analyzer the problem and understand the techniques that are needed. 
 Do a step by step new proof (you are allowed to copy parts)
 Provide the final answer in the end \\boxed{}"""
-
-
-def extract_answer_from_solution(solution: str) -> Optional[str]:
-    """Extract boxed answer from solution"""
-    def find_matching_brace(s: str, start: int) -> int:
-        count = 1
-        i = start + 1
-        while i < len(s) and count > 0:
-            if s[i] == '{':
-                count += 1
-            elif s[i] == '}':
-                count -= 1
-            i += 1
-        return i - 1 if count == 0 else -1
-
-    pattern = re.compile(r'\\boxed\{')
-    for match in pattern.finditer(solution):
-        start = match.end() - 1
-        end = find_matching_brace(solution, start)
-        if end != -1:
-            return solution[start + 1:end].strip()
-    return None
 
 
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
@@ -132,7 +107,7 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=4,
+    parser.add_argument('--max-concurrent', type=int, default=16,
                        help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
 
@@ -161,7 +136,7 @@ async def main():
         return
 
     solver_model = get_model(ModelOption[args.solver], temp=0.1)
-    verifier_model = get_model(ModelOption[args.verifier], temp=0.1)
+    verifier_model = get_model(ModelOption[args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     # Create example data with dataset IDs and build lookup map
