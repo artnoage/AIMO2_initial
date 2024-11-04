@@ -188,8 +188,8 @@ async def main():
                        help='Maximum number of examples to process')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--initial-tries', type=int, default=1,
-                       help='Number of attempts before showing analogy (default: 1)')
+    parser.add_argument('--initial-tries', type=int, default=4,
+                       help='Number of attempts before showing analogy (default: 4)')
     args = parser.parse_args()
 
     # Load the dataset based on selection
