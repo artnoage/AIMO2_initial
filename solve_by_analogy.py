@@ -237,8 +237,8 @@ async def main():
 
     # Initialize models
     try:
-        teacher_model = get_model(ModelOption[args.teacher])
-        student_model = get_model(ModelOption[args.student],temp=0)
+        teacher_model = get_model(ModelOption[args.teacher],temp=0.1)
+        student_model = get_model(ModelOption[args.student],temp=0.1)
         verifier_model = get_model(ModelOption[args.verifier],temp=0)
     except Exception as e:
         print(f"Error initializing models: {e}")
