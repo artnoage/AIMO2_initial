@@ -165,14 +165,16 @@ async def main():
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source')
     parser.add_argument('--dataset', type=str, default='filtered',
-                       choices=['original', 'filtered'],
-                       help='Dataset to use: original or filtered')
+                       choices=['original', 'filtered', 'aime'],
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
     args = parser.parse_args()
 
     # Load dataset
     try:
         if args.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        elif args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
         else:
             username = HfApi().whoami()["name"]
             dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)

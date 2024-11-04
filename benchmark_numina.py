@@ -173,8 +173,8 @@ async def main():
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
     parser.add_argument('--dataset', type=str, default='filtered',
-                       choices=['original', 'filtered'],
-                       help='Dataset to use: original (AI-MO/NuminaMath-CoT) or filtered (Numina-Olympiads)')
+                       choices=['original', 'filtered', 'aime'],
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
@@ -189,6 +189,8 @@ async def main():
     try:
         if args.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        elif args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
         else:  # filtered
             username = HfApi().whoami()["name"]
             dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
