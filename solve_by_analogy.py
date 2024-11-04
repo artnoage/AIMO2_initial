@@ -128,9 +128,11 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
         # Get solutions with progressive demonstrations
         print("Getting solutions with demonstrations...")
         demo_solutions = []
+        demonstrations = []  # Collect all demonstrations
         for demo_round in range(demo_tries):
             # Get a new demonstration from teacher
             demonstration = await get_teacher_demonstration(example['problem'], teacher_model)
+            demonstrations.append(demonstration)  # Save the demonstration
             
             # Get student solution with this demonstration
             solutions = await get_student_solutions(
