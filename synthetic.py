@@ -36,8 +36,7 @@ PROHIBITED:
 
 FORMAT:
 
-Analysis:
-Categorize the problem and mention the tools and theorems you are about to use. 
+First analize and categorize the problem in some detail. In the mention the tools and theorems that you are about to use. 
 
 PROOF:
 Example step format:
@@ -68,10 +67,10 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
 def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
     otherwise return first line"""
-    lines = solution.strip().split('\n')
-    if len(lines) <= 3:
+    lines = solution.strip().split('\n\n')
+    if len(lines) <= 4:
         return lines[0]
-    return '\n'.join(lines[:-3])
+    return '\n\n'.join(lines[:-4])
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
     """Process a single example"""
@@ -101,12 +100,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # If first attempt fails, try once more
-        if not is_correct:
-            print(f"\nProblem {running_id + 1}: First attempt failed, trying again...")
-            response = await solver_model.ainvoke(prompt)
-            solution = response.content
-            model_answer = extract_answer_from_solution(solution)
-            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         if not is_correct:
             print(f"\nProblem {running_id + 1}: First attempt failed, trying again...")
             response = await solver_model.ainvoke(prompt)
@@ -175,7 +168,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.1)
+    solver_model = get_model(ModelOption[args.solver], temp=0.2)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
