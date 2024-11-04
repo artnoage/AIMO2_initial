@@ -163,7 +163,7 @@ async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset - Wrong Answer Generation')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
+                       default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='GEMINI_FLASH', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
