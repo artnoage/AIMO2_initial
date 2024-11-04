@@ -57,8 +57,6 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
     right_answer_among_all = False
     
     for attempt in range(num_samples):
-        print(f"Solving attempt {attempt + 1}/{num_samples}...")
-        
         solver = get_model(model_option, temp=0.2)
         response = await solver.ainvoke(messages)
         solution_content = response.content
@@ -76,10 +74,6 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
             individual_answers.append(answer)
             if 'ground_truth' in state and answer == state['ground_truth']:
                 right_answer_among_all = True
-        
-        print(f"\n=== Solver Solution {attempt + 1} ===")
-        print(solution_content)
-        print("-" * 80)
         all_solutions.append(f"=== Solution {attempt + 1} ===\n\nSolver's reasoning and steps:\n{solution_content}\n")
     
     # After 10 attempts, combine all solutions into one message with a header
@@ -93,13 +87,8 @@ async def solve(state: AgentState, model_option: ModelOption, num_samples: int =
 async def judge(state: AgentState, model_option: ModelOption) -> Dict:
     """Judge agent function - evaluates all solutions"""
     messages = state["judge_messages"]
-    print("Judge evaluating solutions...")
-    
     judge = get_model(model_option, temp=0)
     response = await judge.ainvoke(messages)
-    print("\n=== Judge's Evaluation ===")
-    print(response.content)
-    print("-" * 80)
     
     # Increment attempt count
     attempt_count = state.get("attempt_count", 0) + 1
