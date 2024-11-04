@@ -93,7 +93,7 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-4])
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, max_attempts: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -228,7 +228,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.max_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
