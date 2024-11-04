@@ -61,19 +61,21 @@ async def get_teacher_demonstration(problem: str, teacher_model) -> Dict:
         "demonstration_answer": extract_answer_from_solution(solution)
     }
 
-async def get_student_solutions(original_problem: str, demonstration: Dict, student_model) -> Tuple[str, str]:
+async def get_student_solutions(original_problem: str, demonstration: Dict, student_model, initial_tries: int = 1) -> Tuple[List[str], str]:
     """Get student's solutions both before and after seeing the demonstration"""
-    # First attempt without demonstration
-    initial_prompt = [
-        SystemMessage(content=STUDENT_SYSTEM_PROMPT),
-        HumanMessage(content=f"""Here is a problem to solve:
+    # Multiple attempts without demonstration
+    initial_solutions = []
+    for attempt in range(initial_tries):
+        initial_prompt = [
+            SystemMessage(content=STUDENT_SYSTEM_PROMPT),
+            HumanMessage(content=f"""Here is a problem to solve (attempt {attempt + 1}/{initial_tries}):
 {original_problem}
 
 Solve it step by step, showing your work.""")
-    ]
-    
-    initial_response = await student_model.ainvoke(initial_prompt)
-    initial_solution = initial_response.content
+        ]
+        
+        initial_response = await student_model.ainvoke(initial_prompt)
+        initial_solutions.append(initial_response.content)
     
     # Second attempt with demonstration
     demo_prompt = [
@@ -97,7 +99,7 @@ Now solve the original problem using similar reasoning.""")
     
     return initial_solution, demo_solution
 
-async def process_example(example: Dict, running_id: int, teacher_model, student_model, verifier_model) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, teacher_model, student_model, verifier_model, initial_tries: int = 1) -> Optional[Dict]:
     """Process a single example using the teacher-student approach"""
     try:
         print(f"\nProcessing Problem {running_id + 1}")
@@ -114,27 +116,34 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
         
         # Get student's solutions (both attempts)
         print("Getting student's solutions...")
-        initial_solution, demo_solution = await get_student_solutions(
+        initial_solutions, demo_solution = await get_student_solutions(
             example['problem'], 
             demonstration,
-            student_model
+            student_model,
+            initial_tries
         )
         
-        # Extract answers
-        initial_answer = extract_answer_from_solution(initial_solution)
+        # Extract answers from all initial attempts
+        initial_answers = [extract_answer_from_solution(sol) for sol in initial_solutions]
         demo_answer = extract_answer_from_solution(demo_solution)
         
-        # Use NEMOTRON to verify both answers
-        initial_correct = await compare_math_answers(
-            initial_answer, correct_answer, example['problem'], verifier_model
-        )
+        # Use NEMOTRON to verify all initial answers
+        initial_corrects = []
+        for initial_answer in initial_answers:
+            is_correct = await compare_math_answers(
+                initial_answer, correct_answer, example['problem'], verifier_model
+            )
+            initial_corrects.append(is_correct)
+        initial_correct = any(initial_corrects)  # True if any attempt was correct
         demo_correct = await compare_math_answers(
             demo_answer, correct_answer, example['problem'], verifier_model
         )
         
         # Print results
         print("\nResults:")
-        print(f"Initial attempt: {'✓' if initial_correct else '✗'}")
+        print("\nInitial attempts:")
+        for i, (answer, correct) in enumerate(zip(initial_answers, initial_corrects), 1):
+            print(f"Attempt {i}: {'✓' if correct else '✗'} (Answer: {answer})")
         print(f"After demonstration: {'✓' if demo_correct else '✗'}")
         print(f"Correct Answer: {correct_answer}")
         print(f"Initial Answer: {initial_answer}")
@@ -147,7 +156,9 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
             'id': example['id'],
             'problem': example['problem'],
             'teacher_demonstration': demonstration,
-            'initial_solution': initial_solution,
+            'initial_solutions': initial_solutions,
+            'initial_answers': initial_answers,
+            'initial_corrects': initial_corrects,
             'demo_solution': demo_solution,
             'correct_answer': correct_answer,
             'initial_answer': initial_answer,
@@ -177,6 +188,8 @@ async def main():
                        help='Maximum number of examples to process')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
+    parser.add_argument('--initial-tries', type=int, default=1,
+                       help='Number of attempts before showing analogy (default: 1)')
     args = parser.parse_args()
 
     # Load the dataset based on selection
@@ -219,7 +232,11 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, teacher_model, student_model, verifier_model)
+            return await process_example(
+                example, running_id, 
+                teacher_model, student_model, verifier_model,
+                initial_tries=args.initial_tries
+            )
 
     # Process examples concurrently
     results = []
