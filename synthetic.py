@@ -56,19 +56,32 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
-    """Use the model to compare two mathematical answers"""
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> bool:
+    """Use two verifier models to compare mathematical answers"""
     if model_answer is None or correct_answer is None:
         return False
         
+    # First verification against partial answer
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {partial_answer}")
     ]
     
     try:
-        response = await model.ainvoke(comparison_prompt)
-        return response.content.strip().lower() == 'yes'
+        # First verification
+        first_response = await verifier_model.ainvoke(comparison_prompt)
+        if first_response.content.strip().lower() != 'yes':
+            return False
+            
+        # If first verification passes, do second verification against actual answer
+        second_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        ]
+        
+        second_response = await second_verifier_model.ainvoke(second_prompt)
+        return second_response.content.strip().lower() == 'yes'
+        
     except Exception:
         return False
 
@@ -112,7 +125,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             response = await solver_model.ainvoke(prompt)
             solution = response.content
             model_answer = extract_answer_from_solution(solution)
-            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+            partial_answer = extract_answer_from_solution(partial_solution)
+            is_correct = await compare_math_answers(model_answer, correct_answer, partial_answer, example["problem"], verifier_model, second_verifier_model)
             if is_correct:
                 break
                 
@@ -182,6 +196,7 @@ async def main():
 
     solver_model = get_model(ModelOption[args.solver], temp=0.2)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
+    second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     # Create example data with dataset IDs and build lookup map
