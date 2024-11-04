@@ -38,32 +38,28 @@ You will be given:
 Use the demonstration to understand the solution approach, then apply similar reasoning to solve 
 the original problem. Show your work step by step and provide your final answer inside \boxed{}"""
 
-async def get_teacher_demonstrations(problem: str, teacher_model, num_demos: int = 3) -> List[Dict]:
-    """Get multiple similar problems and solutions from the teacher"""
-    demonstrations = []
-    for _ in range(num_demos):
-        prompt = [
-            SystemMessage(content=TEACHER_SYSTEM_PROMPT),
-            HumanMessage(content=problem)
-        ]
-        
-        response = await teacher_model.ainvoke(prompt)
-        content = response.content
-        
-        # Extract similar problem and solution
-        problem_match = re.search(r"SIMILAR PROBLEM:(.*?)SOLUTION:", content, re.DOTALL)
-        solution_match = re.search(r"SOLUTION:(.*)", content, re.DOTALL)
-        
-        similar_problem = problem_match.group(1).strip() if problem_match else ""
-        solution = solution_match.group(1).strip() if solution_match else ""
-        
-        demonstrations.append({
-            "similar_problem": similar_problem,
-            "solution": solution,
-            "demonstration_answer": extract_answer_from_solution(solution)
-        })
+async def get_teacher_demonstration(problem: str, teacher_model) -> Dict:
+    """Get a similar problem and solution from the teacher"""
+    prompt = [
+        SystemMessage(content=TEACHER_SYSTEM_PROMPT),
+        HumanMessage(content=problem)
+    ]
     
-    return demonstrations
+    response = await teacher_model.ainvoke(prompt)
+    content = response.content
+    
+    # Extract similar problem and solution
+    problem_match = re.search(r"SIMILAR PROBLEM:(.*?)SOLUTION:", content, re.DOTALL)
+    solution_match = re.search(r"SOLUTION:(.*)", content, re.DOTALL)
+    
+    similar_problem = problem_match.group(1).strip() if problem_match else ""
+    solution = solution_match.group(1).strip() if solution_match else ""
+    
+    return {
+        "similar_problem": similar_problem,
+        "solution": solution,
+        "demonstration_answer": extract_answer_from_solution(solution)
+    }
 
 async def get_student_solutions(original_problem: str, demonstration: Dict, student_model, initial_tries: int = 1, demo_tries: int = 1) -> Tuple[List[str], List[str]]:
     """Get student's solutions both before and after seeing the demonstration"""
@@ -116,36 +112,35 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
             print(f"Warning: Could not extract answer from solution")
             return None
             
-        # Get teacher's demonstrations
-        print("Getting teacher's demonstrations...")
-        demonstrations = await get_teacher_demonstrations(example['problem'], teacher_model)
-        
-        # Get student's solutions for each demonstration
-        print("Getting student's solutions...")
+        # Get student's initial solutions without demonstrations
+        print("Getting initial solutions...")
         initial_solutions = []
-        demo_solutions = []
-        
-        # First get initial solutions without demonstrations
         for _ in range(initial_tries):
             solutions = await get_student_solutions(
                 example['problem'],
-                None,  # No demonstration for initial attempts
+                None,  # No demonstration
                 student_model,
-                1,  # One attempt per call
-                0   # No demo attempts yet
+                1,    # One attempt
+                0     # No demo attempts
             )
-            initial_solutions.extend(solutions[0])  # Add initial solutions
+            initial_solutions.extend(solutions[0])
+        
+        # Get solutions with progressive demonstrations
+        print("Getting solutions with demonstrations...")
+        demo_solutions = []
+        for demo_round in range(demo_tries):
+            # Get a new demonstration from teacher
+            demonstration = await get_teacher_demonstration(example['problem'], teacher_model)
             
-        # Then get solutions with each demonstration
-        for demo in demonstrations:
+            # Get student solution with this demonstration
             solutions = await get_student_solutions(
                 example['problem'],
-                demo,
+                demonstration,
                 student_model,
                 0,    # No initial attempts
-                demo_tries  # Multiple attempts with this demonstration
+                1     # One attempt with this demonstration
             )
-            demo_solutions.extend(solutions[1])  # Add demo-guided solutions
+            demo_solutions.extend(solutions[1])
         
         # Extract answers from all attempts
         initial_answers = [extract_answer_from_solution(sol) for sol in initial_solutions]
