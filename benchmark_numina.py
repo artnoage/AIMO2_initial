@@ -52,15 +52,25 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
+SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
-the tools you have to use. After, solve it step by step, 
-showing your work clearly. Make sure to:
-- Explain your reasoning at each step
-- Highlight any key insights or clever observations
-- If some calculations seem hard, think if there is a clever way around it
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
 
-In the end provide your final answer inside \\boxed{}"""
+FORMAT:
+
+First analize and categorize the problem in some detail. In the mention the tools and theorems that you are about to use. 
+
+PROOF:
+Example step format:
+Step 1. x + 2 = 5         [Subtract 2 from both sides]         [Algebraic property of equality]
+Step 2. x = 3             [Simplify]                          [Arithmetic]
+Your actual numbered steps here...
+
+ANSWER:
+\\boxed{result}"""
 
 
 
@@ -165,7 +175,7 @@ async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
+                       default='NEMOTRON', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
