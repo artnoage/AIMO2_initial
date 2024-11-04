@@ -249,12 +249,19 @@ async def main():
             
             # Save error rate every 100 examples
             if len(results) % 100 == 0:
-                current_error_rate = calculate_error_rate(results)
+                # Calculate error rate for the last 100 results
+                last_hundred = results[-100:]
+                batch_error_rate = calculate_error_rate(last_hundred)
+                # Also calculate cumulative error rate
+                cumulative_error_rate = calculate_error_rate(results)
                 error_rate_points.append({
                     'examples_processed': len(results),
-                    'error_rate': current_error_rate
+                    'batch_error_rate': batch_error_rate,
+                    'cumulative_error_rate': cumulative_error_rate
                 })
-                print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+                print(f"\nAt {len(results)} examples:")
+                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
+                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 
                 intermediate_filename = os.path.join('results', 
                     f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
@@ -314,7 +321,9 @@ async def main():
     # Print error rate progression
     print("\nError Rate Progression:")
     for point in error_rate_points:
-        print(f"After {point['examples_processed']} examples: {point['error_rate']:.4f}")
+        print(f"After {point['examples_processed']} examples:")
+        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
+        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
 
     end_time = datetime.now()
     total_duration = end_time - start_time
