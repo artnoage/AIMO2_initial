@@ -56,10 +56,10 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> bool:
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
     """Use two verifier models to validate mathematical answers"""
     if model_answer is None or correct_answer is None:
-        return False
+        return False, False, False
         
     # First verification against partial answer for equivalence
     comparison_prompt = [
@@ -70,8 +70,7 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     try:
         # First verification checks equivalence with partial answer
         first_response = await verifier_model.ainvoke(comparison_prompt)
-        if first_response.content.strip().lower() != 'yes':
-            return False
+        first_result = first_response.content.strip().lower() == 'yes'
             
         # Second verification checks if model answer is mathematically correct
         second_prompt = [
@@ -80,10 +79,12 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
         ]
         
         second_response = await second_verifier_model.ainvoke(second_prompt)
-        return second_response.content.strip().lower() == 'yes'
+        second_result = second_response.content.strip().lower() == 'yes'
+        
+        return first_result and second_result, first_result, second_result
         
     except Exception:
-        return False
+        return False, False, False
 
 def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
@@ -119,6 +120,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         is_correct = False
         solution = None
         model_answer = None
+        verifier_disagreements = 0
         
         while attempts < max_attempts and not is_correct:
             attempts += 1
@@ -126,14 +128,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             solution = response.content
             model_answer = extract_answer_from_solution(solution)
             partial_answer = extract_answer_from_solution(partial_solution)
-            is_correct = await compare_math_answers(model_answer, correct_answer, partial_answer, example["problem"], verifier_model, second_verifier_model)
+            is_correct, first_verify, second_verify = await compare_math_answers(
+                model_answer, correct_answer, partial_answer, 
+                example["problem"], verifier_model, second_verifier_model
+            )
+            if first_verify != second_verify:
+                verifier_disagreements += 1
             if is_correct:
                 break
                 
         # Print results for this example
         attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
+        disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}")
+        print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -145,7 +153,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'correct_answer': correct_answer,
             'model_response': solution,
             'model_answer': model_answer,
-            'is_correct': is_correct
+            'is_correct': is_correct,
+            'verifier_disagreements': verifier_disagreements,
+            'attempts': attempts
         }
         
     except Exception as e:
@@ -319,6 +329,9 @@ async def main():
     print("\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
     print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
+    total_disagreements = sum(r['verifier_disagreements'] for r in results)
+    print(f"Total verifier disagreements: {total_disagreements}")
+    print(f"Average disagreements per example: {total_disagreements/len(results):.2f}")
 
     # Save final results
     os.makedirs('results', exist_ok=True)
