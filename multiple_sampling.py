@@ -282,6 +282,7 @@ async def main():
                 'right_answer_among_all': state.get('right_answer_among_all', False)
             }
         results.append(result_entry)
+        progress_bar.update(1)
         
         # Print immediate result for this problem
         is_correct = result_entry['solution'] == result_entry['ground_truth']
