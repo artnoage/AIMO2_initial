@@ -250,7 +250,7 @@ async def main():
             problem = example['problem']
             print(f"\nProcessing problem {problem_id}...")
             
-            ground_truth = int(example['answer']) if example['answer'].isdigit() else None
+            ground_truth = example['answer']
             
             # Initialize conversation file
             md_file = init_conversation_md(
