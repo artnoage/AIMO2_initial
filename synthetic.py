@@ -66,11 +66,12 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
         return False
 
 def get_partial_solution(solution: str) -> str:
-    """Get partial solution by removing last two lines"""
+    """Get partial solution by removing last three lines if more than 3 lines,
+    otherwise return first line"""
     lines = solution.strip().split('\n')
-    if len(lines) <= 2:
-        return solution
-    return '\n'.join(lines[:-2])
+    if len(lines) <= 3:
+        return lines[0]
+    return '\n'.join(lines[:-3])
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
     """Process a single example"""
