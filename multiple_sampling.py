@@ -151,9 +151,9 @@ async def process_example(
 async def main():
     parser = argparse.ArgumentParser(description='Multiple sampling benchmark on math problems')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for generating solutions')
+                       default='NEMOTRON', help='Model to use for generating solutions')
     parser.add_argument('--judge', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for judging solutions')
+                       default='NEMOTRON', help='Model to use for judging solutions')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--attempts', type=int, default=3,
