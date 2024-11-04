@@ -56,19 +56,19 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 
 
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], partial_answer: Optional[str], problem: str, verifier_model, second_verifier_model, max_verify_attempts: int = 3) -> tuple[bool, bool, bool]:
+async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model, max_verify_attempts: int = 3) -> tuple[bool, bool, bool]:
     """Use two verifier models to validate mathematical answers with retries"""
-    if model_answer is None or correct_answer is None:
+    if model_answer is None or correct_answer is None or model_solution is None:
         return False, False, False
         
-    # First verification against partial answer for equivalence
+    # First verification just compares the boxed answers for equivalence
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {partial_answer}")
+        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
-        # First verification with retries
+        # First verification with retries - just comparing answers
         first_result = False
         for _ in range(max_verify_attempts):
             first_response = await verifier_model.ainvoke(comparison_prompt)
@@ -76,10 +76,10 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
             if first_result:
                 break
             
-        # Second verification with retries - note swapped order of answers
+        # Second verification checks if the full solution is correct
         second_prompt = [
-            SystemMessage(content="You are a mathematical answer validator. Given a problem and a proposed answer, respond ONLY with 'yes' if the answer is mathematically correct according to the given correct answer, or 'no' if it is incorrect. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nCorrect answer: {correct_answer}\nProposed answer: {model_answer}\n\nIs the proposed answer mathematically correct?")
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
         
         second_result = False
@@ -137,7 +137,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             model_answer = extract_answer_from_solution(solution)
             partial_answer = extract_answer_from_solution(partial_solution)
             is_correct, first_verify, second_verify = await compare_math_answers(
-                model_answer, correct_answer, partial_answer, 
+                model_answer, solution, correct_answer,
                 example["problem"], verifier_model, second_verifier_model,
                 max_verify_attempts
             )
