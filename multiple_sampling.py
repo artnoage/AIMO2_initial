@@ -283,16 +283,16 @@ async def main():
     
     # Process all examples with progress bar
     for coro in asyncio.as_completed(tasks):
-        result = await coro
-        if result:
+        state = await coro
+        if state:
             # Store result
             result_entry = {
                 'solver_model': SOLVER_MODEL.value,
                 'judge_model': JUDGE_MODEL.value,
-                'problem_id': result.get('id'),
-                'solution': result.get('solution'),
-                'ground_truth': result.get('ground_truth'),
-                'right_answer_among_all': result.get('right_answer_among_all', False)
+                'problem_id': dataset[len(results)]['id'],  # Get ID from dataset
+                'solution': state.get('solution'),
+                'ground_truth': state.get('ground_truth'),
+                'right_answer_among_all': state.get('right_answer_among_all', False)
             }
         results.append(result_entry)
         
