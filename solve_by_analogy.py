@@ -8,7 +8,7 @@ from datetime import datetime
 from utils.utils import ModelOption, get_model
 from typing import List, Dict, Optional
 from benchmark_numina import compare_math_answers
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import  HumanMessage,  SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
 from huggingface_hub import HfApi
@@ -34,7 +34,7 @@ You will be given:
 2. A similar problem with its solution as demonstration
 
 Use the demonstration to understand the solution approach, then apply similar reasoning to solve 
-the original problem. Show your work step by step and provide your final answer inside \boxed{}"""
+the original problem. Show your work step by step and provide your final answer inside \\boxed{}"""
 
 async def get_teacher_demonstration(problem: str, teacher_model) -> Dict:
     """Get a similar problem and solution from the teacher"""
@@ -80,7 +80,7 @@ Solve it step by step, showing your work.""")
     for attempt in range(demo_tries):
         demo_prompt = [
             SystemMessage(content=STUDENT_SYSTEM_PROMPT),
-            HumanMessage(content=f"""Let's try this problem again with a helpful example (attempt {attempt + 1}/{demo_tries}).
+            HumanMessage(content=f"""Let's try this problem again with a helpful example.
 
 Original Problem to Solve:
 {original_problem}
@@ -91,8 +91,7 @@ Similar Problem for Reference:
 Solution to Similar Problem:
 {demonstration['solution']}
 
-Now solve the original problem using similar reasoning.""")
-        ]
+Now solve the original problem using similar reasoning and provide your final answer inside \\boxed{{}} .""")]
         
         demo_response = await student_model.ainvoke(demo_prompt)
         demo_solutions.append(demo_response.content)
@@ -139,11 +138,9 @@ async def process_example(example: Dict, running_id: int, teacher_model, student
                 1     # One attempt with this demonstration
             )
             demo_solutions.extend(solutions[1])
-        
         # Extract answers from all attempts
         initial_answers = [extract_answer_from_solution(sol) for sol in initial_solutions]
         demo_answers = [extract_answer_from_solution(sol) for sol in demo_solutions]
-        print(initial_answers,demo_answers)
         # Use NEMOTRON to verify all answers
         initial_corrects = []
         for initial_answer in initial_answers:
@@ -211,7 +208,7 @@ async def main():
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
     parser.add_argument('--max-examples', type=int, default=10,
                        help='Maximum number of examples to process')
-    parser.add_argument('--max-concurrent', type=int, default=4,
+    parser.add_argument('--max-concurrent', type=int, default=20,
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--initial-tries', type=int, default=4,
                        help='Number of attempts before showing analogy (default: 4)')

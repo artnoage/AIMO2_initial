@@ -22,30 +22,38 @@ load_dotenv()
 SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with partial solutions as hints.
 
 PROCESS:
-▪ Silently analyze given hint for useful techniques
-▪ Develop independent complete solution
+▪ Silently analyze the given hint for relevant techniques and insights.
+▪ Develop a complete, independent solution from scratch.
 
 REQUIRED:
-▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification. 
-▪ Use LaTeX notation
+▪ Begin by listing applicable theorems, definitions, or techniques you will use.
+▪ For each proof step, include a justification in brackets. Use clear LaTeX notation for all mathematical expressions.
 
 PROHIBITED:
-▪ Problem restatement
-▪ Any references to the partial solution
+▪ Avoid restating the problem.
+▪ Do not reference or rely on the partial solution.
 
 FORMAT:
 
-First analize and categorize the problem in some detail. In the mention the tools and theorems that you are about to use. 
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
+2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
 
-PROOF:
-Example step format:
-Step 1. x + 2 = 5         [Subtract 2 from both sides]         [Algebraic property of equality]
-Step 2. x = 3             [Simplify]                          [Arithmetic]
-Your actual numbered steps here...
+**PROOF**:
+Example format for each step:
+Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
 
-ANSWER:
-\boxed{result}"""
+Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
+Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
+Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
+Step 4. Thus, \\( abc \\leq 1 \\), as required.  
+
+For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
+
+**ANSWER**:
+\\(\\boxed{\\text{final answer}}\\) 
+"""
+
 
 
 async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
@@ -68,9 +76,9 @@ def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
     otherwise return first line"""
     lines = solution.strip().split('\n\n')
-    if len(lines) <= 4:
+    if len(lines) <= 3:
         return lines[0]
-    return '\n\n'.join(lines[:-4])
+    return '\n\n'.join(lines[:-3])
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
     """Process a single example"""
@@ -99,13 +107,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         model_answer = extract_answer_from_solution(solution)
         is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
-        # If first attempt fails, try once more
-        if not is_correct:
-            print(f"\nProblem {running_id + 1}: First attempt failed, trying again...")
-            response = await solver_model.ainvoke(prompt)
-            solution = response.content
-            model_answer = extract_answer_from_solution(solution)
-            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # Print results for this example
         status = '✓' if is_correct else '✗'
@@ -168,7 +169,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.2)
+    solver_model = get_model(ModelOption[args.solver], temp=0)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 

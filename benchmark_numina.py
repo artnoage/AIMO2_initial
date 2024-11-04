@@ -61,16 +61,23 @@ DO:
 
 FORMAT:
 
-First analize and categorize the problem in some detail. In the mention the tools and theorems that you are about to use. 
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
+2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
 
-PROOF:
-Example step format:
-Step 1. x + 2 = 5         [Subtract 2 from both sides]         [Algebraic property of equality]
-Step 2. x = 3             [Simplify]                          [Arithmetic]
-Your actual numbered steps here...
+**PROOF**:
+Example format for each step:
+Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
 
-ANSWER:
-\\boxed{result}"""
+Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
+Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
+Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
+Step 4. Thus, \\( abc \\leq 1 \\), as required.  
+
+For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
+
+**ANSWER**:
+\\(\\boxed{\\text{result}}\\) """
 
 
 

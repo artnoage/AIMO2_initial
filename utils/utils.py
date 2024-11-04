@@ -19,7 +19,8 @@ class ModelOption(Enum):
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
-    SAMBA= "Meta-Llama-3.1-405B-Instruct"
+    SAMBA_BIG= "Meta-Llama-3.1-405B-Instruct"
+    SAMBA_SMALL= "Meta-Llama-3.1-70B-Instruct"
 
 def get_model(model: ModelOption, temp: float = 0.1):
     """
@@ -45,7 +46,8 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://192.168.178.33:6000/v1")
-    elif model == ModelOption.SAMBA:
+    
+    elif model == ModelOption.SAMBA_BIG or model==ModelOption.SAMBA_SMALL :
         return ChatOpenAI(
             model=model.value,
             temperature=temp,
