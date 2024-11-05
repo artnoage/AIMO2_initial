@@ -100,11 +100,19 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-4])
 
-def check_required_words(response: str) -> bool:
-    """Check if response contains required words (case insensitive)"""
+def check_required_words(response: str, partial_solution: str) -> bool:
+    """
+    Check if response contains required words and is sufficiently longer than partial solution
+    """
+    # Check for required words (case insensitive)
     lower_response = response.lower()
     required_words = ['analysis', 'problem', 'step']
-    return all(word in lower_response for word in required_words)
+    has_required_words = all(word in lower_response for word in required_words)
+    
+    # Check length requirement (at least 10% longer than partial solution)
+    is_long_enough = len(response) >= len(partial_solution) * 1.1
+    
+    return has_required_words and is_long_enough
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
@@ -137,8 +145,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             response = await solver_model.ainvoke(prompt)
             model_solution = response.content
             
-            # Check for required words before proceeding with verification
-            if not check_required_words(model_solution):
+            # Check for required words and length before proceeding with verification
+            if not check_required_words(model_solution, partial_solution):
                 is_correct, first_verify, second_verify = False, False, False
                 continue
                 
