@@ -7,6 +7,20 @@ from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
+from utils.utils import ModelOption, get_model
+from typing import List, Dict, Optional
+from itertools import islice
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from dotenv import load_dotenv
+from langchain.callbacks.base import BaseCallbackHandler
+from datasets import load_dataset
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from huggingface_hub import HfApi
+from tqdm import tqdm
+import time
+from utils.utils import extract_answer_from_solution
 from utils.utils import ModelOption
 
 def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
@@ -33,61 +47,40 @@ def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOp
             intermediate_accuracies.append(accuracy)
     
     return intermediate_results, intermediate_timestamps, intermediate_accuracies
-from typing import List, Dict, Optional
-from itertools import islice
-from langchain_core.runnables import RunnableLambda
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from dotenv import load_dotenv
-from langchain.callbacks.base import BaseCallbackHandler
-from datasets import load_dataset
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from huggingface_hub import HfApi
-from tqdm import tqdm
-import time
+
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-from utils.utils import ModelOption
-SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, first analyzie and hypothesize on 
-the tools you have to use. After, solve it step by step, 
-showing your work clearly. Make sure to:
-- Explain your reasoning at each step
-- Highlight any key insights or clever observations
-- If some calculations seem hard, think if there is a clever way around it
+SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
-In the end provide your final answer inside \\boxed{}"""
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
 
-def get_model(model: ModelOption, temp: float = 0.1):
-    """
-    Initialize the ChatOpenAI model based on the selected ModelOption.
-    For LOCAL models, it connects to a local endpoint.
-    For other models, it uses the OpenRouter API.
-    """
-    if model == ModelOption.LOCAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:8000/v1")
-    elif model==ModelOption.SAMBA:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key= os.getenv("SAMBANOVA_API_KEY"),
-            base_url="https://api.sambanova.ai/v1")
-    else:
-        openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-        if not openrouter_api_key:
-            raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
-        
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=openrouter_api_key)
+FORMAT:
 
-from utils.utils import extract_answer_from_solution
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
+2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
+
+**PROOF**:
+Example format for each step:
+Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
+
+Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
+Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
+Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
+Step 4. Thus, \\( abc \\leq 1 \\), as required.  
+
+For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
+
+**ANSWER**:
+\\(\\boxed{\\text{result}}\\) """
+
+
+
 
 
 def save_results(results: list, model_name: str):
@@ -189,16 +182,16 @@ async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
+                       default='NEMOTRON', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for verifying answers')
+                       default='GEMINI_FLASH', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
     parser.add_argument('--dataset', type=str, default='filtered',
-                       choices=['original', 'filtered'],
-                       help='Dataset to use: original (AI-MO/NuminaMath-CoT) or filtered (Numina-Olympiads)')
+                       choices=['original', 'filtered', 'aime'],
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
     parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
     args = parser.parse_args()
@@ -213,6 +206,8 @@ async def main():
     try:
         if args.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        elif args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
         else:  # filtered
             username = HfApi().whoami()["name"]
             dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
@@ -324,17 +319,26 @@ async def main():
             
             # Save error rate every 100 examples
             if len(results) % 100 == 0:
-                current_error_rate = calculate_error_rate(results)
+                # Calculate error rate for the last 100 results
+                last_hundred = results[-100:]
+                batch_error_rate = calculate_error_rate(last_hundred)
+                # Also calculate cumulative error rate
+                cumulative_error_rate = calculate_error_rate(results)
                 error_rate_points.append({
                     'examples_processed': len(results),
-                    'error_rate': current_error_rate
+                    'batch_error_rate': batch_error_rate,
+                    'cumulative_error_rate': cumulative_error_rate
                 })
-                print(f"\nIntermediate Error Rate at {len(results)} examples: {current_error_rate:.4f}")
+                print(f"\nAt {len(results)} examples:")
+                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
+                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 
                 intermediate_filename = os.path.join('results', 
                     f"benchmark_intermediate_{args.solver}_{args.verifier}.json")
                 output_data = {
-                    'error_rate_points': error_rate_points
+                    'error_rate_points': error_rate_points,
+                    'current_batch_error_rate': batch_error_rate,
+                    'current_cumulative_error_rate': cumulative_error_rate
                 }
                 os.makedirs('results', exist_ok=True)
                 with open(intermediate_filename, 'w') as f:
@@ -360,6 +364,7 @@ async def main():
     correct_count = sum(1 for r in results if r['is_correct'])
 
     # Print final results
+    progress_bar.close()
     print("\n\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
     
@@ -376,15 +381,18 @@ async def main():
                                   f"benchmark_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save final error rate and points
-    final_error_rate = calculate_error_rate(results)
+    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
+    final_cumulative_error_rate = calculate_error_rate(results)
     error_rate_points.append({
         'examples_processed': len(results),
-        'error_rate': final_error_rate
+        'batch_error_rate': final_batch_error_rate,
+        'cumulative_error_rate': final_cumulative_error_rate
     })
     
     output_data = {
         'error_rate_points': error_rate_points,
-        'final_error_rate': final_error_rate
+        'final_batch_error_rate': final_batch_error_rate,
+        'final_cumulative_error_rate': final_cumulative_error_rate
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
@@ -397,7 +405,9 @@ async def main():
     # Print error rate progression
     print("\nError Rate Progression:")
     for point in error_rate_points:
-        print(f"After {point['examples_processed']} examples: {point['error_rate']:.4f}")
+        print(f"After {point['examples_processed']} examples:")
+        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
+        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
 
     # Calculate and print timing information
     end_time = datetime.now()

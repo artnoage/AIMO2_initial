@@ -1,6 +1,4 @@
-import os
 import re
-from enum import Enum
 from functools import partial
 from typing import Annotated, TypedDict, Union, List, Callable
 import time
@@ -9,10 +7,13 @@ from dotenv import load_dotenv
 from datasets import load_dataset
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
-from librarian import init_conversation_md, append_to_conversation_md
+from utils.librarian import init_conversation_md, append_to_conversation_md
 import tiktoken
+from utils.utils import get_model
+from utils.utils import ModelOption
+import argparse
+from huggingface_hub import HfApi
 
 def retry_with_delay(max_attempts: int = 3, delay: int = 30):
     def decorator(func: Callable):
@@ -53,7 +54,7 @@ Respond with:
 'FEEDBACK: [Explanation of errors found and specific suggestions for improvement]'"""
 
 
-from utils.utils import ModelOption
+
 
 # Define state schema
 class AgentState(TypedDict):
@@ -63,23 +64,6 @@ class AgentState(TypedDict):
     iteration_count: Annotated[int, "Counter for iterations"]
     md_file: Annotated[str, "Path to markdown file"]
 
-# Initialize the models
-def get_model(model: ModelOption, temp: float = 0.1):
-    if model == ModelOption.LOCAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:8000/v1"
-        )
-    else:
-        # OpenRouter setup
-        os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=os.getenv("OPENROUTER_API_KEY")
-        )
 
 
 @retry_with_delay(max_attempts=3, delay=30)
@@ -274,7 +258,6 @@ def process_problem(problem_text: str, ground_truth: int,
         }
 
 if __name__ == "__main__":
-    import argparse
     
     # Set up argument parser
     parser = argparse.ArgumentParser(description='Run math problem solver with specified model')
@@ -284,6 +267,10 @@ if __name__ == "__main__":
                        default='NOUS', help='Verifier model to use')
     parser.add_argument('--both', type=str, choices=[model.name for model in ModelOption],
                        help='Use same model for both solver and verifier')
+    parser.add_argument('--split', type=str, default='train',
+                       help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--max-examples', type=int, default=10,
+                       help='Maximum number of examples to process')
     args = parser.parse_args()
     
     # Define models
@@ -294,7 +281,16 @@ if __name__ == "__main__":
         VERIFIER_MODEL = ModelOption[args.verifier]
     
     # Load dataset
-    dataset = load_dataset("AI-MO/aimo-validation-aime", split="train[:10]")
+    try:
+        username = HfApi().whoami()["name"]
+        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        exit(1)
+
+    # Shuffle and limit examples
+    dataset = dataset.shuffle(seed=42)
+    dataset = dataset.select(range(min(args.max_examples, len(dataset))))
     
     print(f"\n=== Starting evaluation with {SOLVER_MODEL.value} as solver and {VERIFIER_MODEL.value} as verifier ===")
     
