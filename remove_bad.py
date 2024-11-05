@@ -2,6 +2,61 @@ import json
 import argparse
 import os
 
+def read_json_file(filename: str) -> list:
+    """Read JSON file with robust error handling."""
+    try:
+        with open(filename, 'r', encoding='utf-8') as f:
+            # First try standard parsing
+            try:
+                return json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Standard JSON parsing failed at position {e.pos}")
+                print("Attempting line-by-line parsing...")
+                
+                # Reset file pointer
+                f.seek(0)
+                data = []
+                line_num = 0
+                
+                # Read opening bracket
+                first_line = f.readline().strip()
+                if first_line != '[':
+                    raise ValueError("File must start with '['")
+                
+                # Buffer for incomplete objects
+                buffer = ""
+                
+                for line in f:
+                    line_num += 1
+                    if line_num % 10000 == 0:
+                        print(f"Processing line {line_num}...")
+                    
+                    buffer += line.strip()
+                    
+                    if buffer.endswith('},'):  # Complete object
+                        try:
+                            obj = json.loads(buffer.rstrip(','))
+                            data.append(obj)
+                            buffer = ""
+                        except json.JSONDecodeError:
+                            print(f"Warning: Skipping invalid JSON at line {line_num}")
+                            buffer = ""
+                    elif buffer.endswith('}'):  # Last object
+                        try:
+                            obj = json.loads(buffer)
+                            data.append(obj)
+                        except json.JSONDecodeError:
+                            print(f"Warning: Skipping invalid JSON at line {line_num}")
+                
+                if not data:
+                    raise ValueError("No valid JSON objects found")
+                
+                return data
+
+    except Exception as e:
+        print(f"Error reading file: {str(e)}")
+        return None
+
 def remove_bad_entries(filename: str) -> None:
     """
     Remove entries from a JSON file where model_response doesn't contain
@@ -16,28 +71,9 @@ def remove_bad_entries(filename: str) -> None:
         file_size = os.path.getsize(filename)
         print(f"Processing file of size: {file_size / (1024*1024):.2f} MB")
 
-        # Read the file in chunks if it's large
-        with open(filename, 'r') as f:
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error at position {e.pos}: {e.msg}")
-                print("Attempting to read file in chunks...")
-                
-                f.seek(0)
-                content = ""
-                chunk_size = 1024 * 1024  # 1MB chunks
-                while True:
-                    chunk = f.read(chunk_size)
-                    if not chunk:
-                        break
-                    content += chunk
-                
-                try:
-                    data = json.loads(content)
-                except json.JSONDecodeError as e:
-                    print(f"Failed to parse JSON even with chunked reading: {e}")
-                    return
+        data = read_json_file(filename)
+        if data is None:
+            return
 
         # Check if it's a list of dictionaries
         if not isinstance(data, list):
