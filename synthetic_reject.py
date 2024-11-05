@@ -199,10 +199,22 @@ async def main():
 
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
+    # Create example data with dataset IDs and build lookup map
+    example_data = []
+    example_map = {}
+    for ex in dataset:
+        example = {
+            'id': ex['id'],
+            'problem': ex['problem'],
+            'solution': ex['solution']
+        }
+        example_data.append(example)
+        example_map[ex['id']] = example
+
     # Process examples with controlled concurrency
     results = []
     error_rate_points = []
-    total_examples = len(dataset)
+    total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
     # Create a semaphore to limit concurrency
@@ -213,7 +225,7 @@ async def main():
             return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.max_attempts)
 
     # Create tasks for all examples
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
     # Initialize augmented dataset filename
     augmented_filename = os.path.join('augmented_datasets', 
@@ -257,12 +269,11 @@ async def main():
             }
             current_batch.append(augmented_example)
             
-            # Save error rate every 100 examples
-            if len(results) % 100 == 0:
-                # Calculate error rate for the last 100 results
+            # Save metrics and data every 100 examples
+            if len(current_batch) >= 100:
+                # Calculate error rates
                 last_hundred = results[-100:]
                 batch_error_rate = 1 - calculate_error_rate(last_hundred)  # Invert since we want wrong answers
-                # Also calculate cumulative error rate
                 cumulative_error_rate = 1 - calculate_error_rate(results)  # Invert since we want wrong answers
                 error_rate_points.append({
                     'examples_processed': len(results),
@@ -272,21 +283,22 @@ async def main():
                 print(f"\nAt {len(results)} examples:")
                 print(f"Batch Wrong Answer Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Wrong Answer Rate: {cumulative_error_rate:.4f}")
-                
-                intermediate_filename = os.path.join('results', 
-                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
-                output_data = {
-                    'error_rate_points': error_rate_points
-                }
-                os.makedirs('results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"\nSaved intermediate results after {len(results)} examples")
-            
-            # Save current batch of augmented data
-            if current_batch:
+
+                # Save current batch of augmented data
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
+
+                # Save intermediate results less frequently (every 500 examples)
+                if len(results) % 500 == 0:
+                    intermediate_filename = os.path.join('results', 
+                        f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
+                    output_data = {
+                        'error_rate_points': error_rate_points
+                    }
+                    os.makedirs('results', exist_ok=True)
+                    with open(intermediate_filename, 'w') as f:
+                        json.dump(output_data, f, indent=2)
+                    print(f"\nSaved intermediate results after {len(results)} examples")
             
         progress_bar.update(1)
     progress_bar.close()
