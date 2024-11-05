@@ -1,61 +1,7 @@
 import json
 import argparse
 import os
-
-def read_json_file(filename: str) -> list:
-    """Read JSON file with robust error handling."""
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            # First try standard parsing
-            try:
-                return json.load(f)
-            except json.JSONDecodeError as e:
-                print(f"Standard JSON parsing failed at position {e.pos}")
-                print("Attempting line-by-line parsing...")
-                
-                # Reset file pointer
-                f.seek(0)
-                data = []
-                line_num = 0
-                
-                # Read opening bracket
-                first_line = f.readline().strip()
-                if first_line != '[':
-                    raise ValueError("File must start with '['")
-                
-                # Buffer for incomplete objects
-                buffer = ""
-                
-                for line in f:
-                    line_num += 1
-                    if line_num % 10000 == 0:
-                        print(f"Processing line {line_num}...")
-                    
-                    buffer += line.strip()
-                    
-                    if buffer.endswith('},'):  # Complete object
-                        try:
-                            obj = json.loads(buffer.rstrip(','))
-                            data.append(obj)
-                            buffer = ""
-                        except json.JSONDecodeError:
-                            print(f"Warning: Skipping invalid JSON at line {line_num}")
-                            buffer = ""
-                    elif buffer.endswith('}'):  # Last object
-                        try:
-                            obj = json.loads(buffer)
-                            data.append(obj)
-                        except json.JSONDecodeError:
-                            print(f"Warning: Skipping invalid JSON at line {line_num}")
-                
-                if not data:
-                    raise ValueError("No valid JSON objects found")
-                
-                return data
-
-    except Exception as e:
-        print(f"Error reading file: {str(e)}")
-        return None
+from json_utils import clean_json_file
 
 def add_models_to_file(filename: str, solver_name: str, verifier_name: str) -> None:
     """Add solver and verifier names to all entries in a JSON file."""
@@ -68,7 +14,8 @@ def add_models_to_file(filename: str, solver_name: str, verifier_name: str) -> N
         file_size = os.path.getsize(filename)
         print(f"Processing file of size: {file_size / (1024*1024):.2f} MB")
 
-        data = read_json_file(filename)
+        # First clean the file
+        data = clean_json_file(filename)
         if data is None:
             return
 
