@@ -29,10 +29,12 @@ def remove_bad_entries(filename: str) -> None:
         for entry in data:
             if isinstance(entry, dict) and 'model_response' in entry:
                 response = entry['model_response']
-                # Check if response contains required keywords
-                has_analysis = 'Problem Analysis' in response
-                has_step = 'STEP' in response.upper()
-                if has_analysis and has_step:
+                # Check if response contains required keywords (case insensitive)
+                response_lower = response.lower()
+                has_problem = 'problem' in response_lower
+                has_analysis = 'analysis' in response_lower
+                has_step = 'step' in response_lower
+                if has_problem and has_analysis and has_step:
                     filtered_data.append(entry)
 
         # Count removed entries
