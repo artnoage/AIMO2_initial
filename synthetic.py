@@ -94,6 +94,12 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-4])
 
+def check_required_words(response: str) -> bool:
+    """Check if response contains required words (case insensitive)"""
+    lower_response = response.lower()
+    required_words = ['analysis', 'problem', 'step']
+    return all(word in lower_response for word in required_words)
+
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
     """Process a single example with multiple attempts"""
     try:
@@ -126,6 +132,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             attempts += 1
             response = await solver_model.ainvoke(prompt)
             solution = response.content
+            
+            # Check for required words before proceeding with verification
+            if not check_required_words(solution):
+                print(f"\nProblem {running_id + 1}: ✗ (Missing required format)")
+                is_correct, first_verify, second_verify = False, False, False
+                continue
+                
             model_answer = extract_answer_from_solution(solution)
             partial_answer = extract_answer_from_solution(partial_solution)
             is_correct, first_verify, second_verify = await compare_math_answers(
