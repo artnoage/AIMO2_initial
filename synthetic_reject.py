@@ -427,6 +427,48 @@ def add_model_to_file(filename: str, model_name: str) -> None:
     except Exception as e:
         print(f"Error processing file: {str(e)}")
 
+def add_models_to_file(filename: str, solver_name: str, verifier_name: str) -> None:
+    """Add solver and verifier names to all entries in a JSON file."""
+    if not os.path.exists(filename):
+        print(f"Error: File {filename} does not exist")
+        return
+
+    try:
+        # Read the file
+        with open(filename, 'r') as f:
+            data = json.load(f)
+
+        # Check if it's a list of dictionaries
+        if not isinstance(data, list):
+            print(f"Error: File {filename} does not contain a list of examples")
+            return
+
+        # Add model names to each entry
+        modified = False
+        for entry in data:
+            if isinstance(entry, dict):
+                if 'solver' not in entry or 'verifier' not in entry:
+                    if 'solver' not in entry:
+                        entry['solver'] = solver_name
+                    if 'verifier' not in entry:
+                        entry['verifier'] = verifier_name
+                    modified = True
+
+        if not modified:
+            print("No changes needed - all entries already have solver and verifier fields")
+            return
+
+        # Write back to file
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        print(f"Successfully added model names to {filename}")
+
+    except json.JSONDecodeError:
+        print(f"Error: File {filename} is not valid JSON")
+    except Exception as e:
+        print(f"Error processing file: {str(e)}")
+
 def main():
     parser = argparse.ArgumentParser(description='Add model name to JSON files')
     parser.add_argument('--file', type=str, required=True,
