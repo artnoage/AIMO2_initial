@@ -2,8 +2,8 @@ import json
 import argparse
 import os
 
-def add_model_to_file(filename: str, model_name: str) -> None:
-    """Add model name to all entries in a JSON file."""
+def add_models_to_file(filename: str, solver_name: str, verifier_name: str) -> None:
+    """Add solver and verifier names to all entries in a JSON file."""
     if not os.path.exists(filename):
         print(f"Error: File {filename} does not exist")
         return
@@ -21,8 +21,12 @@ def add_model_to_file(filename: str, model_name: str) -> None:
         # Add model name to each entry
         modified = False
         for entry in data:
-            if isinstance(entry, dict) and 'model' not in entry:
-                entry['model'] = model_name
+            if isinstance(entry, dict):
+                if 'solver' not in entry or 'verifier' not in entry:
+                    if 'solver' not in entry:
+                        entry['solver'] = solver_name
+                    if 'verifier' not in entry:
+                        entry['verifier'] = verifier_name
                 modified = True
 
         if not modified:
@@ -48,7 +52,7 @@ def main():
                     help='Model name to add')
 
     args = parser.parse_args()
-    add_model_to_file(args.file, args.model)
+    add_models_to_file(args.file, args.solver, args.verifier)
 
 if __name__ == "__main__":
     main()

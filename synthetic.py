@@ -281,7 +281,8 @@ async def main():
                 'partial_solution': result['partial_solution'],
                 'model_response': result['model_response'],
                 'is_correct': result['is_correct'],
-                'model': args.solver
+                'solver': args.solver,
+                'verifier': args.verifier
             }
             current_batch.append(augmented_example)
             

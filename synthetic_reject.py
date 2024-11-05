@@ -276,7 +276,8 @@ async def main():
                 'model_response': result['model_solution'],
                 'is_correct': result['is_correct'],
                 'attempts': result['attempts'],
-                'model': args.solver
+                'solver': args.solver,
+                'verifier': args.verifier
             }
             current_batch.append(augmented_example)
             
@@ -430,8 +431,10 @@ def main():
     parser = argparse.ArgumentParser(description='Add model name to JSON files')
     parser.add_argument('--file', type=str, required=True,
                        help='JSON file to process')
-    parser.add_argument('--model', type=str, required=True,
-                       help='Model name to add')
+    parser.add_argument('--solver', type=str, required=True,
+                       help='Solver model name to add')
+    parser.add_argument('--verifier', type=str, required=True,
+                       help='Verifier model name to add')
     
     args = parser.parse_args()
     add_model_to_file(args.file, args.model)
