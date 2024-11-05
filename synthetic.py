@@ -8,7 +8,7 @@ from typing import Optional, Dict
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
-from typing import  Dict, Optional
+from typing import  Dict, Optional, Tuple
 from langchain_core.messages import  HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -54,25 +54,30 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 \\(\\boxed{\\text{final answer}}\\) 
 """
 
-
-
-async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
-    """Use two verifier models to validate mathematical answers with retries"""
+async def compare_math_solutions(
+    model_solution: Optional[str], 
+    correct_solution: Optional[str], 
+    problem: str, 
+    verifier_model, 
+    second_verifier_model
+) -> Tuple[bool, bool, bool]:
+    model_answer = extract_answer_from_solution(model_solution)
+    correct_answer = extract_answer_from_solution(correct_solution)
+    
     if model_answer is None or correct_answer is None or model_solution is None:
         return False, False, False
-        
-    # First verification just compares the boxed answers for equivalence
+
+    # First verification: check if answers are equivalent
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
-        # First verification - just comparing answers
         first_response = await verifier_model.ainvoke(comparison_prompt)
         first_result = first_response.content.strip().lower() == 'yes'
-            
-        # Second verification checks if the full solution is correct
+        
+        # Second verification: check if the full solution is correct
         second_prompt = [
             SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
@@ -82,9 +87,10 @@ async def compare_math_answers(model_answer: Optional[str], model_solution: Opti
         second_result = second_response.content.strip().lower() == 'yes'
         
         return first_result and second_result, first_result, second_result
-        
+
     except Exception:
         return False, False, False
+
 
 def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
@@ -106,14 +112,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
-            
-        correct_answer = extract_answer_from_solution(example['solution'])
+        correct_solution=example['solution']    
+        correct_answer = extract_answer_from_solution(correct_solution)
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
         # Combine problem with partial solution
-        partial_solution = get_partial_solution(example['solution'])
+        partial_solution = get_partial_solution(correct_solution)
         combined_prompt = f"{example['problem']}\n\nPartial solution:\n{partial_solution}"
         
         prompt = [
@@ -124,27 +130,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         # Multiple attempts until correct or max attempts reached
         attempts = 0
         is_correct = False
-        solution = None
-        model_answer = None
         verifier_disagreements = 0
         
         while attempts < max_attempts and not is_correct:
             attempts += 1
             response = await solver_model.ainvoke(prompt)
-            solution = response.content
+            model_solution = response.content
             
             # Check for required words before proceeding with verification
-            if not check_required_words(solution):
+            if not check_required_words(model_solution):
                 print(f"\nProblem {running_id + 1}: ✗ (Missing required format)")
                 is_correct, first_verify, second_verify = False, False, False
                 continue
                 
-            model_answer = extract_answer_from_solution(solution)
-            partial_answer = extract_answer_from_solution(partial_solution)
-            is_correct, first_verify, second_verify = await compare_math_answers(
-                model_answer, solution, correct_answer,
-                example["problem"], verifier_model, second_verifier_model
-            )
+            model_answer = extract_answer_from_solution(model_solution)
+            is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
             if first_verify != second_verify:
                 verifier_disagreements += 1
             if is_correct:
@@ -164,7 +164,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'problem': example['problem'],
             'partial_solution': partial_solution,
             'correct_answer': correct_answer,
-            'model_response': solution,
+            'model_response': model_solution,
             'model_answer': model_answer,
             'is_correct': is_correct,
             'verifier_disagreements': verifier_disagreements,
