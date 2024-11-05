@@ -1,6 +1,8 @@
 import re
+import os
 from enum import Enum
 from typing import Optional
+from langchain_openai import ChatOpenAI
 
 class ModelOption(Enum):
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
@@ -11,12 +13,55 @@ class ModelOption(Enum):
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
-    #LOCAL = "mistralai/Mathstral-7B-v0.1"
+    LOCAL_ORIGINAL = "mistralai/Mathstral-7B-v0.1"
+    LOCAL_ORIGINAL_Q= "mathstral-7b-v0.1"
     LOCAL = "model_1iteration/"
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
-    SAMBA= "Meta-Llama-3.1-405B-Instruct"
+    SAMBA_BIG= "Meta-Llama-3.1-405B-Instruct"
+    SAMBA_SMALL= "Meta-Llama-3.1-70B-Instruct"
+
+def get_model(model: ModelOption, temp: float = 0.1):
+    """
+    Initialize the ChatOpenAI model based on the selected ModelOption.
+    For LOCAL models, it connects to a local endpoint.
+    For other models, it uses the OpenRouter API.
+    """
+    if model == ModelOption.LOCAL:
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key="EMPTY",
+            base_url="http://localhost:8000/v1/")
+    elif model == ModelOption.LOCAL_ORIGINAL:
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key="EMPTY",
+            base_url="http://localhost:6000/v1")
+    elif model == ModelOption.LOCAL_ORIGINAL_Q:
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key="EMPTY",
+            base_url="http://192.168.178.33:6000/v1")
+    
+    elif model == ModelOption.SAMBA_BIG or model==ModelOption.SAMBA_SMALL :
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key=os.getenv("SAMBANOVA_API_KEY"),
+            base_url="https://api.sambanova.ai/v1")
+    else:
+        openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+        if not openrouter_api_key:
+            raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
+        
+        return ChatOpenAI(
+            model=model.value,
+            temperature=temp,
+            api_key=openrouter_api_key)
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """

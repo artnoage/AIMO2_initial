@@ -14,7 +14,7 @@ def handle_augmented_data_file(filename: str) -> bool:
     while True:
         response = input(f"\nFile {filename} already exists. Choose action:\n"
                         "1. Cancel operation\n"
-                        "2. Replace file completely\n"
+                        "2. Replace file completely (will create backup)\n"
                         "3. Append new entries\n"
                         "Choice (1-3): ").strip()
                         
@@ -22,7 +22,11 @@ def handle_augmented_data_file(filename: str) -> bool:
             return False
         elif response in ["2", "3"]:
             if response == "2":
-                os.remove(filename)
+                # Create backup before removing
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                backup_name = f"{os.path.splitext(filename)[0]}_backup_{timestamp}.json"
+                os.rename(filename, backup_name)
+                print(f"Created backup: {backup_name}")
             return True
         print("Invalid choice. Please try again.")
 
@@ -40,7 +44,8 @@ def get_existing_ids(filename: str) -> set:
         print("The file may be corrupted. Backing it up and starting fresh.")
         
         # Backup the problematic file
-        backup_name = f"{filename}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_name = f"{os.path.splitext(filename)[0]}_backup_{timestamp}.json"
         os.rename(filename, backup_name)
         print(f"Backed up to: {backup_name}")
         

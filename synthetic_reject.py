@@ -4,34 +4,36 @@ import json
 import asyncio
 import argparse
 from enum import Enum
-from typing import Optional, Dict
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
-from utils.utils import ModelOption, get_model, extract_answer_from_solution
+from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from typing import  Dict, Optional
-from langchain_core.messages import  HumanMessage, SystemMessage
+from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
+from utils.utils import ModelOption, get_model
+from typing import List, Dict, Optional
+from itertools import islice
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
+from langchain.callbacks.base import BaseCallbackHandler
 from datasets import load_dataset
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
 from tqdm import tqdm
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+import time
+from utils.utils import extract_answer_from_solution
+from utils.utils import ModelOption
 
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with partial solutions as hints.
+SYSTEM_PROMPT="""You are a mathematical problem solver who sometimes makes mistakes. You will be given a problem to solve.
 
-PROCESS:
-▪ Silently analyze the given hint for relevant techniques and insights.
-▪ Develop a complete, independent solution from scratch.
-
-REQUIRED:
-▪ Begin by listing applicable theorems, definitions, or techniques you will use.
-▪ For each proof step, include a justification in brackets. Use clear LaTeX notation for all mathematical expressions.
-
-PROHIBITED:
-▪ Avoid restating the problem.
-▪ Do not reference or rely on the partial solution.
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
+▪ Feel free to make reasonable mistakes in your reasoning
 
 FORMAT:
 
@@ -51,51 +53,58 @@ Step 4. Thus, \\( abc \\leq 1 \\), as required.
 For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
 
 **ANSWER**:
-\\(\\boxed{\\text{final answer}}\\) 
-"""
+\\(\\boxed{\\text{result}}\\) """
 
+def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
+    """Load intermediate results from saved JSON files"""
+    intermediate_files = [f for f in os.listdir('benchmark_results') 
+                        if f.startswith(f'benchmark_intermediate_{solver_model.name}_{verifier_model.name}')]
+    if not intermediate_files:
+        return None, None, None
+    
+    # Load the intermediate results in chronological order
+    intermediate_results = []
+    intermediate_timestamps = []
+    intermediate_accuracies = []
+    for filename in sorted(intermediate_files):
+        filepath = os.path.join('benchmark_results', filename)
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            examples_processed = len(data)  # Count examples in the augmented data
+            correct_count = sum(1 for ex in data if ex['is_correct'])
+            accuracy = (correct_count / examples_processed) * 100 if examples_processed > 0 else 0
+            
+            intermediate_results.append(examples_processed)
+            intermediate_timestamps.append(datetime.now().isoformat())
+            intermediate_accuracies.append(accuracy)
+    
+    return intermediate_results, intermediate_timestamps, intermediate_accuracies
 
+def calculate_error_rate(results):
+    """Calculate error rate from results"""
+    if not results:
+        return 0.0
+    correct_count = sum(1 for r in results if r['is_correct'])
+    return correct_count / len(results)
 
-async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
-    """Use two verifier models to validate mathematical answers with retries"""
-    if model_answer is None or correct_answer is None or model_solution is None:
-        return False, False, False
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
+    """Use the model to compare two mathematical answers"""
+    if model_answer is None or correct_answer is None:
+        return False
         
-    # First verification just compares the boxed answers for equivalence
     comparison_prompt = [
         SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
         HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
     try:
-        # First verification - just comparing answers
-        first_response = await verifier_model.ainvoke(comparison_prompt)
-        first_result = first_response.content.strip().lower() == 'yes'
-            
-        # Second verification checks if the full solution is correct
-        second_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
-        ]
-        
-        second_response = await second_verifier_model.ainvoke(second_prompt)
-        second_result = second_response.content.strip().lower() == 'yes'
-        
-        return first_result and second_result, first_result, second_result
-        
+        response = await model.ainvoke(comparison_prompt)
+        return response.content.strip().lower() == 'yes'
     except Exception:
-        return False, False, False
+        return False
 
-def get_partial_solution(solution: str) -> str:
-    """Get partial solution by removing last three lines if more than 3 lines,
-    otherwise return first line"""
-    lines = solution.strip().split('\n\n')
-    if len(lines) <= 4:
-        return lines[0]
-    return '\n\n'.join(lines[:-4])
-
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
-    """Process a single example with multiple attempts"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, max_attempts: int) -> Optional[Dict]:
+    """Process a single example and keep sampling until we get a wrong answer"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -106,42 +115,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        # Combine problem with partial solution
-        partial_solution = get_partial_solution(example['solution'])
-        combined_prompt = f"{example['problem']}\n\nPartial solution:\n{partial_solution}"
+        prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        prompt = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=combined_prompt)
-        ]
-        
-        # Multiple attempts until correct or max attempts reached
+        # Multiple attempts until we get a wrong answer or hit max attempts
         attempts = 0
-        is_correct = False
+        is_correct = True  # Start with True to enter the loop
         solution = None
         model_answer = None
-        verifier_disagreements = 0
         
-        while attempts < max_attempts and not is_correct:
+        while attempts < max_attempts and is_correct:  # Keep trying while answers are correct
             attempts += 1
             response = await solver_model.ainvoke(prompt)
             solution = response.content
             model_answer = extract_answer_from_solution(solution)
-            partial_answer = extract_answer_from_solution(partial_solution)
-            is_correct, first_verify, second_verify = await compare_math_answers(
-                model_answer, solution, correct_answer,
-                example["problem"], verifier_model, second_verifier_model
-            )
-            if first_verify != second_verify:
-                verifier_disagreements += 1
-            if is_correct:
+            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+            if not is_correct:  # Found a wrong answer, break
                 break
                 
         # Print results for this example
         attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
-        disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
-        status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
+        status = '✗' if not is_correct else '✓'  # Reversed from normal - we want wrong answers
+        print(f"\nProblem {running_id + 1}: {status}{attempts_str}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -149,12 +143,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return {
             'id': example_id,
             'problem': example['problem'],
-            'partial_solution': partial_solution,
             'correct_answer': correct_answer,
-            'model_response': solution,
+            'model_solution': solution,
             'model_answer': model_answer,
             'is_correct': is_correct,
-            'verifier_disagreements': verifier_disagreements,
+            'model_answer_raw': model_answer,
+            'correct_answer_raw': correct_answer,
             'attempts': attempts
         }
         
@@ -163,74 +157,76 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
+    # Start timing the entire process
     start_time = datetime.now()
     
-    parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
+    # Argument parser for command-line options
+    parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset - Wrong Answer Generation')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='GEMINI_FLASH', help='Model to use for verifying answers')
-    parser.add_argument('--split', type=str, default='test',
+    parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=100,
+    parser.add_argument('--dataset', type=str, default='filtered',
+                       choices=['original', 'filtered', 'aime'],
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
+    parser.add_argument('--max-concurrent', type=int, default=4,
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=5,
-                       help='Maximum number of attempts to get correct solution (default: 5)')
+                       help='Maximum attempts to get a wrong answer (default: 5)')
     args = parser.parse_args()
 
+    # Validate max concurrent
     if args.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
 
+    # Load the dataset based on selection
     try:
-        username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+        if args.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        elif args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
+        else:  # filtered
+            username = HfApi().whoami()["name"]
+            dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
 
+    # Filter by source if specified
     if args.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == args.source)
     
+    # Shuffle the dataset for randomness
     dataset = dataset.shuffle(seed=42)
-    num_examples = len(dataset)
-    
+
+    # Print dataset information
     print("\nDataset Information:")
+    num_examples = len(dataset)
     print(f"Number of examples: {num_examples}")
 
     if num_examples == 0:
-        print("Error: Dataset is empty!")
+        print("Error: Dataset is empty! Check your source filter and split arguments.")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.2)
-    verifier_model = get_model(ModelOption[args.verifier], temp=0)
-    second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
-    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
+    # Initialize the models with higher temperature for solver to encourage mistakes
+    try:
+        solver_model = get_model(ModelOption[args.solver], temp=0.9)  # Higher temperature
+        verifier_model = get_model(ModelOption[args.verifier])
+    except Exception as e:
+        print(f"Error initializing models: {e}")
+        return
 
-    # Create example data with dataset IDs and build lookup map
-    example_data = []
-    example_map = {}
-    for ex in dataset:
-        example = {
-            'id': ex['id'],
-            'problem': ex['problem'],
-            'solution': ex['solution']
-        }
-        example_data.append(example)
-        example_map[ex['id']] = example
-    
-    def calculate_error_rate(results):
-        if not results:
-            return 0.0
-        correct_count = sum(1 for r in results if r['is_correct'])
-        return 1.0 - (correct_count / len(results))
+    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     # Process examples with controlled concurrency
     results = []
     error_rate_points = []
-    total_examples = len(example_data)
+    total_examples = len(dataset)
     print(f"\nStarting processing of {total_examples} examples...")
 
     # Create a semaphore to limit concurrency
@@ -238,15 +234,14 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.max_attempts)
 
     # Create tasks for all examples
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
     
     # Initialize augmented dataset filename
-    os.makedirs('augmented_datasets', exist_ok=True)
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"synthetic_augmented_{args.solver}_{args.verifier}.json")
+                                    f"reject_augmented_{args.solver}_{args.verifier}.json")
     
     # Get existing IDs to skip
     existing_ids = get_existing_ids(augmented_filename)
@@ -254,7 +249,7 @@ async def main():
         print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
     
     # Filter out examples with existing IDs
-    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
+    example_data = [ex for ex in dataset if ex['id'] not in existing_ids]
     if not example_data:
         print("All examples have already been processed!")
         return
@@ -277,10 +272,10 @@ async def main():
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': example_map[result['id']]['solution'],
-                'partial_solution': result['partial_solution'],
-                'model_response': result['model_response'],
-                'is_correct': result['is_correct']
+                'solution': next((ex['solution'] for ex in example_data if ex['id'] == result['id']), None),
+                'model_response': result['model_solution'],
+                'is_correct': result['is_correct'],
+                'attempts': result['attempts']
             }
             current_batch.append(augmented_example)
             
@@ -288,22 +283,24 @@ async def main():
             if len(results) % 100 == 0:
                 # Calculate error rate for the last 100 results
                 last_hundred = results[-100:]
-                batch_error_rate = calculate_error_rate(last_hundred)
+                batch_error_rate = 1 - calculate_error_rate(last_hundred)  # Invert since we want wrong answers
                 # Also calculate cumulative error rate
-                cumulative_error_rate = calculate_error_rate(results)
+                cumulative_error_rate = 1 - calculate_error_rate(results)  # Invert since we want wrong answers
                 error_rate_points.append({
                     'examples_processed': len(results),
                     'batch_error_rate': batch_error_rate,
                     'cumulative_error_rate': cumulative_error_rate
                 })
                 print(f"\nAt {len(results)} examples:")
-                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
-                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
+                print(f"Batch Wrong Answer Rate (last 100): {batch_error_rate:.4f}")
+                print(f"Cumulative Wrong Answer Rate: {cumulative_error_rate:.4f}")
                 
                 intermediate_filename = os.path.join('results', 
-                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
+                    f"reject_intermediate_{args.solver}_{args.verifier}.json")
                 output_data = {
-                    'error_rate_points': error_rate_points
+                    'error_rate_points': error_rate_points,
+                    'current_batch_error_rate': batch_error_rate,
+                    'current_cumulative_error_rate': cumulative_error_rate
                 }
                 os.makedirs('results', exist_ok=True)
                 with open(intermediate_filename, 'w') as f:
@@ -314,6 +311,7 @@ async def main():
             if current_batch:
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
+            
         progress_bar.update(1)
     progress_bar.close()
 
@@ -321,27 +319,34 @@ async def main():
         print("\nNo examples were successfully processed.")
         return
 
+    # Sort results by ID to maintain the original order
     results.sort(key=lambda x: x['id'])
 
-    correct_count = sum(1 for r in results if r['is_correct'])
-    accuracy = (correct_count / len(results)) * 100 if results else 0
+    # Calculate final statistics - note we want wrong answers here
+    wrong_count = sum(1 for r in results if not r['is_correct'])
+    total_attempts = sum(r['attempts'] for r in results)
 
-    print("\nFinal Results:")
+    # Print final results
+    print("\n\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
-    print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
-    total_disagreements = sum(r['verifier_disagreements'] for r in results)
-    print(f"Total verifier disagreements: {total_disagreements}")
-    print(f"Average disagreements per example: {total_disagreements/len(results):.2f}")
+    print(f"Total wrong answers generated: {wrong_count}")
+    print(f"Average attempts per example: {total_attempts/len(results):.2f}")
+    
+    if len(results) > 0:
+        wrong_rate = (wrong_count / len(results)) * 100
+        print(f"Wrong Answer Rate: {wrong_count}/{len(results)} = {wrong_rate:.2f}%")
+    else:
+        print("No examples were successfully processed.")
 
     # Save final results
     os.makedirs('results', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_filename = os.path.join('results', 
-                                  f"synthetic_results_{args.solver}_{args.verifier}_{timestamp}.json")
+                                  f"reject_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save final error rate and points
-    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
-    final_cumulative_error_rate = calculate_error_rate(results)
+    final_batch_error_rate = 1 - calculate_error_rate(results[-100:] if len(results) >= 100 else results)
+    final_cumulative_error_rate = 1 - calculate_error_rate(results)
     error_rate_points.append({
         'examples_processed': len(results),
         'batch_error_rate': final_batch_error_rate,
@@ -351,7 +356,9 @@ async def main():
     output_data = {
         'error_rate_points': error_rate_points,
         'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate
+        'final_cumulative_error_rate': final_cumulative_error_rate,
+        'total_attempts': total_attempts,
+        'average_attempts': total_attempts/len(results)
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
@@ -362,12 +369,13 @@ async def main():
         save_augmented_data(current_batch, augmented_filename, len(results))
     
     # Print error rate progression
-    print("\nError Rate Progression:")
+    print("\nWrong Answer Rate Progression:")
     for point in error_rate_points:
         print(f"After {point['examples_processed']} examples:")
-        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
-        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
+        print(f"  Batch Wrong Answer Rate (last 100): {point['batch_error_rate']:.4f}")
+        print(f"  Cumulative Wrong Answer Rate: {point['cumulative_error_rate']:.4f}")
 
+    # Calculate and print timing information
     end_time = datetime.now()
     total_duration = end_time - start_time
     print(f"\nTotal execution time: {total_duration}")
