@@ -246,7 +246,7 @@ async def main():
     # Initialize augmented dataset filename
     os.makedirs('augmented_datasets', exist_ok=True)
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"synthetic_augmented.json")
+                                    "synthetic_augmented.json")
     
     # Get existing IDs to skip
     existing_ids = get_existing_ids(augmented_filename)

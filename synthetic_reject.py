@@ -241,7 +241,7 @@ async def main():
     
     # Initialize augmented dataset filename
     augmented_filename = os.path.join('augmented_datasets', 
-                                    f"reject_augmented.json")
+                                    "reject_augmented.json")
     
     # Get existing IDs to skip
     existing_ids = get_existing_ids(augmented_filename)
