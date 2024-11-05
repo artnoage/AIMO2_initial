@@ -55,30 +55,6 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 **ANSWER**:
 \\(\\boxed{\\text{result}}\\) """
 
-def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
-    """Load intermediate results from saved JSON files"""
-    intermediate_files = [f for f in os.listdir('benchmark_results') 
-                        if f.startswith(f'benchmark_intermediate_{solver_model.name}_{verifier_model.name}')]
-    if not intermediate_files:
-        return None, None, None
-    
-    # Load the intermediate results in chronological order
-    intermediate_results = []
-    intermediate_timestamps = []
-    intermediate_accuracies = []
-    for filename in sorted(intermediate_files):
-        filepath = os.path.join('benchmark_results', filename)
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            examples_processed = len(data)  # Count examples in the augmented data
-            correct_count = sum(1 for ex in data if ex['is_correct'])
-            accuracy = (correct_count / examples_processed) * 100 if examples_processed > 0 else 0
-            
-            intermediate_results.append(examples_processed)
-            intermediate_timestamps.append(datetime.now().isoformat())
-            intermediate_accuracies.append(accuracy)
-    
-    return intermediate_results, intermediate_timestamps, intermediate_accuracies
 
 def calculate_error_rate(results):
     """Calculate error rate from results"""
@@ -298,11 +274,9 @@ async def main():
                 print(f"Cumulative Wrong Answer Rate: {cumulative_error_rate:.4f}")
                 
                 intermediate_filename = os.path.join('results', 
-                    f"reject_intermediate_{args.solver}_{args.verifier}.json")
+                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
                 output_data = {
-                    'error_rate_points': error_rate_points,
-                    'current_batch_error_rate': batch_error_rate,
-                    'current_cumulative_error_rate': cumulative_error_rate
+                    'error_rate_points': error_rate_points
                 }
                 os.makedirs('results', exist_ok=True)
                 with open(intermediate_filename, 'w') as f:
@@ -347,8 +321,8 @@ async def main():
                                   f"reject_results_{args.solver}_{args.verifier}_{timestamp}.json")
     
     # Save final error rate and points
-    final_batch_error_rate = 1 - calculate_error_rate(results[-100:] if len(results) >= 100 else results)
-    final_cumulative_error_rate = 1 - calculate_error_rate(results)
+    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
+    final_cumulative_error_rate = calculate_error_rate(results)
     error_rate_points.append({
         'examples_processed': len(results),
         'batch_error_rate': final_batch_error_rate,
@@ -358,9 +332,7 @@ async def main():
     output_data = {
         'error_rate_points': error_rate_points,
         'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate,
-        'total_attempts': total_attempts,
-        'average_attempts': total_attempts/len(results)
+        'final_cumulative_error_rate': final_cumulative_error_rate
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
