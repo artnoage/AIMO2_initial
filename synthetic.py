@@ -139,17 +139,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
             # Check for required words before proceeding with verification
             if not check_required_words(model_solution):
-                print(f"\nProblem {running_id + 1}: ✗ (Missing required format)")
                 is_correct, first_verify, second_verify = False, False, False
                 continue
                 
-            model_answer = extract_answer_from_solution(model_solution)
+            
             is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
             if first_verify != second_verify:
                 verifier_disagreements += 1
             if is_correct:
                 break
-                
+        model_answer = extract_answer_from_solution(model_solution)    
         # Print results for this example
         attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
         disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
@@ -189,7 +188,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=100,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-attempts', type=int, default=20,
+    parser.add_argument('--max-attempts', type=int, default=30,
                        help='Maximum number of attempts to get correct solution (default: 5)')
     args = parser.parse_args()
 
