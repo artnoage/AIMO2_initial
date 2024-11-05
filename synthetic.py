@@ -63,7 +63,7 @@ async def compare_math_solutions(
 ) -> Tuple[bool, bool, bool]:
     model_answer = extract_answer_from_solution(model_solution)
     correct_answer = extract_answer_from_solution(correct_solution)
-    
+
     if model_answer is None or correct_answer is None or model_solution is None:
         return False, False, False
 
@@ -216,9 +216,9 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.2)
+    solver_model = get_model(ModelOption[args.solver], temp=0.3)
     verifier_model = get_model(ModelOption[args.verifier], temp=0.05)
-    second_verifier_model = get_model(ModelOption[args.verifier], temp=0.1)  # Same model type as first verifier
+    second_verifier_model = get_model(ModelOption[args.verifier], temp=0.05)  # Same model type as first verifier
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     # Create example data with dataset IDs and build lookup map
