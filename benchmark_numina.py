@@ -149,8 +149,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         # Extract the model's answer from the solution
         model_answer = extract_answer_from_solution(solution)
-        # Compare answers using model verification
-        is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
+        
+        # First check if solution contains required keywords
+        solution_lower = solution.lower()
+        has_problem = 'problem' in solution_lower
+        has_analysis = 'analysis' in solution_lower
+        has_step = 'step' in solution_lower
+        
+        # Only verify if all required words are present
+        is_correct = False
+        if has_problem and has_analysis and has_step:
+            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # Print results immediately
         status = '✓' if is_correct else '✗'
