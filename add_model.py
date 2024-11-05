@@ -9,9 +9,32 @@ def add_models_to_file(filename: str, solver_name: str, verifier_name: str) -> N
         return
 
     try:
-        # Read the file
+        # Check file size
+        file_size = os.path.getsize(filename)
+        print(f"Processing file of size: {file_size / (1024*1024):.2f} MB")
+
+        # Read the file in chunks if it's large
         with open(filename, 'r') as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error at position {e.pos}: {e.msg}")
+                print("Attempting to read file in chunks...")
+                
+                f.seek(0)
+                content = ""
+                chunk_size = 1024 * 1024  # 1MB chunks
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    content += chunk
+                
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError as e:
+                    print(f"Failed to parse JSON even with chunked reading: {e}")
+                    return
 
         # Check if it's a list of dictionaries
         if not isinstance(data, list):
