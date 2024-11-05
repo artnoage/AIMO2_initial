@@ -280,7 +280,8 @@ async def main():
                 'solution': example_map[result['id']]['solution'],
                 'partial_solution': result['partial_solution'],
                 'model_response': result['model_response'],
-                'is_correct': result['is_correct']
+                'is_correct': result['is_correct'],
+                'model': args.solver
             }
             current_batch.append(augmented_example)
             

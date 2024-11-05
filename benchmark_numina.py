@@ -313,7 +313,8 @@ async def main():
                 'problem': result['problem'],
                 'solution': next((ex['solution'] for ex in example_data if ex['id'] == result['id']), None),
                 'model_response': result['model_solution'],
-                'is_correct': result['is_correct']
+                'is_correct': result['is_correct'],
+                'model': args.solver
             }
             current_batch.append(augmented_example)
             
