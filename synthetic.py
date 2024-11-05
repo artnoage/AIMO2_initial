@@ -170,7 +170,7 @@ async def main():
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='GEMINI_FLASH', help='Model to use for verifying answers')
-    parser.add_argument('--split', type=str, default='test',
+    parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
