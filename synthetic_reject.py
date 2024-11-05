@@ -431,10 +431,10 @@ def main():
     parser = argparse.ArgumentParser(description='Add model name to JSON files')
     parser.add_argument('--file', type=str, required=True,
                        help='JSON file to process')
-    parser.add_argument('--solver', type=str, required=True,
-                       help='Solver model name to add')
-    parser.add_argument('--verifier', type=str, required=True,
-                       help='Verifier model name to add')
+    parser.add_argument('--solver', type=str, default='LOCAL_ORIGINAL',
+                       help='Solver model name to add (default: LOCAL_ORIGINAL)')
+    parser.add_argument('--verifier', type=str, default='GEMINI_FLASH',
+                       help='Verifier model name to add (default: GEMINI_FLASH)')
     
     args = parser.parse_args()
     add_model_to_file(args.file, args.model)
