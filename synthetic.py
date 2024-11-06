@@ -315,7 +315,7 @@ async def main():
                 'partial_solution': result['partial_solution'],
                 'model_response': result['model_response'],
                 'is_correct': result['is_correct'],
-                'attempts': result['format_attempts'] + result['verification_attempts'],
+                'attempts': (result['format_attempts'], result['verification_attempts']),
                 'solver': args.solver,
                 'verifier': args.verifier
             }
