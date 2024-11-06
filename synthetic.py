@@ -203,7 +203,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=3,
+    parser.add_argument('--max-format-attempts', type=int, default=30,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
     parser.add_argument('--max-verification-attempts', type=int, default=1,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
@@ -233,7 +233,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0)
+    solver_model = get_model(ModelOption[args.solver], temp=0.15)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
