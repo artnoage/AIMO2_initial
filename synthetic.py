@@ -267,7 +267,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
