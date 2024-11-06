@@ -301,13 +301,14 @@ async def main():
                 'partial_solution': result['partial_solution'],
                 'model_response': result['model_response'],
                 'is_correct': result['is_correct'],
+                'attempts': result['attempts'],
                 'solver': args.solver,
                 'verifier': args.verifier
             }
             current_batch.append(augmented_example)
             
-            # Save error rate every 100 examples
-            if len(results) % 100 == 0:
+            # Save metrics and data every 100 examples
+            if len(current_batch) >= 100:
                 # Calculate error rate for the last 100 results
                 last_hundred = results[-100:]
                 batch_error_rate = calculate_error_rate(last_hundred)
