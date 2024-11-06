@@ -114,8 +114,8 @@ def check_required_words(response: str, partial_solution: str) -> bool:
     
     return has_required_words and is_long_enough
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
-    """Process a single example with multiple attempts"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_format_attempts: int, max_verification_attempts: int) -> Optional[Dict]:
+    """Process a single example with multiple attempts for both formatting and verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -135,30 +135,36 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             HumanMessage(content=combined_prompt)
         ]
         
-        # Multiple attempts until correct or max attempts reached
-        attempts = 0
+        # Track both format and verification attempts
+        format_attempts = 0
+        verification_attempts = 0
         is_correct = False
         verifier_disagreements = 0
         
-        while attempts < max_attempts and not is_correct:
-            attempts += 1
+        while format_attempts < max_format_attempts:
+            format_attempts += 1
             response = await solver_model.ainvoke(prompt)
             model_solution = response.content
             
             # Check for required words and length before proceeding with verification
             if not check_required_words(model_solution, partial_solution):
-                is_correct, first_verify, second_verify = False, False, False
                 continue
                 
+            # If format check passes, try verification up to max_verification_attempts times
+            while verification_attempts < max_verification_attempts and not is_correct:
+                verification_attempts += 1
+                is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
+                if first_verify != second_verify:
+                    verifier_disagreements += 1
+                if is_correct:
+                    break
             
-            is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
-            if first_verify != second_verify:
-                verifier_disagreements += 1
-            if is_correct:
+            # If we got a correct answer or used all verification attempts, stop trying new formats
+            if is_correct or verification_attempts >= max_verification_attempts:
                 break
         model_answer = extract_answer_from_solution(model_solution)    
         # Print results for this example
-        attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
+        attempts_str = f" (format: {format_attempts}, verify: {verification_attempts})"
         disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
         status = '✓' if is_correct else '✗'
         print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
@@ -175,7 +181,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_answer': model_answer,
             'is_correct': is_correct,
             'verifier_disagreements': verifier_disagreements,
-            'attempts': attempts
+            'format_attempts': format_attempts,
+            'verification_attempts': verification_attempts
         }
         
     except Exception as e:
@@ -196,8 +203,10 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-attempts', type=int, default=1,
-                       help='Maximum number of attempts to get correct solution (default: 5)')
+    parser.add_argument('--max-format-attempts', type=int, default=3,
+                       help='Maximum attempts to get properly formatted solution (default: 3)')
+    parser.add_argument('--max-verification-attempts', type=int, default=1,
+                       help='Maximum attempts to get correct solution after format check (default: 1)')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -262,6 +271,11 @@ async def main():
 
     # Create tasks for all examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+    
+    # Update the process_with_semaphore function to use both attempt limits
+    async def process_with_semaphore(example, running_id):
+        async with semaphore:
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
     
     # Initialize augmented dataset filename
     os.makedirs('augmented_datasets', exist_ok=True)
