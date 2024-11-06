@@ -120,7 +120,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
-        correct_solution=example['solution']    
+        correct_solution = example['solution']    
         correct_answer = extract_answer_from_solution(correct_solution)
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {running_id}")
@@ -322,20 +322,21 @@ async def main():
                 print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 
-                intermediate_filename = os.path.join('results', 
-                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
-                output_data = {
-                    'error_rate_points': error_rate_points
-                }
-                os.makedirs('results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"\nSaved intermediate results after {len(results)} examples")
-            
-            # Save current batch of augmented data
-            if current_batch:
+                # Save current batch of augmented data
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
+
+                # Save intermediate results less frequently (every 500 examples)
+                if len(results) % 500 == 0:
+                    intermediate_filename = os.path.join('results', 
+                        f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
+                    output_data = {
+                        'error_rate_points': error_rate_points
+                    }
+                    os.makedirs('results', exist_ok=True)
+                    with open(intermediate_filename, 'w') as f:
+                        json.dump(output_data, f, indent=2)
+                    print(f"\nSaved intermediate results after {len(results)} examples")
         progress_bar.update(1)
     progress_bar.close()
 
