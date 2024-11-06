@@ -110,7 +110,7 @@ def check_required_words(response: str, partial_solution: str) -> bool:
     has_required_words = all(word in lower_response for word in required_words)
     
     # Check length requirement (at least 10% longer than partial solution)
-    is_long_enough = len(response) >= len(partial_solution) * 1.1
+    is_long_enough = len(response) >= len(partial_solution) * 1.05
     
     return has_required_words and is_long_enough
 
@@ -194,9 +194,9 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=100,
+    parser.add_argument('--max-concurrent', type=int, default=256,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-attempts', type=int, default=30,
+    parser.add_argument('--max-attempts', type=int, default=5,
                        help='Maximum number of attempts to get correct solution (default: 5)')
     args = parser.parse_args()
 
@@ -224,7 +224,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.3)
+    solver_model = get_model(ModelOption[args.solver], temp=0.1)
     verifier_model = get_model(ModelOption[args.verifier], temp=0.05)
     second_verifier_model = get_model(ModelOption[args.verifier], temp=0.05)  # Same model type as first verifier
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
