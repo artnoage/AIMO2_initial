@@ -99,6 +99,22 @@ def remove_entries_by_correctness(data: List[Dict], keep_correct: bool) -> List[
     filtered_data = [entry for entry in data if entry.get('is_correct', False) == keep_correct]
     return filtered_data
 
+def deduplicate_by_id(data: List[Dict]) -> List[Dict]:
+    """Keep only the first occurrence of each ID"""
+    if not data or not isinstance(data, list):
+        return []
+    
+    seen_ids = set()
+    deduplicated_data = []
+    
+    for entry in data:
+        current_id = entry.get('id')
+        if current_id is not None and current_id not in seen_ids:
+            seen_ids.add(current_id)
+            deduplicated_data.append(entry)
+    
+    return deduplicated_data
+
 def order_by_id(data: List[Dict]) -> List[Dict]:
     """Order entries by their ID number"""
     if not data or not isinstance(data, list):
@@ -121,9 +137,9 @@ def main():
     parser = argparse.ArgumentParser(description='JSON file analysis utility')
     parser.add_argument('--file', '-f', required=True, help='Path to the JSON file')
     parser.add_argument('--mode', '-m', 
-                      choices=['entries', 'ids', 'correct', 'remove_correct', 'remove_incorrect', 'order'],
+                      choices=['entries', 'ids', 'correct', 'remove_correct', 'remove_incorrect', 'order', 'deduplicate'],
                       required=True, 
-                      help='Mode: entries, ids, correct, remove_correct, remove_incorrect, or order')
+                      help='Mode: entries, ids, correct, remove_correct, remove_incorrect, order, or deduplicate')
     
     args = parser.parse_args()
     
@@ -173,6 +189,12 @@ def main():
             with open(args.file, 'w', encoding='utf-8') as f:
                 json.dump(ordered_data, f, indent=2)
             print(f"Ordered {len(ordered_data)} entries by ID number")
+            
+        elif args.mode == 'deduplicate':
+            deduplicated_data = deduplicate_by_id(data)
+            with open(args.file, 'w', encoding='utf-8') as f:
+                json.dump(deduplicated_data, f, indent=2)
+            print(f"Removed duplicate IDs. Remaining entries: {len(deduplicated_data)}")
             
     except FileNotFoundError:
         print(f"Error: File {args.file} not found")
