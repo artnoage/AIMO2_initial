@@ -91,6 +91,14 @@ def count_unique_ids(data) -> Dict[str, int]:
             
     return dict(id_counter)
 
+def remove_entries_by_correctness(data: List[Dict], keep_correct: bool) -> List[Dict]:
+    """Remove entries based on their is_correct value"""
+    if not data or not isinstance(data, list):
+        return []
+    
+    filtered_data = [entry for entry in data if entry.get('is_correct', False) == keep_correct]
+    return filtered_data
+
 def calculate_correct_percentage(data: List[Dict]) -> float:
     """Calculate the percentage of entries where 'is_correct' is True"""
     if not data or not isinstance(data, list):
@@ -104,8 +112,10 @@ def calculate_correct_percentage(data: List[Dict]) -> float:
 def main():
     parser = argparse.ArgumentParser(description='JSON file analysis utility')
     parser.add_argument('--file', '-f', required=True, help='Path to the JSON file')
-    parser.add_argument('--mode', '-m', choices=['entries', 'ids', 'correct'],
-                      required=True, help='Count mode: entries, ids, or correct')
+    parser.add_argument('--mode', '-m', 
+                      choices=['entries', 'ids', 'correct', 'remove_correct', 'remove_incorrect'],
+                      required=True, 
+                      help='Mode: entries, ids, correct, remove_correct, or remove_incorrect')
     
     args = parser.parse_args()
     
@@ -137,6 +147,18 @@ def main():
                 return
             percentage = calculate_correct_percentage(data)
             print(f"Percentage of correct answers: {percentage:.2f}%")
+            
+        elif args.mode == 'remove_correct':
+            filtered_data = remove_entries_by_correctness(data, keep_correct=False)
+            with open(args.file, 'w', encoding='utf-8') as f:
+                json.dump(filtered_data, f, indent=2)
+            print(f"Removed correct entries. Remaining entries: {len(filtered_data)}")
+            
+        elif args.mode == 'remove_incorrect':
+            filtered_data = remove_entries_by_correctness(data, keep_correct=True)
+            with open(args.file, 'w', encoding='utf-8') as f:
+                json.dump(filtered_data, f, indent=2)
+            print(f"Removed incorrect entries. Remaining entries: {len(filtered_data)}")
             
     except FileNotFoundError:
         print(f"Error: File {args.file} not found")
