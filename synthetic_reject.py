@@ -32,7 +32,7 @@ DO:
 ▪ List applicable theorems/techniques upfront
 ▪ If possible each step must contain a justification. 
 ▪ Use LaTeX notation
-▪ Feel free to make reasonable mistakes in your reasoning
+
 
 FORMAT:
 
