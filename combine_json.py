@@ -1,5 +1,5 @@
 import argparse
-from json_utils import clean_json_file
+from utils.json_utility import clean_json_file
 import json
 from typing import List, Dict
 
