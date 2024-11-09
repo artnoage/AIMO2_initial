@@ -99,6 +99,14 @@ def remove_entries_by_correctness(data: List[Dict], keep_correct: bool) -> List[
     filtered_data = [entry for entry in data if entry.get('is_correct', False) == keep_correct]
     return filtered_data
 
+def order_by_id(data: List[Dict]) -> List[Dict]:
+    """Order entries by their ID number"""
+    if not data or not isinstance(data, list):
+        return []
+    
+    # Convert ID to int for proper numerical sorting
+    return sorted(data, key=lambda x: int(x.get('id', 0)))
+
 def calculate_correct_percentage(data: List[Dict]) -> float:
     """Calculate the percentage of entries where 'is_correct' is True"""
     if not data or not isinstance(data, list):
@@ -113,9 +121,9 @@ def main():
     parser = argparse.ArgumentParser(description='JSON file analysis utility')
     parser.add_argument('--file', '-f', required=True, help='Path to the JSON file')
     parser.add_argument('--mode', '-m', 
-                      choices=['entries', 'ids', 'correct', 'remove_correct', 'remove_incorrect'],
+                      choices=['entries', 'ids', 'correct', 'remove_correct', 'remove_incorrect', 'order'],
                       required=True, 
-                      help='Mode: entries, ids, correct, remove_correct, or remove_incorrect')
+                      help='Mode: entries, ids, correct, remove_correct, remove_incorrect, or order')
     
     args = parser.parse_args()
     
@@ -159,6 +167,12 @@ def main():
             with open(args.file, 'w', encoding='utf-8') as f:
                 json.dump(filtered_data, f, indent=2)
             print(f"Removed incorrect entries. Remaining entries: {len(filtered_data)}")
+            
+        elif args.mode == 'order':
+            ordered_data = order_by_id(data)
+            with open(args.file, 'w', encoding='utf-8') as f:
+                json.dump(ordered_data, f, indent=2)
+            print(f"Ordered {len(ordered_data)} entries by ID number")
             
     except FileNotFoundError:
         print(f"Error: File {args.file} not found")
