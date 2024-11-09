@@ -78,8 +78,17 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     except Exception:
         return False
 
+def check_required_words(response: str) -> bool:
+    """
+    Check if response contains required words and follows format
+    """
+    # Check for required words (case insensitive)
+    lower_response = response.lower()
+    required_words = ['analysis', 'problem', 'step']
+    return all(word in lower_response for word in required_words)
+
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, max_attempts: int) -> Optional[Dict]:
-    """Process a single example and keep sampling until we get a wrong answer"""
+    """Process a single example and keep sampling until we get a wrong answer or format violation"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -102,9 +111,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             attempts += 1
             response = await solver_model.ainvoke(prompt)
             solution = response.content
+            
+            # First check format criteria
+            if not check_required_words(solution):
+                is_correct = False
+                break
+                
             model_answer = extract_answer_from_solution(solution)
             is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
-            if not is_correct:  # Found a wrong answer, break
+            if not is_correct:  # Found a wrong answer or format violation, break
                 break
                 
         # Print results for this example
