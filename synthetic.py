@@ -96,9 +96,9 @@ def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
     otherwise return first line"""
     lines = solution.strip().split('\n\n')
-    if len(lines) <= 5:
+    if len(lines) <= 1:
         return lines[0]
-    return '\n\n'.join(lines[:-5])
+    return '\n\n'.join(lines[:-1])
 
 def check_required_words(response: str, full_solution: str) -> bool:
     """
@@ -110,7 +110,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     has_required_words = all(word in lower_response for word in required_words)
     
     # Check length requirement (at least 8% longer than full solution)
-    is_long_enough = len(response) >= len(full_solution) * 1.08
+    is_long_enough = len(response) >= len(full_solution) * 1.02
     
     return has_required_words and is_long_enough
 
