@@ -40,12 +40,7 @@ def load_examples(dataset_type: DatasetOption, split: str = 'train', num_example
     for i, ex in enumerate(dataset):
         if i >= num_examples:
             break
-        example = {
-            'id': ex['id'],
-            'problem': ex['problem'],
-            'solution': ex['solution']
-        }
-        examples.append(example)
+        examples.append(dict(ex))
     
     return examples, dataset_info["title"]
 
@@ -55,11 +50,9 @@ def save_examples(examples: List[Dict], title: str, base_filename: str) -> None:
     md_content = f"# {title} Sample\n\n"
     for i, ex in enumerate(examples, 1):
         md_content += f"## Entry {i}\n\n"
-        md_content += f"**ID**: {ex['id']}\n\n"
-        md_content += "### Problem\n\n"
-        md_content += f"{ex['problem']}\n\n"
-        md_content += "### Solution\n\n"
-        md_content += f"{ex['solution']}\n\n"
+        for key, value in ex.items():
+            md_content += f"### {key}\n\n"
+            md_content += f"{value}\n\n"
         md_content += "---\n\n"
     
     # Save files
