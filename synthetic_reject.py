@@ -19,7 +19,6 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
 from tqdm import tqdm
-import time
 from utils.utils import extract_answer_from_solution
 from utils.utils import ModelOption
 
