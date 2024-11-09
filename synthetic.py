@@ -31,7 +31,7 @@ REQUIRED:
 
 PROHIBITED:
 ▪ Avoid restating the problem.
-▪ Do not reference or rely on the partial solution.
+▪ Do not reference the partial solution.
 
 FORMAT:
 
