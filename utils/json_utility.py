@@ -103,7 +103,7 @@ def calculate_correct_percentage(data: List[Dict]) -> float:
 
 def main():
     parser = argparse.ArgumentParser(description='JSON file analysis utility')
-    parser.add_argument('filename', help='Path to the JSON file')
+    parser.add_argument('--file', '-f', required=True, help='Path to the JSON file')
     parser.add_argument('--mode', '-m', choices=['entries', 'ids', 'correct'],
                       required=True, help='Count mode: entries, ids, or correct')
     
@@ -111,7 +111,7 @@ def main():
     
     try:
         # Clean the JSON file first
-        data = clean_json_file(args.filename)
+        data = clean_json_file(args.file)
         if data is None:
             print("Failed to process the JSON file")
             return
@@ -139,9 +139,9 @@ def main():
             print(f"Percentage of correct answers: {percentage:.2f}%")
             
     except FileNotFoundError:
-        print(f"Error: File {args.filename} not found")
+        print(f"Error: File {args.file} not found")
     except json.JSONDecodeError:
-        print(f"Error: {args.filename} is not a valid JSON file")
+        print(f"Error: {args.file} is not a valid JSON file")
     except Exception as e:
         print(f"Error: {str(e)}")
 
