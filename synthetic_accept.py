@@ -93,7 +93,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     has_required_words = all(word in lower_response for word in required_words)
     
     # Check length requirement (at least 8% longer than full solution)
-    is_long_enough = len(response) >= len(full_solution) * 1.08
+    is_long_enough = len(response) >= len(full_solution) * 1.03
     
     return has_required_words and is_long_enough
 
@@ -181,7 +181,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=5,
+    parser.add_argument('--max-format-attempts', type=int, default=10,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
     parser.add_argument('--max-verification-attempts', type=int, default=3,
                        help='Maximum attempts to get correct solution after format check (default: 1)')

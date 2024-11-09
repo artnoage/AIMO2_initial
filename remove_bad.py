@@ -1,7 +1,7 @@
 import json
 import argparse
 import os
-from json_utils import clean_json_file
+from utils.json_utility import clean_json_file
 
 def remove_bad_entries(filename: str) -> None:
     """

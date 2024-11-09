@@ -191,9 +191,9 @@ async def main():
     # Argument parser for command-line options
     parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for solving problems')
+                       default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for verifying answers')
+                       default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -201,8 +201,8 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
-    parser.add_argument('--max-concurrent', type=int, default=4,
-                       help='Maximum number of concurrent problems (default: 4)')
+    parser.add_argument('--max-concurrent', type=int, default=32,
+                       help='Maximum number of concurrent problems (default: 32)')
     args = parser.parse_args()
 
     # Validate max concurrent
