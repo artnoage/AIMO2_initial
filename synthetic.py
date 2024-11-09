@@ -100,17 +100,17 @@ def get_partial_solution(solution: str) -> str:
         return lines[0]
     return '\n\n'.join(lines[:-5])
 
-def check_required_words(response: str, partial_solution: str) -> bool:
+def check_required_words(response: str, full_solution: str) -> bool:
     """
-    Check if response contains required words and is sufficiently longer than partial solution
+    Check if response contains required words and is sufficiently longer than full solution
     """
     # Check for required words (case insensitive)
     lower_response = response.lower()
     required_words = ['analysis', 'problem', 'step']
     has_required_words = all(word in lower_response for word in required_words)
     
-    # Check length requirement (at least 10% longer than partial solution)
-    is_long_enough = len(response) >= len(partial_solution) * 1.4
+    # Check length requirement (at least 8% longer than full solution)
+    is_long_enough = len(response) >= len(full_solution) * 1.08
     
     return has_required_words and is_long_enough
 
@@ -147,7 +147,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             model_solution = response.content
             
             # Check for required words and length before proceeding with verification
-            if not check_required_words(model_solution, partial_solution):
+            if not check_required_words(model_solution, correct_solution):
                 continue
                 
             # If format check passes, try verification up to max_verification_attempts times
