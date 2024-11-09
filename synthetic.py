@@ -96,9 +96,9 @@ def get_partial_solution(solution: str) -> str:
     """Get partial solution by removing last three lines if more than 3 lines,
     otherwise return first line"""
     lines = solution.strip().split('\n\n')
-    if len(lines) <= 4:
+    if len(lines) <= 5:
         return lines[0]
-    return '\n\n'.join(lines[:-4])
+    return '\n\n'.join(lines[:-5])
 
 def check_required_words(response: str, partial_solution: str) -> bool:
     """
@@ -110,7 +110,7 @@ def check_required_words(response: str, partial_solution: str) -> bool:
     has_required_words = all(word in lower_response for word in required_words)
     
     # Check length requirement (at least 10% longer than partial solution)
-    is_long_enough = len(response) >= len(partial_solution) * 1.08
+    is_long_enough = len(response) >= len(partial_solution) * 1.4
     
     return has_required_words and is_long_enough
 
@@ -203,9 +203,9 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=5,
+    parser.add_argument('--max-format-attempts', type=int, default=20,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
-    parser.add_argument('--max-verification-attempts', type=int, default=3,
+    parser.add_argument('--max-verification-attempts', type=int, default=4,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
     args = parser.parse_args()
 
@@ -233,7 +233,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.1)
+    solver_model = get_model(ModelOption[args.solver], temp=0.2)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
