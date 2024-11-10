@@ -172,11 +172,11 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL_ORIGINAL', help='Model to use for solving problems')
+                       default='NEMOTRON', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
                        default='GEMINI_FLASH', help='Model to use for first verifier')
     parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
-                       default=None, help='Model to use for second verifier (defaults to same as first verifier)')
+                       default='NEMOTRON', help='Model to use for second verifier (defaults to same as first verifier)')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
