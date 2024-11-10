@@ -116,7 +116,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     
     return has_required_words and is_long_enough
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_format_attempts: int, max_verification_attempts: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_format_attempts: int, max_verification_attempts: int, verifier_name: str, second_verifier_name: str) -> Optional[Dict]:
     """Process a single example with multiple attempts for both formatting and verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -172,8 +172,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         if verifier_disagreements > 0:
             print(f"Verifier Disagreements ({verifier_disagreements} times):")
             if answers_match:
-                print(f"  First Verifier ({args.verifier}): {'✓' if first_verify else '✗'}")
-                print(f"  Second Verifier ({args.second_verifier}): {'✓' if second_verify else '✗'}")
+                print(f"  First Verifier ({verifier_name}): {'✓' if first_verify else '✗'}")
+                print(f"  Second Verifier ({second_verifier_name}): {'✓' if second_verify else '✗'}")
         
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
@@ -295,7 +295,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts, args.verifier, args.second_verifier)
 
     
     # Create tasks only for new examples
