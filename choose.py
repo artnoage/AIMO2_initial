@@ -124,8 +124,16 @@ async def main():
     print(f"\nLoaded {len(examples)} examples from {args.input}")
     
     # Initialize model
-    selector_model = get_model(ModelOption[args.model], temp=0)
-    print(f"\nUsing model: {args.model}")
+    try:
+        selector_model = get_model(ModelOption[args.model], temp=0)
+        print(f"\nUsing model: {args.model}")
+        
+        # Set OpenRouter base URL if using their API
+        if args.model not in ['LOCAL', 'LOCAL_ORIGINAL', 'LOCAL_ORIGINAL_Q', 'SAMBA_BIG', 'SAMBA_SMALL']:
+            os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+    except Exception as e:
+        print(f"Error initializing model: {e}")
+        return
     
     # Create semaphore for concurrency control
     semaphore = asyncio.Semaphore(args.max_concurrent)
