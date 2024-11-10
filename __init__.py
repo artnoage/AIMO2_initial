@@ -2,6 +2,7 @@
 Root level package initialization
 """
 
-from .utils.utils import ModelOption, get_model
+# Make these available at the root level
+from utils.utils import ModelOption, get_model
 
 __all__ = ['ModelOption', 'get_model']
