@@ -267,25 +267,6 @@ async def main():
         async with semaphore:
             return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
 
-    # Initialize augmented dataset filename
-    os.makedirs('augmented_datasets', exist_ok=True)
-    augmented_filename = os.path.join('augmented_datasets', 
-                                    "accept_augmented.json")
-    
-    # Get existing IDs to skip
-    existing_ids = get_existing_ids(augmented_filename)
-    if existing_ids:
-        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
-    
-    # Filter out examples with existing IDs
-    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
-    if not example_data:
-        print("All examples have already been processed!")
-        return
-        
-    filtered_count = len(example_data)
-    skipped_count = total_examples - filtered_count
-    print(f"\nWill process {filtered_count} new examples ({skipped_count} skipped)")
     
     # Create tasks only for new examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
