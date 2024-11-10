@@ -262,7 +262,7 @@ async def main():
     # Initialize augmented dataset filename
     os.makedirs('augmented_datasets', exist_ok=True)
     augmented_filename = os.path.join('augmented_datasets', 
-                                    "synthetic_augmented.json")
+                                    "demonstration_augmented.json")
 
     # Process examples with controlled concurrency
     results = []
