@@ -44,13 +44,26 @@ def process_files(correct_file: str, incorrect_file: str, output_file: str) -> T
             incorrect_entry = incorrect_dict[correct_id]
             if compare_entries(correct_entry, incorrect_entry):
                 matching_content += 1
-                # Create new entry with required fields
+                # Create new entry with the required DPO format
                 new_entry = {
-                    'id': int(correct_id),
-                    'problem': correct_entry['problem'],
-                    'solution': correct_entry['solution'],
-                    'accept': correct_entry.get('model_response', ''),
-                    'reject': incorrect_entry.get('model_response', '')
+                    "conversations": [
+                        {
+                            "from": "system",
+                            "value": "You are a precise mathematical problem solver. You will be given a problem to solve.\n\nDO:\n List applicable theorems/techniques upfront\n If possible each step must contain a justification. \n Use LaTeX notation\n\nFORMAT:\n\n**Problem Analysis and Approach**:\n1. Start by categorizing the problem (e.g., \"This is an inequality problem involving algebraic identities\" or \"This is a combinatorial proof\").\n2. List specific tools or theorems that will guide your solution (e.g., \"AM-GM inequality,\" \"Basic algebraic manipulations\").\n\n**PROOF**:\nExample format for each step:\nGiven: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).\n\nStep 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  \nStep 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  \nStep 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  \nStep 4. Thus, \\( abc \\leq 1 \\), as required.  \n\nFor each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.\n\n**ANSWER**:\n\\(\\boxed{\\text{result}}\\)"
+                        },
+                        {
+                            "from": "human",
+                            "value": correct_entry['problem']
+                        }
+                    ],
+                    "chosen": {
+                        "from": "gpt",
+                        "value": correct_entry.get('model_response', '')
+                    },
+                    "rejected": {
+                        "from": "gpt",
+                        "value": incorrect_entry.get('model_response', '')
+                    }
                 }
                 matching_entries.append(new_entry)
     
