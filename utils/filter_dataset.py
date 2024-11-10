@@ -26,14 +26,16 @@ def main():
     olympiads_dataset = dataset.filter(lambda x: x['source'] == 'olympiads')
     print(f"After filtering for olympiads: {len(olympiads_dataset)}")
 
-    # Filter for valid answers
-    def has_valid_answer(example):
+    # Filter for solutions containing 'boxed'
+    def has_boxed_answer(example):
         if 'solution' not in example:
+            return False
+        if 'boxed' not in example['solution'].lower():
             return False
         answer = extract_answer_from_solution(example['solution'])
         return answer is not None and answer.strip() != ""
 
-    filtered_dataset = olympiads_dataset.filter(has_valid_answer)
+    filtered_dataset = olympiads_dataset.filter(has_boxed_answer)
     print(f"After filtering for valid answers: {len(filtered_dataset)}")
 
     # Convert to Hugging Face dataset format with explicit schema
@@ -131,7 +133,7 @@ def main():
     try:
         # Get the username from huggingface-cli
         username = api.whoami()["name"]
-        repo_id = f"{username}/Numina-Olympiads"
+        repo_id = "Metaskepsis/Numina-Olympiads"
         
         # Create or get the repository
         try:
