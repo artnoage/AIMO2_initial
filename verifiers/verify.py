@@ -7,7 +7,7 @@ import argparse
 from typing import Dict, List
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
-from utils import ModelOption, get_model
+from .. import ModelOption, get_model
 from dotenv import load_dotenv
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
