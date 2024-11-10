@@ -25,7 +25,8 @@ def main():
     parser = argparse.ArgumentParser(description='Convert JSON dataset to HuggingFace format and upload')
     parser.add_argument('json_path', help='Path to the JSON dataset file')
     parser.add_argument('repo_name', help='Name for the HuggingFace repository (format: username/dataset-name)')
-    parser.add_argument('token', help='HuggingFace API token')
+    parser.add_argument('--token', default='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', 
+                        help='HuggingFace API token (optional)')
     
     args = parser.parse_args()
     
