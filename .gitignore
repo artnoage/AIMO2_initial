@@ -9,4 +9,4 @@ augmented_datasets/
 __pycache__
 model_1iteration
 backups/
-*.jsonS
+*.json
