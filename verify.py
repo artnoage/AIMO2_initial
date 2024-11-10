@@ -27,32 +27,59 @@ async def verify_solution(problem: str, solution: str, verifier_model) -> bool:
         print(f"Error during verification: {e}")
         return False
 
-async def process_examples(examples: List[Dict], verifier_model, sample_size: int) -> List[Dict]:
-    """Process the randomly selected examples"""
+async def process_examples(examples: List[Dict], verifier_model, sample_size: int, max_concurrent: int, input_file: str, args) -> List[Dict]:
+    """Process the randomly selected examples with controlled concurrency"""
     results = []
-    for i, example in enumerate(examples, 1):
-        try:
-            is_correct = await verify_solution(
-                example['problem'],
-                example['model_response'],
-                verifier_model
-            )
-            
-            result = {
-                'id': example.get('id', f'example_{i}'),
-                'problem': example['problem'],
-                'model_response': example['model_response'],
-                'is_correct': is_correct
-            }
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def process_with_semaphore(example, i):
+        async with semaphore:
+            try:
+                is_correct = await verify_solution(
+                    example['problem'],
+                    example['model_response'],
+                    verifier_model
+                )
+                
+                result = {
+                    'id': example.get('id', f'example_{i}'),
+                    'problem': example['problem'],
+                    'model_response': example['model_response'],
+                    'is_correct': is_correct
+                }
+                
+                # Print minimal progress
+                status = '✓' if is_correct else '✗'
+                print(f"Example {i}/{sample_size}: {status}", end='\r')
+                
+                return result
+            except Exception as e:
+                print(f"\nError processing example {i}: {e}")
+                return None
+    
+    # Create tasks for all examples
+    tasks = [process_with_semaphore(ex, i+1) for i, ex in enumerate(examples)]
+    
+    # Process examples and handle cleaning every 500
+    for i, coro in enumerate(asyncio.as_completed(tasks), 1):
+        result = await coro
+        if result:
             results.append(result)
             
-            # Print minimal progress
-            status = '✓' if is_correct else '✗'
-            print(f"Example {i}/{sample_size}: {status}", end='\r')
-            
-        except Exception as e:
-            print(f"Error processing example {i}: {e}")
-            
+            # Clean incorrect solutions every 500 examples if remove_incorrect is enabled
+            if args.remove_incorrect and i % 500 == 0:
+                incorrect_ids = {r['id'] for r in results if not r['is_correct']}
+                if incorrect_ids:
+                    try:
+                        with open(input_file, 'r') as f:
+                            data = json.load(f)
+                        filtered_data = [ex for ex in data if str(ex['id']) not in incorrect_ids]
+                        with open(input_file, 'w') as f:
+                            json.dump(filtered_data, f, indent=2)
+                        print(f"\nCleaned {len(incorrect_ids)} incorrect solutions at {i} examples")
+                    except Exception as e:
+                        print(f"\nError during cleaning at {i} examples: {e}")
+    
     return results
 
 async def main():
@@ -61,10 +88,12 @@ async def main():
                        choices=[model.name for model in ModelOption],
                        required=True,
                        help='Model to use for verification')
-    parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
+    parser.add_argument('--input', type=str, default='augmented_datasets\synthetic_augmented.json',
                        help='Input JSON file containing problems and solutions')
-    parser.add_argument('--remove_incorrect', type=bool, default=False,
+    parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
+    parser.add_argument('--max-concurrent', type=int, default=16,
+                       help='Maximum number of concurrent verifications (default: 4)')
     args = parser.parse_args()
 
     # Load and validate input file
@@ -84,7 +113,7 @@ async def main():
             print("Dataset is empty. Please provide a dataset with examples to verify.")
             return
             
-        sample_size = min(len(data), len(data))
+        sample_size = min(50, len(data))
         # Always select the first 10 examples for consistency
         selected_examples = data[:sample_size]
     except json.JSONDecodeError:
@@ -101,8 +130,12 @@ async def main():
         print(f"Error initializing verifier models: {e}")
         return
 
-    print(f"\nVerifying {sample_size} randomly selected examples...")
-    results = await process_examples(selected_examples, verifier_model, sample_size)
+    if args.max_concurrent < 1:
+        print("Error: Maximum concurrent verifications must be at least 1")
+        return
+
+    print(f"\nVerifying {sample_size} examples with max {args.max_concurrent} concurrent verifications...")
+    results = await process_examples(selected_examples, verifier_model, sample_size, args.max_concurrent, args.input, args)
 
     # Calculate and display statistics
     if results:
@@ -116,42 +149,43 @@ async def main():
         # Save results
         output_filename = "verification_results.json"
         try:
-            # Create or load existing results
+            # Load or initialize results structure
             if os.path.exists(output_filename):
                 with open(output_filename, 'r') as f:
-                    existing_data = json.load(f)
+                    output_data = json.load(f)
             else:
-                existing_data = {"results": {}}
+                output_data = {"results": {}}
 
             # Process current results
             for result in results:
-                example_id = str(result['id'])  # Ensure ID is string for consistency
-                # Create new entry if it doesn't exist
-                if example_id not in existing_data["results"]:
-                    existing_data["results"][example_id] = {
+                result_id = str(result['id'])
+                if result_id not in output_data["results"]:
+                    output_data["results"][result_id] = {
                         "problem": result["problem"],
                         "model_response": result["model_response"],
                         "verifications": []
                     }
-                
-                # Add new verification result
+                    
+                # Add new verification
                 verification = {
                     "verifier": args.verifier,
                     "timestamp": datetime.now().isoformat(),
                     "is_correct": result["is_correct"]
                 }
-                existing_data["results"][example_id]["verifications"].append(verification)
+                output_data["results"][result_id]["verifications"].append(verification)
 
-            # Save updated results
+            # Save all verification results (both correct and incorrect)
             with open(output_filename, 'w') as f:
-                json.dump(existing_data, f, indent=2)
+                json.dump(output_data, f, indent=2)
             print(f"\nResults saved to {output_filename}")
-            
-            # Remove incorrect solutions from original dataset if requested
+
+            # Only clean incorrect solutions from input file if requested
             if args.remove_incorrect:
                 incorrect_ids = {r['id'] for r in results if not r['is_correct']}
                 if incorrect_ids:
-                    filtered_data = [ex for ex in data if str(ex['id']) not in incorrect_ids]
+                    with open(args.input, 'r') as f:
+                        input_data = json.load(f)
+                    filtered_data = [ex for ex in input_data if str(ex['id']) not in incorrect_ids]
                     with open(args.input, 'w') as f:
                         json.dump(filtered_data, f, indent=2)
                     print(f"\nRemoved {len(incorrect_ids)} incorrect solutions from {args.input}")
