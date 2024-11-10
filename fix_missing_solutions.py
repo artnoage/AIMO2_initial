@@ -105,8 +105,7 @@ def main():
     # Statistics
     total_processed = 0
     matching_ids = 0
-    matching_problems = 0
-    matching_solutions = 0
+    different_entries = 0
 
     # Compare entries
     for correct_entry in correct_data:
@@ -120,13 +119,10 @@ def main():
             problem_matches, solution_matches = compare_entries(
                 correct_entry, incorrect_entry)
             
-            if problem_matches:
-                matching_problems += 1
-            if solution_matches:
-                matching_solutions += 1
-                
-            if problem_matches and not solution_matches:
-                print(f"Found potential DPO pair for ID {correct_id}:")
+            # Count if either problem or solution is different
+            if not problem_matches or not solution_matches:
+                different_entries += 1
+                print(f"Found difference in ID {correct_id}:")
                 print(f"  Problem matches: {problem_matches}")
                 print(f"  Solution matches: {solution_matches}")
 
@@ -134,9 +130,7 @@ def main():
     print(f"\nSummary:")
     print(f"Total entries processed: {total_processed}")
     print(f"Matching IDs found: {matching_ids}")
-    print(f"Matching problems: {matching_problems}")
-    print(f"Matching solutions: {matching_solutions}")
-    print(f"Potential DPO pairs: {matching_problems - matching_solutions}")
+    print(f"Entries with differences: {different_entries}")
 
 if __name__ == "__main__":
     main()
