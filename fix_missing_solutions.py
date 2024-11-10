@@ -3,6 +3,7 @@ import argparse
 from datasets import load_dataset
 from typing import Dict, List
 import os
+from huggingface_hub import HfApi
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file"""
@@ -31,7 +32,8 @@ def main():
 
     # Load the original dataset
     print("Loading original dataset from HuggingFace...")
-    dataset = load_dataset("AI-MO/NuminaMath-CoT", split="train")
+    username = HfApi().whoami()["name"]
+    dataset = load_dataset(f"{username}/Numina-Olympiads", split="train")
     
     # Create lookup dictionary from original dataset
     solution_lookup = {str(item['id']): item['solution'] for item in dataset}
