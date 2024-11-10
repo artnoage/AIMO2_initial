@@ -286,7 +286,8 @@ async def main():
         return
         
     filtered_count = len(example_data)
-    print(f"\nWill process {filtered_count} new examples ({total_examples - filtered_count} skipped)")
+    skipped_count = total_examples - filtered_count
+    print(f"\nWill process {filtered_count} new examples ({skipped_count} skipped)")
     
     # Create tasks only for new examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
