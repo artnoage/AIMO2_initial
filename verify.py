@@ -68,7 +68,7 @@ async def process_examples(examples: List[Dict], verifier_model, sample_size: in
             
             # Clean incorrect solutions every 500 examples if remove_incorrect is enabled
             if args.remove_incorrect and i % 500 == 0:
-                incorrect_ids = {r['id'] for r in results if not r['is_correct']}
+                incorrect_ids = {int(str(r['id']).replace('example_', '')) for r in results if not r['is_correct']}
                 if incorrect_ids:
                     try:
                         with open(input_file, 'r') as f:
@@ -157,15 +157,30 @@ async def main():
 
             # Process current results
             for result in results:
-                entry = {
-                    "id": str(result['id']),
-                    "problem": result["problem"],
-                    "model_response": result["model_response"],
-                    "verifier": args.verifier,
-                    "timestamp": datetime.now().isoformat(),
-                    "is_correct": result["is_correct"]
-                }
-                output_data.append(entry)
+                # Convert ID to int, removing any 'example_' prefix if present
+                result_id = int(str(result['id']).replace('example_', ''))
+                
+                # Check if entry with this ID already exists
+                existing_entry = next((item for item in output_data if item["id"] == result_id), None)
+                
+                if existing_entry:
+                    # Append new verification to existing entry
+                    existing_entry["verifications"]["verifiers"].append(args.verifier)
+                    existing_entry["verifications"]["correctness"].append(result["is_correct"])
+                    existing_entry["verifications"]["timestamps"].append(datetime.now().isoformat())
+                else:
+                    # Create new entry
+                    entry = {
+                        "id": result_id,
+                        "problem": result["problem"],
+                        "model_response": result["model_response"],
+                        "verifications": {
+                            "verifiers": [args.verifier],
+                            "correctness": [result["is_correct"]],
+                            "timestamps": [datetime.now().isoformat()]
+                        }
+                    }
+                    output_data.append(entry)
 
             # Save all verification results
             with open(output_filename, 'w') as f:
