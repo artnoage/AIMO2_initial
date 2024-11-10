@@ -98,7 +98,7 @@ async def main():
                        default='GEMINI_FLASH', help='Model to use for solution selection')
     parser.add_argument('--input', type=str, required=True,
                        help='Input JSON file containing DPO dataset')
-    parser.add_argument('--max-concurrent', type=int, default=4,
+    parser.add_argument('--max-concurrent', type=int, default=16,
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=1,
                        help='Maximum attempts per problem (default: 1)')
