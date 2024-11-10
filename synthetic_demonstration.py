@@ -19,19 +19,21 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with partial solutions as hints.
+SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with their complete solutions.
 
-PROCESS:
-▪ Silently analyze the given hint for relevant techniques and insights.
-▪ Develop a complete, independent solution from scratch.
+TASK:
+▪ Rewrite the given solution in a clear, structured format while maintaining mathematical accuracy.
+▪ Focus on clarity, proper LaTeX notation, and step-by-step explanations.
 
 REQUIRED:
-▪ Begin by listing applicable theorems, definitions, or techniques you will use.
-▪ For each proof step, include a justification in brackets. Use clear LaTeX notation for all mathematical expressions.
+▪ Begin by listing the key mathematical concepts and theorems used in the solution.
+▪ For each step, provide clear justification in brackets.
+▪ Use proper LaTeX notation for all mathematical expressions.
+▪ Maintain the same logical flow as the original solution.
 
 PROHIBITED:
-▪ Avoid restating the problem.
-▪ Do not reference the partial solution.
+▪ Do not introduce new solution methods or alternate approaches.
+▪ Do not skip steps present in the original solution.
 
 FORMAT:
 
@@ -92,13 +94,6 @@ async def compare_math_solutions(
         return False, False, False
 
 
-def get_partial_solution(solution: str) -> str:
-    """Get partial solution by removing last three lines if more than 3 lines,
-    otherwise return first line"""
-    lines = solution.strip().split('\n\n')
-    if len(lines) <= 1:
-        return lines[0]
-    return '\n\n'.join(lines[:-1])
 
 def check_required_words(response: str, full_solution: str) -> bool:
     """
@@ -126,9 +121,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        # Combine problem with partial solution
-        partial_solution = get_partial_solution(correct_solution)
-        combined_prompt = f"{example['problem']}\n\nPartial solution:\n{partial_solution}"
+        # Combine problem with full solution
+        combined_prompt = f"{example['problem']}\n\nComplete solution:\n{correct_solution}"
         
         prompt = [
             SystemMessage(content=SYSTEM_PROMPT),
@@ -312,7 +306,7 @@ async def main():
                 'id': result['id'],
                 'problem': result['problem'],
                 'solution': example_map[result['id']]['solution'],
-                'partial_solution': result['partial_solution'],
+                'original_solution': example_map[result['id']]['solution'],
                 'model_response': result['model_response'],
                 'is_correct': result['is_correct'],
                 'attempts': (result['format_attempts'], result['verification_attempts']),
