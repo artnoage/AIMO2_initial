@@ -5,7 +5,7 @@ import argparse
 from typing import Dict, List, Tuple, DefaultDict
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 from collections import defaultdict
-from ..utils.utils import ModelOption, get_model
+from utils.utils import ModelOption, get_model
 from datetime import datetime
 from langchain_core.messages import HumanMessage, SystemMessage
 from tqdm import tqdm
@@ -231,5 +231,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-from .utils import ModelOption, get_model, extract_answer_from_solution
-# Root package initialization
