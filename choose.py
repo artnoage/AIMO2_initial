@@ -94,7 +94,7 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Solution Selection Model Benchmark')
     parser.add_argument('--model', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for solution selection')
+                       default='GEMINI_FLASH', help='Model to use for solution selection')
     parser.add_argument('--input', type=str, required=True,
                        help='Input JSON file containing DPO dataset')
     parser.add_argument('--max-concurrent', type=int, default=4,
