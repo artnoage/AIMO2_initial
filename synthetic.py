@@ -196,16 +196,16 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for verifying answers')
+                       default='NEMOTRON', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=20,
+    parser.add_argument('--max-format-attempts', type=int, default=1,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
-    parser.add_argument('--max-verification-attempts', type=int, default=4,
+    parser.add_argument('--max-verification-attempts', type=int, default=1,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
     args = parser.parse_args()
 
