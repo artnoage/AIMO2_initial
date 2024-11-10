@@ -83,7 +83,7 @@ async def compare_math_solutions(
 
         # Second verification: check solution with first verifier (cheap)
         solution_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
         second_response = await verifier_model.ainvoke(solution_prompt)
@@ -112,7 +112,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     required_words = ['analysis', 'problem', 'step']
     has_required_words = all(word in lower_response for word in required_words)
     
-    is_long_enough = len(response) >= 0.95*len(full_solution) 
+    is_long_enough = len(response) >= 0.9*len(full_solution) 
     
     return has_required_words and is_long_enough
 
@@ -211,7 +211,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=256,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=16,
+    parser.add_argument('--max-format-attempts', type=int, default=20,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
     parser.add_argument('--max-verification-attempts', type=int, default=4,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
