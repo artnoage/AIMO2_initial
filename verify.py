@@ -88,7 +88,7 @@ async def main():
                        choices=[model.name for model in ModelOption],
                        required=True,
                        help='Model to use for verification')
-    parser.add_argument('--input', type=str, default='augmented_datasets\synthetic_augmented.json',
+    parser.add_argument('--input', type=str, default='combo.json',
                        help='Input JSON file containing problems and solutions')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
@@ -113,7 +113,7 @@ async def main():
             print("Dataset is empty. Please provide a dataset with examples to verify.")
             return
             
-        sample_size = min(50, len(data))
+        sample_size = min(16, len(data))
         # Always select the first 10 examples for consistency
         selected_examples = data[:sample_size]
     except json.JSONDecodeError:
