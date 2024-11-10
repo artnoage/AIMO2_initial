@@ -45,6 +45,7 @@ async def process_examples(examples: List[Dict], verifier_model, sample_size: in
                     'id': example.get('id', f'example_{i}'),
                     'problem': example['problem'],
                     'model_response': example['model_response'],
+                    'solution': example.get('solution', ''),  # Copy solution from input data
                     'is_correct': is_correct
                 }
                 
