@@ -36,7 +36,7 @@ def get_existing_ids(filename: str) -> set:
         return set()
         
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
             return {item['id'] for item in existing_data}
     except json.JSONDecodeError as e:
@@ -58,12 +58,12 @@ def save_augmented_data(data: List[Dict], filename: str, examples_processed: int
     # If file exists and we're appending, load existing data first
     existing_data = []
     if os.path.exists(filename):
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
             
     # Combine existing and new data
     combined_data = existing_data + data
     
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         json.dump(combined_data, f, indent=2)
     print(f"\nSaved {len(data)} entries to augmented dataset ({examples_processed} total examples processed)")
