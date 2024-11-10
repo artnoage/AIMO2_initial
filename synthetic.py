@@ -300,8 +300,8 @@ async def main():
         print("Operation cancelled by user.")
         return
         
-    # Process all examples with progress bar
-    progress_bar = tqdm(total=total_examples, desc="Processing examples")
+    # Process new examples with progress bar
+    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     current_batch = []
     for coro in asyncio.as_completed(tasks):
         result = await coro

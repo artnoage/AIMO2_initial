@@ -247,9 +247,6 @@ async def main():
         async with semaphore:
             return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
 
-    # Create tasks for all examples
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
-    
     # Initialize augmented dataset filename
     os.makedirs('augmented_datasets', exist_ok=True)
     augmented_filename = os.path.join('augmented_datasets', 
@@ -268,13 +265,16 @@ async def main():
         
     print(f"\nWill process {len(example_data)} new examples")
     
+    # Create tasks only for new examples
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+    
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
         print("Operation cancelled by user.")
         return
         
-    # Process all examples with progress bar
-    progress_bar = tqdm(total=total_examples, desc="Processing examples")
+    # Process new examples with progress bar
+    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     current_batch = []
     for coro in asyncio.as_completed(tasks):
         result = await coro
