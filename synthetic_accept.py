@@ -181,7 +181,7 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=512,
+    parser.add_argument('--max-concurrent', type=int, default=32,
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-format-attempts', type=int, default=10,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
@@ -199,7 +199,7 @@ async def main():
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
-
+    print("Entries in fUll dataset:", len(dataset))
     if args.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == args.source)
     
