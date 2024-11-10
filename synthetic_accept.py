@@ -234,6 +234,11 @@ async def main():
         correct_count = sum(1 for r in results if r['is_correct'])
         return 1.0 - (correct_count / len(results))
 
+    # Initialize augmented dataset filename
+    os.makedirs('augmented_datasets', exist_ok=True)
+    augmented_filename = os.path.join('augmented_datasets', 
+                                    "accept_augmented.json")
+
     # Process examples with controlled concurrency
     results = []
     error_rate_points = []
