@@ -174,6 +174,7 @@ async def main():
                         "id": result_id,
                         "problem": result["problem"],
                         "model_response": result["model_response"],
+                        "solution": result.get("solution", ""),  # Add solution if available
                         "verifications": {
                             "verifiers": [args.verifier],
                             "correctness": [result["is_correct"]],
