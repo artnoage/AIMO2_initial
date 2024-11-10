@@ -174,7 +174,9 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for verifying answers')
+                       default='GEMINI_FLASH', help='Model to use for first verifier')
+    parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
+                       default=None, help='Model to use for second verifier (defaults to same as first verifier)')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -213,7 +215,7 @@ async def main():
 
     solver_model = get_model(ModelOption[args.solver], temp=0.1)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
-    second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
+    second_verifier_model = get_model(ModelOption[args.second_verifier or args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
 
     # Create example data with dataset IDs and build lookup map
