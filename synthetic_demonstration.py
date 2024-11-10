@@ -112,8 +112,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     required_words = ['analysis', 'problem', 'step']
     has_required_words = all(word in lower_response for word in required_words)
     
-    # Check length requirement (at least 8% longer than full solution)
-    is_long_enough = len(response) >= len(full_solution) * 1.02
+    is_long_enough = len(response) >= 0.95*len(full_solution) 
     
     return has_required_words and is_long_enough
 
@@ -197,18 +196,18 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for first verifier')
+                       default='GEMINI_FLASH', help='Model to use for first verifier')
     parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
-                       default=None, help='Model to use for second verifier (defaults to same as first verifier)')
+                       default='NEMOTRON', help='Model to use for second verifier (defaults to same as first verifier)')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=512,
+    parser.add_argument('--max-concurrent', type=int, default=256,
                        help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-format-attempts', type=int, default=1,
+    parser.add_argument('--max-format-attempts', type=int, default=16,
                        help='Maximum attempts to get properly formatted solution (default: 3)')
-    parser.add_argument('--max-verification-attempts', type=int, default=1,
+    parser.add_argument('--max-verification-attempts', type=int, default=4,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
     args = parser.parse_args()
 
