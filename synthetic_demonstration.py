@@ -166,9 +166,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         model_answer = extract_answer_from_solution(model_solution)    
         # Print results for this example
         attempts_str = f" (format: {format_attempts}, verify: {verification_attempts})"
-        disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
         status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
+        print(f"\nProblem {running_id + 1}: {status}{attempts_str}")
+        
+        if verifier_disagreements > 0:
+            print(f"Verifier Disagreements ({verifier_disagreements} times):")
+            if answers_match:
+                print(f"  First Verifier ({args.verifier}): {'✓' if first_verify else '✗'}")
+                print(f"  Second Verifier ({args.second_verifier}): {'✓' if second_verify else '✗'}")
+        
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
