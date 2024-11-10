@@ -2,7 +2,8 @@ import os
 import json
 import asyncio
 import argparse
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, DefaultDict
+from collections import defaultdict
 from utils.utils import ModelOption, get_model
 from datetime import datetime
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -133,34 +134,55 @@ async def main():
         async with semaphore:
             return await process_example(example, running_id, selector_model, args.max_attempts)
     
+    # Initialize statistics
+    results = []
+    stats = {
+        'total': 0,
+        'correct': 0,
+        'selections': defaultdict(int)
+    }
+
+    def update_stats(result):
+        if result:
+            stats['total'] += 1
+            if result['is_correct']:
+                stats['correct'] += 1
+            stats['selections'][result['selected']] += 1
+            
+            # Calculate current accuracy
+            accuracy = (stats['correct'] / stats['total']) * 100
+            
+            # Update progress description with live stats
+            progress_bar.set_description(
+                f"Acc: {accuracy:.1f}% | "
+                f"✓: {stats['correct']}/{stats['total']} | "
+                f"1st: {stats['selections']['first']} "
+                f"2nd: {stats['selections']['second']} "
+                f"Both: {stats['selections']['both']} "
+                f"Neither: {stats['selections']['neither']}"
+            )
+
     # Process examples with progress bar
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(examples)]
-    results = []
     
-    progress_bar = tqdm(total=len(examples), desc="Processing examples")
+    progress_bar = tqdm(total=len(examples))
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
             results.append(result)
+            update_stats(result)
         progress_bar.update(1)
     progress_bar.close()
     
-    if not results:
+    if not stats['total']:
         print("\nNo examples were successfully processed.")
         return
-        
-    # Calculate statistics
-    total = len(results)
-    correct = sum(1 for r in results if r['is_correct'])
+
+    # Prepare final statistics
+    total = stats['total']
+    correct = stats['correct']
     accuracy = (correct / total) * 100
-    
-    # Count selection distribution
-    selections = {
-        'first': sum(1 for r in results if r['selected'] == 'first'),
-        'second': sum(1 for r in results if r['selected'] == 'second'),
-        'both': sum(1 for r in results if r['selected'] == 'both'),
-        'neither': sum(1 for r in results if r['selected'] == 'neither')
-    }
+    selections = dict(stats['selections'])
     
     # Save results
     os.makedirs('results', exist_ok=True)
