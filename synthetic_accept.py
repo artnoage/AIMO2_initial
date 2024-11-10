@@ -240,6 +240,21 @@ async def main():
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
+    # Get existing IDs to skip
+    existing_ids = get_existing_ids(augmented_filename)
+    if existing_ids:
+        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
+    
+    # Filter out examples with existing IDs
+    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
+    if not example_data:
+        print("All examples have already been processed!")
+        return
+        
+    filtered_count = len(example_data)
+    skipped_count = total_examples - filtered_count
+    print(f"\nWill process {filtered_count} new examples ({skipped_count} skipped)")
+
     # Create a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(args.max_concurrent)
 
