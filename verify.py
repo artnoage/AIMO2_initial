@@ -149,32 +149,25 @@ async def main():
         # Save results
         output_filename = "verification_results.json"
         try:
-            # Load or initialize results structure
+            # Load existing results or start with empty list
+            output_data = []
             if os.path.exists(output_filename):
                 with open(output_filename, 'r') as f:
                     output_data = json.load(f)
-            else:
-                output_data = {"results": {}}
 
             # Process current results
             for result in results:
-                result_id = str(result['id'])
-                if result_id not in output_data["results"]:
-                    output_data["results"][result_id] = {
-                        "problem": result["problem"],
-                        "model_response": result["model_response"],
-                        "verifications": []
-                    }
-                    
-                # Add new verification
-                verification = {
+                entry = {
+                    "id": str(result['id']),
+                    "problem": result["problem"],
+                    "model_response": result["model_response"],
                     "verifier": args.verifier,
                     "timestamp": datetime.now().isoformat(),
                     "is_correct": result["is_correct"]
                 }
-                output_data["results"][result_id]["verifications"].append(verification)
+                output_data.append(entry)
 
-            # Save all verification results (both correct and incorrect)
+            # Save all verification results
             with open(output_filename, 'w') as f:
                 json.dump(output_data, f, indent=2)
             print(f"\nResults saved to {output_filename}")
