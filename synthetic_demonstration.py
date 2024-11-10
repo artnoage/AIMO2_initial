@@ -62,36 +62,44 @@ async def compare_math_solutions(
     problem: str, 
     verifier_model, 
     second_verifier_model
-) -> Tuple[bool, bool, bool]:
+) -> Tuple[bool, bool, bool, bool]:
     model_answer = extract_answer_from_solution(model_solution)
     correct_answer = extract_answer_from_solution(correct_solution)
 
     if model_answer is None or correct_answer is None or model_solution is None:
-        return False, False, False
+        return False, False, False, False
 
-    # First verification: check if answers are equivalent
-    comparison_prompt = [
-        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-    ]
-    
     try:
+        # First verification: check if answers are equivalent (cheap)
+        comparison_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
-        first_result = first_response.content.strip().lower() == 'yes'
-        
-        # Second verification: check if the full solution is correct
-        second_prompt = [
+        answers_match = first_response.content.strip().lower() == 'yes'
+
+        if not answers_match:
+            return False, False, False, False
+
+        # Second verification: check solution with first verifier (cheap)
+        solution_prompt = [
             SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
-        
-        second_response = await second_verifier_model.ainvoke(second_prompt)
-        second_result = second_response.content.strip().lower() == 'yes'
-        
-        return first_result and second_result, first_result, second_result
+        second_response = await verifier_model.ainvoke(solution_prompt)
+        first_verify = second_response.content.strip().lower() == 'yes'
+
+        if not first_verify:
+            return False, True, False, False
+
+        # Final verification: check solution with stronger model (expensive)
+        final_response = await second_verifier_model.ainvoke(solution_prompt)
+        second_verify = final_response.content.strip().lower() == 'yes'
+
+        return first_verify and second_verify, True, first_verify, second_verify
 
     except Exception:
-        return False, False, False
+        return False, False, False, False
 
 
 
@@ -147,8 +155,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             # If format check passes, try verification up to max_verification_attempts times
             while verification_attempts < max_verification_attempts and not is_correct:
                 verification_attempts += 1
-                is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
-                if first_verify != second_verify:
+                is_correct, answers_match, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
+                if answers_match and first_verify != second_verify:
                     verifier_disagreements += 1
                 if is_correct:
                     break
