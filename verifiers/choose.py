@@ -117,6 +117,10 @@ async def main():
         with open(args.input, 'r', encoding='utf-8') as f:
             examples = json.load(f)
             
+        # Add IDs to examples based on their order
+        for idx, example in enumerate(examples):
+            example['id'] = f"example_{idx}"
+            
         if args.sample_size and args.sample_size < len(examples):
             import random
             examples = random.sample(examples, args.sample_size)
