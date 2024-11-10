@@ -11,7 +11,10 @@ def load_json_dataset(json_path):
 
 def convert_to_hf_dataset(data):
     """Convert the data to a HuggingFace Dataset."""
-    return Dataset.from_list(data)
+    dataset = Dataset.from_list(data)
+    # Save locally in Arrow format
+    dataset.save_to_disk("local_dataset")
+    return dataset
 
 def upload_to_hub(dataset, repo_name, token):
     """Upload the dataset to HuggingFace Hub."""
@@ -36,6 +39,7 @@ def main():
     
     # Upload to HuggingFace
     upload_to_hub(dataset, args.repo_name, args.token)
+    print(f"Dataset saved locally in Arrow format at 'local_dataset'")
     print(f"Dataset successfully uploaded to {args.repo_name}")
 
 if __name__ == "__main__":
