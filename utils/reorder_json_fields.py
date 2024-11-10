@@ -3,17 +3,23 @@ import argparse
 from typing import List, Dict
 
 def reorder_json_entries(data: List[Dict]) -> List[Dict]:
-    """Reorder each dictionary in the list to put 'id' field first."""
+    """
+    Reorder each dictionary in the list to put 'id' field first and convert id to integer.
+    """
     reordered = []
     for entry in data:
         if 'id' in entry:
-            # Create new dict starting with id
-            new_entry = {'id': entry['id']}
-            # Add all other fields in their original order
-            for key, value in entry.items():
-                if key != 'id':
-                    new_entry[key] = value
-            reordered.append(new_entry)
+            # Create new dict starting with id converted to int
+            try:
+                new_entry = {'id': int(entry['id'])}
+                # Add all other fields in their original order
+                for key, value in entry.items():
+                    if key != 'id':
+                        new_entry[key] = value
+                reordered.append(new_entry)
+            except ValueError:
+                print(f"Warning: Could not convert id '{entry['id']}' to integer, keeping original")
+                reordered.append(entry)
         else:
             reordered.append(entry)  # Keep entries without id unchanged
     return reordered
