@@ -13,6 +13,7 @@ class ModelOption(Enum):
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
+    MASTER_MINI="openai/o1-mini"
     LOCAL_ORIGINAL = "mistralai/Mathstral-7B-v0.1"
     LOCAL_ORIGINAL_Q= "mathstral-7b-v0.1"
     LOCAL = "model_1iteration/"

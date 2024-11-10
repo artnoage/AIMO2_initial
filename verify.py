@@ -93,7 +93,7 @@ async def main():
                        help='Input JSON file containing problems and solutions')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
-    parser.add_argument('--max-concurrent', type=int, default=16,
+    parser.add_argument('--max-concurrent', type=int, default=20,
                        help='Maximum number of concurrent verifications (default: 4)')
     args = parser.parse_args()
 
@@ -114,7 +114,7 @@ async def main():
             print("Dataset is empty. Please provide a dataset with examples to verify.")
             return
             
-        sample_size = min(16, len(data))
+        sample_size = min(100, len(data))
         # Always select the first 10 examples for consistency
         selected_examples = data[:sample_size]
     except json.JSONDecodeError:
