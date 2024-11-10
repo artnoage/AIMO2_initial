@@ -263,7 +263,8 @@ async def main():
         print("All examples have already been processed!")
         return
         
-    print(f"\nWill process {len(example_data)} new examples")
+    filtered_count = len(example_data)
+    print(f"\nWill process {filtered_count} new examples ({total_examples - filtered_count} skipped)")
     
     # Create tasks only for new examples
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
