@@ -67,9 +67,9 @@ async def process_example(
             attempts += 1
             
             result = await evaluate_solutions(
-                example['problem'],
-                example['accept'],
-                example['reject'],
+                example['conversations'][1]['value'],  # human message contains the problem
+                example['chosen']['value'],           # chosen solution
+                example['rejected']['value'],         # rejected solution
                 selector_model
             )
             
@@ -100,9 +100,11 @@ async def main():
     parser.add_argument('--input', type=str, required=True,
                        help='Input JSON file containing DPO dataset')
     parser.add_argument('--max-concurrent', type=int, default=16,
-                       help='Maximum number of concurrent problems (default: 4)')
+                       help='Maximum number of concurrent problems (default: 16)')
     parser.add_argument('--max-attempts', type=int, default=1,
                        help='Maximum attempts per problem (default: 1)')
+    parser.add_argument('--sample-size', type=int,
+                       help='Number of examples to test (default: all)')
     
     args = parser.parse_args()
     
@@ -114,6 +116,11 @@ async def main():
     try:
         with open(args.input, 'r', encoding='utf-8') as f:
             examples = json.load(f)
+            
+        if args.sample_size and args.sample_size < len(examples):
+            import random
+            examples = random.sample(examples, args.sample_size)
+            
     except Exception as e:
         print(f"Error loading input file: {e}")
         return
