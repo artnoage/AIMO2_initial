@@ -335,8 +335,12 @@ async def main():
                 print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 
-                # Save current batch of augmented data
-                save_augmented_data(current_batch, augmented_filename, len(results))
+                # Filter out any examples that might already exist
+                new_batch = [ex for ex in current_batch if ex['id'] not in existing_ids]
+                if new_batch:
+                    save_augmented_data(new_batch, augmented_filename, len(results))
+                    # Add newly saved IDs to our tracking set
+                    existing_ids.update(ex['id'] for ex in new_batch)
                 current_batch = []
 
                 # Save intermediate results less frequently (every 500 examples)
@@ -395,7 +399,9 @@ async def main():
     
     # Save final augmented data batch
     if current_batch:
-        save_augmented_data(current_batch, augmented_filename, len(results))
+        new_batch = [ex for ex in current_batch if ex['id'] not in existing_ids]
+        if new_batch:
+            save_augmented_data(new_batch, augmented_filename, len(results))
     
     # Print error rate progression
     print("\nError Rate Progression:")
