@@ -169,7 +169,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return {
             'id': example_id,
             'problem': example['problem'],
-            'partial_solution': partial_solution,
             'correct_answer': correct_answer,
             'model_response': model_solution,
             'model_answer': model_answer,
