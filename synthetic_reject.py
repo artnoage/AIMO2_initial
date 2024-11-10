@@ -225,6 +225,11 @@ async def main():
         example_data.append(example)
         example_map[ex['id']] = example
 
+    # Initialize augmented dataset filename
+    os.makedirs('augmented_datasets', exist_ok=True)
+    augmented_filename = os.path.join('augmented_datasets', 
+                                    "reject_augmented.json")
+
     # Process examples with controlled concurrency
     results = []
     error_rate_points = []
