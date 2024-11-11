@@ -51,37 +51,63 @@ async def compare_math_solutions(
     correct_solution: Optional[str], 
     problem: str, 
     verifier_model, 
-    second_verifier_model
-) -> Tuple[bool, bool, bool]:
+    second_verifier_model,
+    answer_attempts: int = 0,
+    solution_attempts: int = 0,
+    second_verifier_attempts: int = 0
+) -> Tuple[int, int, int, int, int, int, int]:
+    """Returns (format_check, answer_verification, solution_verification, second_verifier_count, 
+             answer_attempts, solution_attempts, second_verifier_attempts)"""
     model_answer = extract_answer_from_solution(model_solution)
     correct_answer = extract_answer_from_solution(correct_solution)
+    
+    format_check = 0
+    answer_verification = 0
+    solution_verification = 0
+    second_verifier = 0
 
     if model_answer is None or correct_answer is None or model_solution is None:
-        return False, False, False
+        return format_check, answer_verification, solution_verification, second_verifier, answer_attempts, solution_attempts, second_verifier_attempts
 
-    # First verification: check if answers are equivalent
-    comparison_prompt = [
-        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-    ]
-    
     try:
+        # First verification: check if answers are equivalent
+        comparison_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
-        first_result = first_response.content.strip().lower() == 'yes'
+        if first_response.content.strip().lower() == 'yes':
+            format_check = 1
+            answer_verification = 1
         
-        # Second verification: check if the full solution is correct
-        second_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
+        # Only proceed if answer verification passed
+        if answer_verification == 0:
+            return format_check, answer_verification, solution_verification, second_verifier, answer_attempts + 1, solution_attempts, second_verifier_attempts
+
+        # First verifier step 2: check solution completeness
+        solution_prompt = [
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
-        
-        second_response = await second_verifier_model.ainvoke(second_prompt)
-        second_result = second_response.content.strip().lower() == 'yes'
-        
-        return first_result and second_result, first_result, second_result
+        second_response = await verifier_model.ainvoke(solution_prompt)
+        if second_response.content.strip().lower() == 'yes':
+            solution_verification = 1
 
-    except Exception:
-        return False, False, False
+        # Only proceed if solution verification passed
+        if solution_verification == 0:
+            return format_check, answer_verification, solution_verification, second_verifier, answer_attempts + 1, solution_attempts + 1, second_verifier_attempts
+
+        # Final verification: check with second verifier
+        final_response = await second_verifier_model.ainvoke(solution_prompt)
+        if final_response.content.strip().lower() == 'yes':
+            second_verifier = 1
+
+        return format_check, answer_verification, solution_verification, second_verifier, answer_attempts + 1, solution_attempts + 1, second_verifier_attempts + 1
+
+    except Exception as e:
+        print(f"Error in compare_math_solutions: {e}")
+        return (format_check, answer_verification, solution_verification, second_verifier, 
+                answer_attempts, solution_attempts, second_verifier_attempts)
 
 def check_required_words(response: str, full_solution: str) -> bool:
     """
@@ -97,7 +123,7 @@ def check_required_words(response: str, full_solution: str) -> bool:
     
     return has_required_words and is_long_enough
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_format_attempts: int, max_verification_attempts: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_format_attempts: int, max_verification_attempts: int, verifier_name: str, second_verifier_name: str) -> Optional[Dict]:
     """Process a single example with multiple attempts for both formatting and verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -114,9 +140,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             HumanMessage(content=example['problem'])
         ]
         
-        # Track both format and verification attempts
+        # Track attempts for each verification stage
         format_attempts = 0
-        verification_attempts = 0
+        answer_check_attempts = 0
+        solution_check_attempts = 0
+        second_verifier_attempts = 0
         is_correct = False
         verifier_disagreements = 0
         
@@ -125,30 +153,55 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             response = await solver_model.ainvoke(prompt)
             model_solution = response.content
             
-            # Check for required words and length before proceeding with verification
+            # Skip if format check fails
             if not check_required_words(model_solution, correct_solution):
                 continue
-                
-            # If format check passes, try verification up to max_verification_attempts times
-            while verification_attempts < max_verification_attempts and not is_correct:
-                verification_attempts += 1
-                is_correct, first_verify, second_verify = await compare_math_solutions(model_solution, correct_solution, example["problem"], verifier_model, second_verifier_model)
-                if first_verify != second_verify:
-                    verifier_disagreements += 1
-                if is_correct:
-                    break
+
+            # Try verification once
+            format_check, answer_verification, solution_verification, second_verifier, new_answer_attempts, new_solution_attempts, new_second_attempts = await compare_math_solutions(
+                model_solution, correct_solution, example["problem"], 
+                verifier_model, second_verifier_model,
+                answer_check_attempts,
+                solution_check_attempts,
+                second_verifier_attempts
+            )
             
-            # If we got a correct answer or used all verification attempts, stop trying new formats
-            if is_correct or verification_attempts >= max_verification_attempts:
+            # Update attempt counters
+            answer_check_attempts = new_answer_attempts
+            solution_check_attempts = new_solution_attempts
+            second_verifier_attempts = new_second_attempts
+            
+            # Track verifier disagreements
+            if (answer_verification and solution_verification) != second_verifier:
+                verifier_disagreements += 1
+                
+            # Check if we got a correct solution
+            is_correct = all([format_check, answer_verification, solution_verification, second_verifier])
+            
+            # Break if we got a correct solution or hit max attempts
+            if is_correct or (answer_check_attempts >= max_verification_attempts and 
+                            solution_check_attempts >= max_verification_attempts and 
+                            second_verifier_attempts >= max_verification_attempts):
                 break
+        
         model_answer = extract_answer_from_solution(model_solution)    
-        # Print results for this example
-        attempts_str = f" (format: {format_attempts}, verify: {verification_attempts})"
-        disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
-        status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
-        print(f"Expected Answer: {correct_answer}")
-        print(f"Model's Answer: {model_answer}")
+        # Get final verification results
+        final_format_check, final_answer_verification, final_solution_verification, final_second_verifier, final_answer_attempts, final_solution_attempts, final_second_attempts = await compare_math_solutions(
+            model_solution, correct_solution, example["problem"],
+            verifier_model, second_verifier_model,
+            answer_check_attempts,
+            solution_check_attempts,
+            second_verifier_attempts
+        )
+        
+        # Print verification stage counts with ratios
+        print(f"\nProblem {running_id + 1}:")
+        print(f"Format Check: {final_format_check}/{1} ({format_attempts+int(is_correct)} attempts, {format_attempts -final_answer_attempts+int(is_correct)} rejections)")
+        print(f"First Verifier ({verifier_name}):")
+        print(f"  - Answer Check: {final_answer_verification}/{1} ({final_answer_attempts} attempts, {final_answer_attempts-final_solution_attempts} rejections)")
+        print(f"  - Solution Check: {final_solution_verification}/{1} ({final_solution_attempts} attempts, {final_solution_attempts-final_second_attempts} rejections)")
+        print(f"Second Verifier ({second_verifier_name}): {final_second_verifier}/{1} ({final_second_attempts} attempts, {final_second_attempts-int(is_correct)} rejection)")
+        print(f"Final Status: {sum([final_format_check, final_answer_verification, final_solution_verification, final_second_verifier])}/{4}")
         print("-" * 80)
         
         return {
@@ -160,7 +213,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'is_correct': is_correct,
             'verifier_disagreements': verifier_disagreements,
             'format_attempts': format_attempts,
-            'verification_attempts': verification_attempts
+            'answer_check_attempts': answer_check_attempts,
+            'solution_check_attempts': solution_check_attempts,
+            'second_verifier_attempts': second_verifier_attempts
         }
         
     except Exception as e:
@@ -187,6 +242,8 @@ async def main():
                        help='Maximum attempts to get properly formatted solution (default: 3)')
     parser.add_argument('--max-verification-attempts', type=int, default=3,
                        help='Maximum attempts to get correct solution after format check (default: 1)')
+    parser.add_argument('--temperature', type=float, default=0.1,
+                       help='Temperature for model generation (default: 0.1)')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -213,7 +270,7 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.1)
+    solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     second_verifier_model = get_model(ModelOption[args.second_verifier or args.verifier], temp=0)
     print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
@@ -267,7 +324,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_format_attempts, args.max_verification_attempts, args.verifier, args.second_verifier)
 
     
     # Create tasks only for new examples
