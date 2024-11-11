@@ -414,7 +414,8 @@ async def main():
     results.sort(key=lambda x: x['id'])
 
     # Calculate final statistics
-    correct_count = sum(1 for r in results if any(r['is_correct_list']))
+    any_correct_count = sum(1 for r in results if any(r['is_correct_list']))
+    majority_correct_count = sum(1 for r in results if sum(r['is_correct_list']) > len(r['is_correct_list'])/2)
 
     # Print final results
     progress_bar.close()
@@ -422,8 +423,10 @@ async def main():
     print(f"Total examples processed: {len(results)}")
     
     if len(results) > 0:
-        accuracy = (correct_count / len(results)) * 100
-        print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
+        any_accuracy = (any_correct_count / len(results)) * 100
+        majority_accuracy = (majority_correct_count / len(results)) * 100
+        print(f"Any-Correct Accuracy: {any_correct_count}/{len(results)} = {any_accuracy:.2f}%")
+        print(f"Majority-Correct Accuracy: {majority_correct_count}/{len(results)} = {majority_accuracy:.2f}%")
         
         # Calculate best-of-N statistics
         at_least_one_correct = sum(1 for r in results if r['attempts']['correct_count'] > 0)
