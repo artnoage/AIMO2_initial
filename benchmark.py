@@ -113,7 +113,7 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     except Exception:
         return False
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int = 1) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -143,12 +143,43 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         # Create the chat prompt
         prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        # Generate the solution using the model
-        response = await solver_model.ainvoke(prompt)  # Await the async response
-        solution = response.content
+        # Make multiple attempts
+        solutions = []
+        correct_count = 0
+        best_solution = None
+        best_answer = None
         
-        # Extract the model's answer from the solution
-        model_answer = extract_answer_from_solution(solution)
+        for attempt in range(best_of):
+            # Adjust temperature based on previous success
+            temp = 0.0 if correct_count == 1 else 0.1
+            solver_model.temperature = temp
+            
+            response = await solver_model.ainvoke(prompt)
+            current_solution = response.content
+            current_answer = extract_answer_from_solution(current_solution)
+            
+            # Verify the solution
+            is_correct = await compare_math_answers(current_answer, correct_answer, example["problem"], verifier_model)
+            
+            if is_correct:
+                correct_count += 1
+                if best_solution is None:  # Keep the first correct solution
+                    best_solution = current_solution
+                    best_answer = current_answer
+            
+            solutions.append({
+                'solution': current_solution,
+                'answer': current_answer,
+                'is_correct': is_correct
+            })
+            
+            # Always collect all attempts up to best_of
+            if attempt >= best_of - 1:
+                break
+        
+        # Use the best solution if we found one, otherwise use the first attempt
+        solution = best_solution if best_solution is not None else solutions[0]['solution']
+        model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # First check if solution contains required keywords
         solution_lower = solution.lower()
@@ -162,8 +193,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
         
         # Print results immediately
-        status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}")
+        success_ratio = f"{correct_count}/{best_of}"
+        success_percentage = (correct_count / best_of) * 100
+        print(f"\nProblem {running_id + 1}: {success_ratio} ({success_percentage:.1f}%)")
         print(f"Extracted Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -173,11 +205,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_solution': solution,
-            'model_answer': model_answer,
-            'is_correct': is_correct,
-            'model_answer_raw': model_answer,
-            'correct_answer_raw': correct_answer
+            'model_responses': [s['solution'] for s in solutions],
+            'model_answers': [s['answer'] for s in solutions],
+            'is_correct_list': [s['is_correct'] for s in solutions],
+            'model_answer_raw': model_answer,  # Keep the best/last answer for compatibility
+            'correct_answer_raw': correct_answer,
+            'attempts': {
+                'total': len(solutions),
+                'correct_count': correct_count
+            }
         }
         
     except Exception as e:
@@ -193,7 +229,7 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL_ORIGINAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='NEMOTRON', help='Model to use for verifying answers')
+                       default='GEMINI_FLASH', help='Model to use for verifying answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -201,8 +237,12 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
-    parser.add_argument('--max-concurrent', type=int, default=32,
+    parser.add_argument('--max-concurrent', type=int, default=128,
                        help='Maximum number of concurrent problems (default: 32)')
+    parser.add_argument('--best-of', type=int, default=5,
+                       help='Number of attempts per problem (default: 1)')
+    parser.add_argument('--temperature', type=float, default=0.1,
+                       help='Temperature for model generation (default: 0.1)')
     args = parser.parse_args()
 
     # Validate max concurrent
@@ -242,7 +282,7 @@ async def main():
 
     # Initialize the models
     try:
-        solver_model = get_model(ModelOption[args.solver])
+        solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
         verifier_model = get_model(ModelOption[args.verifier])
     except Exception as e:
         print(f"Error initializing models: {e}")
@@ -268,7 +308,8 @@ async def main():
     def calculate_error_rate(results):
         if not results:
             return 0.0
-        correct_count = sum(1 for r in results if r['is_correct'])
+        # Count results where at least one attempt was correct
+        correct_count = sum(1 for r in results if any(r['is_correct_list']))
         return 1.0 - (correct_count / len(results))
 
     # Process examples with controlled concurrency
@@ -282,9 +323,9 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.best_of)
 
-    # Create tasks for all examples
+    # Create tasks for all examples with best_of parameter
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
     # Initialize augmented dataset filename
@@ -321,10 +362,11 @@ async def main():
                 'id': result['id'],
                 'problem': result['problem'],
                 'solution': next((ex['solution'] for ex in example_data if ex['id'] == result['id']), None),
-                'model_response': result['model_solution'],
-                'is_correct': result['is_correct'],
+                'model_responses': result['model_responses'],
+                'is_correct_list': result['is_correct_list'],
                 'solver': args.solver,
-                'verifier': args.verifier
+                'verifier': args.verifier,
+                'total_attempts': len(result['model_responses'])
             }
             current_batch.append(augmented_example)
             
@@ -382,6 +424,14 @@ async def main():
     if len(results) > 0:
         accuracy = (correct_count / len(results)) * 100
         print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
+        
+        # Calculate best-of-N statistics
+        at_least_one_correct = sum(1 for r in results if r['attempts']['correct_count'] > 0)
+        majority_correct = sum(1 for r in results if r['attempts']['correct_count'] > args.best_of // 2)
+        
+        print(f"\nBest-of-{args.best_of} Statistics:")
+        print(f"Problems with at least one correct solution: {at_least_one_correct}/{len(results)} = {(at_least_one_correct/len(results))*100:.2f}%")
+        print(f"Problems with majority correct solutions: {majority_correct}/{len(results)} = {(majority_correct/len(results))*100:.2f}%")
     else:
         print("No examples were successfully processed.")
 

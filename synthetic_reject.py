@@ -122,10 +122,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             if not is_correct:  # Found a wrong answer or format violation, break
                 break
                 
-        # Print results for this example
+        # Print results for this example with ratio
         attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
-        status = '✗' if not is_correct else '✓'  # Reversed from normal - we want wrong answers
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}")
+        correct_ratio = "0/1" if not is_correct else "1/1"  # Reversed from normal - we want wrong answers
+        print(f"\nProblem {running_id + 1}: {correct_ratio}{attempts_str}")
         print(f"Expected Answer: {correct_answer}")
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
@@ -167,6 +167,8 @@ async def main():
                        help='Maximum number of concurrent problems (default: 4)')
     parser.add_argument('--max-attempts', type=int, default=10,
                        help='Maximum attempts to get a wrong answer (default: 5)')
+    parser.add_argument('--temperature', type=float, default=0.9,
+                       help='Temperature for model generation (default: 0.9)')
     args = parser.parse_args()
 
     # Validate max concurrent
@@ -203,9 +205,9 @@ async def main():
         print("Error: Dataset is empty! Check your source filter and split arguments.")
         return
 
-    # Initialize the models with higher temperature for solver to encourage mistakes
+    # Initialize the models
     try:
-        solver_model = get_model(ModelOption[args.solver], temp=0.9)  # Higher temperature
+        solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
         verifier_model = get_model(ModelOption[args.verifier])
     except Exception as e:
         print(f"Error initializing models: {e}")
