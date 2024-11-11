@@ -361,12 +361,13 @@ async def main():
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': next((ex['solution'] for ex in example_data if ex['id'] == result['id']), None),
+                'solution': result['correct_answer'],
                 'model_responses': result['model_responses'],
                 'is_correct_list': result['is_correct_list'],
                 'solver': args.solver,
                 'verifier': args.verifier,
-                'total_attempts': len(result['model_responses'])
+                'total_attempts': len(result['model_responses']),
+                'correct_answer': result['correct_answer']
             }
             current_batch.append(augmented_example)
             
