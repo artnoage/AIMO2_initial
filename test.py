@@ -8,8 +8,7 @@ async def main():
     
     # Create a simple message
     messages = [
-        SystemMessage(content="You are a helpful assistant."),
-        HumanMessage(content="Hello!")
+        HumanMessage(content="what is 2+5?")
     ]
     
     # Get response
