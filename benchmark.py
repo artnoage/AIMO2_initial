@@ -464,6 +464,10 @@ async def main():
         'temperature': args.temperature
     }
 
+    # Calculate timing information
+    end_time = datetime.now()
+    total_duration = end_time - start_time
+
     # Collect final statistics
     final_statistics = {
         'total_examples': len(results),
