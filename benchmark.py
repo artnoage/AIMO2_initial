@@ -452,10 +452,43 @@ async def main():
         'cumulative_error_rate': final_cumulative_error_rate
     })
     
+    # Collect all command line parameters
+    run_parameters = {
+        'solver': args.solver,
+        'verifier': args.verifier,
+        'split': args.split,
+        'source': args.source,
+        'dataset': args.dataset,
+        'max_concurrent': args.max_concurrent,
+        'best_of': args.best_of,
+        'temperature': args.temperature
+    }
+
+    # Collect final statistics
+    final_statistics = {
+        'total_examples': len(results),
+        'any_correct': any_correct_count,
+        'any_correct_accuracy': any_accuracy,
+        'majority_correct': majority_correct_count,
+        'majority_correct_accuracy': majority_accuracy,
+        'best_of_stats': {
+            'at_least_one_correct': at_least_one_correct,
+            'at_least_one_correct_percentage': (at_least_one_correct/len(results))*100,
+            'majority_correct': majority_correct,
+            'majority_correct_percentage': (majority_correct/len(results))*100
+        },
+        'timing': {
+            'total_duration_seconds': total_duration.total_seconds(),
+            'average_time_per_example': total_duration.total_seconds() / len(results)
+        }
+    }
+
     output_data = {
+        'run_parameters': run_parameters,
         'error_rate_points': error_rate_points,
         'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate
+        'final_cumulative_error_rate': final_cumulative_error_rate,
+        'final_statistics': final_statistics
     }
     with open(results_filename, 'w') as f:
         json.dump(output_data, f, indent=2)
