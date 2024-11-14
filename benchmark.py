@@ -233,7 +233,7 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
-    parser.add_argument('--max-concurrent', type=int, default=128,
+    parser.add_argument('--max-concurrent', type=int, default=16,
                        help='Maximum number of concurrent problems (default: 32)')
     parser.add_argument('--best-of', type=int, default=5,
                        help='Number of attempts per problem (default: 1)')
