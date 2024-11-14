@@ -324,9 +324,10 @@ async def main():
     # Create tasks for all examples with best_of parameter
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
-    # Initialize augmented dataset filename
+    # Initialize augmented dataset filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     augmented_filename = os.path.join('augmented_datasets', 
-                                    "benchmark_augmented.json")
+                                    f"benchmark_augmented_{timestamp}.json")
     
     # Get existing IDs to skip
     existing_ids = get_existing_ids(augmented_filename)
@@ -383,8 +384,9 @@ async def main():
                 print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 intermediate_filename = os.path.join('results', 
-                    f"benchmark_intermediate_{args.solver}_{args.verifier}.json")
+                    f"benchmark_intermediate_{args.solver}_{args.verifier}_{timestamp}.json")
                 output_data = {
                     'error_rate_points': error_rate_points,
                     'current_batch_error_rate': batch_error_rate,
