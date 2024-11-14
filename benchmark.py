@@ -107,11 +107,20 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
         HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
     ]
     
-    try:
-        response = await model.ainvoke(comparison_prompt)
-        return response.content.strip().lower() == 'yes'
-    except Exception:
-        return False
+    max_retries = 3
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            response = await model.ainvoke(comparison_prompt)
+            return response.content.strip().lower() == 'yes'
+        except Exception as e:
+            retry_count += 1
+            if retry_count == max_retries:
+                print(f"Verification failed after {max_retries} attempts")
+                return False
+            print(f"Connection error during verification. Retrying... ({retry_count}/{max_retries})")
+            await asyncio.sleep(1)  # Wait a second before retrying
+    return False
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int = 1) -> Optional[Dict]:
     """
@@ -150,8 +159,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         best_answer = None
         
         for attempt in range(best_of):
-            response = await solver_model.ainvoke(prompt)
-            current_solution = response.content
+            # Try up to 3 times for each attempt in case of connection errors
+            max_retries = 3
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    response = await solver_model.ainvoke(prompt)
+                    current_solution = response.content
+                    break
+                except Exception as e:
+                    retry_count += 1
+                    if retry_count == max_retries:
+                        print(f"Failed after {max_retries} attempts for problem {running_id + 1}, attempt {attempt + 1}")
+                        raise e
+                    print(f"Connection error for problem {running_id + 1}, attempt {attempt + 1}. Retrying... ({retry_count}/{max_retries})")
+                    await asyncio.sleep(1)  # Wait a second before retrying
             current_answer = extract_answer_from_solution(current_solution)
             
             # Verify the solution
