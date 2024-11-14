@@ -150,10 +150,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         best_answer = None
         
         for attempt in range(best_of):
-            # Adjust temperature based on previous success
-            temp = 0.0 if correct_count == 1 else 0.1
-            solver_model.temperature = temp
-            
             response = await solver_model.ainvoke(prompt)
             current_solution = response.content
             current_answer = extract_answer_from_solution(current_solution)
@@ -241,8 +237,8 @@ async def main():
                        help='Maximum number of concurrent problems (default: 32)')
     parser.add_argument('--best-of', type=int, default=5,
                        help='Number of attempts per problem (default: 1)')
-    parser.add_argument('--temperature', type=float, default=0.1,
-                       help='Temperature for model generation (default: 0.1)')
+    parser.add_argument('--temperature', type=float, default=0.5,
+                       help='Temperature for model generation (default: 0.5)')
     args = parser.parse_args()
 
     # Validate max concurrent
