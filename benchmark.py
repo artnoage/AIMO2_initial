@@ -3,6 +3,7 @@ import re
 import json
 import asyncio
 import argparse
+from asyncio import TimeoutError
 from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
@@ -111,7 +112,11 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     retry_count = 0
     while retry_count < max_retries:
         try:
-            response = await model.ainvoke(comparison_prompt)
+            # Add 5 minute timeout
+            response = await asyncio.wait_for(
+                model.ainvoke(comparison_prompt),
+                timeout=300  # 5 minutes in seconds
+            )
             return response.content.strip().lower() == 'yes'
         except Exception as e:
             retry_count += 1
@@ -164,15 +169,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             retry_count = 0
             while retry_count < max_retries:
                 try:
-                    response = await solver_model.ainvoke(prompt)
+                    # Add 5 minute timeout
+                    response = await asyncio.wait_for(
+                        solver_model.ainvoke(prompt),
+                        timeout=300  # 5 minutes in seconds
+                    )
                     current_solution = response.content
                     break
-                except Exception as e:
+                except (Exception, TimeoutError) as e:
                     retry_count += 1
                     if retry_count == max_retries:
                         print(f"Failed after {max_retries} attempts for problem {running_id + 1}, attempt {attempt + 1}")
+                        if isinstance(e, TimeoutError):
+                            print(f"Timeout error: Model took longer than 5 minutes to respond")
                         raise e
-                    print(f"Connection error for problem {running_id + 1}, attempt {attempt + 1}. Retrying... ({retry_count}/{max_retries})")
+                    print(f"{'Timeout' if isinstance(e, TimeoutError) else 'Connection'} error for problem {running_id + 1}, attempt {attempt + 1}. Retrying... ({retry_count}/{max_retries})")
                     await asyncio.sleep(1)  # Wait a second before retrying
             current_answer = extract_answer_from_solution(current_solution)
             
