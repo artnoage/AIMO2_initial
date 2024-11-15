@@ -11,3 +11,4 @@ model_1iteration
 backups/
 *.json
 local_dataset
+cache
