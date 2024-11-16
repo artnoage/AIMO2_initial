@@ -141,6 +141,19 @@ async def process_example(
             # Stop if we get a valid solution (level 4)
             if level == 4:
                 break
+        
+        # Count occurrences of each verification level
+        level_counts = {i: verification_results.count(i) for i in range(5)}
+        
+        # Print verification results for this problem
+        print(f"\nProblem {running_id + 1}:")
+        print(f"Format Check Failed: {level_counts[0]}/{len(verification_results)}")
+        print(f"Answer Check Failed: {level_counts[1]}/{len(verification_results)}")
+        print(f"First Verifier Failed: {level_counts[2]}/{len(verification_results)}")
+        print(f"Second Verifier Failed: {level_counts[3]}/{len(verification_results)}")
+        print(f"All Checks Passed: {level_counts[4]}/{len(verification_results)}")
+        print(f"Final Status: {'Solved' if 4 in verification_results else 'Failed'}")
+        print("-" * 80)
                 
         return {
             'id': example_id,
@@ -148,8 +161,8 @@ async def process_example(
             'correct_solution': example['solution'],
             'model_responses': model_responses,
             'verification_results': verification_results,
-            'best_response': model_responses[verification_results.index(True)] if True in verification_results else None,
-            'solved': True in verification_results
+            'best_response': model_responses[verification_results.index(4)] if 4 in verification_results else None,
+            'solved': 4 in verification_results
         }
         
     except Exception as e:
