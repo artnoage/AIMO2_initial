@@ -298,16 +298,23 @@ async def main():
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
                 
-                # Save intermediate results
+                # Save intermediate results (scores only)
                 with open(results_file, 'w') as f:
                     json.dump({
-                        'results': results,
+                        'scores': [{
+                            'id': r['id'],
+                            'solved': r['solved'],
+                            'verification_levels': r['verification_results'],
+                            'attempts_used': len(r['verification_results'])
+                        } for r in results],
                         'metadata': {
                             'solver': args.solver,
                             'verifier': args.verifier,
                             'second_verifier': args.second_verifier,
                             'temperature': args.temperature,
-                            'max_attempts': args.max_attempts
+                            'max_attempts': args.max_attempts,
+                            'examples_processed': len(results),
+                            'success_rate': (sum(1 for r in results if r['solved']) / len(results)) * 100 if results else 0
                         }
                     }, f, indent=2)
         
@@ -346,10 +353,15 @@ async def main():
         avg_attempts = sum(successful_attempts) / len(successful_attempts)
         print(f"Average attempts for successful solutions: {avg_attempts:.2f}")
 
-    # Save final results
+    # Save final results (scores only)
     with open(results_file, 'w') as f:
         json.dump({
-            'results': results,
+            'scores': [{
+                'id': r['id'],
+                'solved': r['solved'],
+                'verification_levels': r['verification_results'],
+                'attempts_used': len(r['verification_results'])
+            } for r in results],
             'metadata': {
                 'solver': args.solver,
                 'verifier': args.verifier,
@@ -358,7 +370,8 @@ async def main():
                 'max_attempts': args.max_attempts,
                 'final_success_rate': success_rate,
                 'average_attempts_when_successful': avg_attempts if successful_attempts else None,
-                'total_duration_seconds': (datetime.now() - start_time).total_seconds()
+                'total_duration_seconds': (datetime.now() - start_time).total_seconds(),
+                'level_statistics': level_counts
             }
         }, f, indent=2)
     
