@@ -173,11 +173,11 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=32,
+    parser.add_argument('--max-concurrent', type=int, default=64,
                        help='Maximum number of concurrent problems')
-    parser.add_argument('--max-attempts', type=int, default=5,
+    parser.add_argument('--max-attempts', type=int, default=10,
                        help='Maximum attempts per problem')
-    parser.add_argument('--temperature', type=float, default=0.1,
+    parser.add_argument('--temperature', type=float, default=0.7,
                        help='Temperature for model generation')
     args = parser.parse_args()
 
@@ -195,7 +195,7 @@ async def main():
     if args.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == args.source)
     
-    dataset = dataset.shuffle(seed=42)
+    dataset = dataset.shuffle(seed=24)
     print(f"\nDataset size: {len(dataset)} examples")
 
     if len(dataset) == 0:
