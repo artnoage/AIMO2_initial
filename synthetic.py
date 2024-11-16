@@ -1,0 +1,286 @@
+import os
+import re
+import json
+import asyncio
+import argparse
+from enum import Enum
+from typing import Optional, Dict, List
+from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
+from utils.utils import ModelOption, get_model, extract_answer_from_solution
+from datetime import datetime
+from langchain_core.messages import HumanMessage, SystemMessage
+from dotenv import load_dotenv
+from datasets import load_dataset
+from huggingface_hub import HfApi
+from tqdm import tqdm
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
+
+SYSTEM_PROMPT = """You are a precise mathematical problem solver. You will be given a problem to solve.
+
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
+
+FORMAT:
+
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem
+2. List specific tools or theorems that will guide your solution
+
+**PROOF**:
+Step-by-step solution with justifications
+
+**ANSWER**:
+\\(\\boxed{\\text{final answer}}\\) """
+
+async def verify_solution(
+    model_solution: Optional[str],
+    correct_solution: Optional[str],
+    problem: str,
+    verifier_model,
+    second_verifier_model
+) -> bool:
+    """Returns True only if solution passes all verification checks"""
+    
+    model_answer = extract_answer_from_solution(model_solution)
+    correct_answer = extract_answer_from_solution(correct_solution)
+    
+    if model_answer is None or correct_answer is None or model_solution is None:
+        return False
+
+    try:
+        # Check answer equivalence
+        comparison_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        ]
+        first_response = await verifier_model.ainvoke(comparison_prompt)
+        if first_response.content.strip().lower() != 'yes':
+            return False
+
+        # Check solution completeness
+        solution_prompt = [
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
+        ]
+        
+        # Check with both verifiers
+        first_verifier = await verifier_model.ainvoke(solution_prompt)
+        second_verifier = await second_verifier_model.ainvoke(solution_prompt)
+        
+        # Only return True if both verifiers approve
+        return (first_verifier.content.strip().lower() == 'yes' and 
+                second_verifier.content.strip().lower() == 'yes')
+
+    except Exception as e:
+        print(f"Error in verify_solution: {e}")
+        return False
+
+def check_format(response: str, full_solution: str) -> bool:
+    """Check if response contains required words and is sufficiently detailed"""
+    lower_response = response.lower()
+    required_words = ['analysis', 'problem', 'step']
+    has_required_words = all(word in lower_response for word in required_words)
+    is_long_enough = len(response) >= len(full_solution) * 1.03
+    return has_required_words and is_long_enough
+
+async def process_example(
+    example: Dict,
+    running_id: int,
+    example_id: int,
+    solver_model,
+    verifier_model,
+    second_verifier_model,
+    max_attempts: int
+) -> Optional[Dict]:
+    """Process a single example with multiple attempts, keeping all responses"""
+    
+    try:
+        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+            print(f"Error processing example {running_id}: Invalid example format")
+            return None
+
+        prompt = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=example['problem'])
+        ]
+        
+        model_responses = []
+        verification_results = []
+        
+        for attempt in range(max_attempts):
+            response = await solver_model.ainvoke(prompt)
+            model_solution = response.content
+            model_responses.append(model_solution)
+            
+            # Skip verification if format check fails
+            if not check_format(model_solution, example['solution']):
+                verification_results.append(False)
+                continue
+                
+            # Verify solution
+            is_valid = await verify_solution(
+                model_solution,
+                example['solution'],
+                example['problem'],
+                verifier_model,
+                second_verifier_model
+            )
+            verification_results.append(is_valid)
+            
+            # Stop if we get a valid solution
+            if is_valid:
+                break
+                
+        return {
+            'id': example_id,
+            'problem': example['problem'],
+            'correct_solution': example['solution'],
+            'model_responses': model_responses,
+            'verification_results': verification_results,
+            'best_response': model_responses[verification_results.index(True)] if True in verification_results else None,
+            'solved': True in verification_results
+        }
+        
+    except Exception as e:
+        print(f"Error processing example {running_id}: {e}")
+        return None
+
+async def main():
+    start_time = datetime.now()
+    
+    parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
+    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
+                       default='LOCAL', help='Model to use for solving problems')
+    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='GEMINI_FLASH', help='Model to use for first verifier')
+    parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='CODER', help='Model to use for second verifier')
+    parser.add_argument('--split', type=str, default='train',
+                       help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--source', type=str, default='all',
+                       help='Filter problems by source (default: all)')
+    parser.add_argument('--max-concurrent', type=int, default=32,
+                       help='Maximum number of concurrent problems')
+    parser.add_argument('--max-attempts', type=int, default=5,
+                       help='Maximum attempts per problem')
+    parser.add_argument('--temperature', type=float, default=0.1,
+                       help='Temperature for model generation')
+    args = parser.parse_args()
+
+    if args.max_concurrent < 1:
+        print("Error: Maximum concurrent problems must be at least 1")
+        return
+
+    try:
+        username = HfApi().whoami()["name"]
+        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        return
+
+    if args.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == args.source)
+    
+    dataset = dataset.shuffle(seed=42)
+    print(f"\nDataset size: {len(dataset)} examples")
+
+    if len(dataset) == 0:
+        print("Error: Dataset is empty!")
+        return
+
+    solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
+    verifier_model = get_model(ModelOption[args.verifier], temp=0)
+    second_verifier_model = get_model(ModelOption[args.second_verifier], temp=0)
+
+    # Initialize results directory and files
+    os.makedirs('results', exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_file = os.path.join('results', f"synthetic_results_{timestamp}.json")
+
+    # Process examples with controlled concurrency
+    semaphore = asyncio.Semaphore(args.max_concurrent)
+
+    async def process_with_semaphore(example, running_id):
+        async with semaphore:
+            return await process_example(
+                example, running_id, example['id'],
+                solver_model, verifier_model, second_verifier_model,
+                args.max_attempts
+            )
+
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
+    
+    # Process examples with progress bar
+    results = []
+    progress_bar = tqdm(total=len(dataset), desc="Processing examples")
+    
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+        if result:
+            results.append(result)
+            
+            # Save intermediate results every 100 examples
+            if len(results) % 100 == 0:
+                solved_count = sum(1 for r in results if r['solved'])
+                print(f"\nProcessed {len(results)} examples:")
+                print(f"Current success rate: {solved_count}/{len(results)} = {(solved_count/len(results))*100:.2f}%")
+                
+                with open(results_file, 'w') as f:
+                    json.dump({
+                        'results': results,
+                        'metadata': {
+                            'solver': args.solver,
+                            'verifier': args.verifier,
+                            'second_verifier': args.second_verifier,
+                            'temperature': args.temperature,
+                            'max_attempts': args.max_attempts
+                        }
+                    }, f, indent=2)
+        
+        progress_bar.update(1)
+    
+    progress_bar.close()
+
+    if not results:
+        print("\nNo examples were successfully processed.")
+        return
+
+    # Calculate and display final statistics
+    solved_count = sum(1 for r in results if r['solved'])
+    success_rate = (solved_count / len(results)) * 100
+
+    print("\nFinal Results:")
+    print(f"Total examples processed: {len(results)}")
+    print(f"Successfully solved: {solved_count}/{len(results)} = {success_rate:.2f}%")
+    
+    # Calculate average attempts needed for successful solutions
+    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+    if successful_attempts:
+        avg_attempts = sum(successful_attempts) / len(successful_attempts)
+        print(f"Average attempts for successful solutions: {avg_attempts:.2f}")
+
+    # Save final results
+    with open(results_file, 'w') as f:
+        json.dump({
+            'results': results,
+            'metadata': {
+                'solver': args.solver,
+                'verifier': args.verifier,
+                'second_verifier': args.second_verifier,
+                'temperature': args.temperature,
+                'max_attempts': args.max_attempts,
+                'final_success_rate': success_rate,
+                'average_attempts_when_successful': avg_attempts if successful_attempts else None,
+                'total_duration_seconds': (datetime.now() - start_time).total_seconds()
+            }
+        }, f, indent=2)
+    
+    print(f"\nResults saved to {results_file}")
+    print(f"Total execution time: {datetime.now() - start_time}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
