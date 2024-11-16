@@ -131,27 +131,29 @@ async def process_example(
             model_solution = response.content
             model_responses.append(model_solution)
             
-            # Skip verification if format check fails
+            # Check format and verify solution
             if not check_format(model_solution, example['solution']):
                 verification_results.append(0)
-                continue
+            else:
+                level = await verify_solution(
+                    model_solution,
+                    example['solution'],
+                    example['problem'],
+                    verifier_model,
+                    second_verifier_model
+                )
+                verification_results.append(level)
                 
-            # Verify solution
-            level = await verify_solution(
-                model_solution,
-                example['solution'],
-                example['problem'],
-                verifier_model,
-                second_verifier_model
-            )
-            verification_results.append(level)
+                # If we get a valid solution (level 4) on first attempt,
+                # try one more time to get a negative example for DPO
+                if level == 4 and attempt == 0:
+                    continue
+                # Otherwise stop on success
+                elif level == 4:
+                    break
             
-            # If we get a valid solution (level 4) on first attempt,
-            # try one more time to get a negative example for DPO
-            if level == 4 and attempt == 0:
-                continue
-            # Otherwise stop on success
-            elif level == 4:
+            # Break if we've hit max attempts
+            if len(verification_results) >= max_attempts:
                 break
         
         # Count occurrences of each verification level
