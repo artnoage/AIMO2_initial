@@ -42,7 +42,7 @@ async def verify_solution(
     second_verifier_model
 ) -> tuple[int, str]:
     """
-    Returns (verification_level, status_message) where verification_level is:
+    Returns (verification_level, _) where verification_level is:
     0 - Failed format check
     1 - Failed answer verification
     2 - Failed first solution verification
@@ -54,7 +54,7 @@ async def verify_solution(
     correct_answer = extract_answer_from_solution(correct_solution)
     
     if model_answer is None or correct_answer is None or model_solution is None:
-        return 0, "Failed format check - missing boxed answer"
+        return 0, ""
 
     try:
         # Check answer equivalence
@@ -64,7 +64,7 @@ async def verify_solution(
         ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
         if first_response.content.strip().lower() != 'yes':
-            return 1, "Failed answer verification"
+            return 1, ""
 
         # Check solution completeness with first verifier
         solution_prompt = [
@@ -74,18 +74,17 @@ async def verify_solution(
         
         first_verifier = await verifier_model.ainvoke(solution_prompt)
         if first_verifier.content.strip().lower() != 'yes':
-            return 2, "Failed first solution verification"
+            return 2, ""
             
         # Only check second verifier if first one passed
         second_verifier = await second_verifier_model.ainvoke(solution_prompt)
         if second_verifier.content.strip().lower() != 'yes':
-            return 3, "Failed second solution verification"
+            return 3, ""
             
-        return 4, "Passed all verifications"
+        return 4, ""
 
     except Exception as e:
-        print(f"Error in verify_solution: {e}")
-        return 0, f"Verification error: {str(e)}"
+        return 0, ""
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
@@ -126,12 +125,11 @@ async def process_example(
             
             # Skip verification if format check fails
             if not check_format(model_solution, example['solution']):
-                print(f"\nExample {running_id}: Failed format check")
                 verification_results.append(0)
                 continue
                 
             # Verify solution
-            level, status = await verify_solution(
+            level, _ = await verify_solution(
                 model_solution,
                 example['solution'],
                 example['problem'],
@@ -139,7 +137,6 @@ async def process_example(
                 second_verifier_model
             )
             verification_results.append(level)
-            print(f"\nExample {running_id}: {status}")
             
             # Stop if we get a valid solution (level 4)
             if level == 4:
