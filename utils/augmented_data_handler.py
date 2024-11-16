@@ -30,15 +30,41 @@ def handle_augmented_data_file(filename: str) -> bool:
             return True
         print("Invalid choice. Please try again.")
 
-def get_existing_ids(filename: str) -> set:
-    """Get set of existing IDs from augmented data file"""
+def get_existing_ids(filename: str) -> set[int]:
+    """
+    Get set of existing IDs from augmented data file.
+    Returns a set of integer IDs that have already been processed.
+    Handles missing/corrupt files and invalid entries gracefully.
+    """
     if not os.path.exists(filename):
         return set()
         
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
-            return {item['id'] for item in existing_data}
+            
+        existing_ids = set()
+        skipped = 0
+        
+        for item in existing_data:
+            try:
+                if isinstance(item, dict) and 'id' in item:
+                    id_val = item['id']
+                    if isinstance(id_val, (int, str)):
+                        # Convert string IDs to int if needed
+                        existing_ids.add(int(id_val))
+                    else:
+                        skipped += 1
+                else:
+                    skipped += 1
+            except (ValueError, TypeError):
+                skipped += 1
+                
+        if skipped > 0:
+            print(f"\nWarning: Skipped {skipped} entries with invalid/missing IDs")
+            
+        return existing_ids
+        
     except json.JSONDecodeError as e:
         print(f"\nWarning: Could not parse existing augmented data file ({str(e)})")
         print("The file may be corrupted. Backing it up and starting fresh.")
@@ -49,6 +75,9 @@ def get_existing_ids(filename: str) -> set:
         os.rename(filename, backup_name)
         print(f"Backed up to: {backup_name}")
         
+        return set()
+    except Exception as e:
+        print(f"\nWarning: Unexpected error reading augmented data file: {str(e)}")
         return set()
 
 def save_augmented_data(data: List[Dict], filename: str, examples_processed: int) -> None:
