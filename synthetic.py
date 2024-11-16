@@ -183,11 +183,11 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=64,
+    parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems')
-    parser.add_argument('--max-attempts', type=int, default=10,
+    parser.add_argument('--max-attempts', type=int, default=20,
                        help='Maximum attempts per problem')
-    parser.add_argument('--temperature', type=float, default=0.7,
+    parser.add_argument('--temperature', type=float, default=0.8,
                        help='Temperature for model generation')
     args = parser.parse_args()
 
