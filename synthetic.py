@@ -48,9 +48,9 @@ async def verify_solution(
     problem: str,
     verifier_model,
     second_verifier_model
-) -> tuple[int, str]:
+) -> int:
     """
-    Returns (verification_level, _) where verification_level is:
+    Returns verification_level where:
     0 - Failed format check
     1 - Failed answer verification
     2 - Failed first solution verification
@@ -62,17 +62,17 @@ async def verify_solution(
     correct_answer = extract_answer_from_solution(correct_solution)
     
     if model_answer is None or correct_answer is None or model_solution is None:
-        return 0, ""
+        return 0
 
     try:
-        # Check answer equivalence
+        # Check answer equivalence 
         comparison_prompt = [
             SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
         ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
         if first_response.content.strip().lower() != 'yes':
-            return 1, ""
+            return 1
 
         # Check solution completeness with first verifier
         solution_prompt = [
@@ -82,17 +82,17 @@ async def verify_solution(
         
         first_verifier = await verifier_model.ainvoke(solution_prompt)
         if first_verifier.content.strip().lower() != 'yes':
-            return 2, ""
+            return 2
             
         # Only check second verifier if first one passed
         second_verifier = await second_verifier_model.ainvoke(solution_prompt)
         if second_verifier.content.strip().lower() != 'yes':
-            return 3, ""
+            return 3
             
-        return 4, ""
+        return 4
 
     except Exception as e:
-        return 0, ""
+        return 0
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
@@ -137,7 +137,7 @@ async def process_example(
                 continue
                 
             # Verify solution
-            level, _ = await verify_solution(
+            level = await verify_solution(
                 model_solution,
                 example['solution'],
                 example['problem'],
