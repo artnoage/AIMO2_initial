@@ -40,14 +40,21 @@ async def verify_solution(
     problem: str,
     verifier_model,
     second_verifier_model
-) -> bool:
-    """Returns True only if solution passes all verification checks"""
+) -> tuple[int, str]:
+    """
+    Returns (verification_level, status_message) where verification_level is:
+    0 - Failed format check
+    1 - Failed answer verification
+    2 - Failed first solution verification
+    3 - Failed second solution verification
+    4 - Passed all checks
+    """
     
     model_answer = extract_answer_from_solution(model_solution)
     correct_answer = extract_answer_from_solution(correct_solution)
     
     if model_answer is None or correct_answer is None or model_solution is None:
-        return False
+        return 0, "Failed format check - missing boxed answer"
 
     try:
         # Check answer equivalence
@@ -57,25 +64,28 @@ async def verify_solution(
         ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
         if first_response.content.strip().lower() != 'yes':
-            return False
+            return 1, "Failed answer verification"
 
-        # Check solution completeness
+        # Check solution completeness with first verifier
         solution_prompt = [
             SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
         
-        # Check with both verifiers
         first_verifier = await verifier_model.ainvoke(solution_prompt)
+        if first_verifier.content.strip().lower() != 'yes':
+            return 2, "Failed first solution verification"
+            
+        # Only check second verifier if first one passed
         second_verifier = await second_verifier_model.ainvoke(solution_prompt)
-        
-        # Only return True if both verifiers approve
-        return (first_verifier.content.strip().lower() == 'yes' and 
-                second_verifier.content.strip().lower() == 'yes')
+        if second_verifier.content.strip().lower() != 'yes':
+            return 3, "Failed second solution verification"
+            
+        return 4, "Passed all verifications"
 
     except Exception as e:
         print(f"Error in verify_solution: {e}")
-        return False
+        return 0, f"Verification error: {str(e)}"
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
@@ -116,21 +126,23 @@ async def process_example(
             
             # Skip verification if format check fails
             if not check_format(model_solution, example['solution']):
-                verification_results.append(False)
+                print(f"\nExample {running_id}: Failed format check")
+                verification_results.append(0)
                 continue
                 
             # Verify solution
-            is_valid = await verify_solution(
+            level, status = await verify_solution(
                 model_solution,
                 example['solution'],
                 example['problem'],
                 verifier_model,
                 second_verifier_model
             )
-            verification_results.append(is_valid)
+            verification_results.append(level)
+            print(f"\nExample {running_id}: {status}")
             
-            # Stop if we get a valid solution
-            if is_valid:
+            # Stop if we get a valid solution (level 4)
+            if level == 4:
                 break
                 
         return {
