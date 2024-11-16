@@ -14,9 +14,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_ORIGINAL = "mistralai/Mathstral-7B-v0.1"
-    LOCAL_ORIGINAL_Q= "mathstral-7b-v0.1"
-    LOCAL = "qwendpo/"
+    LOCAL = "mistraldpo/"
     GROQ = "llama-3.1-70b-versatile"
     NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
@@ -36,19 +34,6 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:6000/v1")
-    elif model == ModelOption.LOCAL_ORIGINAL:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://localhost:6000/v1")
-    elif model == ModelOption.LOCAL_ORIGINAL_Q:
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url="http://192.168.178.33:6000/v1")
-    
     elif model == ModelOption.SAMBA_BIG or model==ModelOption.SAMBA_SMALL :
         return ChatOpenAI(
             model=model.value,
