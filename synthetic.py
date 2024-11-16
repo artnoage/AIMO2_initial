@@ -196,10 +196,30 @@ async def main():
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
     second_verifier_model = get_model(ModelOption[args.second_verifier], temp=0)
 
-    # Initialize results directory and files
+    # Initialize directories and files
     os.makedirs('results', exist_ok=True)
+    os.makedirs('augmented_datasets', exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     results_file = os.path.join('results', f"synthetic_results_{timestamp}.json")
+    augmented_filename = os.path.join('augmented_datasets', "synthetic_augmented.json")
+    
+    # Get existing IDs to skip
+    existing_ids = get_existing_ids(augmented_filename)
+    if existing_ids:
+        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
+    
+    # Filter out examples with existing IDs
+    dataset = dataset.filter(lambda x: x['id'] not in existing_ids)
+    print(f"\nWill process {len(dataset)} new examples")
+    
+    if len(dataset) == 0:
+        print("All examples have already been processed!")
+        return
+        
+    # Check if user wants to proceed with augmented data handling
+    if not handle_augmented_data_file(augmented_filename):
+        print("Operation cancelled by user.")
+        return
 
     # Process examples with controlled concurrency
     semaphore = asyncio.Semaphore(args.max_concurrent)
@@ -216,6 +236,7 @@ async def main():
     
     # Process examples with progress bar
     results = []
+    current_batch = []
     progress_bar = tqdm(total=len(dataset), desc="Processing examples")
     
     for coro in asyncio.as_completed(tasks):
@@ -223,12 +244,28 @@ async def main():
         if result:
             results.append(result)
             
+            # Add to current batch
+            augmented_example = {
+                'id': result['id'],
+                'problem': result['problem'],
+                'correct_solution': result['correct_solution'],
+                'model_responses': result['model_responses'],
+                'verification_results': result['verification_results'],
+                'solved': result['solved']
+            }
+            current_batch.append(augmented_example)
+            
             # Save intermediate results every 100 examples
             if len(results) % 100 == 0:
                 solved_count = sum(1 for r in results if r['solved'])
                 print(f"\nProcessed {len(results)} examples:")
                 print(f"Current success rate: {solved_count}/{len(results)} = {(solved_count/len(results))*100:.2f}%")
                 
+                # Save current batch of augmented data
+                save_augmented_data(current_batch, augmented_filename, len(results))
+                current_batch = []
+                
+                # Save intermediate results
                 with open(results_file, 'w') as f:
                     json.dump({
                         'results': results,
@@ -279,7 +316,12 @@ async def main():
             }
         }, f, indent=2)
     
+    # Save any remaining augmented data
+    if current_batch:
+        save_augmented_data(current_batch, augmented_filename, len(results))
+        
     print(f"\nResults saved to {results_file}")
+    print(f"Augmented data saved to {augmented_filename}")
     print(f"Total execution time: {datetime.now() - start_time}")
 
 if __name__ == "__main__":
