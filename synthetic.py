@@ -271,6 +271,19 @@ async def main():
                 print(f"\nProcessed {len(results)} examples:")
                 print(f"Current success rate: {solved_count}/{len(results)} = {(solved_count/len(results))*100:.2f}%")
                 
+                # Count verification levels
+                level_counts = {i: 0 for i in range(5)}  # 0-4 levels
+                for r in results:
+                    for level in r['verification_results']:
+                        level_counts[level] += 1
+                        
+                print("\nVerification Level Statistics:")
+                print(f"Level 0 (Format Check Failed): {level_counts[0]} times")
+                print(f"Level 1 (Answer Verification Failed): {level_counts[1]} times")
+                print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
+                print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
+                print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
+                
                 # Save current batch of augmented data
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
@@ -303,6 +316,19 @@ async def main():
     print("\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
     print(f"Successfully solved: {solved_count}/{len(results)} = {success_rate:.2f}%")
+    
+    # Count final verification levels
+    level_counts = {i: 0 for i in range(5)}  # 0-4 levels
+    for r in results:
+        for level in r['verification_results']:
+            level_counts[level] += 1
+            
+    print("\nFinal Verification Level Statistics:")
+    print(f"Level 0 (Format Check Failed): {level_counts[0]} times")
+    print(f"Level 1 (Answer Verification Failed): {level_counts[1]} times")
+    print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
+    print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
+    print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
     
     # Calculate average attempts needed for successful solutions
     successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
