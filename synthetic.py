@@ -1,37 +1,26 @@
 import os
-import re
 import json
 import asyncio
 import argparse
-from enum import Enum
 from typing import Optional, Dict
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
-from typing import  Dict, Optional
-from langchain_core.messages import  HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
-# Load environment variables from .env file
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a precise mathematical problem solver. You receive problems with partial solutions as hints.
+SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
-PROCESS:
-▪ Silently analyze the given hint for relevant techniques and insights.
-▪ Develop a complete, independent solution from scratch.
-
-REQUIRED:
-▪ Begin by listing applicable theorems, definitions, or techniques you will use.
-▪ For each proof step, include a justification in brackets. Use clear LaTeX notation for all mathematical expressions.
-
-PROHIBITED:
-▪ Avoid restating the problem.
-▪ Do not reference or rely on the partial solution.
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
 
 FORMAT:
 
@@ -51,111 +40,142 @@ Step 4. Thus, \\( abc \\leq 1 \\), as required.
 For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
 
 **ANSWER**:
-\\(\\boxed{\\text{final answer}}\\) 
-"""
+\\(\\boxed{\\text{result}}\\) """
 
-
-
-async def compare_math_answers(model_answer: Optional[str], model_solution: Optional[str], correct_answer: Optional[str], problem: str, verifier_model, second_verifier_model) -> tuple[bool, bool, bool]:
-    """Use two verifier models to validate mathematical answers with retries"""
-    if model_answer is None or correct_answer is None or model_solution is None:
-        return False, False, False
-        
-    # First verification just compares the boxed answers for equivalence
-    comparison_prompt = [
-        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-    ]
+async def verify_solution(
+    model_solution: Optional[str],
+    correct_solution: Optional[str],
+    problem: str,
+    verifier_model,
+    second_verifier_model
+) -> int:
+    """
+    Returns verification_level where:
+    0 - Failed format check
+    1 - Failed answer verification
+    2 - Failed first solution verification
+    3 - Failed second solution verification
+    4 - Passed all checks
+    """
     
+    model_answer = extract_answer_from_solution(model_solution)
+    correct_answer = extract_answer_from_solution(correct_solution)
+    
+    if model_answer is None or correct_answer is None or model_solution is None:
+        return 0
+
     try:
-        # First verification - just comparing answers
+        # Check answer equivalence 
+        comparison_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+        ]
         first_response = await verifier_model.ainvoke(comparison_prompt)
-        first_result = first_response.content.strip().lower() == 'yes'
-            
-        # Second verification checks if the full solution is correct
-        second_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct and complete, or 'no' if it contains any errors or is incomplete. Just one word, no explanation."),
+        if first_response.content.strip().lower() != 'yes':
+            return 1
+
+        # Check solution completeness with first verifier
+        solution_prompt = [
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
         ]
         
-        second_response = await second_verifier_model.ainvoke(second_prompt)
-        second_result = second_response.content.strip().lower() == 'yes'
-        
-        return first_result and second_result, first_result, second_result
-        
-    except Exception:
-        return False, False, False
+        first_verifier = await verifier_model.ainvoke(solution_prompt)
+        if first_verifier.content.strip().lower() != 'yes':
+            return 2
+            
+        # Only check second verifier if first one passed
+        second_verifier = await second_verifier_model.ainvoke(solution_prompt)
+        if second_verifier.content.strip().lower() != 'yes':
+            return 3
+            
+        return 4
 
-def get_partial_solution(solution: str) -> str:
-    """Get partial solution by removing last three lines if more than 3 lines,
-    otherwise return first line"""
-    lines = solution.strip().split('\n\n')
-    if len(lines) <= 4:
-        return lines[0]
-    return '\n\n'.join(lines[:-4])
+    except Exception as e:
+        return 0
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, max_attempts: int) -> Optional[Dict]:
-    """Process a single example with multiple attempts"""
+def check_format(response: str, full_solution: str) -> bool:
+    """Check if response contains required words and is sufficiently detailed"""
+    lower_response = response.lower()
+    required_words = ['analysis', 'problem', 'step']
+    has_required_words = all(word in lower_response for word in required_words)
+    is_long_enough = len(response) >= len(full_solution) * 1.03
+    return has_required_words and is_long_enough
+
+async def process_example(
+    example: Dict,
+    running_id: int,
+    example_id: int,
+    solver_model,
+    verifier_model,
+    second_verifier_model,
+    max_attempts: int
+) -> Optional[Dict]:
+    """Process a single example with multiple attempts, keeping all responses"""
+    
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
-            
-        correct_answer = extract_answer_from_solution(example['solution'])
-        if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {running_id}")
-            return None
 
-        # Combine problem with partial solution
-        partial_solution = get_partial_solution(example['solution'])
-        combined_prompt = f"{example['problem']}\n\nPartial solution:\n{partial_solution}"
-        
         prompt = [
             SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=combined_prompt)
+            HumanMessage(content=example['problem'])
         ]
         
-        # Multiple attempts until correct or max attempts reached
-        attempts = 0
-        is_correct = False
-        solution = None
-        model_answer = None
-        verifier_disagreements = 0
+        model_responses = []
+        verification_results = []
         
-        while attempts < max_attempts and not is_correct:
-            attempts += 1
+        for attempt in range(max_attempts):
             response = await solver_model.ainvoke(prompt)
-            solution = response.content
-            model_answer = extract_answer_from_solution(solution)
-            partial_answer = extract_answer_from_solution(partial_solution)
-            is_correct, first_verify, second_verify = await compare_math_answers(
-                model_answer, solution, correct_answer,
-                example["problem"], verifier_model, second_verifier_model
-            )
-            if first_verify != second_verify:
-                verifier_disagreements += 1
-            if is_correct:
-                break
+            model_solution = response.content
+            model_responses.append(model_solution)
+            
+            # Check format and verify solution
+            if not check_format(model_solution, example['solution']):
+                verification_results.append(0)
+            else:
+                level = await verify_solution(
+                    model_solution,
+                    example['solution'],
+                    example['problem'],
+                    verifier_model,
+                    second_verifier_model
+                )
+                verification_results.append(level)
                 
-        # Print results for this example
-        attempts_str = f" (after {attempts} attempts)" if attempts > 1 else ""
-        disagreement_str = f" [Verifiers disagreed {verifier_disagreements} times]" if verifier_disagreements > 0 else ""
-        status = '✓' if is_correct else '✗'
-        print(f"\nProblem {running_id + 1}: {status}{attempts_str}{disagreement_str}")
-        print(f"Expected Answer: {correct_answer}")
-        print(f"Model's Answer: {model_answer}")
-        print("-" * 80)
+                # If we get a valid solution (level 4) on first attempt,
+                # try one more time to get a negative example for DPO
+                if level == 4:
+                    if attempt == 0:
+                        continue  # Get one more attempt for a negative example
+                    break  # Already have a good and bad example, stop here
+                
+                # Break if we've hit max attempts
+                if len(verification_results) >= max_attempts:
+                    break
         
+        # Count occurrences of each verification level
+        level_counts = {i: verification_results.count(i) for i in range(5)}
+        
+        # Print verification results for this problem
+        print(f"\nProblem {running_id + 1}:")
+        print(f"Format Check Failed: {level_counts[0]}/{len(verification_results)}")
+        print(f"Answer Check Failed: {level_counts[1]}/{len(verification_results)}")
+        print(f"First Verifier Failed: {level_counts[2]}/{len(verification_results)}")
+        print(f"Second Verifier Failed: {level_counts[3]}/{len(verification_results)}")
+        print(f"All Checks Passed: {level_counts[4]}/{len(verification_results)}")
+        print(f"Final Status: {'Solved' if 4 in verification_results else 'Failed'}")
+        print("-" * 80)
+                
         return {
             'id': example_id,
             'problem': example['problem'],
-            'partial_solution': partial_solution,
-            'correct_answer': correct_answer,
-            'model_response': solution,
-            'model_answer': model_answer,
-            'is_correct': is_correct,
-            'verifier_disagreements': verifier_disagreements,
-            'attempts': attempts
+            'correct_solution': example['solution'],
+            'model_responses': model_responses,
+            'verification_results': verification_results,
+            'best_response': model_responses[verification_results.index(4)] if 4 in verification_results else None,
+            'solved': 4 in verification_results
         }
         
     except Exception as e:
@@ -167,17 +187,21 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL_ORIGINAL', help='Model to use for solving problems')
+                       default='LOCAL', help='Model to use for solving problems')
     parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for verifying answers')
-    parser.add_argument('--split', type=str, default='test',
+                       default='GEMINI_FLASH', help='Model to use for first verifier')
+    parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
+                       default='CODER', help='Model to use for second verifier')
+    parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=100,
-                       help='Maximum number of concurrent problems (default: 4)')
-    parser.add_argument('--max-attempts', type=int, default=5,
-                       help='Maximum number of attempts to get correct solution (default: 5)')
+    parser.add_argument('--max-concurrent', type=int, default=512,
+                       help='Maximum number of concurrent problems')
+    parser.add_argument('--max-attempts', type=int, default=20,
+                       help='Maximum attempts per problem')
+    parser.add_argument('--temperature', type=float, default=0.8,
+                       help='Temperature for model generation')
     args = parser.parse_args()
 
     if args.max_concurrent < 1:
@@ -194,59 +218,23 @@ async def main():
     if args.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == args.source)
     
-    dataset = dataset.shuffle(seed=42)
-    num_examples = len(dataset)
-    
-    print("\nDataset Information:")
-    print(f"Number of examples: {num_examples}")
+    dataset = dataset.shuffle(seed=24)
+    print(f"\nDataset size: {len(dataset)} examples")
 
-    if num_examples == 0:
+    if len(dataset) == 0:
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=0.2)
+    solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
     verifier_model = get_model(ModelOption[args.verifier], temp=0)
-    second_verifier_model = get_model(ModelOption[args.verifier], temp=0)  # Same model type as first verifier
-    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
+    second_verifier_model = get_model(ModelOption[args.second_verifier], temp=0)
 
-    # Create example data with dataset IDs and build lookup map
-    example_data = []
-    example_map = {}
-    for ex in dataset:
-        example = {
-            'id': ex['id'],
-            'problem': ex['problem'],
-            'solution': ex['solution']
-        }
-        example_data.append(example)
-        example_map[ex['id']] = example
-    
-    def calculate_error_rate(results):
-        if not results:
-            return 0.0
-        correct_count = sum(1 for r in results if r['is_correct'])
-        return 1.0 - (correct_count / len(results))
-
-    # Process examples with controlled concurrency
-    results = []
-    error_rate_points = []
-    total_examples = len(example_data)
-    print(f"\nStarting processing of {total_examples} examples...")
-
-    # Create a semaphore to limit concurrency
-    semaphore = asyncio.Semaphore(args.max_concurrent)
-
-    async def process_with_semaphore(example, running_id):
-        async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, second_verifier_model, args.max_attempts)
-
-    # Create tasks for all examples
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
-    
-    # Initialize augmented dataset filename
+    # Initialize directories and files
+    os.makedirs('results', exist_ok=True)
     os.makedirs('augmented_datasets', exist_ok=True)
-    augmented_filename = os.path.join('augmented_datasets', 
-                                    f"synthetic_augmented_{args.solver}_{args.verifier}.json")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_file = os.path.join('results', f"synthetic_results_{timestamp}.json")
+    augmented_filename = os.path.join('augmented_datasets', "synthetic_augmented.json")
     
     # Get existing IDs to skip
     existing_ids = get_existing_ids(augmented_filename)
@@ -254,124 +242,205 @@ async def main():
         print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
     
     # Filter out examples with existing IDs
-    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
-    if not example_data:
+    dataset = dataset.filter(lambda x: x['id'] not in existing_ids)
+    print(f"\nWill process {len(dataset)} new examples")
+    
+    if len(dataset) == 0:
         print("All examples have already been processed!")
         return
         
-    print(f"\nWill process {len(example_data)} new examples")
-    
     # Check if user wants to proceed with augmented data handling
     if not handle_augmented_data_file(augmented_filename):
         print("Operation cancelled by user.")
         return
-        
-    # Process all examples with progress bar
-    progress_bar = tqdm(total=total_examples, desc="Processing examples")
+
+    # Process examples with controlled concurrency
+    semaphore = asyncio.Semaphore(args.max_concurrent)
+
+    async def process_with_semaphore(example, running_id):
+        async with semaphore:
+            return await process_example(
+                example, running_id, example['id'],
+                solver_model, verifier_model, second_verifier_model,
+                args.max_attempts
+            )
+
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
+    
+    # Process examples with progress bar
+    results = []
     current_batch = []
+    progress_bar = tqdm(total=len(dataset), desc="Processing examples")
+    
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
             results.append(result)
-            # Add to current batch using data we already have
+            
+            # Add to current batch
             augmented_example = {
                 'id': result['id'],
                 'problem': result['problem'],
-                'solution': example_map[result['id']]['solution'],
-                'partial_solution': result['partial_solution'],
-                'model_response': result['model_response'],
-                'is_correct': result['is_correct']
+                'correct_solution': result['correct_solution'],
+                'model_responses': result['model_responses'],
+                'verification_results': result['verification_results'],
+                'solved': result['solved']
             }
             current_batch.append(augmented_example)
             
-            # Save error rate every 100 examples
+            # Save intermediate results every 100 examples
             if len(results) % 100 == 0:
-                # Calculate error rate for the last 100 results
-                last_hundred = results[-100:]
-                batch_error_rate = calculate_error_rate(last_hundred)
-                # Also calculate cumulative error rate
-                cumulative_error_rate = calculate_error_rate(results)
-                error_rate_points.append({
-                    'examples_processed': len(results),
-                    'batch_error_rate': batch_error_rate,
-                    'cumulative_error_rate': cumulative_error_rate
-                })
-                print(f"\nAt {len(results)} examples:")
-                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
-                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
+                solved_count = sum(1 for r in results if r['solved'])
+                print(f"\nProcessed {len(results)} examples:")
+                print(f"Current success rate: {solved_count}/{len(results)} = {(solved_count/len(results))*100:.2f}%")
                 
-                intermediate_filename = os.path.join('results', 
-                    f"synthetic_intermediate_{args.solver}_{args.verifier}.json")
-                output_data = {
-                    'error_rate_points': error_rate_points
-                }
-                os.makedirs('results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"\nSaved intermediate results after {len(results)} examples")
-            
-            # Save current batch of augmented data
-            if current_batch:
+                # Count verification levels
+                level_counts = {i: 0 for i in range(5)}  # 0-4 levels
+                for r in results:
+                    for level in r['verification_results']:
+                        level_counts[level] += 1
+                        
+                print("\nVerification Level Statistics:")
+                print(f"Level 0 (Format Check Failed): {level_counts[0]} times")
+                print(f"Level 1 (Answer Verification Failed): {level_counts[1]} times")
+                print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
+                print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
+                print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
+                
+                # Save current batch of augmented data
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
+                
+                # Calculate detailed statistics
+                total_attempts = sum(len(r['verification_results']) for r in results)
+                avg_attempts = total_attempts / len(results)
+                successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+                avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
+                
+                # Calculate level ratios
+                total_verifications = sum(len(r['verification_results']) for r in results)
+                level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
+                
+                print("\nDetailed Statistics:")
+                print(f"Average attempts per problem: {avg_attempts:.2f}")
+                print(f"Average attempts for successful solutions: {avg_successful_attempts:.2f}")
+                print("\nVerification Level Ratios:")
+                print(f"Format Check Failed: {level_ratios[0]:.2f}%")
+                print(f"Answer Check Failed: {level_ratios[1]:.2f}%")
+                print(f"First Verifier Failed: {level_ratios[2]:.2f}%")
+                print(f"Second Verifier Failed: {level_ratios[3]:.2f}%")
+                print(f"All Checks Passed: {level_ratios[4]:.2f}%")
+                
+                # Save intermediate results with detailed statistics
+                with open(results_file, 'w') as f:
+                    json.dump({
+                        'scores': [{
+                            'id': r['id'],
+                            'solved': r['solved'],
+                            'attempts_used': len(r['verification_results'])
+                        } for r in results],
+                        'metadata': {
+                            'solver': args.solver,
+                            'verifier': args.verifier,
+                            'second_verifier': args.second_verifier,
+                            'temperature': args.temperature,
+                            'max_attempts': args.max_attempts,
+                            'examples_processed': len(results),
+                            'success_rate': (solved_count/len(results)) * 100,
+                            'statistics': {
+                                'average_attempts': avg_attempts,
+                                'average_successful_attempts': avg_successful_attempts,
+                                'level_ratios': level_ratios
+                            }
+                        }
+                    }, f, indent=2)
+        
         progress_bar.update(1)
+    
     progress_bar.close()
 
     if not results:
         print("\nNo examples were successfully processed.")
         return
 
-    results.sort(key=lambda x: x['id'])
-
-    correct_count = sum(1 for r in results if r['is_correct'])
-    accuracy = (correct_count / len(results)) * 100 if results else 0
+    # Calculate and display final statistics
+    solved_count = sum(1 for r in results if r['solved'])
+    success_rate = (solved_count / len(results)) * 100
 
     print("\nFinal Results:")
     print(f"Total examples processed: {len(results)}")
-    print(f"Final Accuracy: {correct_count}/{len(results)} = {accuracy:.2f}%")
-    total_disagreements = sum(r['verifier_disagreements'] for r in results)
-    print(f"Total verifier disagreements: {total_disagreements}")
-    print(f"Average disagreements per example: {total_disagreements/len(results):.2f}")
+    print(f"Successfully solved: {solved_count}/{len(results)} = {success_rate:.2f}%")
+    
+    # Count final verification levels
+    level_counts = {i: 0 for i in range(5)}  # 0-4 levels
+    for r in results:
+        for level in r['verification_results']:
+            level_counts[level] += 1
+            
+    print("\nFinal Verification Level Statistics:")
+    print(f"Level 0 (Format Check Failed): {level_counts[0]} times")
+    print(f"Level 1 (Answer Verification Failed): {level_counts[1]} times")
+    print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
+    print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
+    print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
+    
+    # Calculate average attempts needed for successful solutions
+    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+    if successful_attempts:
+        avg_attempts = sum(successful_attempts) / len(successful_attempts)
+        print(f"Average attempts for successful solutions: {avg_attempts:.2f}")
 
-    # Save final results
-    os.makedirs('results', exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('results', 
-                                  f"synthetic_results_{args.solver}_{args.verifier}_{timestamp}.json")
+    # Calculate final detailed statistics
+    total_attempts = sum(len(r['verification_results']) for r in results)
+    avg_attempts = total_attempts / len(results)
+    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+    avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
     
-    # Save final error rate and points
-    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
-    final_cumulative_error_rate = calculate_error_rate(results)
-    error_rate_points.append({
-        'examples_processed': len(results),
-        'batch_error_rate': final_batch_error_rate,
-        'cumulative_error_rate': final_cumulative_error_rate
-    })
+    # Calculate final level ratios
+    total_verifications = sum(len(r['verification_results']) for r in results)
+    level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
     
-    output_data = {
-        'error_rate_points': error_rate_points,
-        'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate
-    }
-    with open(results_filename, 'w') as f:
-        json.dump(output_data, f, indent=2)
-    print(f"\nResults saved to {results_filename}")
+    print("\nFinal Detailed Statistics:")
+    print(f"Average attempts per problem: {avg_attempts:.2f}")
+    print(f"Average attempts for successful solutions: {avg_successful_attempts:.2f}")
+    print("\nFinal Verification Level Ratios:")
+    print(f"Format Check Failed: {level_ratios[0]:.2f}%")
+    print(f"Answer Check Failed: {level_ratios[1]:.2f}%")
+    print(f"First Verifier Failed: {level_ratios[2]:.2f}%")
+    print(f"Second Verifier Failed: {level_ratios[3]:.2f}%")
+    print(f"All Checks Passed: {level_ratios[4]:.2f}%")
     
-    # Save final augmented data batch
+    # Save final results with detailed statistics
+    with open(results_file, 'w') as f:
+        json.dump({
+            'scores': [{
+                'id': r['id'],
+                'solved': r['solved'],
+                'attempts_used': len(r['verification_results'])
+            } for r in results],
+            'metadata': {
+                'solver': args.solver,
+                'verifier': args.verifier,
+                'second_verifier': args.second_verifier,
+                'temperature': args.temperature,
+                'max_attempts': args.max_attempts,
+                'final_success_rate': success_rate,
+                'total_duration_seconds': (datetime.now() - start_time).total_seconds(),
+                'statistics': {
+                    'average_attempts': avg_attempts,
+                    'average_successful_attempts': avg_successful_attempts,
+                    'level_ratios': level_ratios
+                }
+            }
+        }, f, indent=2)
+    
+    # Save any remaining augmented data
     if current_batch:
         save_augmented_data(current_batch, augmented_filename, len(results))
-    
-    # Print error rate progression
-    print("\nError Rate Progression:")
-    for point in error_rate_points:
-        print(f"After {point['examples_processed']} examples:")
-        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
-        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
-
-    end_time = datetime.now()
-    total_duration = end_time - start_time
-    print(f"\nTotal execution time: {total_duration}")
-    print(f"Average time per example: {total_duration.total_seconds() / len(results):.2f} seconds")
+        
+    print(f"\nResults saved to {results_file}")
+    print(f"Augmented data saved to {augmented_filename}")
+    print(f"Total execution time: {datetime.now() - start_time}")
 
 if __name__ == "__main__":
     asyncio.run(main())
