@@ -310,13 +310,32 @@ async def main():
                 save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
                 
-                # Save intermediate results (scores only)
+                # Calculate detailed statistics
+                total_attempts = sum(len(r['verification_results']) for r in results)
+                avg_attempts = total_attempts / len(results)
+                successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+                avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
+                
+                # Calculate level ratios
+                total_verifications = sum(len(r['verification_results']) for r in results)
+                level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
+                
+                print("\nDetailed Statistics:")
+                print(f"Average attempts per problem: {avg_attempts:.2f}")
+                print(f"Average attempts for successful solutions: {avg_successful_attempts:.2f}")
+                print("\nVerification Level Ratios:")
+                print(f"Format Check Failed: {level_ratios[0]:.2f}%")
+                print(f"Answer Check Failed: {level_ratios[1]:.2f}%")
+                print(f"First Verifier Failed: {level_ratios[2]:.2f}%")
+                print(f"Second Verifier Failed: {level_ratios[3]:.2f}%")
+                print(f"All Checks Passed: {level_ratios[4]:.2f}%")
+                
+                # Save intermediate results with detailed statistics
                 with open(results_file, 'w') as f:
                     json.dump({
                         'scores': [{
                             'id': r['id'],
                             'solved': r['solved'],
-                            'verification_levels': r['verification_results'],
                             'attempts_used': len(r['verification_results'])
                         } for r in results],
                         'metadata': {
@@ -326,7 +345,12 @@ async def main():
                             'temperature': args.temperature,
                             'max_attempts': args.max_attempts,
                             'examples_processed': len(results),
-                            'success_rate': (sum(1 for r in results if r['solved']) / len(results)) * 100 if results else 0
+                            'success_rate': (solved_count/len(results)) * 100,
+                            'statistics': {
+                                'average_attempts': avg_attempts,
+                                'average_successful_attempts': avg_successful_attempts,
+                                'level_ratios': level_ratios
+                            }
                         }
                     }, f, indent=2)
         
@@ -365,13 +389,32 @@ async def main():
         avg_attempts = sum(successful_attempts) / len(successful_attempts)
         print(f"Average attempts for successful solutions: {avg_attempts:.2f}")
 
-    # Save final results (scores only)
+    # Calculate final detailed statistics
+    total_attempts = sum(len(r['verification_results']) for r in results)
+    avg_attempts = total_attempts / len(results)
+    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+    avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
+    
+    # Calculate final level ratios
+    total_verifications = sum(len(r['verification_results']) for r in results)
+    level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
+    
+    print("\nFinal Detailed Statistics:")
+    print(f"Average attempts per problem: {avg_attempts:.2f}")
+    print(f"Average attempts for successful solutions: {avg_successful_attempts:.2f}")
+    print("\nFinal Verification Level Ratios:")
+    print(f"Format Check Failed: {level_ratios[0]:.2f}%")
+    print(f"Answer Check Failed: {level_ratios[1]:.2f}%")
+    print(f"First Verifier Failed: {level_ratios[2]:.2f}%")
+    print(f"Second Verifier Failed: {level_ratios[3]:.2f}%")
+    print(f"All Checks Passed: {level_ratios[4]:.2f}%")
+    
+    # Save final results with detailed statistics
     with open(results_file, 'w') as f:
         json.dump({
             'scores': [{
                 'id': r['id'],
                 'solved': r['solved'],
-                'verification_levels': r['verification_results'],
                 'attempts_used': len(r['verification_results'])
             } for r in results],
             'metadata': {
@@ -381,9 +424,12 @@ async def main():
                 'temperature': args.temperature,
                 'max_attempts': args.max_attempts,
                 'final_success_rate': success_rate,
-                'average_attempts_when_successful': avg_attempts if successful_attempts else None,
                 'total_duration_seconds': (datetime.now() - start_time).total_seconds(),
-                'level_statistics': level_counts
+                'statistics': {
+                    'average_attempts': avg_attempts,
+                    'average_successful_attempts': avg_successful_attempts,
+                    'level_ratios': level_ratios
+                }
             }
         }, f, indent=2)
     
