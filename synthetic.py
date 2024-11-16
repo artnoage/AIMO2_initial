@@ -1,10 +1,8 @@
 import os
-import re
 import json
 import asyncio
 import argparse
-from enum import Enum
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
