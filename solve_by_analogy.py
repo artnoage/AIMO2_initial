@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.utils import ModelOption, get_model
 from typing import List, Dict, Optional
-from benchmark_numina import compare_math_answers
+from benchmark import compare_math_answers
 from langchain_core.messages import  HumanMessage,  SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
