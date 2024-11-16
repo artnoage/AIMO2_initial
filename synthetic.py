@@ -15,7 +15,7 @@ from tqdm import tqdm
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-SYSTEM_PROMPT = """You are a precise mathematical problem solver. You will be given a problem to solve.
+SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
 DO:
 ▪ List applicable theorems/techniques upfront
@@ -25,14 +25,22 @@ DO:
 FORMAT:
 
 **Problem Analysis and Approach**:
-1. Start by categorizing the problem
-2. List specific tools or theorems that will guide your solution
+1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
+2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
 
 **PROOF**:
-Step-by-step solution with justifications
+Example format for each step:
+Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
+
+Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
+Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
+Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
+Step 4. Thus, \\( abc \\leq 1 \\), as required.  
+
+For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
 
 **ANSWER**:
-\\(\\boxed{\\text{final answer}}\\) """
+\\(\\boxed{\\text{result}}\\) """
 
 async def verify_solution(
     model_solution: Optional[str],
