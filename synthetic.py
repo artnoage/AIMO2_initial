@@ -146,8 +146,12 @@ async def process_example(
             )
             verification_results.append(level)
             
-            # Stop if we get a valid solution (level 4)
-            if level == 4:
+            # If we get a valid solution (level 4) on first attempt,
+            # try one more time to get a negative example for DPO
+            if level == 4 and attempt == 0:
+                continue
+            # Otherwise stop on success
+            elif level == 4:
                 break
         
         # Count occurrences of each verification level
