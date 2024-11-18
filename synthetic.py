@@ -198,9 +198,9 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems')
-    parser.add_argument('--max-attempts', type=int, default=20,
+    parser.add_argument('--max-attempts', type=int, default=40,
                        help='Maximum attempts per problem')
-    parser.add_argument('--temperature', type=float, default=0.8,
+    parser.add_argument('--temperature', type=float, default=0.9,
                        help='Temperature for model generation')
     args = parser.parse_args()
 
