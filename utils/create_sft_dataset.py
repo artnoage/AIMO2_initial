@@ -34,12 +34,16 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     # Create input prompt
     input_text = (
         f"Problem:\n{entry['problem']}\n\n"
-        f"Below are several solution attempts. Evaluate each solution and identify those that are:\n"
-        "1. Detailed with clear strategy and reasoning steps\n"
-        "2. Mathematically correct\n\n"
+        "I am going to show you several solution attempts for this mathematical problem. "
+        "Your task is to carefully evaluate each solution based on two key criteria:\n"
+        "1. The solution must be detailed, showing clear strategy and step-by-step reasoning\n"
+        "2. The solution must be mathematically correct without any errors\n\n"
+        "Here are the solutions to evaluate:\n\n"
         f"{solutions_text}\n\n"
-        "Output a list of solution numbers that satisfy BOTH criteria. Format: [n1, n2, ...]\n"
-        "If no solutions meet both criteria, output an empty list []"
+        "After reviewing all solutions, provide a list of solution numbers that satisfy BOTH criteria.\n"
+        "Format your response as a list [n1, n2, ...] containing only the numbers of correct and detailed solutions.\n"
+        "If no solutions meet both criteria, return an empty list [].\n"
+        "Remember: A solution must be both detailed AND correct to be included in the list."
     )
     
     # Create target output - list of correct solution numbers
