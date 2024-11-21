@@ -62,11 +62,36 @@ def clean_json_file(filename: str) -> Optional[List[Dict]]:
         print(f"Error cleaning file: {str(e)}")
         return None
 
-def extract_successful_responses(data: List[Dict]) -> List[Dict]:
+def validate_verification_data(data: List[Dict], operation: str) -> bool:
+    """
+    Validate that the data contains required fields for verification operations.
+    Returns True if valid, False otherwise.
+    """
+    if not data:
+        print(f"Error: Empty dataset cannot be processed for {operation}")
+        return False
+        
+    required_fields = {'verification_results', 'model_responses'}
+    
+    # Check first entry for required fields
+    first_entry = data[0]
+    missing_fields = required_fields - set(first_entry.keys())
+    
+    if missing_fields:
+        print(f"Error: Cannot perform {operation} - missing required fields: {', '.join(missing_fields)}")
+        print("The JSON file must contain 'verification_results' and 'model_responses' fields")
+        return False
+        
+    return True
+
+def extract_successful_responses(data: List[Dict]) -> Optional[List[Dict]]:
     """
     Extract only the successful model responses and format them with metadata.
-    Returns a list of entries containing only the first successful response for each problem.
+    Returns a list of entries containing only the first successful response for each problem,
+    or None if the data format is invalid.
     """
+    if not validate_verification_data(data, "extract successful responses"):
+        return None
     filtered_data = []
     for entry in data:
         if 'verification_results' not in entry:
@@ -86,14 +111,18 @@ def extract_successful_responses(data: List[Dict]) -> List[Dict]:
             filtered_data.append(new_entry)
     return filtered_data
 
-def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> List[Dict]:
+def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> Optional[List[Dict]]:
     """
     Filter data based on verification results:
     - remove_wrong: Remove entries that don't have any level 4 verifications
     - remove_right: Remove entries that ONLY have level 4 verifications
+    Returns None if the data format is invalid.
     """
     if not (remove_wrong or remove_right):
         return data
+        
+    if not validate_verification_data(data, "remove by verification"):
+        return None
         
     filtered_data = []
     for entry in data:
@@ -195,9 +224,15 @@ def main():
         filtered_data = data
         
         if args.extract_right:
-            filtered_data = extract_successful_responses(filtered_data)
-        else:
-            filtered_data = remove_by_verification(filtered_data, args.remove_wrong, args.remove_right)
+            result = extract_successful_responses(filtered_data)
+            if result is None:
+                return
+            filtered_data = result
+        elif args.remove_wrong or args.remove_right:
+            result = remove_by_verification(filtered_data, args.remove_wrong, args.remove_right)
+            if result is None:
+                return
+            filtered_data = result
             
         if args.deduplicate:
             filtered_data = deduplicate_by_id(filtered_data)
