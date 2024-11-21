@@ -62,11 +62,12 @@ def clean_json_file(filename: str) -> Optional[List[Dict]]:
         print(f"Error cleaning file: {str(e)}")
         return None
 
-def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> List[Dict]:
+def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False, extract_right: bool = False) -> List[Dict]:
     """
     Filter data based on verification results:
     - remove_wrong: Remove entries that don't have any level 4 verifications
     - remove_right: Remove entries that ONLY have level 4 verifications
+    - extract_right: Keep only the successful model response and mark as correct
     """
     if not (remove_wrong or remove_right):
         return data
@@ -80,13 +81,19 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
         has_success = 4 in results
         has_failure = any(x != 4 for x in results)
         
-        # Keep entry if:
-        # - remove_wrong is True and it has at least one success
-        # - remove_right is True and it has at least one failure
-        # - neither flag is True
-        if ((remove_wrong and has_success) or 
-            (remove_right and has_failure) or 
-            (not remove_wrong and not remove_right)):
+        if extract_right and has_success:
+            # Find the first successful response
+            success_index = results.index(4)
+            new_entry = {
+                'id': entry['id'],
+                'problem': entry['problem'],
+                'model_response': entry['model_responses'][success_index],
+                'is_correct': True
+            }
+            filtered_data.append(new_entry)
+        elif ((remove_wrong and has_success) or 
+              (remove_right and has_failure) or 
+              (not remove_wrong and not remove_right and not extract_right)):
             filtered_data.append(entry)
             
     return filtered_data
@@ -99,6 +106,8 @@ def main():
                       help='Remove entries without any successful verifications')
     parser.add_argument('--remove-right', action='store_true',
                       help='Remove entries with only successful verifications')
+    parser.add_argument('--extract-right', action='store_true',
+                      help='Extract only successful responses and mark as correct')
     args = parser.parse_args()
 
     # First clean the input file
@@ -107,7 +116,7 @@ def main():
         print("Failed to process the input file")
         return
 
-    filtered_data = remove_by_verification(data, args.remove_wrong, args.remove_right)
+    filtered_data = remove_by_verification(data, args.remove_wrong, args.remove_right, args.extract_right)
     
     try:
         with open(args.output_file, 'w', encoding='utf-8') as f:
