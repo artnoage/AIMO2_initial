@@ -84,13 +84,13 @@ def validate_verification_data(data: List[Dict], operation: str) -> bool:
         
     return True
 
-def extract_successful_responses(data: List[Dict]) -> Optional[List[Dict]]:
+def extract_correct_synthetic(data: List[Dict]) -> Optional[List[Dict]]:
     """
-    Extract only the successful model responses and format them with metadata.
+    Extract only the successful model responses from synthetic verification data.
     Returns a list of entries containing only the first successful response for each problem,
     or None if the data format is invalid.
     """
-    if not validate_verification_data(data, "extract successful responses"):
+    if not validate_verification_data(data, "extract synthetic correct responses"):
         return None
     filtered_data = []
     for entry in data:
@@ -107,6 +107,32 @@ def extract_successful_responses(data: List[Dict]) -> Optional[List[Dict]]:
                 'is_correct': True,
                 'problem': entry['problem'],
                 'solution': entry.get('correct_solution', '')  # Include solution if available
+            }
+            filtered_data.append(new_entry)
+    return filtered_data
+
+def extract_correct_verifier(data: List[Dict]) -> Optional[List[Dict]]:
+    """
+    Extract entries where all verifiers agree the solution is correct.
+    Returns a list of entries where there is unanimous agreement on correctness,
+    or None if the data format is invalid.
+    """
+    filtered_data = []
+    for entry in data:
+        if 'verifications' not in entry:
+            continue
+            
+        verifications = entry['verifications']
+        correctness = verifications.get('correctness', [])
+        
+        # Only include if there are verifications and all are True
+        if correctness and all(correctness):
+            new_entry = {
+                'id': entry['id'],
+                'model_response': entry['model_response'],
+                'is_correct': True,
+                'problem': entry['problem'],
+                'solution': entry.get('solution', '')
             }
             filtered_data.append(new_entry)
     return filtered_data
@@ -190,8 +216,10 @@ def main():
                       help='Remove entries without any successful verifications')
     parser.add_argument('--remove-right', action='store_true',
                       help='Remove entries with only successful verifications')
-    parser.add_argument('--extract-right', action='store_true',
-                      help='Extract only successful responses and mark as correct')
+    parser.add_argument('--extract-correct-synthetic', action='store_true',
+                      help='Extract only successful responses from synthetic verification data')
+    parser.add_argument('--extract-correct-verifier', action='store_true',
+                      help='Extract entries where all verifiers agree the solution is correct')
     parser.add_argument('--deduplicate', action='store_true',
                       help='Remove duplicate IDs, keeping only the first occurrence')
     parser.add_argument('--clean-only', action='store_true',
@@ -223,8 +251,13 @@ def main():
         # Apply filters in sequence
         filtered_data = data
         
-        if args.extract_right:
-            result = extract_successful_responses(filtered_data)
+        if args.extract_correct_synthetic:
+            result = extract_correct_synthetic(filtered_data)
+            if result is None:
+                return
+            filtered_data = result
+        elif args.extract_correct_verifier:
+            result = extract_correct_verifier(filtered_data)
             if result is None:
                 return
             filtered_data = result
