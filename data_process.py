@@ -86,9 +86,12 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
             success_index = results.index(4)
             new_entry = {
                 'id': entry['id'],
-                'problem': entry['problem'],
                 'model_response': entry['model_responses'][success_index],
-                'is_correct': True
+                'is_correct': True,
+                'metadata': {
+                    'problem': entry['problem'],
+                    'solution': entry.get('correct_solution', '')  # Include solution if available
+                }
             }
             filtered_data.append(new_entry)
         elif ((remove_wrong and has_success) or 
