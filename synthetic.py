@@ -100,7 +100,8 @@ def check_format(response: str, full_solution: str) -> bool:
     required_words = ['analysis', 'problem', 'step']
     has_required_words = all(word in lower_response for word in required_words)
     is_long_enough = len(response) >= len(full_solution) * 1.03
-    return has_required_words and is_long_enough
+    has_no_links = 'http' not in lower_response
+    return has_required_words and is_long_enough and has_no_links
 
 async def process_example(
     example: Dict,
