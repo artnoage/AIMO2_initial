@@ -80,10 +80,8 @@ def extract_successful_responses(data: List[Dict]) -> List[Dict]:
                 'id': entry['id'],
                 'model_response': entry['model_responses'][success_index],
                 'is_correct': True,
-                'metadata': {
-                    'problem': entry['problem'],
-                    'solution': entry.get('correct_solution', '')  # Include solution if available
-                }
+                'problem': entry['problem'],
+                'solution': entry.get('correct_solution', '')  # Include solution if available
             }
             filtered_data.append(new_entry)
     return filtered_data
