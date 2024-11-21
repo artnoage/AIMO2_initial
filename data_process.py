@@ -111,6 +111,25 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
             
     return filtered_data
 
+def deduplicate_by_id(data: List[Dict]) -> List[Dict]:
+    """
+    Keep only the first occurrence of each ID.
+    Returns a new list with duplicate IDs removed.
+    """
+    if not data:
+        return []
+    
+    seen_ids = set()
+    deduplicated_data = []
+    
+    for entry in data:
+        current_id = entry.get('id')
+        if current_id is not None and current_id not in seen_ids:
+            seen_ids.add(current_id)
+            deduplicated_data.append(entry)
+    
+    return deduplicated_data
+
 def main():
     parser = argparse.ArgumentParser(description='Process augmented dataset JSON files')
     parser.add_argument('input_file', help='Input JSON file path')
@@ -121,6 +140,8 @@ def main():
                       help='Remove entries with only successful verifications')
     parser.add_argument('--extract-right', action='store_true',
                       help='Extract only successful responses and mark as correct')
+    parser.add_argument('--deduplicate', action='store_true',
+                      help='Remove duplicate IDs, keeping only the first occurrence')
     args = parser.parse_args()
 
     # First clean the input file
@@ -129,10 +150,16 @@ def main():
         print("Failed to process the input file")
         return
 
+    # Apply filters in sequence
+    filtered_data = data
+    
     if args.extract_right:
-        filtered_data = extract_successful_responses(data)
+        filtered_data = extract_successful_responses(filtered_data)
     else:
-        filtered_data = remove_by_verification(data, args.remove_wrong, args.remove_right)
+        filtered_data = remove_by_verification(filtered_data, args.remove_wrong, args.remove_right)
+        
+    if args.deduplicate:
+        filtered_data = deduplicate_by_id(filtered_data)
     
     try:
         with open(args.output_file, 'w', encoding='utf-8') as f:
