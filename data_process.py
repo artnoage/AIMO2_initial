@@ -166,6 +166,23 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
             
     return filtered_data
 
+def remove_entries_with_links(data: List[Dict]) -> List[Dict]:
+    """
+    Remove entries that contain 'http' anywhere in their text fields.
+    Returns a new list with those entries removed.
+    """
+    if not data:
+        return []
+    
+    filtered_data = []
+    for entry in data:
+        # Convert all text fields to string and check for 'http'
+        entry_text = str(entry).lower()
+        if 'http' not in entry_text:
+            filtered_data.append(entry)
+    
+    return filtered_data
+
 def deduplicate_by_id(data: List[Dict]) -> List[Dict]:
     """
     Keep only the first occurrence of each ID.
@@ -222,6 +239,8 @@ def main():
                       help='Extract entries where all verifiers agree the solution is correct')
     parser.add_argument('--deduplicate', action='store_true',
                       help='Remove duplicate IDs, keeping only the first occurrence')
+    parser.add_argument('--remove-links', action='store_true',
+                      help='Remove entries containing http links anywhere in their text')
     parser.add_argument('--clean-only', action='store_true',
                       help='Only clean and validate the JSON file structure')
     parser.add_argument('--combine', action='store_true',
@@ -269,6 +288,9 @@ def main():
             
         if args.deduplicate:
             filtered_data = deduplicate_by_id(filtered_data)
+            
+        if args.remove_links:
+            filtered_data = remove_entries_with_links(filtered_data)
     
     try:
         with open(args.output, 'w', encoding='utf-8', errors='replace') as f:
