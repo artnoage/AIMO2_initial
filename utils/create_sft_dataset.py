@@ -65,6 +65,8 @@ def main():
                        help='Minimum number of solution samples per problem')
     parser.add_argument('--max-samples', type=int, default=8,
                        help='Maximum number of solution samples per problem')
+    parser.add_argument('--iterations', type=int, default=3,
+                       help='Number of times to process each problem')
     args = parser.parse_args()
     
     # Create output directory if needed
@@ -76,12 +78,15 @@ def main():
     
     # Create SFT examples
     print("Creating SFT examples...")
-    sft_examples = [
-        example for example in (
-            create_sft_example(entry, args.min_samples, args.max_samples)
-            for entry in data
-        ) if example is not None
-    ]
+    sft_examples = []
+    for _ in range(args.iterations):
+        examples = [
+            example for example in (
+                create_sft_example(entry, args.min_samples, args.max_samples)
+                for entry in data
+            ) if example is not None
+        ]
+        sft_examples.extend(examples)
     
     # Save SFT dataset
     print(f"Saving {len(sft_examples)} examples to {args.output}")
