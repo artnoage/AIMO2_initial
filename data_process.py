@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 def clean_json_file(filename: str) -> Optional[List[Dict]]:
     """Clean JSON file by removing corrupted entries and returning valid data."""
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, 'r', encoding='utf-8', errors='replace') as f:
             # First try standard parsing
             try:
                 return json.load(f)
@@ -52,8 +52,8 @@ def clean_json_file(filename: str) -> Optional[List[Dict]]:
                     raise ValueError("No valid JSON objects found")
                 
                 # Write cleaned data back to file
-                with open(filename, 'w', encoding='utf-8') as f:
-                    json.dump(data, f, indent=2)
+                with open(filename, 'w', encoding='utf-8', errors='replace') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
                 
                 print(f"Cleaned and saved file with {len(data)} valid entries")
                 return data
@@ -238,7 +238,7 @@ def main():
             filtered_data = deduplicate_by_id(filtered_data)
     
     try:
-        with open(args.output, 'w', encoding='utf-8') as f:
+        with open(args.output, 'w', encoding='utf-8', errors='replace') as f:
             json.dump(filtered_data, f, indent=2, ensure_ascii=False)
         print(f"Processed {len(data)} entries -> {len(filtered_data)} entries")
     except Exception as e:
