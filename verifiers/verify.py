@@ -97,7 +97,7 @@ async def main():
                        help='Number of examples to verify (default: 100)')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
-    parser.add_argument('--max-concurrent', type=int, default=1,
+    parser.add_argument('--max-concurrent', type=int, default=32,
                        help='Maximum number of concurrent verifications (default: 4)')
     args = parser.parse_args()
 
