@@ -107,7 +107,7 @@ async def main():
             print(f"Error: Dataset file {args.input} not found. Please specify the correct dataset file.")
             return
             
-        with open(args.input, 'r') as f:
+        with open(args.input, 'r', encoding='utf-8') as f:
             data = json.load(f)
             
         if not isinstance(data, list):
@@ -189,7 +189,7 @@ async def main():
                     output_data.append(entry)
 
             # Save all verification results
-            with open(output_filename, 'w') as f:
+            with open(output_filename, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, indent=2)
             print(f"\nResults saved to {output_filename}")
 
@@ -197,10 +197,10 @@ async def main():
             if args.remove_incorrect:
                 incorrect_ids = {r['id'] for r in results if not r['is_correct']}
                 if incorrect_ids:
-                    with open(args.input, 'r') as f:
+                    with open(args.input, 'r', encoding='utf-8') as f:
                         input_data = json.load(f)
                     filtered_data = [ex for ex in input_data if str(ex['id']) not in incorrect_ids]
-                    with open(args.input, 'w') as f:
+                    with open(args.input, 'w', encoding='utf-8') as f:
                         json.dump(filtered_data, f, indent=2)
                     print(f"\nRemoved {len(incorrect_ids)} incorrect solutions from {args.input}")
         except Exception as e:
