@@ -62,35 +62,38 @@ def clean_json_file(filename: str) -> Optional[List[Dict]]:
         print(f"Error cleaning file: {str(e)}")
         return None
 
-def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False, extract_right: bool = False) -> List[Dict]:
+def extract_successful_responses(data: List[Dict]) -> List[Dict]:
+    """
+    Extract only the successful model responses and format them with metadata.
+    Returns a list of entries containing only the first successful response for each problem.
+    """
+    filtered_data = []
+    for entry in data:
+        if 'verification_results' not in entry:
+            continue
+            
+        results = entry['verification_results']
+        if 4 in results:
+            # Find the first successful response
+            success_index = results.index(4)
+            new_entry = {
+                'id': entry['id'],
+                'model_response': entry['model_responses'][success_index],
+                'is_correct': True,
+                'metadata': {
+                    'problem': entry['problem'],
+                    'solution': entry.get('correct_solution', '')  # Include solution if available
+                }
+            }
+            filtered_data.append(new_entry)
+    return filtered_data
+
+def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> List[Dict]:
     """
     Filter data based on verification results:
     - remove_wrong: Remove entries that don't have any level 4 verifications
     - remove_right: Remove entries that ONLY have level 4 verifications
-    - extract_right: Keep only the successful model response and mark as correct
     """
-    if extract_right:
-        filtered_data = []
-        for entry in data:
-            if 'verification_results' not in entry:
-                continue
-                
-            results = entry['verification_results']
-            if 4 in results:
-                # Find the first successful response
-                success_index = results.index(4)
-                new_entry = {
-                    'id': entry['id'],
-                    'model_response': entry['model_responses'][success_index],
-                    'is_correct': True,
-                    'metadata': {
-                        'problem': entry['problem'],
-                        'solution': entry.get('correct_solution', '')  # Include solution if available
-                    }
-                }
-                filtered_data.append(new_entry)
-        return filtered_data
-        
     if not (remove_wrong or remove_right):
         return data
         
@@ -128,7 +131,10 @@ def main():
         print("Failed to process the input file")
         return
 
-    filtered_data = remove_by_verification(data, args.remove_wrong, args.remove_right, args.extract_right)
+    if args.extract_right:
+        filtered_data = extract_successful_responses(data)
+    else:
+        filtered_data = remove_by_verification(data, args.remove_wrong, args.remove_right)
     
     try:
         with open(args.output_file, 'w', encoding='utf-8') as f:
