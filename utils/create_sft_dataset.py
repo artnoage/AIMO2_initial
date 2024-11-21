@@ -9,13 +9,18 @@ def load_augmented_data(filename: str) -> List[Dict]:
     with open(filename, 'r') as f:
         return json.load(f)
 
-def create_sft_example(entry: Dict, num_samples: int = 5) -> Dict:
+def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) -> Dict:
     """Create a single SFT training example from an augmented data entry"""
     # Get all available responses
     responses = list(zip(entry['model_responses'], entry['verification_results']))
     
-    # Ensure we have enough samples
-    num_samples = min(num_samples, len(responses))
+    # Determine number of samples based on available responses
+    available = len(responses)
+    if available < min_samples:
+        return None  # Skip entries with too few responses
+        
+    # Choose random number of samples between min and max, but not more than available
+    num_samples = random.randint(min_samples, min(max_samples, available))
     
     # Randomly sample responses
     selected = random.sample(responses, num_samples)
@@ -56,8 +61,10 @@ def main():
                        help='Input augmented dataset file')
     parser.add_argument('--output', type=str, default='datasets/sft_dataset.json',
                        help='Output SFT dataset file')
-    parser.add_argument('--samples', type=int, default=5,
-                       help='Number of solution samples per problem')
+    parser.add_argument('--min-samples', type=int, default=3,
+                       help='Minimum number of solution samples per problem')
+    parser.add_argument('--max-samples', type=int, default=8,
+                       help='Maximum number of solution samples per problem')
     args = parser.parse_args()
     
     # Create output directory if needed
@@ -70,8 +77,10 @@ def main():
     # Create SFT examples
     print("Creating SFT examples...")
     sft_examples = [
-        create_sft_example(entry, args.samples)
-        for entry in data
+        example for example in (
+            create_sft_example(entry, args.min_samples, args.max_samples)
+            for entry in data
+        ) if example is not None
     ]
     
     # Save SFT dataset
