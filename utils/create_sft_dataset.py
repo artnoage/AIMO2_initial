@@ -5,8 +5,8 @@ from typing import List, Dict
 from pathlib import Path
 
 def load_augmented_data(filename: str) -> List[Dict]:
-    """Load the augmented dataset file"""
-    with open(filename, 'r') as f:
+    """Load the augmented dataset file using UTF-8 encoding"""
+    with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) -> Dict:
