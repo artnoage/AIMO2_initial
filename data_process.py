@@ -142,6 +142,8 @@ def main():
                       help='Extract only successful responses and mark as correct')
     parser.add_argument('--deduplicate', action='store_true',
                       help='Remove duplicate IDs, keeping only the first occurrence')
+    parser.add_argument('--clean-only', action='store_true',
+                      help='Only clean and validate the JSON file structure')
     args = parser.parse_args()
 
     # First clean the input file
@@ -150,16 +152,19 @@ def main():
         print("Failed to process the input file")
         return
 
-    # Apply filters in sequence
-    filtered_data = data
-    
-    if args.extract_right:
-        filtered_data = extract_successful_responses(filtered_data)
+    if args.clean_only:
+        filtered_data = data
     else:
-        filtered_data = remove_by_verification(filtered_data, args.remove_wrong, args.remove_right)
+        # Apply filters in sequence
+        filtered_data = data
         
-    if args.deduplicate:
-        filtered_data = deduplicate_by_id(filtered_data)
+        if args.extract_right:
+            filtered_data = extract_successful_responses(filtered_data)
+        else:
+            filtered_data = remove_by_verification(filtered_data, args.remove_wrong, args.remove_right)
+            
+        if args.deduplicate:
+            filtered_data = deduplicate_by_id(filtered_data)
     
     try:
         with open(args.output_file, 'w', encoding='utf-8') as f:
