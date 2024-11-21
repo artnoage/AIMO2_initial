@@ -7,7 +7,7 @@ import argparse
 from typing import Dict, List
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
-from ..utils.utils import ModelOption, get_model
+from utils.utils import ModelOption, get_model
 from dotenv import load_dotenv
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -93,7 +93,7 @@ async def main():
                        help='Input JSON file containing problems and solutions')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
-    parser.add_argument('--max-concurrent', type=int, default=20,
+    parser.add_argument('--max-concurrent', type=int, default=1,
                        help='Maximum number of concurrent verifications (default: 4)')
     args = parser.parse_args()
 
