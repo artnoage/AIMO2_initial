@@ -91,6 +91,10 @@ async def main():
                        help='Model to use for verification')
     parser.add_argument('--input', type=str, default='combo.json',
                        help='Input JSON file containing problems and solutions')
+    parser.add_argument('--output', type=str, default='verification_results.json',
+                       help='Output JSON file for verification results')
+    parser.add_argument('--sample-size', type=int, default=100,
+                       help='Number of examples to verify (default: 100)')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
     parser.add_argument('--max-concurrent', type=int, default=1,
@@ -114,7 +118,7 @@ async def main():
             print("Dataset is empty. Please provide a dataset with examples to verify.")
             return
             
-        sample_size = min(100, len(data))
+        sample_size = min(args.sample_size, len(data))
         # Always select the first 10 examples for consistency
         selected_examples = data[:sample_size]
     except json.JSONDecodeError:
@@ -148,7 +152,7 @@ async def main():
         print(f"Accuracy: {accuracy:.2f}%")
         
         # Save results
-        output_filename = "verification_results.json"
+        output_filename = args.output
         try:
             # Load existing results or start with empty list
             output_data = []
