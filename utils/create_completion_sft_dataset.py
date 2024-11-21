@@ -62,6 +62,7 @@ def create_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]
         
     # Create input prompt
     input_text = (
+        "Here is a mathematical problem:\n\n"
         f"{entry['problem']}\n\n"
         "I will show you the beginning of a step-by-step mathematical solution. "
         "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
