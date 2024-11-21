@@ -44,6 +44,11 @@ def main():
                        help='HuggingFace repository name')
     args = parser.parse_args()
 
+    # Suppress warnings
+    import warnings
+    warnings.filterwarnings("ignore", message="Metadata validation was skipped")
+    warnings.filterwarnings("ignore", message="Found cached dataset")
+    
     # Load the dataset
     try:
         dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
@@ -53,14 +58,17 @@ def main():
 
     print(f"\nOriginal dataset size: {len(dataset)}")
 
-    # Initialize statistics
+    # Initialize detailed statistics
     stats = {
         'original': len(dataset),
         'removed_source': 0,
         'removed_no_boxed': 0,
         'removed_multiple_boxed': 0,
-        'removed_http': 0,
-        'removed_non_latin': 0
+        'removed_http_problem': 0,
+        'removed_http_solution': 0,
+        'removed_non_latin_problem': 0,
+        'removed_non_latin_solution': 0,
+        'removed_invalid_answer': 0
     }
 
     # Filter by source if specified
@@ -72,23 +80,41 @@ def main():
     # Filter for solutions containing exactly one boxed answer
     def has_valid_answer(example):
         if 'solution' not in example:
+            stats['removed_no_boxed'] += 1
             return False
             
         # Check for exactly one boxed answer
-        if count_boxed_answers(example['solution']) != 1:
+        boxed_count = count_boxed_answers(example['solution'])
+        if boxed_count == 0:
+            stats['removed_no_boxed'] += 1
+            return False
+        elif boxed_count > 1:
+            stats['removed_multiple_boxed'] += 1
             return False
             
         # Check for HTTP links
-        if contains_http(example['problem']) or contains_http(example['solution']):
+        if contains_http(example['problem']):
+            stats['removed_http_problem'] += 1
+            return False
+        if contains_http(example['solution']):
+            stats['removed_http_solution'] += 1
             return False
             
         # Check for non-Latin characters
-        if contains_non_latin(example['problem']) or contains_non_latin(example['solution']):
+        if contains_non_latin(example['problem']):
+            stats['removed_non_latin_problem'] += 1
+            return False
+        if contains_non_latin(example['solution']):
+            stats['removed_non_latin_solution'] += 1
             return False
             
         # Verify answer extraction
         answer = extract_answer_from_solution(example['solution'])
-        return answer is not None and answer.strip() != ""
+        if answer is None or answer.strip() == "":
+            stats['removed_invalid_answer'] += 1
+            return False
+            
+        return True
 
     # Apply filters and update statistics
     filtered_dataset = dataset.filter(has_valid_answer)
@@ -97,13 +123,20 @@ def main():
     stats['final'] = len(filtered_dataset)
     stats['removed_invalid'] = len(dataset) - len(filtered_dataset)
     
-    # Print statistics
-    print("\nFiltering Statistics:")
+    # Print detailed statistics
+    print("\nDetailed Filtering Statistics:")
     print(f"Original dataset size: {stats['original']}")
     if args.source.lower() != 'all':
         print(f"Removed due to source filter: {stats['removed_source']}")
-    print(f"Removed due to invalid/missing answers: {stats['removed_invalid']}")
-    print(f"Final dataset size: {stats['final']}")
+    print("\nRemoved due to:")
+    print(f"- Missing boxed answer: {stats['removed_no_boxed']}")
+    print(f"- Multiple boxed answers: {stats['removed_multiple_boxed']}")
+    print(f"- HTTP links in problem: {stats['removed_http_problem']}")
+    print(f"- HTTP links in solution: {stats['removed_http_solution']}")
+    print(f"- Non-Latin chars in problem: {stats['removed_non_latin_problem']}")
+    print(f"- Non-Latin chars in solution: {stats['removed_non_latin_solution']}")
+    print(f"- Invalid/empty answer: {stats['removed_invalid_answer']}")
+    print(f"\nFinal dataset size: {stats['final']}")
     print(f"Total reduction: {((stats['original'] - stats['final'])/stats['original'])*100:.1f}%")
 
     # Convert to Hugging Face dataset format with explicit schema
@@ -291,13 +324,6 @@ The dataset is particularly useful for:
         print(f"\nFailed to push to Hugging Face Hub: {e}")
         print("You can still use the locally saved dataset")
 
-    # Print some statistics
-    print("\nSample problems from filtered dataset:")
-    for idx, example in enumerate(filtered_dataset.select(range(min(3, len(filtered_dataset))))):
-        print(f"\nProblem {idx + 1}:")
-        print(f"Source: {example['source']}")
-        print(f"Answer: {extract_answer_from_solution(example['solution'])}")
-        print("-" * 80)
 
 if __name__ == "__main__":
     main()
