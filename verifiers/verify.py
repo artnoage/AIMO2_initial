@@ -94,7 +94,7 @@ async def main():
     parser.add_argument('--output', type=str, default='verification_results.json',
                        help='Output JSON file for verification results')
     parser.add_argument('--sample-size', type=int, default=100,
-                       help='Number of examples to verify (default: 100)')
+                       help='Number of examples to verify (default: 100, use -1 for entire dataset)')
     parser.add_argument('--remove_incorrect', action='store_true',
                        help='Remove incorrect solutions from the original dataset')
     parser.add_argument('--max-concurrent', type=int, default=32,
@@ -118,9 +118,13 @@ async def main():
             print("Dataset is empty. Please provide a dataset with examples to verify.")
             return
             
-        sample_size = min(args.sample_size, len(data))
-        # Always select the first 10 examples for consistency
-        selected_examples = data[:sample_size]
+        # If sample_size is -1, use the entire dataset
+        if args.sample_size == -1:
+            sample_size = len(data)
+            selected_examples = data
+        else:
+            sample_size = min(args.sample_size, len(data))
+            selected_examples = data[:sample_size]
     except json.JSONDecodeError:
         print(f"Error: File {args.input} is not valid JSON")
         return
