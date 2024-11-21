@@ -157,7 +157,7 @@ async def main():
             # Load existing results or start with empty list
             output_data = []
             if os.path.exists(output_filename):
-                with open(output_filename, 'r') as f:
+                with open(output_filename, 'r', encoding='utf-8') as f:
                     output_data = json.load(f)
 
             # Process current results
