@@ -63,9 +63,17 @@ def create_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]
     # Create input prompt
     input_text = (
         f"{entry['problem']}\n\n"
-        "Solve this step by step. Here is the start of a solution:\n\n"
+        "I will show you the beginning of a step-by-step mathematical solution. "
+        "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
+        "Important guidelines:\n"
+        "- Maintain the same level of detail and explanation as the previous steps\n"
+        "- Continue the step numbering sequence\n"
+        "- Use LaTeX notation consistently\n"
+        "- Provide justification for each step in [brackets]\n"
+        "- End with a clear boxed answer using \\boxed{}\n\n"
+        "Here is the partial solution:\n\n"
         f"{prefix}\n\n"
-        "Complete the remaining steps:"
+        "Please complete the remaining steps following the same format:"
     )
     
     return {
