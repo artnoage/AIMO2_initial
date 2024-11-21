@@ -1,6 +1,7 @@
 import argparse
 import json
-from typing import List, Dict, Tuple
+import random
+from typing import List, Dict, Tuple, Optional
 import sys
 
 def load_json_file(filename: str) -> List[Dict]:
@@ -12,45 +13,47 @@ def load_json_file(filename: str) -> List[Dict]:
         print(f"Error loading {filename}: {str(e)}")
         sys.exit(1)
 
-def compare_entries(entry1: Dict, entry2: Dict) -> bool:
+def select_rejected_response(responses: List[str], verification_results: List[int], strategy: str) -> Optional[str]:
     """
-    Compare two entries to check if they have matching problems and solutions.
-    Returns True if they match, False otherwise.
+    Select a rejected response based on the specified strategy.
+    
+    Args:
+        responses: List of model responses
+        verification_results: List of verification levels (0-4)
+        strategy: One of 'second_best', 'random', or 'worst'
+    
+    Returns:
+        Selected response or None if no suitable response found
     """
-    return (entry1.get('problem', '') == entry2.get('problem', '') and 
-            entry1.get('solution', '') == entry2.get('solution', ''))
+    # Create pairs of (score, response) for non-4 responses
+    non_perfect = [(score, resp) for score, resp in zip(verification_results, responses) if score != 4]
+    
+    if not non_perfect:
+        return None
+        
+    if strategy == 'second_best':
+        # Sort by score descending and take highest non-4
+        return max(non_perfect)[1]
+    elif strategy == 'worst':
+        # Take lowest score
+        return min(non_perfect)[1]
+    else:  # random
+        # Random choice from non-4 responses
+        return random.choice(non_perfect)[1]
 
-def process_files(correct_file: str, incorrect_file: str, output_file: str) -> Tuple[int, int, int]:
+def process_file(input_file: str, output_file: str, rejection_strategy: str) -> Tuple[int, int]:
     """
-    Process two JSON files and create a new JSON file with matching entries.
-    Also returns statistics about matching entries.
-    Returns: (total_ids, matching_ids, matching_content)
+    Process synthetic.py output file and create DPO dataset.
+    Returns: (total_entries, successful_pairs)
     """
-    correct_data = load_json_file(correct_file)
-    incorrect_data = load_json_file(incorrect_file)
+    data = load_json_file(input_file)
     
-    # Create a dictionary for faster lookup of incorrect entries
-    incorrect_dict = {entry.get('id'): entry for entry in incorrect_data}
-    
-    total_ids = len(correct_data)
-    matching_ids = 0
-    matching_content = 0
-    matching_entries = []
-    
-    for correct_entry in correct_data:
-        correct_id = correct_entry.get('id')
-        if correct_id in incorrect_dict:
-            matching_ids += 1
-            incorrect_entry = incorrect_dict[correct_id]
-            if compare_entries(correct_entry, incorrect_entry):
-                matching_content += 1
-                # Create new entry with the Orca DPO format
-                system_prompt = """You are a precise mathematical problem solver. You will be given a problem to solve.
+    system_prompt = """You are a precise mathematical problem solver. You will be given a problem to solve.
 
 DO:
- List applicable theorems/techniques upfront
- If possible each step must contain a justification. 
- Use LaTeX notation
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
 
 FORMAT:
 
@@ -72,37 +75,72 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 **ANSWER**:
 \\(\\boxed{\\text{result}}\\) """
 
-                new_entry = {"conversations": [{
-                                    "role": "user",
-                                    "content": system_prompt + "\n\n" + correct_entry['problem']
-                                }],
-                            "chosen":{"role": "assistant",
-                                    "content": correct_entry.get('model_response', '')},
-                            "rejected": {"role": "assistant",
-                                "content": incorrect_entry.get('model_response', '')}
-                            }
-                matching_entries.append(new_entry)
+    dpo_entries = []
+    successful_pairs = 0
     
-    # Save matching entries to output file
+    for entry in data:
+        # Find index of first verification_level 4 (if any)
+        try:
+            chosen_idx = entry['verification_results'].index(4)
+            chosen_response = entry['model_responses'][chosen_idx]
+            
+            # Select rejected response based on strategy
+            rejected_response = select_rejected_response(
+                entry['model_responses'],
+                entry['verification_results'],
+                rejection_strategy
+            )
+            
+            if rejected_response:
+                dpo_entries.append({
+                    "conversations": [{
+                        "role": "user",
+                        "content": system_prompt + "\n\n" + entry['problem']
+                    }],
+                    "chosen": {
+                        "role": "assistant",
+                        "content": chosen_response
+                    },
+                    "rejected": {
+                        "role": "assistant",
+                        "content": rejected_response
+                    }
+                })
+                successful_pairs += 1
+                
+        except ValueError:
+            # No verification_level 4 found, skip this entry
+            continue
+    
+    # Save DPO entries to output file
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(matching_entries, f, indent=2, ensure_ascii=False)
+        json.dump(dpo_entries, f, indent=2, ensure_ascii=False)
     
-    return total_ids, matching_ids, matching_content
+    return len(data), successful_pairs
 
 def main():
-    parser = argparse.ArgumentParser(description='Create DPO dataset from correct and incorrect examples')
-    parser.add_argument('-c', '--correct', required=True, help='JSON file with correct examples')
-    parser.add_argument('-i', '--incorrect', required=True, help='JSON file with incorrect examples')
-    parser.add_argument('-o', '--output', required=True, help='Output JSON file for matching entries')
+    parser = argparse.ArgumentParser(description='Create DPO dataset from synthetic.py output')
+    parser.add_argument('-i', '--input', required=True,
+                       help='Input JSON file from synthetic.py')
+    parser.add_argument('-o', '--output', required=True,
+                       help='Output JSON file for DPO dataset')
+    parser.add_argument('-r', '--rejection-strategy', 
+                       choices=['second_best', 'random', 'worst'],
+                       default='second_best',
+                       help='Strategy for selecting rejected responses')
     
     args = parser.parse_args()
     
-    total_ids, matching_ids, matching_content = process_files(args.correct, args.incorrect, args.output)
+    total_entries, successful_pairs = process_file(
+        args.input, 
+        args.output,
+        args.rejection_strategy
+    )
     
-    print(f"Total entries in correct file: {total_ids}")
-    print(f"Entries with matching IDs: {matching_ids}")
-    print(f"Entries with matching problems and solutions: {matching_content}")
-    print(f"Percentage of matching content: {(matching_content/total_ids)*100:.2f}%")
+    print(f"Total entries processed: {total_entries}")
+    print(f"Successfully created DPO pairs: {successful_pairs}")
+    print(f"Success rate: {(successful_pairs/total_entries)*100:.2f}%")
+    print(f"Results saved to: {args.output}")
 
 if __name__ == "__main__":
     main()
