@@ -202,6 +202,21 @@ def deduplicate_by_id(data: List[Dict]) -> List[Dict]:
     
     return deduplicated_data
 
+def shuffle_data(data: List[Dict], seed: Optional[int] = None) -> List[Dict]:
+    """
+    Randomly shuffle the dataset.
+    Args:
+        data: List of dictionary entries to shuffle
+        seed: Optional random seed for reproducibility
+    Returns:
+        Shuffled copy of the input data
+    """
+    if seed is not None:
+        random.seed(seed)
+    shuffled = data.copy()
+    random.shuffle(shuffled)
+    return shuffled
+
 def combine_json_files(file1: str, file2: str) -> Optional[List[Dict]]:
     """
     Clean and combine two JSON files.
@@ -245,6 +260,10 @@ def main():
                       help='Only clean and validate the JSON file structure')
     parser.add_argument('--combine', action='store_true',
                       help='Combine two JSON files (requires --input1 and --input2)')
+    parser.add_argument('--shuffle', action='store_true',
+                      help='Randomly shuffle the dataset')
+    parser.add_argument('--seed', type=int,
+                      help='Random seed for shuffling')
     args = parser.parse_args()
 
     # Validate arguments
@@ -291,6 +310,9 @@ def main():
             
         if args.remove_links:
             filtered_data = remove_entries_with_links(filtered_data)
+            
+        if args.shuffle:
+            filtered_data = shuffle_data(filtered_data, args.seed)
     
     try:
         with open(args.output, 'w', encoding='utf-8', errors='replace') as f:
