@@ -319,7 +319,7 @@ The dataset is particularly useful for:
             repo_id=repo_id,
             repo_type="dataset"
         )
-        print("\nSuccessfully pushed dataset to Hugging Face Hub as 'Numina-Olympiads'")
+        print("\nSuccessfully pushed dataset to Hugging Face Hub")
     except Exception as e:
         print(f"\nFailed to push to Hugging Face Hub: {e}")
         print("You can still use the locally saved dataset")
