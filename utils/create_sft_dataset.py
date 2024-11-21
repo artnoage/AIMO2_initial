@@ -33,8 +33,10 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     
     # Create input prompt
     input_text = (
-        f"Problem:\n{entry['problem']}\n\n"
-        "I am going to show you several solution attempts for this mathematical problem. "
+        "Here is a mathematical problem to analyze:\n\n"
+        f"{entry['problem']}\n\n"
+        "I will now present several attempted solutions to this problem. "
+        "Each solution represents a different approach to solving it. "
         "Your task is to carefully evaluate each solution based on two key criteria:\n"
         "1. The solution must be detailed, showing clear strategy and step-by-step reasoning\n"
         "2. The solution must be mathematically correct without any errors\n\n"
