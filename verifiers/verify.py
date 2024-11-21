@@ -34,50 +34,50 @@ async def verify_solution(problem: str, solution: str, verifier_model, max_retri
                 print(f"\nFailed after {max_retries} attempts: {e}")
                 return False
 
+async def save_results(current_results, output_file: str, verifier: str, final=False):
+    """Save current results to file"""
+    try:
+        # Load existing results or start with empty list
+        output_data = []
+        if os.path.exists(output_file):
+            with open(output_file, 'r', encoding='utf-8') as f:
+                output_data = json.load(f)
+
+        # Process current results
+        for result in current_results:
+            result_id = int(str(result['id']).replace('example_', ''))
+            existing_entry = next((item for item in output_data if item["id"] == result_id), None)
+            
+            if existing_entry:
+                existing_entry["verifications"]["verifiers"].append(verifier)
+                existing_entry["verifications"]["correctness"].append(result["is_correct"])
+                existing_entry["verifications"]["timestamps"].append(datetime.now().isoformat())
+            else:
+                entry = {
+                    "id": result_id,
+                    "problem": result["problem"],
+                    "model_response": result["model_response"],
+                    "solution": result.get("solution", ""),
+                    "verifications": {
+                        "verifiers": [verifier],
+                        "correctness": [result["is_correct"]],
+                        "timestamps": [datetime.now().isoformat()]
+                    }
+                }
+                output_data.append(entry)
+
+        # Save all verification results
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=2)
+        if not final:
+            print(f"\nIntermediate results saved ({len(current_results)} processed so far)")
+    except Exception as e:
+        print(f"\nError saving results: {e}")
+
 async def process_examples(examples: List[Dict], verifier_model, sample_size: int, max_concurrent: int, input_file: str, output_file: str, args) -> List[Dict]:
     """Process the randomly selected examples with controlled concurrency"""
     results = []
     semaphore = asyncio.Semaphore(max_concurrent)
-    
-    async def save_results(current_results, final=False):
-        """Save current results to file"""
-        try:
-            # Load existing results or start with empty list
-            output_data = []
-            if os.path.exists(output_file):
-                with open(output_file, 'r', encoding='utf-8') as f:
-                    output_data = json.load(f)
-
-            # Process current results
-            for result in current_results:
-                result_id = int(str(result['id']).replace('example_', ''))
-                existing_entry = next((item for item in output_data if item["id"] == result_id), None)
-                
-                if existing_entry:
-                    existing_entry["verifications"]["verifiers"].append(args.verifier)
-                    existing_entry["verifications"]["correctness"].append(result["is_correct"])
-                    existing_entry["verifications"]["timestamps"].append(datetime.now().isoformat())
-                else:
-                    entry = {
-                        "id": result_id,
-                        "problem": result["problem"],
-                        "model_response": result["model_response"],
-                        "solution": result.get("solution", ""),
-                        "verifications": {
-                            "verifiers": [args.verifier],
-                            "correctness": [result["is_correct"]],
-                            "timestamps": [datetime.now().isoformat()]
-                        }
-                    }
-                    output_data.append(entry)
-
-            # Save all verification results
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(output_data, f, indent=2)
-            if not final:
-                print(f"\nIntermediate results saved ({len(current_results)} processed so far)")
-        except Exception as e:
-            print(f"\nError saving results: {e}")
     
     async def process_with_semaphore(example, i):
         async with semaphore:
@@ -102,7 +102,7 @@ async def process_examples(examples: List[Dict], verifier_model, sample_size: in
                 
                 # Save results every 1000 examples
                 if i % 1000 == 0:
-                    await save_results(results)
+                    await save_results(results, output_file, args.verifier)
                 
                 return result
             except Exception as e:
@@ -208,7 +208,7 @@ async def main():
         
         # Save final results
         try:
-            await save_results(results, final=True)
+            await save_results(results, args.output, args.verifier, final=True)
             print(f"\nFinal results saved to {args.output}")
 
             # Only clean incorrect solutions from input file if requested
