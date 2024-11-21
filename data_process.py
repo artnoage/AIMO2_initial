@@ -130,10 +130,33 @@ def deduplicate_by_id(data: List[Dict]) -> List[Dict]:
     
     return deduplicated_data
 
+def combine_json_files(file1: str, file2: str) -> Optional[List[Dict]]:
+    """
+    Clean and combine two JSON files.
+    Returns the combined data or None if there was an error.
+    """
+    # Clean and load both files
+    data1 = clean_json_file(file1)
+    if data1 is None:
+        print(f"Failed to clean {file1}")
+        return None
+        
+    data2 = clean_json_file(file2)
+    if data2 is None:
+        print(f"Failed to clean {file2}")
+        return None
+
+    # Combine the data
+    combined_data = data1 + data2
+    print(f"Combined entries: {len(combined_data)} ({len(data1)} from {file1}, {len(data2)} from {file2})")
+    return combined_data
+
 def main():
     parser = argparse.ArgumentParser(description='Process augmented dataset JSON files')
-    parser.add_argument('input_file', help='Input JSON file path')
-    parser.add_argument('output_file', help='Output JSON file path')
+    parser.add_argument('-i', '--input', help='Input JSON file path')
+    parser.add_argument('-i1', '--input1', help='First input JSON file for combine operation')
+    parser.add_argument('-i2', '--input2', help='Second input JSON file for combine operation')
+    parser.add_argument('-o', '--output', required=True, help='Output JSON file path')
     parser.add_argument('--remove-wrong', action='store_true',
                       help='Remove entries without any successful verifications')
     parser.add_argument('--remove-right', action='store_true',
@@ -144,12 +167,25 @@ def main():
                       help='Remove duplicate IDs, keeping only the first occurrence')
     parser.add_argument('--clean-only', action='store_true',
                       help='Only clean and validate the JSON file structure')
+    parser.add_argument('--combine', action='store_true',
+                      help='Combine two JSON files (requires --input1 and --input2)')
     args = parser.parse_args()
 
-    # First clean the input file
-    data = clean_json_file(args.input_file)
+    # Validate arguments
+    if args.combine:
+        if not (args.input1 and args.input2):
+            print("Error: --combine requires both --input1 and --input2")
+            return
+        data = combine_json_files(args.input1, args.input2)
+    else:
+        if not args.input:
+            print("Error: --input is required when not using --combine")
+            return
+        # Clean the input file
+        data = clean_json_file(args.input)
+        
     if data is None:
-        print("Failed to process the input file")
+        print("Failed to process the input file(s)")
         return
 
     if args.clean_only:
@@ -167,7 +203,7 @@ def main():
             filtered_data = deduplicate_by_id(filtered_data)
     
     try:
-        with open(args.output_file, 'w', encoding='utf-8') as f:
+        with open(args.output, 'w', encoding='utf-8') as f:
             json.dump(filtered_data, f, indent=2, ensure_ascii=False)
         print(f"Processed {len(data)} entries -> {len(filtered_data)} entries")
     except Exception as e:
