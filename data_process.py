@@ -69,6 +69,28 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
     - remove_right: Remove entries that ONLY have level 4 verifications
     - extract_right: Keep only the successful model response and mark as correct
     """
+    if extract_right:
+        filtered_data = []
+        for entry in data:
+            if 'verification_results' not in entry:
+                continue
+                
+            results = entry['verification_results']
+            if 4 in results:
+                # Find the first successful response
+                success_index = results.index(4)
+                new_entry = {
+                    'id': entry['id'],
+                    'model_response': entry['model_responses'][success_index],
+                    'is_correct': True,
+                    'metadata': {
+                        'problem': entry['problem'],
+                        'solution': entry.get('correct_solution', '')  # Include solution if available
+                    }
+                }
+                filtered_data.append(new_entry)
+        return filtered_data
+        
     if not (remove_wrong or remove_right):
         return data
         
@@ -81,22 +103,9 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
         has_success = 4 in results
         has_failure = any(x != 4 for x in results)
         
-        if extract_right and has_success:
-            # Find the first successful response
-            success_index = results.index(4)
-            new_entry = {
-                'id': entry['id'],
-                'model_response': entry['model_responses'][success_index],
-                'is_correct': True,
-                'metadata': {
-                    'problem': entry['problem'],
-                    'solution': entry.get('correct_solution', '')  # Include solution if available
-                }
-            }
-            filtered_data.append(new_entry)
-        elif ((remove_wrong and has_success) or 
-              (remove_right and has_failure) or 
-              (not remove_wrong and not remove_right and not extract_right)):
+        if ((remove_wrong and has_success) or 
+            (remove_right and has_failure) or 
+            (not remove_wrong and not remove_right)):
             filtered_data.append(entry)
             
     return filtered_data
