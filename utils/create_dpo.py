@@ -38,8 +38,8 @@ def select_rejected_response(responses: List[str], verification_results: List[in
         # Take lowest score
         return min(non_perfect)[1]
     else:  # random
-        # Random choice from non-4 responses
-        return random.choice(non_perfect)[1]
+        # Random choice from non-4 responses (only the response part)
+        return random.choice([resp for _, resp in non_perfect])[1]
 
 def process_file(input_file: str, output_file: str, rejection_strategy: str) -> Tuple[int, int]:
     """
