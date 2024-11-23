@@ -1,6 +1,7 @@
 import json
 import random
 import argparse
+import tiktoken
 from typing import List, Dict, Optional
 
 def clean_json_file(filename: str) -> Optional[List[Dict]]:
@@ -167,6 +168,29 @@ def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_
             
     return filtered_data
 
+def count_tokens(text: str) -> int:
+    """
+    Count the number of tokens in a text using GPT tokenizer.
+    """
+    encoder = tiktoken.get_encoding("cl100k_base")  # GPT-4 encoder
+    return len(encoder.encode(text))
+
+def filter_by_tokens(data: List[Dict], max_tokens: int) -> List[Dict]:
+    """
+    Remove entries where any text field exceeds the token limit.
+    """
+    if not data:
+        return []
+    
+    filtered_data = []
+    for entry in data:
+        # Convert entry to string to check all text fields
+        entry_text = json.dumps(entry, ensure_ascii=False)
+        if count_tokens(entry_text) <= max_tokens:
+            filtered_data.append(entry)
+    
+    return filtered_data
+
 def remove_entries_with_links(data: List[Dict]) -> List[Dict]:
     """
     Remove entries that contain 'http' anywhere in their text fields.
@@ -265,6 +289,8 @@ def main():
                       help='Randomly shuffle the dataset')
     parser.add_argument('--seed', type=int,
                       help='Random seed for shuffling')
+    parser.add_argument('--filter-tokens', type=int,
+                      help='Remove entries with more than specified number of tokens')
     args = parser.parse_args()
 
     # Validate arguments
@@ -311,6 +337,9 @@ def main():
             
         if args.remove_links:
             filtered_data = remove_entries_with_links(filtered_data)
+            
+        if args.filter_tokens:
+            filtered_data = filter_by_tokens(filtered_data, args.filter_tokens)
             
         if args.shuffle:
             filtered_data = shuffle_data(filtered_data, args.seed)
