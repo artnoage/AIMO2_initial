@@ -242,6 +242,16 @@ def shuffle_data(data: List[Dict], seed: Optional[int] = None) -> List[Dict]:
     random.shuffle(shuffled)
     return shuffled
 
+def extract_ids(data: List[Dict]) -> List[Dict]:
+    """
+    Extract only the ID field from each entry.
+    Args:
+        data: List of dictionary entries
+    Returns:
+        List of dictionaries containing only the ID field
+    """
+    return [{'id': entry.get('id')} for entry in data]
+
 def combine_json_files(file1: str, file2: str) -> Optional[List[Dict]]:
     """
     Clean and combine two JSON files.
@@ -291,6 +301,8 @@ def main():
                       help='Random seed for shuffling')
     parser.add_argument('--filter-tokens', type=int,
                       help='Remove entries with more than specified number of tokens')
+    parser.add_argument('--extract-ids', action='store_true',
+                      help='Extract only the ID field from each entry')
     args = parser.parse_args()
 
     # Validate arguments
@@ -340,6 +352,9 @@ def main():
             
         if args.filter_tokens:
             filtered_data = filter_by_tokens(filtered_data, args.filter_tokens)
+            
+        if args.extract_ids:
+            filtered_data = extract_ids(filtered_data)
             
         if args.shuffle:
             filtered_data = shuffle_data(filtered_data, args.seed)
