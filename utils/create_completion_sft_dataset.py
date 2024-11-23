@@ -159,13 +159,13 @@ def main():
     parser = argparse.ArgumentParser(description='Create completion SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
-    parser.add_argument('--output-progressive', type=str, default='datasets/progressive_completion_dataset.json',
+    parser.add_argument('--output-progressive', type=str, default='datasets/progressive_completion.json',
                        help='Output file for progressive completion examples')
-    parser.add_argument('--output-masked', type=str, default='datasets/masked_completion_dataset.json',
+    parser.add_argument('--output-masked', type=str, default='masked_completion.json',
                        help='Output file for masked completion examples')
     parser.add_argument('--min-steps', type=int, default=2,
                        help='Minimum number of steps required in solution')
-    parser.add_argument('--iterations', type=int, default=3,
+    parser.add_argument('--iterations', type=int, default=2,
                        help='Number of times to process each problem')
     args = parser.parse_args()
     
