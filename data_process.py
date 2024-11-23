@@ -173,7 +173,7 @@ def count_tokens(text: str) -> int:
     Count the number of tokens in a text using GPT tokenizer.
     """
     encoder = tiktoken.get_encoding("cl100k_base")  # GPT-4 encoder
-    return len(encoder.encode(text))
+    return len(encoder.encode(text, disallowed_special=()))  # Allow all special tokens
 
 def filter_by_tokens(data: List[Dict], max_tokens: int) -> List[Dict]:
     """
