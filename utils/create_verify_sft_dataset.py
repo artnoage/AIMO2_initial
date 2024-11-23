@@ -10,7 +10,7 @@ def load_augmented_data(filename: str) -> List[Dict]:
         return json.load(f)
 
 def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) -> Dict:
-    """Create a single SFT training example from an augmented data entry"""
+    """Create a single SFT training example in ShareGPT format from an augmented data entry"""
     # Get all available responses
     responses = list(zip(entry['model_responses'], entry['verification_results']))
     
@@ -57,8 +57,16 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     output_text = f"{correct_solutions}"
     
     return {
-        "input": input_text,
-        "output": output_text
+        "conversations": [
+            {
+                "role": "human",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": output_text
+            }
+        ]
     }
 
 def main():
