@@ -31,7 +31,7 @@ def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     return prefix, completion
 
 def create_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]:
-    """Create a completion training example from an augmented data entry"""
+    """Create a completion training example in ShareGPT format from an augmented data entry"""
     
     # Get solutions that passed all verifications (level 4)
     valid_solutions = [
@@ -78,8 +78,16 @@ def create_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]
     )
     
     return {
-        "input": input_text,
-        "output": completion
+        "conversations": [
+            {
+                "role": "human",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": completion
+            }
+        ]
     }
 
 def main():
