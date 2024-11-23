@@ -52,7 +52,11 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
         return None
         
     # Choose random step to mask (not first or last step)
-    step_to_mask = random.randint(2, total_steps-1)
+    if total_steps <= 3:
+        # If only 3 steps, always mask step 2
+        step_to_mask = 2
+    else:
+        step_to_mask = random.randint(2, total_steps-1)
     
     # Split solution at chosen step
     prefix, step_and_rest = split_at_step(solution, step_to_mask-1)
