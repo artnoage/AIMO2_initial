@@ -12,7 +12,7 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
-        dtype="float16",
+        load_in_8bit=True,
     )
 
     # Load and prepare the dataset
