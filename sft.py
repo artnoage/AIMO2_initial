@@ -1,4 +1,3 @@
-import torch
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
@@ -45,8 +44,8 @@ def main():
     training_args = TrainingArguments(
         output_dir="./train_results",
         num_train_epochs=1,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=64,
         learning_rate=5e-6,
         fp16=True,
         logging_steps=100,
