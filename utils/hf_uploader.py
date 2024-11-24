@@ -41,6 +41,12 @@ def upload_model_to_hub(model_path, repo_name):
         model = AutoModelForCausalLM.from_pretrained(model_path)
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         
+        # Test tokenizer
+        test_text = "Testing the tokenizer"
+        encoded = tokenizer.encode(test_text)
+        decoded = tokenizer.decode(encoded)
+        print(f"Tokenizer test - Original: '{test_text}' -> Decoded: '{decoded}'")
+        
         print("Pushing to hub...")
         model.push_to_hub(repo_name)
         tokenizer.push_to_hub(repo_name)
