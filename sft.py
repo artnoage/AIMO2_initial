@@ -3,6 +3,7 @@ from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
 from trl import SFTTrainer
+from peft import LoraConfig, prepare_model_for_kbit_training
 import bitsandbytes as bnb
 import os
 
@@ -16,6 +17,19 @@ def main():
         dtype = "auto",
         max_seq_length=8192,
         load_in_8bit=True)  # Will use default dtype settings
+        
+    # Configure LoRA
+    peft_config = LoraConfig(
+        r=64,  # Rank
+        lora_alpha=16,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        lora_dropout=0.05,
+        bias="none",
+        task_type="CAUSAL_LM"
+    )
+    
+    # Apply LoRA config to the model
+    model.add_adapter(peft_config)
 
     # Setup chat template
     tokenizer = get_chat_template(
