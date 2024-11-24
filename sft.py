@@ -13,9 +13,9 @@ def main():
     # Configure 8-bit quantization
     quantization_config = BitsAndBytesConfig(
         load_in_8bit=True,
-        bnb_8bit_compute_dtype="float16",
-        bnb_8bit_quant_type="nf8",
-        bnb_8bit_use_double_quant=True,
+        bnb_8bit_compute_dtype="float16" if not is_bfloat16_supported() else "bfloat16",
+        bnb_8bit_quant_type="fp8",  # fp8 is more stable for training than nf8
+        bnb_8bit_use_double_quant=False,  # Double quantization can sometimes cause instability during training
     )
 
     # Load the model
