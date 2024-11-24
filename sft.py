@@ -8,6 +8,7 @@ import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
+load_in_4bit=False
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -30,28 +31,17 @@ def main():
     print("\n=== Before Model Load ===")
     print_gpu_utilization()
     
-    # Configure 8-bit quantization
-    compute_dtype = "float16" if not is_bfloat16_supported() else "bfloat16"
-    quantization_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        bnb_8bit_compute_dtype=compute_dtype,
-        bnb_8bit_quant_type="fp8",  # fp8 is more stable for training
-        bnb_8bit_use_double_quant=False,  # Disable double quantization for training stability
-        llm_int8_skip_modules=None,
-        llm_int8_threshold=6.0,
-        llm_int8_has_fp16_weight=False,
-        bnb_8bit_use_fp8_qdq=True,
-    )
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
-        quantization_config=quantization_config)
+        load_in_4bit=False,
+        load_in_8bit=False)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
-    
+
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
