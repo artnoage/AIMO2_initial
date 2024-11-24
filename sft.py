@@ -3,9 +3,8 @@ from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
 from trl import SFTTrainer
-from peft import LoraConfig, prepare_model_for_kbit_training
-import bitsandbytes as bnb
 import os
+from unsloth import is_bfloat16_supported
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -14,21 +13,25 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        dtype = "auto",
-        max_seq_length=8192)  # Using auto dtype for mixed precision
+        max_seq_length=8192,
+        dtype="auto")  # Using auto dtype for mixed precision
         
     # Configure LoRA
-    peft_config = LoraConfig(
-        r=64,  # Rank
-        lora_alpha=16,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        lora_dropout=0.05,
-        bias="none",
-        task_type="CAUSAL_LM"
-    )
+    model = FastLanguageModel.get_peft_model(
+    model,
+    r = 64, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj",],
+    lora_alpha = 64,
+    lora_dropout = 0, # Supports any, but = 0 is optimized
+    bias = "none",    # Supports any, but = "none" is optimized
+    # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
+    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    random_state = 3407,
+    use_rslora = False,  # We support rank stabilized LoRA
+    loftq_config = None)
     
-    # Apply LoRA config to the model
-    model.add_adapter(peft_config)
+
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -49,22 +52,20 @@ def main():
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
-    print("Raw conversations sample (index 5):")
-    print(dataset[5]["conversations"])
-    print("\nFormatted text sample (index 5):")
-    print(formatted_dataset[5]["text"])
     
     # Training arguments
     training_args = TrainingArguments(
         output_dir="./train_results",
         num_train_epochs=1,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=64,
+        per_device_train_batch_size=16,
+        gradient_accumulation_steps=4,
         learning_rate=5e-6,
-        logging_steps=100,
+        logging_steps=1,
         save_strategy="steps",
         save_steps=200,
-        optim="adamw_hf",
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        optim = "adamw_8bit",
     )
 
     # Initialize SFT trainer
