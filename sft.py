@@ -15,8 +15,7 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         dtype = "auto",
-        max_seq_length=8192,
-        load_in_8bit=True)  # Will use default dtype settings
+        max_seq_length=8192)  # Using auto dtype for mixed precision
         
     # Configure LoRA
     peft_config = LoraConfig(
