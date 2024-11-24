@@ -31,11 +31,16 @@ def main():
     print_gpu_utilization()
     
     # Configure 8-bit quantization
+    compute_dtype = "float16" if not is_bfloat16_supported() else "bfloat16"
     quantization_config = BitsAndBytesConfig(
         load_in_8bit=True,
-        bnb_8bit_compute_dtype="float16" if not is_bfloat16_supported() else "bfloat16",
+        bnb_8bit_compute_dtype=compute_dtype,
         bnb_8bit_quant_type="fp8",  # fp8 is more stable for training
         bnb_8bit_use_double_quant=False,  # Disable double quantization for training stability
+        llm_int8_skip_modules=None,
+        llm_int8_threshold=6.0,
+        llm_int8_has_fp16_weight=False,
+        bnb_8bit_use_fp8_qdq=True,
     )
 
     # Load the model
