@@ -13,8 +13,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=8192,
-        torch_dtype="float16")  # Using float16 precision
+        max_seq_length=8192)  # Using float16 precision
         
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -26,10 +25,9 @@ def main():
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    use_gradient_checkpointing = False, # True or "unsloth" for very long context
     random_state = 3407,
-    use_rslora = False,  # We support rank stabilized LoRA
-    loftq_config = None)
+    use_rslora = False)
     
 
 
@@ -57,8 +55,8 @@ def main():
     training_args = TrainingArguments(
         output_dir="./train_results",
         num_train_epochs=1,
-        per_device_train_batch_size=16,
-        gradient_accumulation_steps=4,
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=16,
         learning_rate=5e-6,
         logging_steps=1,
         save_strategy="steps",
