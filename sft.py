@@ -14,7 +14,7 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
-        load_in_8bit=True,
+        quantization_config={"load_in_8bit": True},
     )
 
     # Setup chat template
