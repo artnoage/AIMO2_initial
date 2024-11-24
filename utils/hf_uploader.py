@@ -5,7 +5,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import HfApi, login
 import json
 import argparse
-from pathlib import Path
 
 def load_json_dataset(json_path):
     """Load JSON dataset and convert it to a format suitable for HuggingFace."""
@@ -48,8 +47,8 @@ def upload_model_to_hub(model_path, repo_name):
         print(f"Tokenizer test - Original: '{test_text}' -> Decoded: '{decoded}'")
         
         print("Pushing to hub...")
-        #model.push_to_hub(repo_name)
-        #tokenizer.push_to_hub(repo_name)
+        model.push_to_hub(repo_name)
+        tokenizer.push_to_hub(repo_name)
         print("Upload complete!")
         
     except Exception as e:

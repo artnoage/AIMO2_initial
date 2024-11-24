@@ -12,3 +12,5 @@ backups/
 *.json
 local_dataset
 cache
+mistral/
+metastral/
