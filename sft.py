@@ -13,7 +13,9 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=8192)  # Will use default dtype settings
+        dtype = "auto",
+        max_seq_length=8192,
+        load_in_8bit=True)  # Will use default dtype settings
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -50,7 +52,7 @@ def main():
         logging_steps=100,
         save_strategy="steps",
         save_steps=200,
-        optim="adamw_bnb_8bit",
+        optim="adamw_hf",
     )
 
     # Initialize SFT trainer
