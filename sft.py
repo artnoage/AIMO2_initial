@@ -50,7 +50,8 @@ def main():
         learning_rate=5e-6,
         fp16=True,
         logging_steps=100,
-        save_strategy="epoch",
+        save_strategy="steps",
+        save_steps=200,
         optim="adamw_bnb_8bit",
     )
 
