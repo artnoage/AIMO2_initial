@@ -36,8 +36,10 @@ def main():
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
-    print("Dataset sample:")
-    print(formatted_dataset[0]["text"])
+    print("Raw conversations sample (index 5):")
+    print(dataset[5]["conversations"])
+    print("\nFormatted text sample (index 5):")
+    print(formatted_dataset[5]["text"])
     
     # Training arguments
     training_args = TrainingArguments(
