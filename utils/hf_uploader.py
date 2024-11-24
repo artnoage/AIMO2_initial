@@ -48,8 +48,8 @@ def upload_model_to_hub(model_path, repo_name):
         print(f"Tokenizer test - Original: '{test_text}' -> Decoded: '{decoded}'")
         
         print("Pushing to hub...")
-        model.push_to_hub(repo_name)
-        tokenizer.push_to_hub(repo_name)
+        #model.push_to_hub(repo_name)
+        #tokenizer.push_to_hub(repo_name)
         print("Upload complete!")
         
     except Exception as e:
