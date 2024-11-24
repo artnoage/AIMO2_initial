@@ -1,7 +1,8 @@
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
-from transformers import TrainingArguments, DataCollatorForSeq2Seq
+from transformers import TrainingArguments
+from trl import SFTTrainer
 import bitsandbytes as bnb
 import os
 
@@ -54,13 +55,14 @@ def main():
         optim="adamw_bnb_8bit",
     )
 
-    # Initialize trainer
-    trainer = FastLanguageModel.get_trainer(
+    # Initialize SFT trainer
+    trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
-        args=training_args,
         train_dataset=formatted_dataset,
         dataset_text_field="text",
+        tokenizer=tokenizer,
+        args=training_args,
+        packing=False,
     )
 
     # Train the model
