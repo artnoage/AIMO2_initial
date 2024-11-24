@@ -46,7 +46,7 @@ def main():
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
-        
+    exit()
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
