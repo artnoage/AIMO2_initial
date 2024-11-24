@@ -4,12 +4,32 @@ from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments, BitsAndBytesConfig
 from trl import SFTTrainer
 import os
+import torch
+import GPUtil
+from transformers import logging
 from unsloth import is_bfloat16_supported
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+def print_gpu_utilization():
+    GPUs = GPUtil.getGPUs()
+    for gpu in GPUs:
+        print(f'\nGPU ID: {gpu.id} ({gpu.name})')
+        print(f'GPU load: {gpu.load*100:.1f}%')
+        print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
+        print(f'GPU memory free: {gpu.memoryFree}MB')
+    if torch.cuda.is_available():
+        print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
+        print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
+
 def main():
+    logging.set_verbosity_info()
+    print("\n=== Initial GPU State ===")
+    print_gpu_utilization()
+    print("\n=== Before Model Load ===")
+    print_gpu_utilization()
+    
     # Configure 8-bit quantization
     quantization_config = BitsAndBytesConfig(
         load_in_8bit=True,
@@ -23,6 +43,9 @@ def main():
         model_name="artnoage/metastral",
         max_seq_length=8192,
         quantization_config=quantization_config)
+        
+    print("\n=== After Model Load ===")
+    print_gpu_utilization()
         
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
