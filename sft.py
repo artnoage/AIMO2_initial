@@ -61,6 +61,9 @@ def main():
     random_state = 3407,
     use_rslora = False)
     
+    print("\n=== After LoRA Configuration ===")
+    print_gpu_utilization()
+    
 
 
     # Setup chat template
