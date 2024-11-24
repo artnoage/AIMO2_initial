@@ -2,6 +2,7 @@ import torch
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
+import bitsandbytes as bnb
 import os
 
 # Set GPU device
@@ -43,7 +44,7 @@ def main():
         fp16=True,
         logging_steps=100,
         save_strategy="epoch",
-        optim="adamw_torch",
+        optim="adamw_bnb_8bit",
     )
 
     # Initialize trainer
