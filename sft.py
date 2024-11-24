@@ -53,7 +53,7 @@ def main():
         tokenizer=tokenizer,
         args=training_args,
         train_dataset=formatted_dataset["train"],
-        dataset_text_field="text",  # Adjust this based on your dataset's structure
+        dataset_text_field="text",
     )
 
     # Train the model
