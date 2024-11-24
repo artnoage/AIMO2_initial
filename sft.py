@@ -13,7 +13,8 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=8192)
+        max_seq_length=8192,
+        torch_dtype="auto")  # This will use fp16 when fp16=True in training args
 
     # Setup chat template
     tokenizer = get_chat_template(
