@@ -21,12 +21,12 @@ def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="chatml",
-        mapping={"role": "from", "content": "value", "user": "human", "assistant": "gpt"},
+        mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
 
     # Load and prepare the dataset
-    dataset = load_dataset("philschmid/guanaco-sharegpt-style", split="train")
+    dataset = load_dataset("artnoage/sft", split="train")
     
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
