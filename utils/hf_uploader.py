@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import HfApi, login
@@ -43,6 +44,9 @@ def upload_model_to_hub(model_path, repo_name):
     tokenizer.push_to_hub(repo_name)
 
 def main():
+    # Load environment variables from .env file
+    load_dotenv()
+    
     parser = argparse.ArgumentParser(description='Upload datasets or models to HuggingFace Hub')
     parser.add_argument('--type', choices=['dataset', 'model'], required=True,
                       help='Type of content to upload (dataset or model)')
