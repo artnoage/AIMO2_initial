@@ -35,13 +35,41 @@ def upload_model_to_hub(model_path, repo_name):
         raise ValueError("HF_TOKEN environment variable not set")
     login(token)
     
-    # Load model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(model_path)
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model_path = Path(model_path)
+    print(f"Checking contents of {model_path}...")
+    if model_path.is_file():
+        # If a specific file is provided, use its parent directory
+        model_path = model_path.parent
     
-    # Push to hub
-    model.push_to_hub(repo_name)
-    tokenizer.push_to_hub(repo_name)
+    # List all relevant files
+    files = list(model_path.glob('*'))
+    print("Found files:", [f.name for f in files])
+    
+    try:
+        print(f"Loading tokenizer from {model_path}...")
+        tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
+        print("Tokenizer loaded successfully")
+        
+        print(f"Loading model from {model_path}...")
+        model = AutoModelForCausalLM.from_pretrained(str(model_path), trust_remote_code=True)
+        print("Model loaded successfully")
+        
+        # Push to hub
+        print(f"Pushing tokenizer to {repo_name}...")
+        tokenizer.push_to_hub(repo_name)
+        print(f"Pushing model to {repo_name}...")
+        model.push_to_hub(repo_name)
+        
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        print("\nExpected files in model directory:")
+        print("- config.json")
+        print("- pytorch_model.bin or model.safetensors")
+        print("- tokenizer.json")
+        print("- tokenizer.model (for some tokenizer types)")
+        print("- special_tokens_map.json (optional)")
+        print("- generation_config.json (optional)")
+        raise
 
 def main():
     # Load environment variables from .env file
