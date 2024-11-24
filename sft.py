@@ -13,7 +13,7 @@ def main():
     # Configure 8-bit quantization
     quantization_config = BitsAndBytesConfig(
         load_in_8bit=True,
-        bnb_4bit_compute_dtype="float16",
+        bnb_8bit_compute_dtype="float16",
         bnb_8bit_quant_type="nf8",
         bnb_8bit_use_double_quant=True,
     )
@@ -22,8 +22,7 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
-        quantization_config=quantization_config,
-        dtype="auto")  # Using auto dtype for mixed precision
+        quantization_config=quantization_config)  # Using auto dtype for mixed precision
         
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
