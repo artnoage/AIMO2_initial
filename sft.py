@@ -1,7 +1,7 @@
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
-from transformers import TrainingArguments
+from transformers import TrainingArguments, BitsAndBytesConfig
 from trl import SFTTrainer
 import os
 from unsloth import is_bfloat16_supported
@@ -10,10 +10,19 @@ from unsloth import is_bfloat16_supported
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
+    # Configure 8-bit quantization
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        bnb_4bit_compute_dtype="float16",
+        bnb_8bit_quant_type="nf8",
+        bnb_8bit_use_double_quant=True,
+    )
+
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
+        quantization_config=quantization_config,
         dtype="auto")  # Using auto dtype for mixed precision
         
     # Configure LoRA
