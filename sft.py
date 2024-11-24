@@ -11,7 +11,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=2048,
+        max_seq_length=8192,
         dtype=None,  # Will use best dtype available
         load_in_4bit=True,
     )
@@ -36,13 +36,13 @@ def main():
     
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="./results",
-        num_train_epochs=3,
+        output_dir="./train_results",
+        num_train_epochs=1,
         per_device_train_batch_size=4,
         gradient_accumulation_steps=4,
-        learning_rate=2e-4,
+        learning_rate=5e-6,
         fp16=True,
-        logging_steps=10,
+        logging_steps=100,
         save_strategy="epoch",
         optim="adamw_torch",
     )
