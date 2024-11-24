@@ -13,9 +13,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=8192,
-        quantization_config={"load_in_8bit": True},
-    )
+        max_seq_length=8192)
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -24,15 +22,15 @@ def main():
         mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
-
-    # Load and prepare the dataset
-    dataset = load_dataset("artnoage/sft", split="train")
     
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
-        texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) for convo in convos]
-        return {"text": texts}
+        texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+        return { "text" : texts, }
+
     
+
+    dataset = load_dataset("artnoage/sft", split="train")
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
