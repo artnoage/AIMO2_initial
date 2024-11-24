@@ -14,15 +14,18 @@ load_in_4bit=False
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def print_gpu_utilization():
-    GPUs = GPUtil.getGPUs()
-    for gpu in GPUs:
-        print(f'\nGPU ID: {gpu.id} ({gpu.name})')
-        print(f'GPU load: {gpu.load*100:.1f}%')
-        print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
-        print(f'GPU memory free: {gpu.memoryFree}MB')
-    if torch.cuda.is_available():
-        print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
-        print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
+    visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    if visible_gpus:
+        visible_ids = [int(x) for x in visible_gpus.split(",")]
+        GPUs = [gpu for gpu in GPUtil.getGPUs() if gpu.id in visible_ids]
+        for gpu in GPUs:
+            print(f'\nGPU ID: {gpu.id} ({gpu.name})')
+            print(f'GPU load: {gpu.load*100:.1f}%')
+            print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
+            print(f'GPU memory free: {gpu.memoryFree}MB')
+        if torch.cuda.is_available():
+            print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
+            print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
 
 def main():
     logging.set_verbosity_info()
