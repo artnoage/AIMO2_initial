@@ -1,7 +1,7 @@
 import torch
 from datasets import load_dataset
 from unsloth import FastLanguageModel
-from transformers import TrainingArguments
+from transformers import TrainingArguments, DataCollatorForSeq2Seq
 import os
 
 # Set GPU device
@@ -16,8 +16,23 @@ def main():
         load_in_4bit=True,
     )
 
-    # Load dataset
+    # Load and prepare the dataset
     dataset = load_dataset("artnoage/sft")
+    
+    def format_conversation(example):
+        """Format conversation into a chat format with roles and content."""
+        formatted_text = ""
+        for message in example['conversations']:
+            role = message['role']
+            content = message['content']
+            formatted_text += f"{role}: {content}\n\n"
+        return {"text": formatted_text.strip()}
+    
+    # Apply the formatting to the dataset
+    formatted_dataset = dataset.map(format_conversation, remove_columns=dataset["train"].column_names)
+    
+    print("Dataset sample:")
+    print(formatted_dataset["train"][0]["text"])
     
     # Training arguments
     training_args = TrainingArguments(
@@ -37,7 +52,7 @@ def main():
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        train_dataset=dataset["train"],
+        train_dataset=formatted_dataset["train"],
         dataset_text_field="text",  # Adjust this based on your dataset's structure
     )
 
