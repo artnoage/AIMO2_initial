@@ -59,12 +59,12 @@ def main():
     else:
         # Get the latest checkpoint
         latest_checkpoint = max(checkpoints, key=lambda x: int(x.split('-')[1]))
-        checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint, 'pytorch_model.bin')
-        if not os.path.exists(checkpoint_path):
-            raise ValueError(f"Model weights not found at {checkpoint_path}")
+        checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint)
+        if not os.path.exists(os.path.join(checkpoint_path, 'adapter_model.safetensors')):
+            raise ValueError(f"Model weights not found at {checkpoint_path}/adapter_model.safetensors")
     
     # Load the base model as a PeftModel
-    model = PeftModel.from_pretrained(model, checkpoint_path)
+    model = PeftModel.from_pretrained(model, checkpoint_path, torch_dtype=torch.float32)
     
     # Merge LoRA weights with base model and convert to float32
     model = model.merge_and_unload()
