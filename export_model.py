@@ -4,15 +4,26 @@ import torch
 from transformers import logging
 import argparse
 
-def setup_model():
+def setup_model(model_path="artnoage/metastral"):
     """Initialize the base model with LoRA configuration"""
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
-        max_seq_length=8192,
-        dtype="bfloat16",
-        load_in_4bit=False,
-        load_in_8bit=True
-    )
+    try:
+        # First try loading from local path
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=model_path,
+            max_seq_length=8192,
+            dtype="bfloat16",
+            load_in_4bit=False,
+            load_in_8bit=True
+        )
+    except Exception as e:
+        print(f"Could not load from local path, trying HuggingFace Hub: {e}")
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name="artnoage/metastral",
+            max_seq_length=8192,
+            dtype="bfloat16",
+            load_in_4bit=False,
+            load_in_8bit=True
+        )
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -36,13 +47,15 @@ def main():
                       help='Directory containing the training checkpoints')
     parser.add_argument('--output_dir', type=str, default='models',
                       help='Directory to save the exported model')
+    parser.add_argument('--model_path', type=str, default='artnoage/metastral',
+                      help='Path to the base model weights')
     args = parser.parse_args()
 
     # Setup logging
     logging.set_verbosity_info()
     
     # Initialize model and tokenizer
-    model, tokenizer = setup_model()
+    model, tokenizer = setup_model(args.model_path)
     
     # Find the latest checkpoint
     checkpoint_dir = args.checkpoint_dir
