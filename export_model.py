@@ -1,43 +1,33 @@
-from unsloth import FastLanguageModel
 import os
 import torch
-from transformers import logging
+from transformers import AutoModelForCausalLM, AutoTokenizer, logging
+from peft import PeftModel
 import argparse
 
 def setup_model(model_path="artnoage/metastral"):
     """Initialize the base model with LoRA configuration"""
     try:
         # First try loading from local path
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name=model_path,
-            max_seq_length=8192,
-            dtype="bfloat16",
-            load_in_4bit=False,
-            load_in_8bit=True
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.float32,
+            trust_remote_code=True
+        )
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_path,
+            trust_remote_code=True
         )
     except Exception as e:
         print(f"Could not load from local path, trying HuggingFace Hub: {e}")
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name="artnoage/metastral",
-            max_seq_length=8192,
-            dtype="bfloat16",
-            load_in_4bit=False,
-            load_in_8bit=True
+        model = AutoModelForCausalLM.from_pretrained(
+            "artnoage/metastral",
+            torch_dtype=torch.float32,
+            trust_remote_code=True
         )
-    
-    # Configure LoRA
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r=64,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj",],
-        lora_alpha=64,
-        lora_dropout=0,
-        bias="none",
-        use_gradient_checkpointing=False,
-        random_state=3407,
-        use_rslora=False
-    )
+        tokenizer = AutoTokenizer.from_pretrained(
+            "artnoage/metastral",
+            trust_remote_code=True
+        )
     
     return model, tokenizer
 
@@ -73,12 +63,12 @@ def main():
         if not os.path.exists(checkpoint_path):
             raise ValueError(f"Model weights not found at {checkpoint_path}")
     
-    # Load the LoRA weights
-    state_dict = torch.load(checkpoint_path)
-    model.load_state_dict(state_dict, strict=False)
+    # Load the base model as a PeftModel
+    model = PeftModel.from_pretrained(model, checkpoint_path)
     
-    # Merge LoRA weights with base model
+    # Merge LoRA weights with base model and convert to float32
     model = model.merge_and_unload()
+    model = model.to(torch.float32)
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
