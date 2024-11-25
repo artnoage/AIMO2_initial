@@ -44,10 +44,21 @@ def main():
     # Initialize model and tokenizer
     model, tokenizer = setup_model()
     
-    # Load the trained LoRA weights
-    checkpoint_path = os.path.join(args.checkpoint_dir, 'pytorch_model.bin')
-    if not os.path.exists(checkpoint_path):
-        raise ValueError(f"Checkpoint not found at {checkpoint_path}")
+    # Find the latest checkpoint
+    checkpoint_dir = args.checkpoint_dir
+    checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith('checkpoint-')]
+    if not checkpoints:
+        # If no checkpoint folders found, try the main directory
+        if os.path.exists(os.path.join(checkpoint_dir, 'pytorch_model.bin')):
+            checkpoint_path = os.path.join(checkpoint_dir, 'pytorch_model.bin')
+        else:
+            raise ValueError(f"No checkpoints found in {checkpoint_dir}")
+    else:
+        # Get the latest checkpoint
+        latest_checkpoint = max(checkpoints, key=lambda x: int(x.split('-')[1]))
+        checkpoint_path = os.path.join(checkpoint_dir, latest_checkpoint, 'pytorch_model.bin')
+        if not os.path.exists(checkpoint_path):
+            raise ValueError(f"Model weights not found at {checkpoint_path}")
     
     # Load the LoRA weights
     state_dict = torch.load(checkpoint_path)
