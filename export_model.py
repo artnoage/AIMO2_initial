@@ -32,7 +32,7 @@ def setup_model():
 
 def main():
     parser = argparse.ArgumentParser(description='Export trained model with LoRA adapters')
-    parser.add_argument('--checkpoint_dir', type=str, required=True,
+    parser.add_argument('--checkpoint_dir', type=str, default='train_results',
                       help='Directory containing the training checkpoints')
     parser.add_argument('--output_dir', type=str, default='models',
                       help='Directory to save the exported model')
