@@ -131,9 +131,9 @@ async def main():
     max_concurrent = 128  # Adjust based on your GPU memory
     semaphore = asyncio.Semaphore(max_concurrent)
 
-    async def process_with_semaphore(example, running_id):
+    async def process_with_semaphore(example, running_id, model, tokenizer, verifier_model):
         async with semaphore:
-            return await process_example(example, running_id, model, tokenizer)
+            return await process_example(example, running_id, model, tokenizer, verifier_model)
 
     # Initialize verifier model
     verifier_model = get_model(ModelOption.GEMINI_FLASH)
