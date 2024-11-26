@@ -71,23 +71,14 @@ def main():
 
     def formatting_prompts_func(examples):
         formatted_pairs = []
-        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+        for chosen, rejected in zip(examples["chosen"], examples["rejected"]):
             # Format chosen response
-            chosen_convo = [
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": chosen}
-            ]
-            chosen_text = tokenizer.apply_chat_template(chosen_convo, tokenize=False, add_generation_prompt=False)
+            chosen_text = tokenizer.apply_chat_template(chosen, tokenize=False, add_generation_prompt=False)
             
             # Format rejected response
-            rejected_convo = [
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": rejected}
-            ]
-            rejected_text = tokenizer.apply_chat_template(rejected_convo, tokenize=False, add_generation_prompt=False)
+            rejected_text = tokenizer.apply_chat_template(rejected, tokenize=False, add_generation_prompt=False)
             
             formatted_pairs.append({
-                "prompt": prompt,
                 "chosen": chosen_text,
                 "rejected": rejected_text
             })
