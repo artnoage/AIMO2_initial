@@ -84,8 +84,8 @@ def main():
             # Format rejected response
             rejected_text = tokenizer.apply_chat_template(example["rejected"], tokenize=False, add_generation_prompt=False)
             
-            # Format prompt
-            prompt_text = tokenizer.apply_chat_template(example["prompt"], tokenize=False, add_generation_prompt=True)
+            # Use prompt as-is since it's already a plain string
+            prompt_text = example["prompt"]
             
             formatted_pairs.append({
                 "prompt": prompt_text,
