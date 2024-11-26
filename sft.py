@@ -67,27 +67,25 @@ def main():
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="mistral",
-        mapping={"human": "user", "assistant": "assistant", "system": "system"},
+        chat_template="chatml",
+        mapping={"role":"role","content" :"content", "system":"system","user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
     
+
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
         texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) 
                 for convo in convos]
         return {"text": texts}
 
-    
 
     dataset = load_dataset("artnoage/sft", split="train")
-    # Print first example
-    print("\nFirst example in SFT dataset:")
-    print(json.dumps(dataset[0], indent=2))
-    
+
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
-    
+    print("\nFirst example in SFT dataset:")
+    print(json.dumps(formatted_dataset[0], indent=2))
     
     # Training arguments
     training_args = TrainingArguments(
