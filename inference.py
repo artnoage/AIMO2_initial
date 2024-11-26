@@ -42,37 +42,48 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
     return False
 
 async def process_example(example: Dict, running_id: int, model, tokenizer, verifier_model, best_of: int = 10) -> Dict:
-    """Process a single example with multiple attempts"""
+    """Process a single example with parallel attempts"""
     try:
         correct_answer = extract_answer_from_solution(example["solution"])
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
             
+        # Create prompt once for all attempts
+        messages = [{"role": "human", "content": example["problem"]}]
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+        
+        # Create inputs tensor for all attempts at once
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        inputs = {k: v.repeat(best_of, 1) for k, v in inputs.items()}
+        
+        # Generate all solutions in parallel
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=512,
+            temperature=0.7,
+            top_p=0.95,
+            do_sample=True
+        )
+        
+        # Process all solutions
         solutions = []
         correct_count = 0
         best_solution = None
         best_answer = None
         
-        for attempt in range(best_of):
-            messages = [
-                {"role": "human", "content": example["problem"]}
-            ]
-            prompt = tokenizer.apply_chat_template(messages, tokenize=False)
-            
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=512,
-                temperature=0.7,
-                top_p=0.95,
-                do_sample=True
-            )
-            current_solution = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            current_answer = extract_answer_from_solution(current_solution)
-            
-            is_correct = await compare_math_answers(current_answer, correct_answer, example["problem"], verifier_model)
-            
+        # Create verification tasks for all solutions
+        current_solutions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+        current_answers = [extract_answer_from_solution(sol) for sol in current_solutions]
+        verification_tasks = [
+            compare_math_answers(ans, correct_answer, example["problem"], verifier_model)
+            for ans in current_answers
+        ]
+        
+        # Wait for all verifications to complete
+        is_correct_list = await asyncio.gather(*verification_tasks)
+        
+        for i, (current_solution, current_answer, is_correct) in enumerate(zip(current_solutions, current_answers, is_correct_list)):
             if is_correct:
                 correct_count += 1
                 if best_solution is None:
@@ -127,26 +138,15 @@ async def main():
     dataset = dataset.shuffle(seed=42)
     examples = dataset.select(range(1000))
 
-    # Create a semaphore to limit concurrency
-    max_concurrent = 128  # Adjust based on your GPU memory
-    semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def process_with_semaphore(example, running_id, model, tokenizer, verifier_model):
-        async with semaphore:
-            return await process_example(example, running_id, model, tokenizer, verifier_model)
-
     # Initialize verifier model
     verifier_model = get_model(ModelOption.GEMINI_FLASH)
     
-    # Create tasks for all examples
-    tasks = [process_with_semaphore(ex, i, model, tokenizer, verifier_model) for i, ex in enumerate(examples)]
-    
-    # Process all examples with progress bar
+    # Process examples sequentially with progress bar
     results = []
     progress_bar = tqdm(total=len(examples), desc="Processing examples")
     
-    for coro in asyncio.as_completed(tasks):
-        result = await coro
+    for i, example in enumerate(examples):
+        result = await process_example(example, i, model, tokenizer, verifier_model)
         if result:
             results.append(result)
             print(f"\nProcessed example {result['id']}:")
