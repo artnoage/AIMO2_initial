@@ -88,9 +88,7 @@ def main():
     
     # Apply formatting
     formatted_dataset = dataset.map(
-        formatting_prompts_func,
-        batched=True
-    )
+        formatting_prompts_func)
     
     # Print formatted example
     print("\nFirst example after formatting:")
