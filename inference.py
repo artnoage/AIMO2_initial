@@ -122,18 +122,11 @@ async def process_example(example: Dict, running_id: int, model, tokenizer, veri
                     best_solution = current_solution
                     best_answer = current_answer
             
-            # Get the verifier's raw response for this solution
-            comparison_prompt = [
-                {"role": "system", "content": "You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."},
-                {"role": "user", "content": f"Problem:\n{example['problem']}\n\nAre these two answers equivalent?\nAnswer 1: {current_answer}\nAnswer 2: {correct_answer}"}
-            ]
-            verifier_response = await verifier_model.ainvoke(comparison_prompt)
-            
             solutions.append({
                 'solution': current_solution,
                 'answer': current_answer,
                 'is_correct': is_correct,
-                'verifier_response': verifier_response.content.strip()
+                'verifier_response': 'yes' if is_correct else 'no'
             })
         
         return {
