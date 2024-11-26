@@ -70,25 +70,45 @@ def main():
         map_eos_token=True,
     )
 
-    def formatting_prompts_func(examples):
-        return {
-            "prompt_text": examples["prompt"],
-            "chosen_text": [
-                tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
-                for msg in examples["chosen"]
-            ],
-            "rejected_text": [
-                tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
-                for msg in examples["rejected"]
-            ],
-        }
+    def _strip_prefix(text: str, prefix: str) -> str:
+        if text.startswith(prefix):
+            return text[len(prefix):]
+        return text
+
+    assistant_prefix = "Assistant: "
+
+    def formatting_prompts_func(example):
+        if all(k in example.keys() for k in ("chosen", "rejected")):
+            # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
+            prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
+            # Insert system message
+            if example["chosen"][0]["role"] != "system":
+                prompt_messages.insert(0, {"role": "system", "content": ""})
+            else:
+                prompt_messages.insert(0, example["chosen"][0])
+            # TODO: handle case where chosen/rejected also have system messages
+            chosen_messages = example["chosen"][1:]
+            rejected_messages = example["rejected"][1:]
+            example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
+            example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
+            example["text_prompt"] = tokenizer.apply_chat_template(
+                prompt_messages, tokenize=False, add_generation_prompt=True
+            )
+            example["text_chosen"] = _strip_prefix(example["text_chosen"], assistant_prefix)
+            example["text_rejected"] = _strip_prefix(example["text_rejected"], assistant_prefix)
+            return example
+        else:
+            raise ValueError(
+                f"Could not format example as dialogue for `dpo` task! Require `[chosen, rejected]` keys but found {list(example.keys())}"
+            )
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
     
     # Apply formatting
     formatted_dataset = dataset.map(
-        formatting_prompts_func)
+        formatting_prompts_func,
+        remove_columns=dataset.column_names)
     
     # Print formatted example
     print("\nFirst example after formatting:")
