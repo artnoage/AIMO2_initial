@@ -1,5 +1,6 @@
 from datasets import load_dataset
 import json
+from datetime import datetime
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
@@ -75,9 +76,13 @@ def main():
     print("\nFirst example in DPO dataset:")
     print(json.dumps(dataset[0], indent=2))
 
+    # Create timestamped output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"./train_results/dpo/{timestamp}"
+    
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="./train_results",
+        output_dir=output_dir,
         num_train_epochs=1,
         per_device_train_batch_size=2,  # Smaller batch size for DPO
         gradient_accumulation_steps=16,

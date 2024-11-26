@@ -1,5 +1,6 @@
 from datasets import load_dataset
 import json
+from datetime import datetime
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -89,9 +90,13 @@ def main():
     print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     
+    # Create timestamped output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"./train_results/sft/{timestamp}"
+    
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="./train_results",
+        output_dir=output_dir,
         num_train_epochs=1,
         per_device_train_batch_size=8,
         gradient_accumulation_steps=32,
