@@ -105,13 +105,14 @@ def main():
     
     # Apply formatting
     formatted_dataset = dataset.map(
-        lambda x: {"formatted": formatting_prompts_func([x])[0]},
-        remove_columns=dataset.column_names
+        formatting_prompts_func,
+        remove_columns=dataset.column_names,
+        batched=True
     )
     
     # Print formatted example
     print("\nFirst example after formatting:")
-    print(json.dumps(formatted_dataset[0]["formatted"], indent=2))
+    print(json.dumps(formatted_dataset[0], indent=2))
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
