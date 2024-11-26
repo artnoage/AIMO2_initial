@@ -105,8 +105,12 @@ async def process_example(example: Dict, running_id: int, model, tokenizer, veri
         best_answer = None
         
         # Create verification tasks for all solutions
-        current_solutions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-        print(current_solutions[0])
+        # Only decode the new tokens (excluding the input prompt)
+        input_length = inputs['input_ids'].shape[1]
+        current_solutions = [
+            tokenizer.decode(output[input_length:], skip_special_tokens=True) 
+            for output in outputs
+        ]
         current_answers = [extract_answer_from_solution(sol) for sol in current_solutions]
         verification_tasks = [
             compare_math_answers(ans, correct_answer, example["problem"], verifier_model)
