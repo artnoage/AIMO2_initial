@@ -276,38 +276,51 @@ def main():
     
     print(f"Processing {len(data)} problems, {args.iterations} iterations each...")
     
+    # Initialize counters
+    non_sequential_counts = {
+        'progressive': 0,
+        'masked': 0,
+        'next_step': 0
+    }
+    
     # Create progressive completion examples
     progressive_examples = []
     for _ in range(args.iterations):
-        examples = [
-            example for example in (
-                create_progressive_completion_example(entry, args.min_steps)
-                for entry in data
-            ) if example is not None
-        ]
-        progressive_examples.extend(examples)
+        for entry in data:
+            example = create_progressive_completion_example(entry, args.min_steps)
+            if example is None:
+                # Check if failure was due to non-sequential steps
+                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
+                if solution and not validate_solution_steps(solution)[0]:
+                    non_sequential_counts['progressive'] += 1
+            else:
+                progressive_examples.append(example)
     
     # Create masked completion examples
     masked_examples = []
     for _ in range(args.iterations):
-        examples = [
-            example for example in (
-                create_masked_completion_example(entry, args.min_steps)
-                for entry in data
-            ) if example is not None
-        ]
-        masked_examples.extend(examples)
+        for entry in data:
+            example = create_masked_completion_example(entry, args.min_steps)
+            if example is None:
+                # Check if failure was due to non-sequential steps
+                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
+                if solution and not validate_solution_steps(solution)[0]:
+                    non_sequential_counts['masked'] += 1
+            else:
+                masked_examples.append(example)
     
     # Create next step completion examples
     next_step_examples = []
     for _ in range(args.iterations):
-        examples = [
-            example for example in (
-                create_next_step_example(entry)
-                for entry in data
-            ) if example is not None
-        ]
-        next_step_examples.extend(examples)
+        for entry in data:
+            example = create_next_step_example(entry)
+            if example is None:
+                # Check if failure was due to non-sequential steps
+                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
+                if solution and not validate_solution_steps(solution)[0]:
+                    non_sequential_counts['next_step'] += 1
+            else:
+                next_step_examples.append(example)
     
     # Combine and shuffle all examples
     all_examples = progressive_examples + masked_examples + next_step_examples
@@ -318,10 +331,11 @@ def main():
         json.dump(all_examples, f, indent=2)
         
     print("\nResults summary:")
-    print(f"Progressive completion examples: {len(progressive_examples)}")
-    print(f"Masked completion examples: {len(masked_examples)}")
-    print(f"Next step completion examples: {len(next_step_examples)}")
+    print(f"Progressive completion examples: {len(progressive_examples)} (lost {non_sequential_counts['progressive']} to non-sequential steps)")
+    print(f"Masked completion examples: {len(masked_examples)} (lost {non_sequential_counts['masked']} to non-sequential steps)")
+    print(f"Next step completion examples: {len(next_step_examples)} (lost {non_sequential_counts['next_step']} to non-sequential steps)")
     print(f"Total examples saved to {args.output}: {len(all_examples)}")
+    print(f"Total examples lost to non-sequential steps: {sum(non_sequential_counts.values())}")
 
 if __name__ == "__main__":
     main()
