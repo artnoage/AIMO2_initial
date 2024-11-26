@@ -72,27 +72,24 @@ def main():
     )
 
     def formatting_prompts_func(examples):
-        # Handle single example case
-        if isinstance(examples, dict):
-            examples = [examples]
+        formatted_examples = []
+        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+            # Create message format for chosen and rejected responses
+            chosen_messages = [{"role": "user", "content": prompt}, 
+                             {"role": "assistant", "content": chosen}]
+            rejected_messages = [{"role": "user", "content": prompt}, 
+                               {"role": "assistant", "content": rejected}]
             
-        formatted_pairs = []
-        for example in examples:
-            # Format chosen response
-            chosen_text = tokenizer.apply_chat_template(example["chosen"], tokenize=False, add_generation_prompt=False)
+            # Apply chat template
+            chosen_text = tokenizer.apply_chat_template(chosen_messages, tokenize=False, add_generation_prompt=False)
+            rejected_text = tokenizer.apply_chat_template(rejected_messages, tokenize=False, add_generation_prompt=False)
             
-            # Format rejected response
-            rejected_text = tokenizer.apply_chat_template(example["rejected"], tokenize=False, add_generation_prompt=False)
-            
-            # Use prompt as-is since it's already a plain string
-            prompt_text = example["prompt"]
-            
-            formatted_pairs.append({
-                "prompt": prompt_text,
+            formatted_examples.append({
+                "prompt": prompt,
                 "chosen": chosen_text,
                 "rejected": rejected_text
             })
-        return formatted_pairs
+        return formatted_examples
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
