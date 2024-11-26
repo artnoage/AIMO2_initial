@@ -75,7 +75,7 @@ def main():
         # Use re.escape to escape any special characters in the pattern
         return re.sub(f"^{re.escape(pattern)}", "", s)
 
-    def apply_chat_template(example, tokenizer, assistant_prefix="<|assistant|>\n"):
+    def apply_chat_template(example, tokenizer):
         if all(k in example.keys() for k in ("chosen", "rejected")):
                 # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
                 prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
@@ -89,9 +89,8 @@ def main():
                 example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
                 example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
                 example["text_prompt"] = tokenizer.apply_chat_template(
-                    prompt_messages, tokenize=False)
-                example["text_chosen"] = _strip_prefix(example["text_chosen"], assistant_prefix)
-                example["text_rejected"] = _strip_prefix(example["text_rejected"], assistant_prefix)
+                prompt_messages, tokenize=False, add_generation_prompt=True
+            )
                 return example
         else:
             raise ValueError(
