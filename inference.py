@@ -163,7 +163,7 @@ async def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        mapping={"user": "user", "assistant": "assistant", "system": "system"},
+        mapping={"human": "user", "assistant": "assistant", "system": "system"},
         map_eos_token=True,
     )
 
