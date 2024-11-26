@@ -74,8 +74,17 @@ def main():
     
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
-        texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
-        return { "text" : texts, }
+        # Filter conversations to only include user and assistant messages
+        filtered_convos = []
+        for convo in convos:
+            filtered_convo = [
+                msg for msg in convo 
+                if msg["role"] in ["user", "assistant"]
+            ]
+            filtered_convos.append(filtered_convo)
+        texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) 
+                for convo in filtered_convos]
+        return {"text": texts}
 
     
 
