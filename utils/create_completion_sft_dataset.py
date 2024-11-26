@@ -289,12 +289,7 @@ def main():
     for _ in range(args.iterations):
         for entry in data:
             example = create_progressive_completion_example(entry, args.min_steps)
-            if example is None:
-                # Check if failure was due to non-sequential steps
-                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
-                if solution and not validate_solution_steps(solution)[0]:
-                    non_sequential_counts['progressive'] += 1
-            else:
+            if example is not None:
                 progressive_examples.append(example)
     
     # Create masked completion examples
@@ -302,12 +297,7 @@ def main():
     for _ in range(args.iterations):
         for entry in data:
             example = create_masked_completion_example(entry, args.min_steps)
-            if example is None:
-                # Check if failure was due to non-sequential steps
-                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
-                if solution and not validate_solution_steps(solution)[0]:
-                    non_sequential_counts['masked'] += 1
-            else:
+            if example is not None:
                 masked_examples.append(example)
     
     # Create next step completion examples
@@ -315,12 +305,7 @@ def main():
     for _ in range(args.iterations):
         for entry in data:
             example = create_next_step_example(entry)
-            if example is None:
-                # Check if failure was due to non-sequential steps
-                solution = random.choice([resp for resp, ver in zip(entry['model_responses'], entry['verification_results']) if ver == 4])
-                if solution and not validate_solution_steps(solution)[0]:
-                    non_sequential_counts['next_step'] += 1
-            else:
+            if example is not None:
                 next_step_examples.append(example)
     
     # Combine and shuffle all examples
