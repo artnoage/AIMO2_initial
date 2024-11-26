@@ -139,7 +139,7 @@ def main():
     
     trainer = DPOTrainer(
         model=model,
-        train_dataset=formatted_dataset,
+        train_dataset=raw_datasets,
         tokenizer=tokenizer,
         args=training_args,
     )
