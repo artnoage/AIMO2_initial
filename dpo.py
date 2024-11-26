@@ -122,12 +122,17 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"./train_results/dpo/{timestamp}"
     
-    import pprint
-    for i in range(len(raw_datasets)):
+    print("\nToken counts for first few examples:")
+    for i in range(min(5, len(raw_datasets))):
         row = raw_datasets[i]
-        pprint.pprint(len(row["prompt"]))
-        pprint.pprint(len(row["chosen"]))
-        pprint.pprint(len(row["rejected"]))
+        tokens_prompt = len(tokenizer.encode(row["prompt"]))
+        tokens_chosen = len(tokenizer.encode(row["chosen"]))
+        tokens_rejected = len(tokenizer.encode(row["rejected"]))
+        print(f"\nExample {i}:")
+        print(f"Prompt tokens: {tokens_prompt}")
+        print(f"Chosen tokens: {tokens_chosen}")
+        print(f"Rejected tokens: {tokens_rejected}")
+        print(f"Total tokens: {tokens_prompt + tokens_chosen + tokens_rejected}")
 
 
     training_args = DPOConfig(
