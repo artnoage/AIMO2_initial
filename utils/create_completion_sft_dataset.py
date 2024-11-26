@@ -65,26 +65,16 @@ def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
 def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optional[Dict]:
     """Create a masked completion example where a single step needs to be completed"""
     
-    # Get solutions that passed all verifications (level 4)
-    valid_solutions = [
-        resp for resp, ver in zip(entry['model_responses'], entry['verification_results'])
-        if ver == 4
-    ]
-    
+    valid_solutions = get_valid_solutions(entry)
     if not valid_solutions:
         return None
         
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Validate solution steps
-    is_valid, step_numbers = validate_solution_steps(solution)
-    if not is_valid:
-        return None
-        
+    # Get step numbers for the chosen solution
+    _, step_numbers = validate_solution_steps(solution)
     total_steps = len(step_numbers)
-    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
-        return None
         
     # Choose random step to mask (not first or last step)
     if total_steps <= 3:
@@ -137,26 +127,16 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
 def create_next_step_example(entry: Dict) -> Optional[Dict]:
     """Create an example where the model needs to provide just the next solution step"""
     
-    # Get solutions that passed all verifications (level 4)
-    valid_solutions = [
-        resp for resp, ver in zip(entry['model_responses'], entry['verification_results'])
-        if ver == 4
-    ]
-    
+    valid_solutions = get_valid_solutions(entry)
     if not valid_solutions:
         return None
         
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Validate solution steps
-    is_valid, step_numbers = validate_solution_steps(solution)
-    if not is_valid:
-        return None
-        
+    # Get step numbers for the chosen solution
+    _, step_numbers = validate_solution_steps(solution)
     total_steps = len(step_numbers)
-    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
-        return None
         
     # Randomly decide whether to start from scratch or from a partial solution
     include_steps = random.randint(0, total_steps - 1)
@@ -210,29 +190,36 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
         ]
     }
 
-def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]:
-    """Create a completion training example in ShareGPT format from an augmented data entry"""
-    
+def get_valid_solutions(entry: Dict) -> List[str]:
+    """Get solutions that are valid (verified and have 3+ sequential steps)"""
     # Get solutions that passed all verifications (level 4)
     valid_solutions = [
         resp for resp, ver in zip(entry['model_responses'], entry['verification_results'])
         if ver == 4
     ]
     
+    # Further filter for solutions with 3+ sequential steps
+    filtered_solutions = []
+    for solution in valid_solutions:
+        is_valid, step_numbers = validate_solution_steps(solution)
+        if is_valid and len(step_numbers) > 2:
+            filtered_solutions.append(solution)
+            
+    return filtered_solutions
+
+def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]:
+    """Create a completion training example in ShareGPT format from an augmented data entry"""
+    
+    valid_solutions = get_valid_solutions(entry)
     if not valid_solutions:
         return None
         
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Validate solution steps
-    is_valid, step_numbers = validate_solution_steps(solution)
-    if not is_valid:
-        return None
-        
+    # Get step numbers for the chosen solution
+    _, step_numbers = validate_solution_steps(solution)
     total_steps = len(step_numbers)
-    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
-        return None
         
     # Choose random cutoff point between min_steps-1 and total_steps-1
     cutoff_step = random.randint(min_steps-1, total_steps-1)
@@ -294,12 +281,8 @@ def main():
     
     print(f"Processing {len(data)} problems, {args.iterations} iterations each...")
     
-    # Initialize counters
-    non_sequential_counts = {
-        'progressive': 0,
-        'masked': 0,
-        'next_step': 0
-    }
+    # Initialize counter for filtered solutions
+    filtered_solution_count = 0
     
     # Create progressive completion examples
     progressive_examples = []
@@ -349,11 +332,10 @@ def main():
         json.dump(all_examples, f, indent=2)
         
     print("\nResults summary:")
-    print(f"Progressive completion examples: {len(progressive_examples)} (lost {non_sequential_counts['progressive']} to non-sequential steps)")
-    print(f"Masked completion examples: {len(masked_examples)} (lost {non_sequential_counts['masked']} to non-sequential steps)")
-    print(f"Next step completion examples: {len(next_step_examples)} (lost {non_sequential_counts['next_step']} to non-sequential steps)")
+    print(f"Progressive completion examples: {len(progressive_examples)}")
+    print(f"Masked completion examples: {len(masked_examples)}")
+    print(f"Next step completion examples: {len(next_step_examples)}")
     print(f"Total examples saved to {args.output}: {len(all_examples)}")
-    print(f"Total examples lost to non-sequential steps: {sum(non_sequential_counts.values())}")
 
 if __name__ == "__main__":
     main()
