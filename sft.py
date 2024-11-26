@@ -68,9 +68,7 @@ def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        mapping={"role":"role","content" :"content", "system":"system","user": "human", "assistant": "assistant"},
-        map_eos_token=True,
-    )
+        map_eos_token=True)
     
 
     def formatting_prompts_func(examples):
