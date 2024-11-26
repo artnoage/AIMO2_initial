@@ -74,8 +74,14 @@ def main():
     def formatting_prompts_func(examples):
         formatted_examples = []
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+            # Create message format for the prompt
+            messages = [{"role": "user", "content": prompt}]
+            
+            # Apply chat template to get the formatted prompt
+            formatted_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            
             formatted_examples.append({
-                "prompt": prompt,
+                "prompt": formatted_prompt,
                 "chosen": chosen,
                 "rejected": rejected
             })
