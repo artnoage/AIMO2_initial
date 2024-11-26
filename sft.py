@@ -78,7 +78,7 @@ def main():
         return {"text": texts}
 
 
-    dataset = load_dataset("artnoage/sft", split="train")
+    dataset = load_dataset("artnoage/sft_corrected", split="train")
 
     # Print original format
     print("\nFirst conversation before formatting:")
@@ -93,8 +93,8 @@ def main():
     training_args = TrainingArguments(
         output_dir="./train_results",
         num_train_epochs=1,
-        per_device_train_batch_size=61,
-        gradient_accumulation_steps=2,
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=32,
         learning_rate=5e-6,
         logging_steps=1,
         save_strategy="steps",
