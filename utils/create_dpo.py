@@ -94,18 +94,14 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
             
             if rejected_response:
                 dpo_entries.append({
-                    "conversations": [{
-                        "role": "user",
-                        "content": system_prompt + "\n\n" + entry['problem']
-                    }],
-                    "chosen": {
-                        "role": "assistant",
-                        "content": chosen_response
-                    },
-                    "rejected": {
-                        "role": "assistant",
-                        "content": rejected_response
-                    }
+                    "chosen": [
+                        {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                        {"role": "assistant", "content": chosen_response}
+                    ],
+                    "rejected": [
+                        {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                        {"role": "assistant", "content": rejected_response}
+                    ]
                 })
                 successful_pairs += 1
                 
