@@ -99,6 +99,8 @@ def main():
 
     # Load the DPO dataset
     raw_datasets = load_dataset("artnoage/dpo3", split="train")
+    print("\nDataset keys before mapping:")
+    print(raw_datasets.column_names)
 
     raw_datasets = raw_datasets.map(
         apply_chat_template,
@@ -106,6 +108,9 @@ def main():
         num_proc = 12,
         desc = "Formatting comparisons with prompt template",
     )
+
+    print("\nDataset keys after mapping:")
+    print(raw_datasets.column_names)
 
     # Replace column names with what TRL needs, text_chosen -> chosen and text_rejected -> rejected
     raw_datasets = raw_datasets.rename_columns({"text_prompt": "prompt", "text_chosen": "chosen", "text_rejected": "rejected"})
