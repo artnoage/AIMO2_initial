@@ -71,25 +71,17 @@ def main():
     )
 
     def formatting_prompts_func(examples):
-        formatted = {
-            "prompt": [],
-            "chosen": [],
-            "rejected": []
+        return {
+            "prompt": examples["prompt"],
+            "chosen": [
+                tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
+                for msg in examples["chosen"]
+            ],
+            "rejected": [
+                tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
+                for msg in examples["rejected"]
+            ],
         }
-        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Create message formats
-            chosen_messages = chosen
-            rejected_messages = rejected
-            
-            # Apply chat template to all parts
-            formatted_chosen = tokenizer.apply_chat_template(chosen_messages, tokenize=False, add_generation_prompt=False)
-            formatted_rejected = tokenizer.apply_chat_template(rejected_messages, tokenize=False, add_generation_prompt=False)
-            
-            formatted["prompt"].append(prompt)
-            formatted["chosen"].append(formatted_chosen)
-            formatted["rejected"].append(formatted_rejected)
-            
-        return formatted
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
