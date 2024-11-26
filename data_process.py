@@ -138,21 +138,19 @@ def extract_correct_verifier(data: List[Dict]) -> Optional[List[Dict]]:
             filtered_data.append(new_entry)
     return filtered_data
 
-def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> Optional[List[Dict]]:
+def remove_by_verification(data: List[Dict], remove_wrong: bool = False, remove_right: bool = False) -> List[Dict]:
     """
     Filter data based on verification results:
     - remove_wrong: Remove entries that don't have any level 4 verifications
     - remove_right: Remove entries that ONLY have level 4 verifications
-    Returns None if the data format is invalid.
+    Skips entries with missing required fields.
     """
     if not (remove_wrong or remove_right):
         return data
         
-    if not validate_verification_data(data, "remove by verification"):
-        return None
-        
     filtered_data = []
     for entry in data:
+        # Skip entries missing required fields
         if 'verification_results' not in entry:
             continue
             
