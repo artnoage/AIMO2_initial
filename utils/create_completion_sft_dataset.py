@@ -33,15 +33,32 @@ def count_solution_steps(solution: str) -> int:
 
 def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     """Split solution into prefix and completion at given step number"""
-    pattern = f"Step\\s+{step_num+1}\\."
-    match = re.search(pattern, solution, re.IGNORECASE)
+    # Find all step markers in the solution
+    step_matches = list(re.finditer(r'Step\s+(\d+)\.?', solution, re.IGNORECASE))
     
-    if not match:
+    if not step_matches:
+        return None, None
+    
+    # Find the indices for the requested step number
+    current_step_idx = None
+    next_step_idx = None
+    
+    for i, match in enumerate(step_matches):
+        if int(match.group(1)) == step_num + 1:
+            next_step_idx = match.start()
+            # If this is Step 1, include everything before it
+            if step_num == 0:
+                current_step_idx = 0
+            break
+        elif int(match.group(1)) == step_num:
+            current_step_idx = match.start()
+    
+    if current_step_idx is None or next_step_idx is None:
         return None, None
         
-    split_point = match.start()
-    prefix = solution[:split_point].strip()
-    completion = solution[split_point:].strip()
+    # For step 0 (before Step 1), include all text from the beginning
+    prefix = solution[:next_step_idx].strip()
+    completion = solution[next_step_idx:].strip()
     
     return prefix, completion
 
