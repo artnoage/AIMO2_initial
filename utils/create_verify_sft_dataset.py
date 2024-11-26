@@ -81,7 +81,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
-    parser.add_argument('--output', type=str, default='datasets/sft_dataset.json',
+    parser.add_argument('--output', type=str, default='datasets/sft_verification.json',
                        help='Output SFT dataset file')
     parser.add_argument('--min-samples', type=int, default=3,
                        help='Minimum number of solution samples per problem')
