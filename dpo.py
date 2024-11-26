@@ -85,11 +85,17 @@ def main():
             rejected_text = tokenizer.apply_chat_template(example["rejected"], tokenize=False, add_generation_prompt=False)
             
             formatted_pairs.append({
-                "prompt":"ar",
                 "chosen": chosen_text,
                 "rejected": rejected_text
             })
         return formatted_pairs
+
+    # Create a custom DPOTrainer class that doesn't require prompts
+    class CustomDPOTrainer(DPOTrainer):
+        def get_batch_inputs(self, batch):
+            # Override to handle cases without prompts
+            batch["prompt"] = [""] * len(batch["chosen"])  # Empty prompts
+            return super().get_batch_inputs(batch)
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
@@ -132,7 +138,7 @@ def main():
         report_to = "all")
     # Initialize DPO trainer
     
-    trainer = DPOTrainer(
+    trainer = CustomDPOTrainer(
         model=model,
         train_dataset=formatted_dataset,
         tokenizer=tokenizer,
