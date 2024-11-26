@@ -149,7 +149,7 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
     return {
         "conversations": [
             {
-                "role": "human",
+                "role": "user",
                 "content": input_text
             },
             {

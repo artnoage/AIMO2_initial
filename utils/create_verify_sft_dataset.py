@@ -59,7 +59,7 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     return {
         "conversations": [
             {
-                "role": "human",
+                "role": "user",
                 "content": input_text
             },
             {
