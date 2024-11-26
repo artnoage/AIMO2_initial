@@ -1,28 +1,18 @@
 import os
-import re
 import json
 import asyncio
 import argparse
 from asyncio import TimeoutError
-from enum import Enum
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
-from typing import List, Dict, Optional
-from itertools import islice
-from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
-from langchain.callbacks.base import BaseCallbackHandler
 from datasets import load_dataset
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
 from huggingface_hub import HfApi
 from tqdm import tqdm
-import time
 from utils.utils import extract_answer_from_solution
-from utils.utils import ModelOption
 
 def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
     """Load intermediate results from saved JSON files"""
@@ -270,7 +260,7 @@ async def main():
                        help='Maximum number of concurrent problems (default: 32)')
     parser.add_argument('--best-of', type=int, default=5,
                        help='Number of attempts per problem (default: 1)')
-    parser.add_argument('--temperature', type=float, default=0.5,
+    parser.add_argument('--temperature', type=float, default=0.7,
                        help='Temperature for model generation (default: 0.5)')
     args = parser.parse_args()
 

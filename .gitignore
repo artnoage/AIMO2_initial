@@ -15,3 +15,5 @@ cache
 mistral/
 metastral/
 train_results/
+models/
+_unsloth_sentencepiece_temp
