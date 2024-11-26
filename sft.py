@@ -66,7 +66,7 @@ def main():
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="chatml",
+        chat_template="mistral",
         mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
