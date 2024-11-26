@@ -5,7 +5,6 @@ from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
-from transformers import TrainingArguments
 from trl import DPOTrainer
 import os
 import torch
@@ -15,7 +14,7 @@ from unsloth import is_bfloat16_supported
 
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
@@ -40,10 +39,10 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models",
         max_seq_length=4096,
         dtype="bfloat16",
-        load_in_4bit=False)
+        load_in_4bit=True)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
@@ -75,37 +74,26 @@ def main():
         formatted_examples = []
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
             # Create message formats
-            prompt_messages = [{"role": "user", "content": prompt}]
-            chosen_messages = [{"role": "user", "content": prompt},
-                             {"role": "assistant", "content": chosen}]
-            rejected_messages = [{"role": "user", "content": prompt},
-                               {"role": "assistant", "content": rejected}]
+            chosen_messages = chosen
+            rejected_messages = rejected
             
             # Apply chat template to all parts
-            formatted_prompt = tokenizer.apply_chat_template(prompt_messages, tokenize=False, add_generation_prompt=True)
-            formatted_chosen = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
-            formatted_rejected = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
+            formatted_chosen = tokenizer.apply_chat_template(chosen_messages, tokenize=False, add_generation_prompt=False)
+            formatted_rejected = tokenizer.apply_chat_template(rejected_messages, tokenize=False, add_generation_prompt=False)
             
             formatted_examples.append({
-                "prompt": formatted_prompt,
+                "prompt": prompt,
                 "chosen": formatted_chosen,
                 "rejected": formatted_rejected
             })
-        return formatted_examples
+        return {"text": formatted_examples}
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
     
-    # Print original format and structure
-    print("\nDataset structure:")
-    print("Columns:", dataset.column_names)
-    print("\nFirst example before formatting:")
-    print(json.dumps(dataset[0], indent=2))
-    
     # Apply formatting
     formatted_dataset = dataset.map(
         formatting_prompts_func,
-        remove_columns=dataset.column_names,
         batched=True
     )
     
@@ -120,16 +108,12 @@ def main():
 
     training_args = DPOConfig(
         per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 4,
+        gradient_accumulation_steps = 32,
         warmup_ratio = 0.1,
-        num_train_epochs = 3,
+        num_train_epochs = 1,
         learning_rate = 5e-6,
-        fp16 = not is_bfloat16_supported(),
-        bf16 = is_bfloat16_supported(),
         logging_steps = 1,
         optim = "adamw_8bit",
-        weight_decay = 0.0,
-        lr_scheduler_type = "linear",
         seed = 42,
         output_dir = output_dir,
         report_to = "all")
