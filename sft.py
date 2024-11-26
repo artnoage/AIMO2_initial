@@ -68,22 +68,14 @@ def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
+        mapping={"role": "role", "content": "content", "human": "user", "assistant": "assistant"},
         map_eos_token=True,
     )
     
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
-        # Filter conversations to only include user and assistant messages
-        filtered_convos = []
-        for convo in convos:
-            filtered_convo = [
-                msg for msg in convo 
-                if msg["role"] in ["user", "assistant"]
-            ]
-            filtered_convos.append(filtered_convo)
         texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) 
-                for convo in filtered_convos]
+                for convo in convos]
         return {"text": texts}
 
     
