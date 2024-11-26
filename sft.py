@@ -1,14 +1,13 @@
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
-from transformers import TrainingArguments, BitsAndBytesConfig
+from transformers import TrainingArguments
 from trl import SFTTrainer
 import os
 import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
-load_in_4bit=False
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -39,8 +38,8 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=8192,
-        load_in_4bit=False,
-        load_in_8bit=False)
+        dtype="bfloat16",
+        load_in_4bit=False)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
@@ -96,7 +95,7 @@ def main():
         save_steps=200,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_8bit",
+        optim = "adamw_torch",
     )
 
     # Initialize SFT trainer
