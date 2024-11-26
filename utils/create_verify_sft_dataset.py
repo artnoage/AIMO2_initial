@@ -19,14 +19,16 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     if available < min_samples:
         return None  # Skip entries with too few responses
         
-    # Choose random number of samples between min and max, but not more than available
-    num_samples = random.randint(min_samples, min(max_samples, available))
-    
     # Filter out responses with verification result of 0
     valid_responses = [(sol, ver) for sol, ver in responses if ver > 0]
     
-    if len(valid_responses) < min_samples:
+    # Check if we have enough valid responses
+    valid_count = len(valid_responses)
+    if valid_count < min_samples:
         return None  # Skip entries with too few valid responses
+    
+    # Choose random number of samples between min and max, but not more than available valid responses
+    num_samples = random.randint(min_samples, min(max_samples, valid_count))
     
     # Randomly sample from valid responses
     selected = random.sample(valid_responses, num_samples)
