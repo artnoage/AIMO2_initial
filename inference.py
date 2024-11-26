@@ -92,7 +92,7 @@ async def process_example(example: Dict, running_id: int, model, tokenizer, veri
         # Generate all solutions in parallel
         outputs = model.generate(
             **inputs,
-            max_new_tokens=512,
+            max_new_tokens=2048,
             temperature=0.7,
             top_p=0.95,
             do_sample=True
@@ -106,6 +106,7 @@ async def process_example(example: Dict, running_id: int, model, tokenizer, veri
         
         # Create verification tasks for all solutions
         current_solutions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+        print(current_solutions[0])
         current_answers = [extract_answer_from_solution(sol) for sol in current_solutions]
         verification_tasks = [
             compare_math_answers(ans, correct_answer, example["problem"], verifier_model)
