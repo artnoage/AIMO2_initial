@@ -82,9 +82,13 @@ def main():
 
     dataset = load_dataset("artnoage/sft", split="train")
 
+    # Print original format
+    print("\nFirst example before formatting:")
+    print(json.dumps(dataset[0], indent=2))
+    
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
-    print("\nFirst example in SFT dataset:")
+    print("\nFirst example after formatting:")
     print(json.dumps(formatted_dataset[0], indent=2))
     
     # Training arguments
