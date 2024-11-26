@@ -70,7 +70,7 @@ async def compare_math_answers(model_answer: Optional[str], correct_answer: Opti
             await asyncio.sleep(1)
     return False
 
-async def process_example(example: Dict, running_id: int, model, tokenizer, verifier_model, best_of: int = 10) -> Dict:
+async def process_example(example: Dict, running_id: int, model, tokenizer, verifier_model, best_of: int = 100) -> Dict:
     """Process a single example with parallel attempts"""
     try:
         correct_answer = extract_answer_from_solution(example["solution"])
@@ -80,8 +80,7 @@ async def process_example(example: Dict, running_id: int, model, tokenizer, veri
             
         # Create prompt once for all attempts
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "human", "content": example["problem"]}
+            {"role": "user", "content":  SYSTEM_PROMPT +"\n\n"+ example["problem"]}
         ]
         prompt = tokenizer.apply_chat_template(messages, tokenize=False)
         
@@ -163,7 +162,7 @@ async def main():
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="chatml",
+        chat_template="mistral",
         mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
