@@ -309,10 +309,11 @@ def main():
         ]
         next_step_examples.extend(examples)
     
-    # Combine all examples
+    # Combine and shuffle all examples
     all_examples = progressive_examples + masked_examples + next_step_examples
+    random.shuffle(all_examples)
     
-    # Save combined dataset and print summary
+    # Save shuffled dataset and print summary
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(all_examples, f, indent=2)
         

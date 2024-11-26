@@ -110,8 +110,9 @@ def main():
         ]
         sft_examples.extend(examples)
     
-    # Save SFT dataset
-    print(f"Saving {len(sft_examples)} examples to {args.output}")
+    # Shuffle and save SFT dataset
+    random.shuffle(sft_examples)
+    print(f"Saving {len(sft_examples)} shuffled examples to {args.output}")
     with open(args.output, 'w') as f:
         json.dump(sft_examples, f, indent=2)
     
