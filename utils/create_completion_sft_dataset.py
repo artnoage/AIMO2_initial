@@ -126,12 +126,15 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
     if include_steps == 0:
         prefix = ""
         next_step, _ = split_at_step(solution, 0)
+        if next_step is None:
+            return None
     else:
         prefix, remainder = split_at_step(solution, include_steps)
-        next_step, _ = split_at_step(remainder, include_steps)
-    
-    if next_step is None:
-        return None
+        if prefix is None or remainder is None:
+            return None
+        next_step, _ = split_at_step(remainder, 0)  # Get first step of remainder
+        if next_step is None:
+            return None
         
     # Create input prompt
     input_text = (
