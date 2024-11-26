@@ -63,6 +63,9 @@ async def main():
         max_seq_length=8192,
         dtype="bfloat16",
         load_in_4bit=True)
+    
+    # Prepare model for inference
+    model = FastLanguageModel.for_inference(model)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
