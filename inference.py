@@ -9,6 +9,7 @@ from tqdm import tqdm
 from datasets import load_dataset
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from dotenv import load_dotenv
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 
 SYSTEM_PROMPT = """You are a precise mathematical problem solver. You will be given a problem to solve.
 
