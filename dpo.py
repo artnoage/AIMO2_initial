@@ -1,4 +1,5 @@
 from datasets import load_dataset
+import json
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
@@ -70,6 +71,10 @@ def main():
 
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo2", split="train")
+    
+    # Print first example
+    print("\nFirst example in DPO dataset:")
+    print(json.dumps(dataset[0], indent=2))
 
     # Training arguments
     training_args = TrainingArguments(

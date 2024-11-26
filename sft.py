@@ -1,4 +1,5 @@
 from datasets import load_dataset
+import json
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -79,6 +80,10 @@ def main():
     
 
     dataset = load_dataset("artnoage/sft", split="train")
+    # Print first example
+    print("\nFirst example in SFT dataset:")
+    print(json.dumps(dataset[0], indent=2))
+    
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
