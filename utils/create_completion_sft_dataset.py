@@ -83,7 +83,7 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
         return None
         
     total_steps = len(step_numbers)
-    if total_steps < min_steps or total_steps == 1:
+    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
         return None
         
     # Choose random step to mask (not first or last step)
@@ -155,7 +155,7 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
         return None
         
     total_steps = len(step_numbers)
-    if total_steps <= 1:
+    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
         return None
         
     # Randomly decide whether to start from scratch or from a partial solution
@@ -231,7 +231,7 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
         return None
         
     total_steps = len(step_numbers)
-    if total_steps < min_steps or total_steps == 1:
+    if total_steps <= 2:  # Exclude solutions with 1 or 2 steps
         return None
         
     # Choose random cutoff point between min_steps-1 and total_steps-1
