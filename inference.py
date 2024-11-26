@@ -3,6 +3,7 @@ from unsloth.chat_templates import get_chat_template
 import os
 import torch
 import asyncio
+import json
 from typing import Dict, Optional
 from tqdm import tqdm
 from datasets import load_dataset
@@ -153,6 +154,11 @@ async def main():
             print(f"Success rate: {result['success_rate']*100:.1f}%")
             if result['success_rate'] > 0:
                 print(f"Best answer: {result['best_answer']}")
+            
+            # Save results after each example
+            with open('inference.json', 'w') as f:
+                json.dump(results, f, indent=2)
+                
         progress_bar.update(1)
     
     progress_bar.close()
