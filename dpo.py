@@ -11,7 +11,7 @@ import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
-
+import re
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -70,50 +70,50 @@ def main():
         map_eos_token=True,
     )
 
-    def _strip_prefix(text: str, prefix: str) -> str:
-        if text.startswith(prefix):
-            return text[len(prefix):]
-        return text
+    def _strip_prefix(s, pattern):
+        # Use re.escape to escape any special characters in the pattern
+        return re.sub(f"^{re.escape(pattern)}", "", s)
 
-    assistant_prefix = "Assistant: "
-
-    def formatting_prompts_func(example):
+    def apply_chat_template(example, tokenizer, assistant_prefix="<|assistant|>\n"):
         if all(k in example.keys() for k in ("chosen", "rejected")):
-            # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
-            prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
-            # Insert system message
-            if example["chosen"][0]["role"] != "system":
-                prompt_messages.insert(0, {"role": "system", "content": ""})
-            else:
-                prompt_messages.insert(0, example["chosen"][0])
-            # TODO: handle case where chosen/rejected also have system messages
-            chosen_messages = example["chosen"][1:]
-            rejected_messages = example["rejected"][1:]
-            example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
-            example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
-            example["text_prompt"] = tokenizer.apply_chat_template(
-                prompt_messages, tokenize=False, add_generation_prompt=True
-            )
-            example["text_chosen"] = _strip_prefix(example["text_chosen"], assistant_prefix)
-            example["text_rejected"] = _strip_prefix(example["text_rejected"], assistant_prefix)
-            return example
+                # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
+                prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
+                # Insert system message
+                if example["chosen"][0]["role"] != "system":
+                    prompt_messages.insert(0, {"role": "system", "content": ""})
+                else:
+                    prompt_messages.insert(0, example["chosen"][0])
+                chosen_messages = example["chosen"][1:]
+                rejected_messages = example["rejected"][1:]
+                example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
+                example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
+                example["text_prompt"] = tokenizer.apply_chat_template(
+                    prompt_messages, tokenize=False, add_generation_prompt=True
+                )
+                example["text_chosen"] = _strip_prefix(example["text_chosen"], assistant_prefix)
+                example["text_rejected"] = _strip_prefix(example["text_rejected"], assistant_prefix)
         else:
             raise ValueError(
                 f"Could not format example as dialogue for `dpo` task! Require `[chosen, rejected]` keys but found {list(example.keys())}"
             )
 
     # Load the DPO dataset
-    dataset = load_dataset("artnoage/dpo3", split="train")
-    
-    # Apply formatting
-    formatted_dataset = dataset.map(
-        formatting_prompts_func,
-        remove_columns=dataset.column_names)
+    raw_datasets = load_dataset("artnoage/dpo3", split="train")
+
+    raw_datasets = raw_datasets.map(
+        apply_chat_template,
+        fn_kwargs = {"tokenizer": tokenizer},
+        num_proc = 12,
+        desc = "Formatting comparisons with prompt template",
+    )
+
+    # Replace column names with what TRL needs, text_chosen -> chosen and text_rejected -> rejected
+    raw_datasets = raw_datasets.rename_columns({"text_prompt": "prompt", "text_chosen": "chosen", "text_rejected": "rejected"})
     
     # Print formatted example
     print("\nFirst example after formatting:")
-    print(json.dumps(formatted_dataset[0], indent=2))
-
+    #print(json.dumps(formatted_dataset[0], indent=2))
+    print(len(raw_datasets))
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"./train_results/dpo/{timestamp}"
