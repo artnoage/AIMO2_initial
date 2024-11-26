@@ -86,24 +86,48 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
             chosen_response = entry['model_responses'][chosen_idx]
             
             # Select rejected response based on strategy
-            rejected_response = select_rejected_response(
-                entry['model_responses'],
-                entry['verification_results'],
-                rejection_strategy
-            )
-            
-            if rejected_response:
-                dpo_entries.append({
-                    "chosen": [
-                        {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                        {"role": "assistant", "content": chosen_response}
-                    ],
-                    "rejected": [
-                        {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                        {"role": "assistant", "content": rejected_response}
-                    ]
-                })
-                successful_pairs += 1
+            if rejection_strategy == 'all':
+                # Try all strategies
+                strategies = ['second_best', 'random', 'worst']
+                for strat in strategies:
+                    rejected_response = select_rejected_response(
+                        entry['model_responses'],
+                        entry['verification_results'],
+                        strat
+                    )
+                    
+                    if rejected_response:
+                        dpo_entries.append({
+                            "chosen": [
+                                {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                                {"role": "assistant", "content": chosen_response}
+                            ],
+                            "rejected": [
+                                {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                                {"role": "assistant", "content": rejected_response}
+                            ]
+                        })
+                        successful_pairs += 1
+            else:
+                # Original single strategy behavior
+                rejected_response = select_rejected_response(
+                    entry['model_responses'],
+                    entry['verification_results'],
+                    rejection_strategy
+                )
+                
+                if rejected_response:
+                    dpo_entries.append({
+                        "chosen": [
+                            {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                            {"role": "assistant", "content": chosen_response}
+                        ],
+                        "rejected": [
+                            {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                            {"role": "assistant", "content": rejected_response}
+                        ]
+                    })
+                    successful_pairs += 1
                 
         except ValueError:
             # No verification_level 4 found, skip this entry
@@ -122,7 +146,7 @@ def main():
     parser.add_argument('-o', '--output', required=True,
                        help='Output JSON file for DPO dataset')
     parser.add_argument('-r', '--rejection-strategy', 
-                       choices=['second_best', 'random', 'worst'],
+                       choices=['second_best', 'random', 'worst', 'all'],
                        default='second_best',
                        help='Strategy for selecting rejected responses')
     
