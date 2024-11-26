@@ -1,15 +1,16 @@
 import json
 import random
 import argparse
-from typing import List, Dict
+from typing import List, Dict, Optional
 from pathlib import Path
+from transformers import AutoTokenizer
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) -> Dict:
+def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples: int = 8, max_tokens: int = 8192) -> Optional[Dict]:
     """Create a single SFT training example in ShareGPT format from an augmented data entry"""
     # Get all available responses
     responses = list(zip(entry['model_responses'], entry['verification_results']))
@@ -64,6 +65,12 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
     
     output_text = f"{correct_solutions}"
     
+    # Count tokens in the conversation
+    total_tokens = len(tokenizer.encode(input_text)) + len(tokenizer.encode(output_text))
+    
+    if total_tokens > max_tokens:
+        return None
+        
     return {
         "conversations": [
             {
@@ -79,6 +86,8 @@ def create_sft_example(entry: Dict, min_samples: int = 3, max_samples: int = 8) 
 
 def main():
     parser = argparse.ArgumentParser(description='Create SFT dataset from augmented data')
+    # Initialize tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
     parser.add_argument('--output', type=str, default='datasets/sft_verification.json',
@@ -104,7 +113,7 @@ def main():
     for _ in range(args.iterations):
         examples = [
             example for example in (
-                create_sft_example(entry, args.min_samples, args.max_samples)
+                create_sft_example(entry, tokenizer, args.min_samples, args.max_samples)
                 for entry in data
             ) if example is not None
         ]
