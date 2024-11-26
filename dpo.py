@@ -121,17 +121,23 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"./train_results/dpo/{timestamp}"
     
-    print("\nToken counts for first few examples:")
-    for i in range(min(5, len(raw_datasets))):
+    print("\nToken counts for all examples:")
+    total_tokens = 0
+    for i in range(len(raw_datasets)):
         row = raw_datasets[i]
         tokens_prompt = len(tokenizer.encode(row["prompt"]))
         tokens_chosen = len(tokenizer.encode(row["chosen"]))
         tokens_rejected = len(tokenizer.encode(row["rejected"]))
+        example_total = tokens_prompt + tokens_chosen + tokens_rejected
+        total_tokens += example_total
         print(f"\nExample {i}:")
         print(f"Prompt tokens: {tokens_prompt}")
         print(f"Chosen tokens: {tokens_chosen}")
         print(f"Rejected tokens: {tokens_rejected}")
-        print(f"Total tokens: {tokens_prompt + tokens_chosen + tokens_rejected}")
+        print(f"Example total: {example_total}")
+    
+    print(f"\nTotal tokens across all examples: {total_tokens}")
+    print(f"Average tokens per example: {total_tokens / len(raw_datasets):.1f}")
 
 
     training_args = DPOConfig(
