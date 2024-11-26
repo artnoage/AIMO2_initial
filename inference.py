@@ -2,28 +2,16 @@ from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 import os
 import torch
-import GPUtil
 import asyncio
-from transformers import logging
 from typing import Dict
 from tqdm import tqdm
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-def print_gpu_utilization():
-    visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-    if visible_gpus:
-        visible_ids = [int(x) for x in visible_gpus.split(",")]
-        GPUs = [gpu for gpu in GPUtil.getGPUs() if gpu.id in visible_ids]
-        for gpu in GPUs:
-            print(f'\nGPU ID: {gpu.id} ({gpu.name})')
-            print(f'GPU load: {gpu.load*100:.1f}%')
-            print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
-            print(f'GPU memory free: {gpu.memoryFree}MB')
-        if torch.cuda.is_available():
-            print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
-            print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
+def print_gpu_memory():
+    if torch.cuda.is_available():
+        print(f'GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
 
 async def process_example(example: Dict, running_id: int, model, tokenizer) -> Dict:
     """Process a single example with the model"""
@@ -53,10 +41,8 @@ async def process_example(example: Dict, running_id: int, model, tokenizer) -> D
         return None
 
 async def main():
-    logging.set_verbosity_info()
-    print("\n=== Initial GPU State ===")
-    print_gpu_utilization()
-
+    print("\nLoading model...")
+    
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
@@ -66,9 +52,7 @@ async def main():
     
     # Prepare model for inference
     model = FastLanguageModel.for_inference(model)
-        
-    print("\n=== After Model Load ===")
-    print_gpu_utilization()
+    print_gpu_memory()
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -135,8 +119,8 @@ async def main():
         progress_bar.update(1)
     
     progress_bar.close()
-    print("\n=== Final GPU State ===")
-    print_gpu_utilization()
+    print("\nFinal GPU memory:")
+    print_gpu_memory()
 
 if __name__ == "__main__":
     asyncio.run(main())
