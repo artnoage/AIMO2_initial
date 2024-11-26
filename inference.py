@@ -83,11 +83,35 @@ async def main():
         {"question": "What is the capital of France?"},
         {"question": "What is 2+2?"},
         {"question": "Who wrote Romeo and Juliet?"},
-        {"question": "What is the speed of light?"}
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
+             {"question": "What is the capital of France?"},
+        {"question": "What is 2+2?"},
+        {"question": "Who wrote Romeo and Juliet?"},
+        {"question": "What is the speed of light?"},
     ]
 
     # Create a semaphore to limit concurrency
-    max_concurrent = 2  # Adjust based on your GPU memory
+    max_concurrent = 32  # Adjust based on your GPU memory
     semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process_with_semaphore(example, running_id):
