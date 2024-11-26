@@ -107,7 +107,7 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
     return {
         "conversations": [
             {
-                "role": "human",
+                "role": "user",
                 "content": input_text
             },
             {
@@ -182,7 +182,7 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
     return {
         "conversations": [
             {
-                "role": "human",
+                "role": "user",
                 "content": input_text
             },
             {
