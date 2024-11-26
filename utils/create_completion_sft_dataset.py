@@ -10,11 +10,26 @@ def load_augmented_data(filename: str) -> List[Dict]:
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def validate_solution_steps(solution: str) -> Tuple[bool, List[int]]:
+    """
+    Validate that solution steps are sequential and properly numbered.
+    Returns (is_valid, step_numbers)
+    """
+    # Extract all step numbers from the solution
+    step_matches = re.finditer(r'Step\s+(\d+)\.?', solution, re.IGNORECASE)
+    step_numbers = [int(m.group(1)) for m in step_matches]
+    
+    if not step_numbers:
+        return False, []
+        
+    # Ensure steps are sequential and start from 1
+    is_valid = step_numbers[0] == 1 and all(b-a == 1 for a, b in zip(step_numbers, step_numbers[1:]))
+    return is_valid, step_numbers
+
 def count_solution_steps(solution: str) -> int:
     """Count the number of solution steps in a response"""
-    # Look for "Step X" or "Step X." patterns
-    steps = re.findall(r'Step\s+\d+\.?', solution, re.IGNORECASE)
-    return len(steps)
+    _, step_numbers = validate_solution_steps(solution)
+    return len(step_numbers)
 
 def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     """Split solution into prefix and completion at given step number"""
@@ -45,9 +60,12 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Count total steps
-    total_steps = count_solution_steps(solution)
-    
+    # Validate solution steps
+    is_valid, step_numbers = validate_solution_steps(solution)
+    if not is_valid:
+        return None
+        
+    total_steps = len(step_numbers)
     if total_steps < min_steps:
         return None
         
@@ -115,29 +133,21 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Count total steps
-    total_steps = count_solution_steps(solution)
-    print(f"\nSolution has {total_steps} total steps")
-    
-    if total_steps < 1:
-        print("Too few steps, skipping")
-        return None
-        
-    # Extract all step numbers from the solution
-    step_matches = re.finditer(r'Step\s+(\d+)\.?', solution, re.IGNORECASE)
-    step_numbers = [int(m.group(1)) for m in step_matches]
-    
-    if not step_numbers:
-        print("No numbered steps found in solution")
-        return None
-        
-    # Ensure steps are sequential and start from 1
-    if step_numbers[0] != 1 or any(b-a != 1 for a, b in zip(step_numbers, step_numbers[1:])):
+    # Validate solution steps
+    is_valid, step_numbers = validate_solution_steps(solution)
+    if not is_valid:
         print("\nSteps are not sequential. Found steps:", step_numbers)
         print("\nFull solution text:")
         print("-" * 80)
         print(solution)
         print("-" * 80)
+        return None
+        
+    total_steps = len(step_numbers)
+    print(f"\nSolution has {total_steps} total steps")
+    
+    if total_steps < 1:
+        print("Too few steps, skipping")
         return None
         
     # Randomly decide whether to start from scratch or from a partial solution
@@ -210,9 +220,12 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
     # Randomly select one valid solution
     solution = random.choice(valid_solutions)
     
-    # Count total steps
-    total_steps = count_solution_steps(solution)
-    
+    # Validate solution steps
+    is_valid, step_numbers = validate_solution_steps(solution)
+    if not is_valid:
+        return None
+        
+    total_steps = len(step_numbers)
     if total_steps < min_steps:
         return None
         
