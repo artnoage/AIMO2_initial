@@ -12,6 +12,8 @@ import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
 import re
+from datasets import DatasetDict, concatenate_datasets, load_dataset, load_from_disk
+from datasets.builder import DatasetGenerationError
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -41,7 +43,6 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="/Home/stat/laschos/AIMO2_initial/models",
         max_seq_length=4096,
-        dtype="bfloat16",
         load_in_4bit=True)
         
     print("\n=== After Model Load ===")
@@ -50,10 +51,10 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=32,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj",],
-        lora_alpha=64,
+        lora_alpha=32,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
         use_gradient_checkpointing=False,  # True or "unsloth" for very long context
@@ -88,10 +89,10 @@ def main():
                 example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
                 example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
                 example["text_prompt"] = tokenizer.apply_chat_template(
-                    prompt_messages, tokenize=False, add_generation_prompt=True
-                )
+                    prompt_messages, tokenize=False)
                 example["text_chosen"] = _strip_prefix(example["text_chosen"], assistant_prefix)
                 example["text_rejected"] = _strip_prefix(example["text_rejected"], assistant_prefix)
+                return example
         else:
             raise ValueError(
                 f"Could not format example as dialogue for `dpo` task! Require `[chosen, rejected]` keys but found {list(example.keys())}"
@@ -101,40 +102,45 @@ def main():
     raw_datasets = load_dataset("artnoage/dpo3", split="train")
     print("\nDataset keys before mapping:")
     print(raw_datasets.column_names)
-
+    column_names = list(raw_datasets.features)
     raw_datasets = raw_datasets.map(
         apply_chat_template,
         fn_kwargs = {"tokenizer": tokenizer},
         num_proc = 12,
-        desc = "Formatting comparisons with prompt template",
-    )
+        remove_columns = column_names,
+        desc = "Formatting comparisons with prompt template")
 
     print("\nDataset keys after mapping:")
     print(raw_datasets.column_names)
 
     # Replace column names with what TRL needs, text_chosen -> chosen and text_rejected -> rejected
     raw_datasets = raw_datasets.rename_columns({"text_prompt": "prompt", "text_chosen": "chosen", "text_rejected": "rejected"})
-    
+    print("\nDataset keys after mapping:")
+    print(raw_datasets.column_names)
     # Print formatted example
-    print("\nFirst example after formatting:")
-    #print(json.dumps(formatted_dataset[0], indent=2))
-    print(len(raw_datasets))
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"./train_results/dpo/{timestamp}"
     
+    import pprint
+    for i in range(len(raw_datasets)):
+        row = raw_datasets[i]
+        pprint.pprint(len(row["prompt"]))
+        pprint.pprint(len(row["chosen"]))
+        pprint.pprint(len(row["rejected"]))
+
 
     training_args = DPOConfig(
-        per_device_train_batch_size = 2,
+        per_gpu_train_batch_size = 1,
         gradient_accumulation_steps = 32,
-        warmup_ratio = 0.1,
         num_train_epochs = 1,
         learning_rate = 5e-6,
         logging_steps = 1,
-        optim = "adamw_8bit",
+        optim = "adamw_torch",
         seed = 42,
-        output_dir = output_dir,
-        report_to = "all")
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        output_dir = output_dir)
     # Initialize DPO trainer
     
     trainer = DPOTrainer(
