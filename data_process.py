@@ -86,17 +86,16 @@ def validate_verification_data(data: List[Dict], operation: str) -> bool:
         
     return True
 
-def extract_correct_synthetic(data: List[Dict]) -> Optional[List[Dict]]:
+def extract_correct_synthetic(data: List[Dict]) -> List[Dict]:
     """
     Extract only the successful model responses from synthetic verification data.
-    Returns a list of entries containing only the first successful response for each problem,
-    or None if the data format is invalid.
+    Returns a list of entries containing only the first successful response for each problem.
+    Skips entries with missing required fields.
     """
-    if not validate_verification_data(data, "extract synthetic correct responses"):
-        return None
     filtered_data = []
     for entry in data:
-        if 'verification_results' not in entry:
+        # Skip entries missing required fields
+        if not all(field in entry for field in ['verification_results', 'model_responses', 'id', 'problem']):
             continue
             
         results = entry['verification_results']
