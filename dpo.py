@@ -1,6 +1,7 @@
 from datasets import load_dataset
 import json
 from datetime import datetime
+from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
@@ -11,6 +12,7 @@ import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
+
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -39,7 +41,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
-        max_seq_length=8192,
+        max_seq_length=4096,
         dtype="bfloat16",
         load_in_4bit=False)
         
@@ -83,6 +85,7 @@ def main():
             rejected_text = tokenizer.apply_chat_template(example["rejected"], tokenize=False, add_generation_prompt=False)
             
             formatted_pairs.append({
+                "prompt":"ar",
                 "chosen": chosen_text,
                 "rejected": rejected_text
             })
@@ -111,34 +114,29 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"./train_results/dpo/{timestamp}"
     
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=1,
-        per_device_train_batch_size=2,  # Smaller batch size for DPO
-        gradient_accumulation_steps=16,
-        learning_rate=1e-5,  # Slightly lower learning rate for DPO
-        logging_steps=1,
-        save_strategy="steps",
-        save_steps=200,
-        fp16=not is_bfloat16_supported(),
-        bf16=is_bfloat16_supported(),
-        optim="adamw_torch",
-        beta=0.1,  # DPO specific parameter
-        max_length=8192,
-        max_prompt_length=1024,
-    )
 
+    training_args = DPOConfig(
+        per_device_train_batch_size = 2,
+        gradient_accumulation_steps = 4,
+        warmup_ratio = 0.1,
+        num_train_epochs = 3,
+        learning_rate = 5e-6,
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        logging_steps = 1,
+        optim = "adamw_8bit",
+        weight_decay = 0.0,
+        lr_scheduler_type = "linear",
+        seed = 42,
+        output_dir = output_dir,
+        report_to = "all")
     # Initialize DPO trainer
+    
     trainer = DPOTrainer(
         model=model,
-        ref_model=None,  # Will use input model as reference
-        args=training_args,
-        beta=0.1,
-        train_dataset=dataset,
+        train_dataset=formatted_dataset,
         tokenizer=tokenizer,
-        max_length=8192,
-        max_prompt_length=1024,
+        args=training_args,
     )
 
     # Train the model
