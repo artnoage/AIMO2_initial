@@ -1,6 +1,7 @@
 from datasets import load_dataset
-from unsloth import FastLanguageModel
+from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
+PatchDPOTrainer()
 from transformers import TrainingArguments
 from trl import DPOTrainer
 import os
@@ -62,13 +63,13 @@ def main():
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="chatml",
+        chat_template="mistral",
         mapping={"role": "role", "content": "content", "user": "human", "assistant": "assistant"},
         map_eos_token=True,
     )
 
     # Load the DPO dataset
-    dataset = load_dataset("artnoage/dpo", split="train")
+    dataset = load_dataset("artnoage/dpo2", split="train")
 
     # Training arguments
     training_args = TrainingArguments(
