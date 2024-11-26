@@ -144,7 +144,6 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
     ]
     
     if not valid_solutions:
-        print(f"No valid solutions for problem: {entry['problem'][:50]}...")
         return None
         
     # Randomly select one valid solution
@@ -160,20 +159,22 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
         return None
         
     # Randomly decide whether to start from scratch or from a partial solution
-    include_steps = random.randint(0, len(step_numbers) - 1)
+    include_steps = random.randint(0, total_steps - 1)
     
     if include_steps == 0:
         prefix = ""
-        # Find where Step 1 starts
+        # Get the first step
         next_step, _ = split_at_step(solution, 0)
         if next_step is None:
             return None
     else:
-        # Split at the chosen step number
+        # Get the solution up to the chosen step
         prefix, remainder = split_at_step(solution, include_steps)
         if prefix is None or remainder is None:
             return None
-        next_step, _ = split_at_step(remainder, include_steps)
+            
+        # Get just the next step from the remainder
+        next_step, _ = split_at_step(remainder, include_steps + 1)
         if next_step is None:
             return None
         
