@@ -40,7 +40,7 @@ def main():
         model_name="artnoage/metastral",
         max_seq_length=8192,
         dtype="bfloat16",
-        load_in_4bit=False)
+        load_in_4bit=True)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
@@ -92,15 +92,15 @@ def main():
     training_args = TrainingArguments(
         output_dir="./train_results",
         num_train_epochs=1,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=16,
+        per_device_train_batch_size=61,
+        gradient_accumulation_steps=2,
         learning_rate=5e-6,
         logging_steps=1,
         save_strategy="steps",
         save_steps=200,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_torch",
+        optim = "adamw_8bit",
     )
 
     # Initialize SFT trainer
