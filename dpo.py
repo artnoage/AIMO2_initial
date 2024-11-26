@@ -13,7 +13,7 @@ from transformers import logging
 from unsloth import is_bfloat16_supported
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
