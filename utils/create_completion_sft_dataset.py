@@ -99,6 +99,72 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
         ]
     }
 
+def create_next_step_example(entry: Dict) -> Optional[Dict]:
+    """Create an example where the model needs to provide just the next solution step"""
+    
+    # Get solutions that passed all verifications (level 4)
+    valid_solutions = [
+        resp for resp, ver in zip(entry['model_responses'], entry['verification_results'])
+        if ver == 4
+    ]
+    
+    if not valid_solutions:
+        return None
+        
+    # Randomly select one valid solution
+    solution = random.choice(valid_solutions)
+    
+    # Count total steps
+    total_steps = count_solution_steps(solution)
+    
+    if total_steps < 1:
+        return None
+        
+    # Randomly decide whether to start from scratch or from a partial solution
+    include_steps = random.randint(0, total_steps - 1)
+    
+    if include_steps == 0:
+        prefix = ""
+        next_step, _ = split_at_step(solution, 0)
+    else:
+        prefix, remainder = split_at_step(solution, include_steps)
+        next_step, _ = split_at_step(remainder, include_steps)
+    
+    if next_step is None:
+        return None
+        
+    # Create input prompt
+    input_text = (
+        "Here is a mathematical problem:\n\n"
+        f"{entry['problem']}\n\n"
+        "Your task is to provide the next step in the solution. "
+        "Make sure your step is detailed and mathematically rigorous.\n\n"
+        "Guidelines:\n"
+        "- Provide exactly ONE step\n"
+        "- Include clear explanations\n"
+        "- Use LaTeX notation where appropriate\n"
+        "- Include justification in [brackets]\n"
+        "- Number your step appropriately\n\n"
+    )
+    
+    if prefix:
+        input_text += f"Here are the steps so far:\n\n{prefix}\n\nProvide the next step:"
+    else:
+        input_text += "Start the solution with Step 1:"
+    
+    return {
+        "conversations": [
+            {
+                "role": "human",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": next_step
+            }
+        ]
+    }
+
 def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Optional[Dict]:
     """Create a completion training example in ShareGPT format from an augmented data entry"""
     
@@ -165,8 +231,10 @@ def main():
                        help='Input augmented dataset file')
     parser.add_argument('--output-progressive', type=str, default='datasets/progressive_completion.json',
                        help='Output file for progressive completion examples')
-    parser.add_argument('--output-masked', type=str, default='masked_completion.json',
+    parser.add_argument('--output-masked', type=str, default='datasets/masked_completion.json',
                        help='Output file for masked completion examples')
+    parser.add_argument('--output-next-step', type=str, default='datasets/next_step_completion.json',
+                       help='Output file for next step completion examples')
     parser.add_argument('--min-steps', type=int, default=2,
                        help='Minimum number of steps required in solution')
     parser.add_argument('--iterations', type=int, default=2,
@@ -176,6 +244,7 @@ def main():
     # Create output directories if needed
     Path(args.output_progressive).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output_masked).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.output_next_step).parent.mkdir(parents=True, exist_ok=True)
     
     # Load augmented data
     print(f"Loading augmented data from {args.input}")
@@ -213,6 +282,22 @@ def main():
     print(f"Saving {len(masked_examples)} masked examples to {args.output_masked}")
     with open(args.output_masked, 'w', encoding='utf-8') as f:
         json.dump(masked_examples, f, indent=2)
+
+    # Create next step completion examples
+    print("Creating next step completion examples...")
+    next_step_examples = []
+    for _ in range(args.iterations):
+        examples = [
+            example for example in (
+                create_next_step_example(entry)
+                for entry in data
+            ) if example is not None
+        ]
+        next_step_examples.extend(examples)
+    
+    print(f"Saving {len(next_step_examples)} next step examples to {args.output_next_step}")
+    with open(args.output_next_step, 'w', encoding='utf-8') as f:
+        json.dump(next_step_examples, f, indent=2)
     
     print("Done!")
 
