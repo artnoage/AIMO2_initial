@@ -70,13 +70,17 @@ def main():
     )
 
     def formatting_prompts_func(examples):
+        # Handle single example case
+        if isinstance(examples, dict):
+            examples = [examples]
+            
         formatted_pairs = []
-        for chosen, rejected in zip(examples["chosen"], examples["rejected"]):
+        for example in examples:
             # Format chosen response
-            chosen_text = tokenizer.apply_chat_template(chosen, tokenize=False, add_generation_prompt=False)
+            chosen_text = tokenizer.apply_chat_template(example["chosen"], tokenize=False, add_generation_prompt=False)
             
             # Format rejected response
-            rejected_text = tokenizer.apply_chat_template(rejected, tokenize=False, add_generation_prompt=False)
+            rejected_text = tokenizer.apply_chat_template(example["rejected"], tokenize=False, add_generation_prompt=False)
             
             formatted_pairs.append({
                 "chosen": chosen_text,
