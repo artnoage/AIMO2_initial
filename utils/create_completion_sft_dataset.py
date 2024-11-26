@@ -136,42 +136,29 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
     # Validate solution steps
     is_valid, step_numbers = validate_solution_steps(solution)
     if not is_valid:
-        print("\nSteps are not sequential. Found steps:", step_numbers)
-        print("\nFull solution text:")
-        print("-" * 80)
-        print(solution)
-        print("-" * 80)
         return None
         
     total_steps = len(step_numbers)
-    print(f"\nSolution has {total_steps} total steps")
-    
     if total_steps < 1:
-        print("Too few steps, skipping")
         return None
         
     # Randomly decide whether to start from scratch or from a partial solution
     include_steps = random.randint(0, len(step_numbers) - 1)
-    print(f"Selected to include {include_steps} steps out of {len(step_numbers)}")
     
     if include_steps == 0:
         prefix = ""
         # Find where Step 1 starts
         next_step, _ = split_at_step(solution, 0)
         if next_step is None:
-            print("Failed to find Step 1")
             return None
     else:
         # Split at the chosen step number
         prefix, remainder = split_at_step(solution, include_steps)
         if prefix is None or remainder is None:
-            print(f"Failed to split at Step {include_steps}")
             return None
         next_step, _ = split_at_step(remainder, include_steps)
         if next_step is None:
-            print(f"Failed to extract Step {include_steps + 1}")
             return None
-        print(f"Successfully split after Step {include_steps}")
         
     # Create input prompt
     input_text = (
@@ -293,8 +280,9 @@ def main():
     print(f"Loading augmented data from {args.input}")
     data = load_augmented_data(args.input)
     
+    print(f"Processing {len(data)} problems, {args.iterations} iterations each...")
+    
     # Create progressive completion examples
-    print("Creating progressive completion examples...")
     progressive_examples = []
     for _ in range(args.iterations):
         examples = [
@@ -306,7 +294,6 @@ def main():
         progressive_examples.extend(examples)
     
     # Create masked completion examples
-    print("Creating masked completion examples...")
     masked_examples = []
     for _ in range(args.iterations):
         examples = [
@@ -317,17 +304,7 @@ def main():
         ]
         masked_examples.extend(examples)
     
-    # Save datasets
-    print(f"Saving {len(progressive_examples)} progressive examples to {args.output_progressive}")
-    with open(args.output_progressive, 'w', encoding='utf-8') as f:
-        json.dump(progressive_examples, f, indent=2)
-        
-    print(f"Saving {len(masked_examples)} masked examples to {args.output_masked}")
-    with open(args.output_masked, 'w', encoding='utf-8') as f:
-        json.dump(masked_examples, f, indent=2)
-
     # Create next step completion examples
-    print("Creating next step completion examples...")
     next_step_examples = []
     for _ in range(args.iterations):
         examples = [
@@ -338,11 +315,19 @@ def main():
         ]
         next_step_examples.extend(examples)
     
-    print(f"Saving {len(next_step_examples)} next step examples to {args.output_next_step}")
+    # Save all datasets and print summary
+    with open(args.output_progressive, 'w', encoding='utf-8') as f:
+        json.dump(progressive_examples, f, indent=2)
+    with open(args.output_masked, 'w', encoding='utf-8') as f:
+        json.dump(masked_examples, f, indent=2)
     with open(args.output_next_step, 'w', encoding='utf-8') as f:
         json.dump(next_step_examples, f, indent=2)
-    
-    print("Done!")
+        
+    print("\nResults summary:")
+    print(f"Progressive completion examples: {len(progressive_examples)}")
+    print(f"Masked completion examples: {len(masked_examples)}")
+    print(f"Next step completion examples: {len(next_step_examples)}")
+    print(f"Total examples created: {len(progressive_examples) + len(masked_examples) + len(next_step_examples)}")
 
 if __name__ == "__main__":
     main()
