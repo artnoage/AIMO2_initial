@@ -7,10 +7,11 @@ from typing import Dict, Optional
 from tqdm import tqdm
 from datasets import load_dataset
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
+from dotenv import load_dotenv
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
+load_dotenv()
 def print_gpu_memory():
     if torch.cuda.is_available():
         print(f'GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
@@ -109,7 +110,6 @@ async def main():
     
     # Prepare model for inference
     model = FastLanguageModel.for_inference(model)
-    print_gpu_memory()
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -128,7 +128,7 @@ async def main():
     examples = dataset.select(range(1000))
 
     # Create a semaphore to limit concurrency
-    max_concurrent = 32  # Adjust based on your GPU memory
+    max_concurrent = 128  # Adjust based on your GPU memory
     semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process_with_semaphore(example, running_id):
