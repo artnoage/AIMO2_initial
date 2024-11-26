@@ -65,12 +65,11 @@ def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        mapping={"human": "user", "assistant": "assistant", "system": "system"},
         map_eos_token=True,
     )
 
     # Load the DPO dataset
-    dataset = load_dataset("artnoage/dpo2", split="train")
+    dataset = load_dataset("artnoage/dpo3", split="train")
     
     # Print first example
     print("\nFirst example in DPO dataset:")
@@ -78,7 +77,7 @@ def main():
 
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="./dpo_results",
+        output_dir="./train_results",
         num_train_epochs=1,
         per_device_train_batch_size=2,  # Smaller batch size for DPO
         gradient_accumulation_steps=16,
