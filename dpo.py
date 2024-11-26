@@ -72,12 +72,12 @@ def main():
 
     def formatting_prompts_func(examples):
         return {
-            "prompt": examples["prompt"],
-            "chosen": [
+            "prompt_text": examples["prompt"],
+            "chosen_text": [
                 tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
                 for msg in examples["chosen"]
             ],
-            "rejected": [
+            "rejected_text": [
                 tokenizer.apply_chat_template(msg, tokenize=False, add_generation_prompt=False)
                 for msg in examples["rejected"]
             ],
