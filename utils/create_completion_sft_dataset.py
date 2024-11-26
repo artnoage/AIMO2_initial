@@ -44,23 +44,23 @@ def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     next_step_idx = None
     
     for i, match in enumerate(step_matches):
-        if int(match.group(1)) == step_num + 1:
-            next_step_idx = match.start()
-            # If this is Step 1, include everything before it
-            if step_num == 0:
-                current_step_idx = 0
-            break
-        elif int(match.group(1)) == step_num:
+        current_num = int(match.group(1))
+        if current_num == step_num:
             current_step_idx = match.start()
+        elif current_num == step_num + 1:
+            next_step_idx = match.start()
+            break
     
+    # If we can't find both the current step and next step, return None
     if current_step_idx is None or next_step_idx is None:
         return None, None
         
-    # For step 0 (before Step 1), include all text from the beginning
-    prefix = solution[:next_step_idx].strip()
+    # Extract the text before the current step and the current step itself
+    prefix = solution[:current_step_idx].strip()
+    step_text = solution[current_step_idx:next_step_idx].strip()
     completion = solution[next_step_idx:].strip()
     
-    return prefix, completion
+    return prefix + "\n\n" + step_text, completion
 
 def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optional[Dict]:
     """Create a masked completion example where a single step needs to be completed"""
@@ -221,8 +221,8 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
     _, step_numbers = validate_solution_steps(solution)
     total_steps = len(step_numbers)
         
-    # Choose random cutoff point between min_steps-1 and total_steps-1
-    cutoff_step = random.randint(min_steps-1, total_steps-1)
+    # Choose random cutoff point between min_steps and total_steps-1
+    cutoff_step = random.randint(min_steps, total_steps-1)
     
     # Split solution at chosen step
     prefix, completion = split_at_step(solution, cutoff_step)
