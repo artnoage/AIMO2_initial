@@ -96,7 +96,9 @@ def main():
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
     
-    # Print original format
+    # Print original format and structure
+    print("\nDataset structure:")
+    print("Columns:", dataset.column_names)
     print("\nFirst example before formatting:")
     print(json.dumps(dataset[0], indent=2))
     
