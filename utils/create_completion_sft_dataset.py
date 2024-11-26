@@ -259,22 +259,16 @@ def main():
     parser = argparse.ArgumentParser(description='Create completion SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
-    parser.add_argument('--output-progressive', type=str, default='datasets/progressive_completion.json',
-                       help='Output file for progressive completion examples')
-    parser.add_argument('--output-masked', type=str, default='datasets/masked_completion.json',
-                       help='Output file for masked completion examples')
-    parser.add_argument('--output-next-step', type=str, default='datasets/next_step_completion.json',
-                       help='Output file for next step completion examples')
+    parser.add_argument('--output', type=str, default='datasets/sft_completion.json',
+                       help='Output file for all completion examples')
     parser.add_argument('--min-steps', type=int, default=2,
                        help='Minimum number of steps required in solution')
     parser.add_argument('--iterations', type=int, default=2,
                        help='Number of times to process each problem')
     args = parser.parse_args()
     
-    # Create output directories if needed
-    Path(args.output_progressive).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output_masked).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output_next_step).parent.mkdir(parents=True, exist_ok=True)
+    # Create output directory if needed
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     
     # Load augmented data
     print(f"Loading augmented data from {args.input}")
@@ -315,19 +309,18 @@ def main():
         ]
         next_step_examples.extend(examples)
     
-    # Save all datasets and print summary
-    with open(args.output_progressive, 'w', encoding='utf-8') as f:
-        json.dump(progressive_examples, f, indent=2)
-    with open(args.output_masked, 'w', encoding='utf-8') as f:
-        json.dump(masked_examples, f, indent=2)
-    with open(args.output_next_step, 'w', encoding='utf-8') as f:
-        json.dump(next_step_examples, f, indent=2)
+    # Combine all examples
+    all_examples = progressive_examples + masked_examples + next_step_examples
+    
+    # Save combined dataset and print summary
+    with open(args.output, 'w', encoding='utf-8') as f:
+        json.dump(all_examples, f, indent=2)
         
     print("\nResults summary:")
     print(f"Progressive completion examples: {len(progressive_examples)}")
     print(f"Masked completion examples: {len(masked_examples)}")
     print(f"Next step completion examples: {len(next_step_examples)}")
-    print(f"Total examples created: {len(progressive_examples) + len(masked_examples) + len(next_step_examples)}")
+    print(f"Total examples saved to {args.output}: {len(all_examples)}")
 
 if __name__ == "__main__":
     main()
