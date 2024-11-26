@@ -69,12 +69,46 @@ def main():
         map_eos_token=True,
     )
 
+    def formatting_prompts_func(examples):
+        formatted_pairs = []
+        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+            # Format chosen response
+            chosen_convo = [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": chosen}
+            ]
+            chosen_text = tokenizer.apply_chat_template(chosen_convo, tokenize=False, add_generation_prompt=False)
+            
+            # Format rejected response
+            rejected_convo = [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": rejected}
+            ]
+            rejected_text = tokenizer.apply_chat_template(rejected_convo, tokenize=False, add_generation_prompt=False)
+            
+            formatted_pairs.append({
+                "prompt": prompt,
+                "chosen": chosen_text,
+                "rejected": rejected_text
+            })
+        return formatted_pairs
+
     # Load the DPO dataset
     dataset = load_dataset("artnoage/dpo3", split="train")
     
-    # Print first example
-    print("\nFirst example in DPO dataset:")
+    # Print original format
+    print("\nFirst example before formatting:")
     print(json.dumps(dataset[0], indent=2))
+    
+    # Apply formatting
+    formatted_dataset = dataset.map(
+        lambda x: {"formatted": formatting_prompts_func([x])[0]},
+        remove_columns=dataset.column_names
+    )
+    
+    # Print formatted example
+    print("\nFirst example after formatting:")
+    print(json.dumps(formatted_dataset[0]["formatted"], indent=2))
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
