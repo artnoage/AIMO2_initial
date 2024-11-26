@@ -60,7 +60,9 @@ def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     step_text = solution[current_step_idx:next_step_idx].strip()
     completion = solution[next_step_idx:].strip()
     
-    return prefix + "\n\n" + step_text, completion
+    # Combine prefix and step_text, ensuring no leading newlines
+    combined = f"{prefix}\n\n{step_text}" if prefix else step_text
+    return combined, completion
 
 def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optional[Dict]:
     """Create a masked completion example where a single step needs to be completed"""
