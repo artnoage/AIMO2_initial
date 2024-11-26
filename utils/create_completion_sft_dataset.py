@@ -133,7 +133,11 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
         
     # Ensure steps are sequential and start from 1
     if step_numbers[0] != 1 or any(b-a != 1 for a, b in zip(step_numbers, step_numbers[1:])):
-        print("Steps are not sequential")
+        print("\nSteps are not sequential. Found steps:", step_numbers)
+        print("\nFull solution text:")
+        print("-" * 80)
+        print(solution)
+        print("-" * 80)
         return None
         
     # Randomly decide whether to start from scratch or from a partial solution
