@@ -9,6 +9,7 @@ import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
+from datetime import datetime
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -89,9 +90,12 @@ def main():
     print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     
+    # Create timestamp for output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="./train_results",
+        output_dir=f"results/{timestamp}",
         num_train_epochs=2,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=64,
