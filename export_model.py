@@ -88,12 +88,8 @@ def main():
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Create output directory with checkpoint number
-    if latest_checkpoint:
-        checkpoint_num = latest_checkpoint.split('-')[1]
-        output_dir = os.path.join(args.output_dir, f"checkpoint-{checkpoint_num}")
-    else:
-        output_dir = args.output_dir
+    # Use the timestamp from training directory for output
+    output_dir = os.path.join(args.output_dir, os.path.basename(checkpoint_dir))
         
     # Save the merged model and tokenizer
     model.save_pretrained(output_dir)
