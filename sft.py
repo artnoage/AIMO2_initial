@@ -95,7 +95,7 @@ def main():
     
     # Training arguments
     training_args = TrainingArguments(
-        output_dir=f"results/{timestamp}",
+        output_dir=f"train_results/{timestamp}",
         num_train_epochs=2,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=64,

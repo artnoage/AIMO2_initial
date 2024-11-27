@@ -119,7 +119,7 @@ def main():
     # Print formatted example
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"results/{timestamp}"
+    output_dir = f"train_results/{timestamp}"
     
     print("\nToken counts for all examples:")
     total_tokens = 0
