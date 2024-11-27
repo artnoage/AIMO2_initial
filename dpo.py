@@ -42,8 +42,8 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="/Home/stat/laschos/AIMO2_initial/models",
-        max_seq_length=4096,
-        load_in_4bit=True)
+        max_seq_length=8192,
+        load_in_4bit=False)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
@@ -57,7 +57,7 @@ def main():
         lora_alpha=32,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
-        use_gradient_checkpointing=False,  # True or "unsloth" for very long context
+        use_gradient_checkpointing=True,  # True or "unsloth" for very long context
         random_state=3407,
         use_rslora=False)
     
@@ -123,18 +123,18 @@ def main():
     
     print("\nToken counts for all examples:")
     total_tokens = 0
-    for i in range(len(raw_datasets)):
-        row = raw_datasets[i]
-        tokens_prompt = len(tokenizer.encode(row["prompt"]))
-        tokens_chosen = len(tokenizer.encode(row["chosen"]))
-        tokens_rejected = len(tokenizer.encode(row["rejected"]))
-        example_total = tokens_prompt + tokens_chosen + tokens_rejected
-        total_tokens += example_total
-        print(f"\nExample {i}:")
-        print(f"Prompt tokens: {tokens_prompt}")
-        print(f"Chosen tokens: {tokens_chosen}")
-        print(f"Rejected tokens: {tokens_rejected}")
-        print(f"Example total: {example_total}")
+    #for i in range(len(raw_datasets)):
+        #row = raw_datasets[i]
+        #tokens_prompt = len(tokenizer.encode(row["prompt"]))
+        #tokens_chosen = len(tokenizer.encode(row["chosen"]))
+        #tokens_rejected = len(tokenizer.encode(row["rejected"]))
+        #example_total = tokens_prompt + tokens_chosen + tokens_rejected
+        #total_tokens += example_total
+        #print(f"\nExample {i}:")
+        #print(f"Prompt tokens: {tokens_prompt}")
+        #print(f"Chosen tokens: {tokens_chosen}")
+        #print(f"Rejected tokens: {tokens_rejected}")
+        #print(f"Example total: {example_total}")
     
     print(f"\nTotal tokens across all examples: {total_tokens}")
     print(f"Average tokens per example: {total_tokens / len(raw_datasets):.1f}")
@@ -142,7 +142,7 @@ def main():
 
     training_args = DPOConfig(
         per_gpu_train_batch_size = 1,
-        gradient_accumulation_steps = 32,
+        gradient_accumulation_steps = 64,
         num_train_epochs = 1,
         learning_rate = 5e-6,
         logging_steps = 1,
@@ -158,6 +158,8 @@ def main():
         train_dataset=raw_datasets,
         tokenizer=tokenizer,
         args=training_args,
+        max_length = 8192,
+        max_prompt_length = 1024,
     )
 
     # Train the model

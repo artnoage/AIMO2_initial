@@ -1,6 +1,5 @@
 from datasets import load_dataset
 import json
-from datetime import datetime
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -41,7 +40,7 @@ def main():
         model_name="artnoage/metastral",
         max_seq_length=8192,
         dtype="bfloat16",
-        load_in_4bit=True)
+        load_in_4bit=False)
         
     print("\n=== After Model Load ===")
     print_gpu_utilization()
@@ -56,7 +55,7 @@ def main():
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = False, # True or "unsloth" for very long context
+    use_gradient_checkpointing = True, # True or "unsloth" for very long context
     random_state = 3407,
     use_rslora = False)
     
@@ -90,23 +89,19 @@ def main():
     print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     
-    # Create timestamped output directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"./train_results/sft/{timestamp}"
-    
     # Training arguments
     training_args = TrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=1,
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=32,
+        output_dir="./train_results",
+        num_train_epochs=2,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=64,
         learning_rate=5e-6,
         logging_steps=1,
         save_strategy="steps",
         save_steps=200,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_8bit",
+        optim = "adamw_torch",
     )
 
     # Initialize SFT trainer
