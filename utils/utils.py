@@ -33,7 +33,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
             model=model.value,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:6000/v1")
+            base_url="http://localhost:8000/v1")
     elif model == ModelOption.SAMBA_BIG or model==ModelOption.SAMBA_SMALL :
         return ChatOpenAI(
             model=model.value,
