@@ -88,11 +88,18 @@ def main():
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
+    # Create output directory with checkpoint number
+    if latest_checkpoint:
+        checkpoint_num = latest_checkpoint.split('-')[1]
+        output_dir = os.path.join(args.output_dir, f"checkpoint-{checkpoint_num}")
+    else:
+        output_dir = args.output_dir
+        
     # Save the merged model and tokenizer
-    model.save_pretrained(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
     
-    print(f"Model and tokenizer successfully exported to {args.output_dir}")
+    print(f"Model and tokenizer successfully exported to {output_dir}")
 
 if __name__ == "__main__":
     main()
