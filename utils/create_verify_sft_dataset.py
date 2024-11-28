@@ -19,46 +19,69 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
         return match.group(0)  # Return full \boxed{...} expression
     return None
 
-def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8192) -> Optional[Dict]:
-    """Create an example for training answer comparison"""
+def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8192) -> List[Dict]:
+    """Create examples for training answer comparison, returning both yes and no cases"""
+    examples = []
+    
+    # Get the correct answer from the reference solution
+    correct_ans = extract_answer_from_solution(entry['correct_solution'])
+    if not correct_ans:
+        return []
+        
     # Get solutions with verification results > 0 (passed format check)
     valid_responses = [(sol, ver) for sol, ver in zip(entry['model_responses'], entry['verification_results']) 
                       if ver > 0]
     
-    # Need at least 2 solutions to compare
-    if len(valid_responses) < 2:
-        return None
+    if not valid_responses:
+        return []
         
-    # Split into correct (ver > 1) and incorrect (ver == 1) solutions
-    correct_sols = [(sol, ver) for sol, ver in valid_responses if ver > 1]
-    incorrect_sols = [(sol, ver) for sol, ver in valid_responses if ver == 1]
+    # Split into correct (ver == 4) and incorrect (ver < 4) solutions
+    correct_sols = [(sol, ver) for sol, ver in valid_responses if ver == 4]
+    incorrect_sols = [(sol, ver) for sol, ver in valid_responses if ver < 4]
     
-    # Need at least one solution from each category
-    if not correct_sols or not incorrect_sols:
-        return None
-        
-    # Randomly select one solution from each category
-    sol1, ver1 = random.choice(correct_sols)
-    sol2, ver2 = random.choice(incorrect_sols)
-    
-    # Extract answers
-    ans1 = extract_answer_from_solution(sol1)
-    ans2 = extract_answer_from_solution(sol2)
-    
-    if not ans1 or not ans2:
-        return None
-        
+    # Create a "yes" example comparing correct answer with itself
     input_text = (
         "You are a mathematical answer validator. Given a problem and two answers, "
         "determine if they are mathematically equivalent.\n\n"
         f"Problem:\n{entry['problem']}\n\n"
-        f"Answer 1: {ans1}\n"
-        f"Answer 2: {ans2}\n\n"
+        f"Answer 1: {correct_ans}\n"
+        f"Answer 2: {correct_ans}\n\n"
         "Are these answers mathematically equivalent? Respond with ONLY 'yes' or 'no'."
     )
     
-    # Since ver1 > 1 and ver2 == 1, answers are not equivalent
-    output_text = "no"
+    # Check token count
+    if len(tokenizer.encode(input_text)) + len(tokenizer.encode("yes")) <= max_tokens:
+        examples.append({
+            "conversations": [
+                {"role": "user", "content": input_text},
+                {"role": "assistant", "content": "yes"}
+            ]
+        })
+    
+    # Create "no" examples using incorrect solutions
+    for sol, _ in incorrect_sols:
+        incorrect_ans = extract_answer_from_solution(sol)
+        if not incorrect_ans or incorrect_ans == correct_ans:
+            continue
+            
+        input_text = (
+            "You are a mathematical answer validator. Given a problem and two answers, "
+            "determine if they are mathematically equivalent.\n\n"
+            f"Problem:\n{entry['problem']}\n\n"
+            f"Answer 1: {correct_ans}\n"
+            f"Answer 2: {incorrect_ans}\n\n"
+            "Are these answers mathematically equivalent? Respond with ONLY 'yes' or 'no'."
+        )
+        
+        # Check token count
+        if len(tokenizer.encode(input_text)) + len(tokenizer.encode("no")) <= max_tokens:
+            examples.append({
+                "conversations": [
+                    {"role": "user", "content": input_text},
+                    {"role": "assistant", "content": "no"}
+                ]
+            })
+            break  # One "no" example is enough to balance the "yes" example
     
     # Check token count
     total_tokens = len(tokenizer.encode(input_text)) + len(tokenizer.encode(output_text))
@@ -191,13 +214,9 @@ def main():
         verification_examples.extend(ver_examples)
         
         # Create answer comparison examples
-        comp_examples = [
-            example for example in (
-                create_answer_comparison_example(entry, tokenizer)
-                for entry in data
-            ) if example is not None
-        ]
-        comparison_examples.extend(comp_examples)
+        for entry in data:
+            comp_examples = create_answer_comparison_example(entry, tokenizer)
+            comparison_examples.extend(comp_examples)
     
     # Combine all examples
     sft_examples = verification_examples + comparison_examples
