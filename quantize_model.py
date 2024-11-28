@@ -17,7 +17,7 @@ def find_latest_model(models_dir='models'):
     return os.path.join(models_dir, latest_dir)
 
 def main():
-    parser = argparse.ArgumentParser(description='Quantize exported model to INT8')
+    parser = argparse.ArgumentParser(description='Quantize exported model to FP16')
     parser.add_argument('--model_dir', type=str,
                       help='Directory containing the model to quantize (optional, uses latest if not specified)')
     parser.add_argument('--input_dir', type=str, default='models',
@@ -33,10 +33,10 @@ def main():
     model_dir = args.model_dir if args.model_dir else find_latest_model(args.input_dir)
     print(f"Quantizing model from: {model_dir}")
     
-    # Load the model and tokenizer
+    # Load the model and tokenizer in FP16
     model = AutoModelForCausalLM.from_pretrained(
         model_dir,
-        torch_dtype=torch.float32,
+        torch_dtype=torch.float16,
         trust_remote_code=True
     )
     tokenizer = AutoTokenizer.from_pretrained(
@@ -44,8 +44,8 @@ def main():
         trust_remote_code=True
     )
     
-    # Quantize to INT8
-    model = model.to(torch.int8)
+    # Ensure model is in FP16
+    model = model.to(torch.float16)
     
     # Create output directory
     timestamp = os.path.basename(model_dir)
