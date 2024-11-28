@@ -83,23 +83,6 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
             })
             break  # One "no" example is enough to balance the "yes" example
     
-    # Check token count
-    total_tokens = len(tokenizer.encode(input_text)) + len(tokenizer.encode(output_text))
-    if total_tokens > max_tokens:
-        return None
-        
-    return {
-        "conversations": [
-            {
-                "role": "user",
-                "content": input_text
-            },
-            {
-                "role": "assistant",
-                "content": output_text
-            }
-        ]
-    }
 
 def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples: int = 8, max_tokens: int = 8192) -> Optional[Dict]:
     """Create a single SFT training example in ShareGPT format from an augmented data entry"""
