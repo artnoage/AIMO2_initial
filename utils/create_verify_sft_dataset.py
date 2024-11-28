@@ -205,10 +205,14 @@ def main():
             comp_examples = create_answer_comparison_example(entry, tokenizer)
             comparison_examples.extend(comp_examples)
     
+    # Balance the number of comparison examples with verification examples
+    num_verification = len(verification_examples)
+    comparison_examples = comparison_examples[:num_verification]  # Truncate to match verification count
+    
     # Combine all examples
     sft_examples = verification_examples + comparison_examples
     
-    # Shuffle and save SFT dataset
+    # Shuffle the combined examples
     random.shuffle(sft_examples)
     # Filter examples by token count
     filtered_examples, token_ranges = filter_by_token_ranges(sft_examples, tokenizer)
