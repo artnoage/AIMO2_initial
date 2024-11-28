@@ -260,7 +260,7 @@ async def main():
                        help='Maximum number of concurrent problems (default: 32)')
     parser.add_argument('--best-of', type=int, default=5,
                        help='Number of attempts per problem (default: 1)')
-    parser.add_argument('--temperature', type=float, default=0.8,
+    parser.add_argument('--temperature', type=float, default=0.7,
                        help='Temperature for model generation (default: 0.5)')
     args = parser.parse_args()
 
