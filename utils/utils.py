@@ -5,6 +5,11 @@ from typing import Optional
 from langchain_openai import ChatOpenAI
 
 class ModelOption(Enum):
+    """Enum class representing different model options for chat completion.
+    
+    Each enum value corresponds to a specific model endpoint that can be used
+    with either OpenRouter API, SambaNova API, or local deployment.
+    """
     CLAUDE = "anthropic/claude-3.5-sonnet:beta"
     GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
     GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
@@ -49,6 +54,40 @@ def get_model(model: ModelOption, temp: float = 0.1):
             model=model.value,
             temperature=temp,
             api_key=openrouter_api_key)
+
+def filter_by_token_ranges(examples: List[Dict], tokenizer, max_tokens: int = 4096) -> Tuple[List[Dict], Dict[str, int]]:
+    """
+    Filter examples by token count and track distribution.
+    
+    Args:
+        examples: List of conversation examples
+        tokenizer: The tokenizer to use for counting
+        max_tokens: Maximum allowed tokens per example
+        
+    Returns:
+        Tuple of (filtered_examples, token_ranges)
+    """
+    token_ranges = {
+        "0-1024": 0,
+        "1024-2048": 0,
+        "2048-4096": 0
+    }
+    
+    filtered_examples = []
+    for example in examples:
+        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
+                         for msg in example["conversations"])
+        if total_tokens <= 1024:
+            token_ranges["0-1024"] += 1
+            filtered_examples.append(example)
+        elif total_tokens <= 2048:
+            token_ranges["1024-2048"] += 1
+            filtered_examples.append(example)
+        elif total_tokens <= 4096:
+            token_ranges["2048-4096"] += 1
+            filtered_examples.append(example)
+            
+    return filtered_examples, token_ranges
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """

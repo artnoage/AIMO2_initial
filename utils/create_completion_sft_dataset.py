@@ -5,6 +5,7 @@ import re
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
+from utils.utils import extract_answer_from_solution, filter_by_token_ranges
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
@@ -346,7 +347,11 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
 
 def main():
     # Initialize tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    except Exception as e:
+        print(f"Error initializing tokenizer: {e}")
+        return
     
     parser = argparse.ArgumentParser(description='Create completion SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
@@ -408,26 +413,8 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(all_examples, f, indent=2)
         
-    # Filter examples by token count and track distribution
-    token_ranges = {
-        "0-1024": 0,
-        "1024-2048": 0,
-        "2048-4096": 0
-    }
-    
-    filtered_examples = []
-    for example in all_examples:
-        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
-                         for msg in example["conversations"])
-        if total_tokens <= 1024:
-            token_ranges["0-1024"] += 1
-            filtered_examples.append(example)
-        elif total_tokens <= 2048:
-            token_ranges["1024-2048"] += 1
-            filtered_examples.append(example)
-        elif total_tokens <= 4096:
-            token_ranges["2048-4096"] += 1
-            filtered_examples.append(example)
+    # Filter examples by token count
+    filtered_examples, token_ranges = filter_by_token_ranges(all_examples, tokenizer)
 
     print("\nResults summary:")
     print(f"Analysis-only examples: {len(analysis_examples)}")
