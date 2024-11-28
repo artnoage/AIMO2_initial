@@ -1,10 +1,10 @@
 import json
 import random
 import argparse
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
-from utils.utils import extract_answer_from_solution, filter_by_token_ranges
+from utils import extract_answer_from_solution, filter_by_token_ranges
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
@@ -174,7 +174,7 @@ def main():
                        help='Minimum number of solution samples per problem')
     parser.add_argument('--max-samples', type=int, default=4,
                        help='Maximum number of solution samples per problem')
-    parser.add_argument('--iterations', type=int, default=3,
+    parser.add_argument('--iterations', type=int, default=4,
                        help='Number of times to process each problem')
     args = parser.parse_args()
     
