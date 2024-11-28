@@ -127,7 +127,7 @@ def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optiona
     }
 
 def create_next_step_example(entry: Dict) -> Optional[Dict]:
-    """Create an example where the model needs to provide just the next solution step"""
+    """Creates an example where the model needs to provide just the next solution step"""
     
     valid_solutions = get_valid_solutions(entry)
     if not valid_solutions:
