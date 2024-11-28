@@ -41,15 +41,19 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     Looks for a number inside a LaTeX boxed environment.
     Returns float if found, None otherwise.
     """
-    # Look for \boxed{<number>} pattern
-    pattern = r'\\boxed\{([+-]?\d*\.?\d+)\}'
-    match = re.search(pattern, solution)
-    if match:
-        try:
-            return float(match.group(1))
-        except ValueError:
-            return None
-    return None
+    from utils.utils import extract_answer_from_solution
+    
+    # First extract the raw boxed content
+    raw_answer = extract_answer_from_solution(solution)
+    if raw_answer is None:
+        return None
+        
+    # Clean the answer and try to convert to float
+    clean_answer = raw_answer.strip()
+    try:
+        return float(clean_answer)
+    except ValueError:
+        return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.001) -> bool:
     """Compare two numeric answers within tolerance"""
