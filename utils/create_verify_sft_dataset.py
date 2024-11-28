@@ -1,7 +1,7 @@
 import json
 import random
 import argparse
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
 
