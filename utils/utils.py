@@ -1,7 +1,7 @@
 import re
 import os
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 from langchain_openai import ChatOpenAI
 
 class ModelOption(Enum):
