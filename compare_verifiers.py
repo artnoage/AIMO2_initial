@@ -2,14 +2,45 @@ import os
 import json
 import asyncio
 import argparse
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, Dict
 from datetime import datetime
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from langchain_core.messages import HumanMessage, SystemMessage
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
+from dotenv import load_dotenv
+
+SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
+
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification. 
+▪ Use LaTeX notation
+
+FORMAT:
+
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
+2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
+
+**PROOF**:
+Example format for each step:
+Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
+
+Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
+Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
+Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
+Step 4. Thus, \\( abc \\leq 1 \\), as required.  
+
+For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
+
+**ANSWER**:
+\\(\\boxed{\\text{result}}\\) """
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+# Load environment variables from .env file
+load_dotenv()
+
 
 async def verify_answer(problem: str, model_answer: str, correct_answer: str, verifier_model, verifier_name: str) -> bool:
     """Use a verifier model to compare two mathematical answers"""
@@ -62,7 +93,7 @@ async def process_example(
 
         # Get solver's answer
         prompt = [
-            SystemMessage(content="""You are a precise mathematical problem solver. Solve the problem and provide ONLY the final answer in a LaTeX boxed environment. For example: \boxed{42}"""),
+            SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=example["problem"])
         ]
         
@@ -136,9 +167,9 @@ async def main():
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
                        help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=16,
+    parser.add_argument('--max-concurrent', type=int, default=128,
                        help='Maximum number of concurrent problems')
-    parser.add_argument('--temperature', type=float, default=0.2,
+    parser.add_argument('--temperature', type=float, default=0.8,
                        help='Temperature for solver model generation')
     args = parser.parse_args()
 
