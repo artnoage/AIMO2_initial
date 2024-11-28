@@ -275,6 +275,45 @@ def create_analysis_example(entry: Dict) -> Optional[Dict]:
         ]
     }
 
+def create_full_solution_example(entry: Dict) -> Optional[Dict]:
+    """Create an example requesting a complete solution with steps and analysis"""
+    valid_solutions = get_valid_solutions(entry)
+    if not valid_solutions:
+        return None
+        
+    # Choose random solution
+    solution = random.choice(valid_solutions)
+    
+    input_text = (
+        "Here is a mathematical problem to solve:\n\n"
+        f"{entry['problem']}\n\n"
+        "Please provide a complete solution following these guidelines:\n"
+        "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
+        "   - Problem type and key concepts involved\n"
+        "   - Relevant theorems and techniques\n"
+        "   - Overall solution strategy\n\n"
+        "2. Then provide a detailed step-by-step solution:\n"
+        "   - Number each step clearly (Step 1, Step 2, etc.)\n"
+        "   - Show all work and intermediate calculations\n"
+        "   - Use LaTeX notation for mathematical expressions\n"
+        "   - Provide justification in [brackets] for key steps\n"
+        "   - End with final answer in \\boxed{}\n\n"
+        "Please solve the problem completely:"
+    )
+    
+    return {
+        "conversations": [
+            {
+                "role": "user",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": solution
+            }
+        ]
+    }
+
 def get_valid_solutions(entry: Dict) -> List[str]:
     """Get solutions that are valid (verified and have 3+ sequential steps)"""
     # Get solutions that passed all verifications (level 4)
@@ -405,8 +444,17 @@ def main():
             if example is not None:
                 next_step_examples.append(example)
     
+    # Create full solution examples
+    full_solution_examples = []
+    for _ in range(args.iterations):
+        for entry in data:
+            example = create_full_solution_example(entry)
+            if example is not None:
+                full_solution_examples.append(example)
+
     # Combine and shuffle all examples
-    all_examples = analysis_examples + progressive_examples + masked_examples + next_step_examples
+    all_examples = (analysis_examples + progressive_examples + masked_examples + 
+                   next_step_examples + full_solution_examples)
     random.shuffle(all_examples)
     
     # Save shuffled dataset and print summary
@@ -421,6 +469,7 @@ def main():
     print(f"Progressive completion examples: {len(progressive_examples)}")
     print(f"Masked completion examples: {len(masked_examples)}")
     print(f"Next step completion examples: {len(next_step_examples)}")
+    print(f"Full solution examples: {len(full_solution_examples)}")
     print(f"Total examples before filtering: {len(all_examples)}")
     print(f"Total examples after filtering (<= 4096 tokens): {len(filtered_examples)}")
     
