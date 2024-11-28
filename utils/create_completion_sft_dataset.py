@@ -408,30 +408,27 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(all_examples, f, indent=2)
         
-    # Initialize token count statistics
+    # Filter examples by token count and track distribution
     tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
     token_ranges = {
         "0-1024": 0,
         "1024-2048": 0,
-        "2048-4096": 0,
-        "4096-8192": 0,
-        "8192+": 0
+        "2048-4096": 0
     }
     
-    # Count tokens for each example
+    filtered_examples = []
     for example in all_examples:
         total_tokens = sum(len(tokenizer.encode(msg["content"])) 
                          for msg in example["conversations"])
         if total_tokens <= 1024:
             token_ranges["0-1024"] += 1
+            filtered_examples.append(example)
         elif total_tokens <= 2048:
             token_ranges["1024-2048"] += 1
+            filtered_examples.append(example)
         elif total_tokens <= 4096:
             token_ranges["2048-4096"] += 1
-        elif total_tokens <= 8192:
-            token_ranges["4096-8192"] += 1
-        else:
-            token_ranges["8192+"] += 1
+            filtered_examples.append(example)
 
     print("\nResults summary:")
     print(f"Analysis-only examples: {len(analysis_examples)}")
