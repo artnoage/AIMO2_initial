@@ -270,17 +270,44 @@ async def main():
     for name, count in verifier_agreements.items():
         print(f"{name} agreed with correct answer: {count}/{len(results)} = {(count/len(results))*100:.2f}%")
     
-    # Agreement between verifiers
+    # Detailed agreement statistics
+    print("\nDetailed Agreement Statistics:")
+    
+    # All three verifiers
+    all_agree = sum(1 for r in results 
+                   if len(set(r['verifier_results'].values())) == 1)
+    all_agree_rate = (all_agree / len(results)) * 100
+    print(f"\nAll three verifiers agreed: {all_agree}/{len(results)} = {all_agree_rate:.2f}%")
+    
+    # Pairwise agreements
+    v1, v2, v3 = 'verifier1', 'verifier2', 'verifier3'
+    
+    # First two verifiers
+    v1_v2_agree = sum(1 for r in results 
+                      if r['verifier_results'][v1] == r['verifier_results'][v2])
+    v1_v2_rate = (v1_v2_agree / len(results)) * 100
+    print(f"First two verifiers agreed: {v1_v2_agree}/{len(results)} = {v1_v2_rate:.2f}%")
+    
+    # Second and third verifiers
+    v2_v3_agree = sum(1 for r in results 
+                      if r['verifier_results'][v2] == r['verifier_results'][v3])
+    v2_v3_rate = (v2_v3_agree / len(results)) * 100
+    print(f"Second and third verifiers agreed: {v2_v3_agree}/{len(results)} = {v2_v3_rate:.2f}%")
+    
+    # First and third verifiers
+    v1_v3_agree = sum(1 for r in results 
+                      if r['verifier_results'][v1] == r['verifier_results'][v3])
+    v1_v3_rate = (v1_v3_agree / len(results)) * 100
+    print(f"First and third verifiers agreed: {v1_v3_agree}/{len(results)} = {v1_v3_rate:.2f}%")
+    
+    # Agreement matrix for completeness
     print("\nVerifier Agreement Matrix:")
-    agreement_matrix = {}
-    for v1 in verifier_models.keys():
-        for v2 in verifier_models.keys():
-            if v1 < v2:  # Only calculate each pair once
-                agreements = sum(1 for r in results 
-                               if r['verifier_results'][v1] == r['verifier_results'][v2])
-                agreement_rate = (agreements / len(results)) * 100
-                agreement_matrix[f"{v1}_vs_{v2}"] = agreement_rate
-                print(f"{v1} vs {v2}: {agreement_rate:.2f}% agreement")
+    agreement_matrix = {
+        'v1_v2': v1_v2_rate,
+        'v2_v3': v2_v3_rate,
+        'v1_v3': v1_v3_rate,
+        'all_three': all_agree_rate
+    }
     
     # Unanimous agreement cases
     unanimous_correct = sum(1 for r in results 
