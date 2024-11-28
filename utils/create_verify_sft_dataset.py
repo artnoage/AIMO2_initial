@@ -35,9 +35,9 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
     if not valid_responses:
         return []
         
-    # Split into correct (ver == 4) and incorrect (ver < 4) solutions
-    correct_sols = [(sol, ver) for sol, ver in valid_responses if ver == 4]
-    incorrect_sols = [(sol, ver) for sol, ver in valid_responses if ver < 4]
+    # Split into correct (ver > 1) and incorrect (ver == 1) solutions
+    correct_sols = [(sol, ver) for sol, ver in valid_responses if ver > 1]
+    incorrect_sols = [(sol, ver) for sol, ver in valid_responses if ver == 1]
     
     # Create a "yes" example comparing correct answer with itself
     input_text = (
