@@ -165,6 +165,9 @@ def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples
     }
 
 def main():
+    # Initialize tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    
     parser = argparse.ArgumentParser(description='Create SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
