@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import  HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
 from huggingface_hub import HfApi
@@ -278,7 +278,7 @@ async def main():
             dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
         else:  # filtered
             username = HfApi().whoami()["name"]
-            dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+            dataset = load_dataset(f"{username}/Numina", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
