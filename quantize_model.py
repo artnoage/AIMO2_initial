@@ -3,9 +3,8 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging
 import argparse
 
-def find_latest_model():
+def find_latest_model(models_dir='models'):
     """Find the latest timestamp directory in models folder"""
-    models_dir = 'models'
     timestamp_dirs = [d for d in os.listdir(models_dir) 
                      if os.path.isdir(os.path.join(models_dir, d)) 
                      and d[0].isdigit()]  # Timestamps start with digits
@@ -21,13 +20,17 @@ def main():
     parser = argparse.ArgumentParser(description='Quantize exported model to INT8')
     parser.add_argument('--model_dir', type=str,
                       help='Directory containing the model to quantize (optional, uses latest if not specified)')
+    parser.add_argument('--input_dir', type=str, default='models',
+                      help='Base directory containing model folders (default: models)')
+    parser.add_argument('--output_dir', type=str, default='models/quantized',
+                      help='Directory to save quantized models (default: models/quantized)')
     args = parser.parse_args()
 
     # Setup logging
     logging.set_verbosity_info()
     
     # Get model directory
-    model_dir = args.model_dir if args.model_dir else find_latest_model()
+    model_dir = args.model_dir if args.model_dir else find_latest_model(args.input_dir)
     print(f"Quantizing model from: {model_dir}")
     
     # Load the model and tokenizer
@@ -46,7 +49,7 @@ def main():
     
     # Create output directory
     timestamp = os.path.basename(model_dir)
-    output_dir = os.path.join('models', 'quantized', timestamp)
+    output_dir = os.path.join(args.output_dir, timestamp)
     os.makedirs(output_dir, exist_ok=True)
     
     # Save the quantized model and tokenizer
