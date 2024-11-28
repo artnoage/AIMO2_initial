@@ -158,11 +158,11 @@ async def main():
     parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
                        default='LOCAL', help='Model to use for solving problems')
     parser.add_argument('--verifier1', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='First verifier model')
+                       default='NEMOTRON', help='First verifier model')
     parser.add_argument('--verifier2', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Second verifier model')
+                       default='CODER', help='Second verifier model')
     parser.add_argument('--verifier3', type=str, choices=[model.name for model in ModelOption],
-                       default='CODER', help='Third verifier model')
+                       default='GPT', help='Third verifier model')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -180,7 +180,7 @@ async def main():
     # Load dataset
     try:
         username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+        dataset = load_dataset(f"{username}/Numina", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return

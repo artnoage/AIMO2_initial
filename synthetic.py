@@ -211,7 +211,7 @@ async def main():
 
     try:
         username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+        dataset = load_dataset(f"{username}/Numina", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
