@@ -1,7 +1,7 @@
 import json
 import random
 import argparse
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 from transformers import AutoTokenizer
 
@@ -9,6 +9,74 @@ def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+def extract_answer_from_solution(solution: str) -> Optional[str]:
+    """Extract the boxed answer from a solution"""
+    import re
+    # Look for \boxed{...} content
+    match = re.search(r'\\boxed\{([^}]+)\}', solution)
+    if match:
+        return match.group(0)  # Return full \boxed{...} expression
+    return None
+
+def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8192) -> Optional[Dict]:
+    """Create an example for training answer comparison"""
+    # Get solutions with verification results > 0 (passed format check)
+    valid_responses = [(sol, ver) for sol, ver in zip(entry['model_responses'], entry['verification_results']) 
+                      if ver > 0]
+    
+    # Need at least 2 solutions to compare
+    if len(valid_responses) < 2:
+        return None
+        
+    # Split into correct (ver > 1) and incorrect (ver == 1) solutions
+    correct_sols = [(sol, ver) for sol, ver in valid_responses if ver > 1]
+    incorrect_sols = [(sol, ver) for sol, ver in valid_responses if ver == 1]
+    
+    # Need at least one solution from each category
+    if not correct_sols or not incorrect_sols:
+        return None
+        
+    # Randomly select one solution from each category
+    sol1, ver1 = random.choice(correct_sols)
+    sol2, ver2 = random.choice(incorrect_sols)
+    
+    # Extract answers
+    ans1 = extract_answer_from_solution(sol1)
+    ans2 = extract_answer_from_solution(sol2)
+    
+    if not ans1 or not ans2:
+        return None
+        
+    input_text = (
+        "You are a mathematical answer validator. Given a problem and two answers, "
+        "determine if they are mathematically equivalent.\n\n"
+        f"Problem:\n{entry['problem']}\n\n"
+        f"Answer 1: {ans1}\n"
+        f"Answer 2: {ans2}\n\n"
+        "Are these answers mathematically equivalent? Respond with ONLY 'yes' or 'no'."
+    )
+    
+    # Since ver1 > 1 and ver2 == 1, answers are not equivalent
+    output_text = "no"
+    
+    # Check token count
+    total_tokens = len(tokenizer.encode(input_text)) + len(tokenizer.encode(output_text))
+    if total_tokens > max_tokens:
+        return None
+        
+    return {
+        "conversations": [
+            {
+                "role": "user",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": output_text
+            }
+        ]
+    }
 
 def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples: int = 8, max_tokens: int = 8192) -> Optional[Dict]:
     """Create a single SFT training example in ShareGPT format from an augmented data entry"""
@@ -107,21 +175,39 @@ def main():
     print(f"Loading augmented data from {args.input}")
     data = load_augmented_data(args.input)
     
-    # Create SFT examples
+    # Create both types of SFT examples
     print("Creating SFT examples...")
-    sft_examples = []
+    verification_examples = []
+    comparison_examples = []
+    
     for _ in range(args.iterations):
-        examples = [
+        # Create verification examples
+        ver_examples = [
             example for example in (
                 create_sft_example(entry, tokenizer, args.min_samples, args.max_samples)
                 for entry in data
             ) if example is not None
         ]
-        sft_examples.extend(examples)
+        verification_examples.extend(ver_examples)
+        
+        # Create answer comparison examples
+        comp_examples = [
+            example for example in (
+                create_answer_comparison_example(entry, tokenizer)
+                for entry in data
+            ) if example is not None
+        ]
+        comparison_examples.extend(comp_examples)
+    
+    # Combine all examples
+    sft_examples = verification_examples + comparison_examples
     
     # Shuffle and save SFT dataset
     random.shuffle(sft_examples)
-    print(f"Saving {len(sft_examples)} shuffled examples to {args.output}")
+    print("\nResults summary:")
+    print(f"Verification examples: {len(verification_examples)}")
+    print(f"Answer comparison examples: {len(comparison_examples)}")
+    print(f"\nSaving {len(sft_examples)} total examples to {args.output}")
     with open(args.output, 'w') as f:
         json.dump(sft_examples, f, indent=2)
     
