@@ -345,6 +345,9 @@ def create_progressive_completion_example(entry: Dict, min_steps: int = 2) -> Op
     }
 
 def main():
+    # Initialize tokenizer
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    
     parser = argparse.ArgumentParser(description='Create completion SFT dataset from augmented data')
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
@@ -406,7 +409,6 @@ def main():
         json.dump(all_examples, f, indent=2)
         
     # Filter examples by token count and track distribution
-    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
     token_ranges = {
         "0-1024": 0,
         "1024-2048": 0,
