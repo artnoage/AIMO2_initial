@@ -174,7 +174,7 @@ def main():
                        help='Minimum number of solution samples per problem')
     parser.add_argument('--max-samples', type=int, default=4,
                        help='Maximum number of solution samples per problem')
-    parser.add_argument('--iterations', type=int, default=4,
+    parser.add_argument('--iterations', type=int, default=5,
                        help='Number of times to process each problem')
     args = parser.parse_args()
     
