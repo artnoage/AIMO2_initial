@@ -4,6 +4,7 @@ import argparse
 import re
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
+from transformers import AutoTokenizer
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
@@ -407,12 +408,42 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(all_examples, f, indent=2)
         
+    # Initialize token count statistics
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    token_ranges = {
+        "0-1024": 0,
+        "1024-2048": 0,
+        "2048-4096": 0,
+        "4096-8192": 0,
+        "8192+": 0
+    }
+    
+    # Count tokens for each example
+    for example in all_examples:
+        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
+                         for msg in example["conversations"])
+        if total_tokens <= 1024:
+            token_ranges["0-1024"] += 1
+        elif total_tokens <= 2048:
+            token_ranges["1024-2048"] += 1
+        elif total_tokens <= 4096:
+            token_ranges["2048-4096"] += 1
+        elif total_tokens <= 8192:
+            token_ranges["4096-8192"] += 1
+        else:
+            token_ranges["8192+"] += 1
+
     print("\nResults summary:")
     print(f"Analysis-only examples: {len(analysis_examples)}")
     print(f"Progressive completion examples: {len(progressive_examples)}")
     print(f"Masked completion examples: {len(masked_examples)}")
     print(f"Next step completion examples: {len(next_step_examples)}")
     print(f"Total examples saved to {args.output}: {len(all_examples)}")
+    
+    print("\nToken count distribution:")
+    for range_name, count in token_ranges.items():
+        percentage = (count / len(all_examples)) * 100
+        print(f"{range_name}: {count} examples ({percentage:.1f}%)")
 
 if __name__ == "__main__":
     main()

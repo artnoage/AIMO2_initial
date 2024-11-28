@@ -211,10 +211,39 @@ def main():
     
     # Shuffle and save SFT dataset
     random.shuffle(sft_examples)
+    # Count tokens for each example
+    token_ranges = {
+        "0-1024": 0,
+        "1024-2048": 0,
+        "2048-4096": 0,
+        "4096-8192": 0,
+        "8192+": 0
+    }
+    
+    for example in sft_examples:
+        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
+                         for msg in example["conversations"])
+        if total_tokens <= 1024:
+            token_ranges["0-1024"] += 1
+        elif total_tokens <= 2048:
+            token_ranges["1024-2048"] += 1
+        elif total_tokens <= 4096:
+            token_ranges["2048-4096"] += 1
+        elif total_tokens <= 8192:
+            token_ranges["4096-8192"] += 1
+        else:
+            token_ranges["8192+"] += 1
+
     print("\nResults summary:")
     print(f"Verification examples: {len(verification_examples)}")
     print(f"Answer comparison examples: {len(comparison_examples)}")
     print(f"\nSaving {len(sft_examples)} total examples to {args.output}")
+    
+    print("\nToken count distribution:")
+    for range_name, count in token_ranges.items():
+        percentage = (count / len(sft_examples)) * 100
+        print(f"{range_name}: {count} examples ({percentage:.1f}%)")
+
     with open(args.output, 'w') as f:
         json.dump(sft_examples, f, indent=2)
     
