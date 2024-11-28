@@ -172,9 +172,9 @@ def main():
                        help='Input augmented dataset file')
     parser.add_argument('--output', type=str, default='datasets/sft_verification.json',
                        help='Output SFT dataset file')
-    parser.add_argument('--min-samples', type=int, default=3,
+    parser.add_argument('--min-samples', type=int, default=2,
                        help='Minimum number of solution samples per problem')
-    parser.add_argument('--max-samples', type=int, default=8,
+    parser.add_argument('--max-samples', type=int, default=4,
                        help='Maximum number of solution samples per problem')
     parser.add_argument('--iterations', type=int, default=3,
                        help='Number of times to process each problem')
