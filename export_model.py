@@ -47,8 +47,23 @@ def main():
     # Initialize model and tokenizer
     model, tokenizer = setup_model(args.model_path)
     
-    # Find the latest checkpoint
-    checkpoint_dir = args.checkpoint_dir
+    # If no specific directory provided, find the latest timestamp directory
+    base_dir = args.checkpoint_dir
+    if os.path.samefile(base_dir, 'train_results'):
+        # Get all timestamp directories
+        timestamp_dirs = [d for d in os.listdir(base_dir) 
+                        if os.path.isdir(os.path.join(base_dir, d)) 
+                        and d[0].isdigit()]  # Timestamps start with digits
+        if not timestamp_dirs:
+            raise ValueError(f"No timestamp directories found in {base_dir}")
+        # Sort by timestamp (assuming YYYYMMDD_HHMMSS format)
+        latest_dir = sorted(timestamp_dirs)[-1]
+        checkpoint_dir = os.path.join(base_dir, latest_dir)
+        print(f"Using latest timestamp directory: {latest_dir}")
+    else:
+        checkpoint_dir = base_dir
+
+    # Find the latest checkpoint in the selected directory
     checkpoints = [d for d in os.listdir(checkpoint_dir) if d.startswith('checkpoint-')]
     if not checkpoints:
         # If no checkpoint folders found, try the main directory
@@ -66,18 +81,23 @@ def main():
     # Load the base model as a PeftModel
     model = PeftModel.from_pretrained(model, checkpoint_path, torch_dtype=torch.float32)
     
-    # Merge LoRA weights with base model and convert to float32
+    # Merge LoRA weights with base model
     model = model.merge_and_unload()
+    
+    # Convert to float32
     model = model.to(torch.float32)
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
+    # Use the timestamp from training directory for output
+    output_dir = os.path.join(args.output_dir, os.path.basename(checkpoint_dir))
+        
     # Save the merged model and tokenizer
-    model.save_pretrained(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
     
-    print(f"Model and tokenizer successfully exported to {args.output_dir}")
+    print(f"Model and tokenizer successfully exported to {output_dir}")
 
 if __name__ == "__main__":
     main()
