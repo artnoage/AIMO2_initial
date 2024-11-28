@@ -46,7 +46,7 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
         f"Problem:\n{entry['problem']}\n\n"
         f"Answer 1: {correct_ans}\n"
         f"Answer 2: {correct_ans}\n\n"
-        "Are these answers mathematically equivalent? Respond with ONLY 'yes' or 'no'."
+        "Are these answers mathematically equivalent? Respond with EXACTLY one word - ONLY 'yes' or 'no'."
     )
     
     # Check token count
@@ -70,7 +70,7 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
             f"Problem:\n{entry['problem']}\n\n"
             f"Answer 1: {correct_ans}\n"
             f"Answer 2: {incorrect_ans}\n\n"
-            "Are these answers mathematically equivalent? Respond with ONLY 'yes' or 'no'."
+            "Are these answers mathematically equivalent? Respond with EXACTLY one word - ONLY 'yes' or 'no'."
         )
         
         # Check token count
