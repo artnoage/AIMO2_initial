@@ -1,15 +1,16 @@
 from datasets import load_dataset
-import json
+from datetime import datetime
+from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
-from transformers import TrainingArguments
 from trl import DPOTrainer
 import os
 import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
+import re
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -37,9 +38,8 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models",
         max_seq_length=8192,
-        dtype="bfloat16",
         load_in_4bit=False)
         
     print("\n=== After Model Load ===")
@@ -48,13 +48,13 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=32,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj",],
-        lora_alpha=64,
+        lora_alpha=32,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
-        use_gradient_checkpointing=False,  # True or "unsloth" for very long context
+        use_gradient_checkpointing=True,  # True or "unsloth" for very long context
         random_state=3407,
         use_rslora=False)
     
@@ -65,45 +65,98 @@ def main():
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        mapping={"human": "user", "assistant": "assistant", "system": "system"},
         map_eos_token=True,
     )
 
+    def _strip_prefix(s, pattern):
+        # Use re.escape to escape any special characters in the pattern
+        return re.sub(f"^{re.escape(pattern)}", "", s)
+
+    def apply_chat_template(example, tokenizer):
+        if all(k in example.keys() for k in ("chosen", "rejected")):
+                # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
+                prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
+                # Insert system message
+                if example["chosen"][0]["role"] != "system":
+                    prompt_messages.insert(0, {"role": "system", "content": ""})
+                else:
+                    prompt_messages.insert(0, example["chosen"][0])
+                chosen_messages = example["chosen"][1:]
+                rejected_messages = example["rejected"][1:]
+                example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
+                example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
+                example["text_prompt"] = tokenizer.apply_chat_template(
+                prompt_messages, tokenize=False, add_generation_prompt=True
+            )
+                return example
+        else:
+            raise ValueError(
+                f"Could not format example as dialogue for `dpo` task! Require `[chosen, rejected]` keys but found {list(example.keys())}"
+            )
+
     # Load the DPO dataset
-    dataset = load_dataset("artnoage/dpo2", split="train")
+    raw_datasets = load_dataset("artnoage/dpo3", split="train")
+    print("\nDataset keys before mapping:")
+    print(raw_datasets.column_names)
+    column_names = list(raw_datasets.features)
+    raw_datasets = raw_datasets.map(
+        apply_chat_template,
+        fn_kwargs = {"tokenizer": tokenizer},
+        num_proc = 12,
+        remove_columns = column_names,
+        desc = "Formatting comparisons with prompt template")
+
+    print("\nDataset keys after mapping:")
+    print(raw_datasets.column_names)
+
+    # Replace column names with what TRL needs, text_chosen -> chosen and text_rejected -> rejected
+    raw_datasets = raw_datasets.rename_columns({"text_prompt": "prompt", "text_chosen": "chosen", "text_rejected": "rejected"})
+    print("\nDataset keys after mapping:")
+    print(raw_datasets.column_names)
+    # Print formatted example
+    # Create timestamped output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"train_results/{timestamp}"
     
-    # Print first example
-    print("\nFirst example in DPO dataset:")
-    print(json.dumps(dataset[0], indent=2))
+    print("\nToken counts for all examples:")
+    total_tokens = 0
+    #for i in range(len(raw_datasets)):
+        #row = raw_datasets[i]
+        #tokens_prompt = len(tokenizer.encode(row["prompt"]))
+        #tokens_chosen = len(tokenizer.encode(row["chosen"]))
+        #tokens_rejected = len(tokenizer.encode(row["rejected"]))
+        #example_total = tokens_prompt + tokens_chosen + tokens_rejected
+        #total_tokens += example_total
+        #print(f"\nExample {i}:")
+        #print(f"Prompt tokens: {tokens_prompt}")
+        #print(f"Chosen tokens: {tokens_chosen}")
+        #print(f"Rejected tokens: {tokens_rejected}")
+        #print(f"Example total: {example_total}")
+    
+    print(f"\nTotal tokens across all examples: {total_tokens}")
+    print(f"Average tokens per example: {total_tokens / len(raw_datasets):.1f}")
 
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir="./dpo_results",
-        num_train_epochs=1,
-        per_device_train_batch_size=2,  # Smaller batch size for DPO
-        gradient_accumulation_steps=16,
-        learning_rate=1e-5,  # Slightly lower learning rate for DPO
-        logging_steps=1,
-        save_strategy="steps",
-        save_steps=200,
-        fp16=not is_bfloat16_supported(),
-        bf16=is_bfloat16_supported(),
-        optim="adamw_torch",
-        beta=0.1,  # DPO specific parameter
-        max_length=8192,
-        max_prompt_length=1024,
-    )
 
+    training_args = DPOConfig(
+        per_gpu_train_batch_size = 1,
+        gradient_accumulation_steps = 64,
+        num_train_epochs = 1,
+        learning_rate = 5e-6,
+        logging_steps = 1,
+        optim = "adamw_torch",
+        seed = 42,
+        fp16 = not is_bfloat16_supported(),
+        bf16 = is_bfloat16_supported(),
+        output_dir = output_dir)
     # Initialize DPO trainer
+    
     trainer = DPOTrainer(
         model=model,
-        ref_model=None,  # Will use input model as reference
-        args=training_args,
-        beta=0.1,
-        train_dataset=dataset,
+        train_dataset=raw_datasets,
         tokenizer=tokenizer,
-        max_length=8192,
-        max_prompt_length=1024,
+        args=training_args,
+        max_length = 8192,
+        max_prompt_length = 1024,
     )
 
     # Train the model
