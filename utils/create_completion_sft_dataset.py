@@ -438,12 +438,17 @@ def main():
     print(f"Progressive completion examples: {len(progressive_examples)}")
     print(f"Masked completion examples: {len(masked_examples)}")
     print(f"Next step completion examples: {len(next_step_examples)}")
-    print(f"Total examples saved to {args.output}: {len(all_examples)}")
+    print(f"Total examples before filtering: {len(all_examples)}")
+    print(f"Total examples after filtering (<= 4096 tokens): {len(filtered_examples)}")
     
     print("\nToken count distribution:")
     for range_name, count in token_ranges.items():
-        percentage = (count / len(all_examples)) * 100
+        percentage = (count / len(filtered_examples)) * 100 if filtered_examples else 0
         print(f"{range_name}: {count} examples ({percentage:.1f}%)")
+
+    # Save filtered examples
+    with open(args.output, 'w', encoding='utf-8') as f:
+        json.dump(filtered_examples, f, indent=2)
 
 if __name__ == "__main__":
     main()
