@@ -21,6 +21,16 @@ def contains_http(text: str) -> bool:
     """Check if text contains http links"""
     return 'http' in text.lower()
 
+def is_numeric_answer(answer: str) -> bool:
+    """Check if the answer represents a number (integer or decimal)"""
+    # Remove LaTeX formatting
+    clean_answer = answer.replace('\\boxed{', '').replace('}', '').strip()
+    try:
+        float(clean_answer)
+        return True
+    except ValueError:
+        return False
+
 def contains_non_latin(text: str) -> bool:
     """Check if text contains Chinese or Russian characters"""
     for char in text:
@@ -42,6 +52,8 @@ def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--repo-name', type=str, default='artnoage/Numina',
                        help='HuggingFace repository name')
+    parser.add_argument('--only-numbers', action='store_true',
+                       help='Only keep problems where the answer is a number')
     args = parser.parse_args()
 
     # Suppress warnings
@@ -68,7 +80,8 @@ def main():
         'removed_http_solution': 0,
         'removed_non_latin_problem': 0,
         'removed_non_latin_solution': 0,
-        'removed_invalid_answer': 0
+        'removed_invalid_answer': 0,
+        'removed_non_numeric': 0
     }
 
     # Filter by source if specified
@@ -114,6 +127,10 @@ def main():
             stats['removed_invalid_answer'] += 1
             return False
             
+        if args.only_numbers and not is_numeric_answer(answer):
+            stats['removed_non_numeric'] += 1
+            return False
+            
         return True
 
     # Apply filters and update statistics
@@ -136,6 +153,8 @@ def main():
     print(f"- Non-Latin chars in problem: {stats['removed_non_latin_problem']}")
     print(f"- Non-Latin chars in solution: {stats['removed_non_latin_solution']}")
     print(f"- Invalid/empty answer: {stats['removed_invalid_answer']}")
+    if args.only_numbers:
+        print(f"- Non-numeric answer: {stats['removed_non_numeric']}")
     print(f"\nFinal dataset size: {stats['final']}")
     print(f"Total reduction: {((stats['original'] - stats['final'])/stats['original'])*100:.1f}%")
 
