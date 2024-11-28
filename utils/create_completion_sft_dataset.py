@@ -365,9 +365,6 @@ def main():
     
     print(f"Processing {len(data)} problems, {args.iterations} iterations each...")
     
-    # Initialize counter for filtered solutions
-    filtered_solution_count = 0
-    
     # Create analysis-only examples
     analysis_examples = []
     for _ in range(args.iterations):

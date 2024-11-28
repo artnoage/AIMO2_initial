@@ -166,8 +166,6 @@ def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples
 
 def main():
     parser = argparse.ArgumentParser(description='Create SFT dataset from augmented data')
-    # Initialize tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
     parser.add_argument('--input', type=str, default='augmented_datasets/synthetic_augmented.json',
                        help='Input augmented dataset file')
     parser.add_argument('--output', type=str, default='datasets/sft_verification.json',
@@ -196,7 +194,7 @@ def main():
         # Create verification examples
         ver_examples = [
             example for example in (
-                create_sft_example(entry, tokenizer, args.min_samples, args.max_samples)
+                create_sft_example(entry, tokenizer, args.min_samples, args.max_samples, max_tokens=4096)
                 for entry in data
             ) if example is not None
         ]
