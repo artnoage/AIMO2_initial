@@ -39,24 +39,29 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
     correct_model_ans = [(sol, ver) for sol, ver in valid_responses if ver > 1]
     incorrect_model_ans = [(sol, ver) for sol, ver in valid_responses if ver == 1]
     
-    # Create a "yes" example comparing correct answer with itself
-    input_text = (
-        "You are a mathematical answer validator. Given a problem and two answers, "
-        "determine if they are mathematically equivalent.\n\n"
-        f"Problem:\n{entry['problem']}\n\n"
-        f"Answer 1: {correct_ans}\n"
-        f"Answer 2: {correct_ans}\n\n"
-        "Are these answers mathematically equivalent? Respond with EXACTLY one word - ONLY 'yes' or 'no'."
-    )
-    
-    # Check token count
-    if len(tokenizer.encode(input_text)) + len(tokenizer.encode("yes")) <= max_tokens:
-        examples.append({
-            "conversations": [
-                {"role": "user", "content": input_text},
-                {"role": "assistant", "content": "yes"}
-            ]
-        })
+    # Create "yes" examples using correct model answers
+    if correct_model_ans:
+        # Take a random correct model answer
+        sol, _ = random.choice(correct_model_ans)
+        model_ans = extract_answer_from_solution(sol)
+        if model_ans and model_ans != correct_ans:
+            input_text = (
+                "You are a mathematical answer validator. Given a problem and two answers, "
+                "determine if they are mathematically equivalent.\n\n"
+                f"Problem:\n{entry['problem']}\n\n"
+                f"Answer 1: {correct_ans}\n"
+                f"Answer 2: {model_ans}\n\n"
+                "Are these answers mathematically equivalent? Respond with EXACTLY one word - ONLY 'yes' or 'no'."
+            )
+            
+            # Check token count
+            if len(tokenizer.encode(input_text)) + len(tokenizer.encode("yes")) <= max_tokens:
+                examples.append({
+                    "conversations": [
+                        {"role": "user", "content": input_text},
+                        {"role": "assistant", "content": "yes"}
+                    ]
+                })
     
     # Create "no" examples using incorrect model answers
     for sol, _ in incorrect_model_ans:
