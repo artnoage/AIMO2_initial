@@ -26,7 +26,7 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
     # Get the correct answer from the reference solution
     correct_ans = extract_answer_from_solution(entry['correct_solution'])
     if not correct_ans:
-        return []
+        return examples
         
     # Get solutions with verification results > 0 (passed format check)
     valid_responses = [(sol, ver) for sol, ver in zip(entry['model_responses'], entry['verification_results']) 
@@ -88,6 +88,7 @@ def create_answer_comparison_example(entry: Dict, tokenizer, max_tokens: int = 8
             })
             break  # One "no" example is enough to balance the "yes" example
     
+    return examples
 
 def create_sft_example(entry: Dict, tokenizer, min_samples: int = 3, max_samples: int = 8, max_tokens: int = 8192) -> Optional[Dict]:
     """Create a single SFT training example in ShareGPT format from an augmented data entry"""
