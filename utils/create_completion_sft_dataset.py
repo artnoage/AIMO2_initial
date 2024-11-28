@@ -192,6 +192,87 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
         ]
     }
 
+def extract_analysis_section(solution: str) -> Optional[str]:
+    """Extract the analysis section that comes before the steps"""
+    # Look for common analysis section markers
+    analysis_markers = [
+        "**Problem Analysis and Approach**:",
+        "Problem Analysis and Approach:",
+        "Analysis:",
+        "Approach:"
+    ]
+    
+    # Find the start of the analysis section
+    start_idx = -1
+    for marker in analysis_markers:
+        if marker in solution:
+            start_idx = solution.find(marker)
+            break
+            
+    if start_idx == -1:
+        return None
+        
+    # Find the end of the analysis section (start of steps)
+    step_match = re.search(r'Step\s+1\.?', solution, re.IGNORECASE)
+    if not step_match:
+        return None
+        
+    end_idx = step_match.start()
+    
+    # Extract and clean the analysis section
+    analysis = solution[start_idx:end_idx].strip()
+    if len(analysis) < 50:  # Minimum length check
+        return None
+        
+    return analysis
+
+def create_analysis_example(entry: Dict) -> Optional[Dict]:
+    """Create an example focusing only on the problem analysis section"""
+    valid_solutions = get_valid_solutions(entry)
+    if not valid_solutions:
+        return None
+        
+    # Find solutions with good analysis sections
+    analyses = []
+    for solution in valid_solutions:
+        analysis = extract_analysis_section(solution)
+        if analysis:
+            analyses.append(analysis)
+            
+    if not analyses:
+        return None
+        
+    # Choose random analysis
+    analysis = random.choice(analyses)
+    
+    input_text = (
+        "Here is a mathematical problem:\n\n"
+        f"{entry['problem']}\n\n"
+        "Before solving this problem step-by-step, provide a thorough analysis that:\n"
+        "1. Categorizes the problem type\n"
+        "2. Lists the specific theorems and techniques that will be useful\n"
+        "3. Outlines the general approach to solving it\n\n"
+        "Important guidelines:\n"
+        "- Start with '**Problem Analysis and Approach**:'\n"
+        "- Be specific about which theorems/techniques apply\n"
+        "- Explain why these approaches are suitable\n"
+        "- Do NOT provide the actual solution steps\n\n"
+        "Please provide the analysis:"
+    )
+    
+    return {
+        "conversations": [
+            {
+                "role": "user",
+                "content": input_text
+            },
+            {
+                "role": "assistant",
+                "content": analysis
+            }
+        ]
+    }
+
 def get_valid_solutions(entry: Dict) -> List[str]:
     """Get solutions that are valid (verified and have 3+ sequential steps)"""
     # Get solutions that passed all verifications (level 4)
@@ -286,6 +367,14 @@ def main():
     # Initialize counter for filtered solutions
     filtered_solution_count = 0
     
+    # Create analysis-only examples
+    analysis_examples = []
+    for _ in range(args.iterations):
+        for entry in data:
+            example = create_analysis_example(entry)
+            if example is not None:
+                analysis_examples.append(example)
+                
     # Create progressive completion examples
     progressive_examples = []
     for _ in range(args.iterations):
@@ -311,7 +400,7 @@ def main():
                 next_step_examples.append(example)
     
     # Combine and shuffle all examples
-    all_examples = progressive_examples + masked_examples + next_step_examples
+    all_examples = analysis_examples + progressive_examples + masked_examples + next_step_examples
     random.shuffle(all_examples)
     
     # Save shuffled dataset and print summary
@@ -319,6 +408,7 @@ def main():
         json.dump(all_examples, f, indent=2)
         
     print("\nResults summary:")
+    print(f"Analysis-only examples: {len(analysis_examples)}")
     print(f"Progressive completion examples: {len(progressive_examples)}")
     print(f"Masked completion examples: {len(masked_examples)}")
     print(f"Next step completion examples: {len(next_step_examples)}")
