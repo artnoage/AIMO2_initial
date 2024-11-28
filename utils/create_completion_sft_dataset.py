@@ -66,6 +66,40 @@ def split_at_step(solution: str, step_num: int) -> Tuple[str, str]:
     combined = f"{prefix}\n\n{step_text}" if prefix else step_text
     return combined, completion
 
+def extract_analysis_section(solution: str) -> Optional[str]:
+    """Extract the analysis section that comes before the steps"""
+    # Look for common analysis section markers
+    analysis_markers = [
+        "**Problem Analysis and Approach**:",
+        "Problem Analysis and Approach:",
+        "Analysis:",
+        "Approach:"
+    ]
+    
+    # Find the start of the analysis section
+    start_idx = -1
+    for marker in analysis_markers:
+        if marker in solution:
+            start_idx = solution.find(marker)
+            break
+            
+    if start_idx == -1:
+        return None
+        
+    # Find the end of the analysis section (start of steps)
+    step_match = re.search(r'Step\s+1\.?', solution, re.IGNORECASE)
+    if not step_match:
+        return None
+        
+    end_idx = step_match.start()
+    
+    # Extract and clean the analysis section
+    analysis = solution[start_idx:end_idx].strip()
+    if len(analysis) < 50:  # Minimum length check
+        return None
+        
+    return analysis
+
 def create_masked_completion_example(entry: Dict, min_steps: int = 3) -> Optional[Dict]:
     """Create a masked completion example where a single step needs to be completed"""
     
@@ -193,40 +227,6 @@ def create_next_step_example(entry: Dict) -> Optional[Dict]:
             }
         ]
     }
-
-def extract_analysis_section(solution: str) -> Optional[str]:
-    """Extract the analysis section that comes before the steps"""
-    # Look for common analysis section markers
-    analysis_markers = [
-        "**Problem Analysis and Approach**:",
-        "Problem Analysis and Approach:",
-        "Analysis:",
-        "Approach:"
-    ]
-    
-    # Find the start of the analysis section
-    start_idx = -1
-    for marker in analysis_markers:
-        if marker in solution:
-            start_idx = solution.find(marker)
-            break
-            
-    if start_idx == -1:
-        return None
-        
-    # Find the end of the analysis section (start of steps)
-    step_match = re.search(r'Step\s+1\.?', solution, re.IGNORECASE)
-    if not step_match:
-        return None
-        
-    end_idx = step_match.start()
-    
-    # Extract and clean the analysis section
-    analysis = solution[start_idx:end_idx].strip()
-    if len(analysis) < 50:  # Minimum length check
-        return None
-        
-    return analysis
 
 def create_analysis_example(entry: Dict) -> Optional[Dict]:
     """Create an example focusing only on the problem analysis section"""
