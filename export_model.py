@@ -39,8 +39,6 @@ def main():
                       help='Directory to save the exported model')
     parser.add_argument('--model_path', type=str, default='artnoage/metastral',
                       help='Path to the base model weights')
-    parser.add_argument('--int8', action='store_true',
-                      help='Export model in INT8 quantization')
     args = parser.parse_args()
 
     # Setup logging
@@ -86,18 +84,14 @@ def main():
     # Merge LoRA weights with base model
     model = model.merge_and_unload()
     
-    # Convert to INT8 or float32 based on flag
-    if args.int8:
-        model = model.to(torch.int8)
-    else:
-        model = model.to(torch.float32)
+    # Convert to float32
+    model = model.to(torch.float32)
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Use the timestamp from training directory for output with optional INT8 suffix
-    output_dir = os.path.join(args.output_dir, 
-                             f"{os.path.basename(checkpoint_dir)}{'_INT8' if args.int8 else ''}")
+    # Use the timestamp from training directory for output
+    output_dir = os.path.join(args.output_dir, os.path.basename(checkpoint_dir))
         
     # Save the merged model and tokenizer
     model.save_pretrained(output_dir)
