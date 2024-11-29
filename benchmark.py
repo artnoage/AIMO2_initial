@@ -23,7 +23,7 @@ async def verify_solution(solution: str, correct_answer: str, problem: str) -> T
         
     return answer, await compare_math_answers(answer, correct_answer, problem, verifier_model)
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
     """Process a single example for the standard benchmark"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -38,8 +38,32 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"])
-        solutions, best_solution, best_answer, correct_count = await process_attempts(
-            solver_model, prompt, best_of, running_id, verify_func)
+        solutions = []
+        correct_count = 0
+        best_solution = None
+        best_answer = None
+        
+        for attempt in range(best_of):
+            try:
+                current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
+                current_answer, is_correct = await verify_func(current_solution)
+                
+                if is_correct:
+                    correct_count += 1
+                    if best_solution is None:
+                        best_solution = current_solution
+                        best_answer = current_answer
+            except Exception as e:
+                print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+                current_solution = "Error occurred"
+                current_answer = None
+                is_correct = False
+            
+            solutions.append({
+                'solution': current_solution,
+                'answer': current_answer,
+                'is_correct': is_correct
+            })
         
         # Use first attempt if no correct solution found
         solution = best_solution if best_solution is not None else solutions[0]['solution']
@@ -75,7 +99,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
-    await run_benchmark(config, process_example, BENCHMARK_SYSTEM_PROMPT)
+    verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
+    await run_benchmark(config, process_example, BENCHMARK_SYSTEM_PROMPT, verifier_model)
 
 if __name__ == "__main__":
     try:
