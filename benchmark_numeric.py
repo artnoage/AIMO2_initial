@@ -1,15 +1,14 @@
-import os
-import json
 import asyncio
 import argparse
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, Dict
 from datetime import datetime
+
 from utils.utils import (
-    ModelOption, 
-    get_model, 
-    extract_answer_from_solution,
+    ModelOption,
+    get_model,
     extract_numeric_answer,
-    async_retry,
+    get_model_response,
+    is_answer_correct,
     NUMERIC_SOLVER_SYSTEM_PROMPT
 )
 from utils.progress_tracker import ProgressTracker
@@ -20,17 +19,6 @@ from tqdm import tqdm
 
 
 
-def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.01) -> bool:
-    """Compare two numeric answers within tolerance"""
-    if model_answer is None or correct_answer is None:
-        return False
-    return abs(model_answer - correct_answer) <= tolerance
-
-@async_retry(max_retries=3, timeout=300)
-async def get_model_response(solver_model, prompt, running_id: int, attempt: int) -> str:
-    """Get response from model with retry logic"""
-    response = await solver_model.ainvoke(prompt)
-    return response.content
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int = 1) -> Optional[Dict]:
     """Process a single example and return results"""
@@ -84,13 +72,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         solution = best_solution if best_solution is not None else solutions[0]['solution']
         model_answer = best_answer if best_answer is not None else solutions[0]['answer']
-        
-        success_ratio = f"{correct_count}/{best_of}"
-        success_percentage = (correct_count / best_of) * 100
-        print(f"\nProblem {running_id + 1}: {success_ratio} ({success_percentage:.1f}%)")
-        print(f"Correct Answer: {correct_answer}")
-        print(f"Model's Answer: {model_answer}")
-        print("-" * 80)
         
         return {
             'id': example_id,

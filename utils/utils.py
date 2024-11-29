@@ -146,6 +146,18 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     except ValueError:
         return None
 
+def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.01) -> bool:
+    """Compare two numeric answers within tolerance"""
+    if model_answer is None or correct_answer is None:
+        return False
+    return abs(model_answer - correct_answer) <= tolerance
+
+@async_retry(max_retries=3, timeout=300)
+async def get_model_response(solver_model, prompt, running_id: int, attempt: int) -> str:
+    """Get response from model with retry logic"""
+    response = await solver_model.ainvoke(prompt)
+    return response.content
+
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
