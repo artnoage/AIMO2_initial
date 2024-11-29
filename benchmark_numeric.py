@@ -5,7 +5,6 @@ import argparse
 from asyncio import TimeoutError
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from datasets import load_dataset
@@ -235,24 +234,11 @@ async def main():
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    augmented_filename = os.path.join('augmented_datasets', 
-                                    f"benchmark_numeric_{timestamp}.json")
-    
-    existing_ids = get_existing_ids(augmented_filename)
-    if existing_ids:
-        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
-    
-    example_data = [ex for ex in example_data if ex['id'] not in existing_ids]
     if not example_data:
-        print("All examples have already been processed!")
+        print("No examples to process!")
         return
         
-    print(f"\nWill process {len(example_data)} new examples")
-    
-    if not handle_augmented_data_file(augmented_filename):
-        print("Operation cancelled by user.")
-        return
+    print(f"\nWill process {len(example_data)} examples")
         
     progress_bar = tqdm(total=total_examples, desc="Processing examples")
     current_batch = []
@@ -276,42 +262,16 @@ async def main():
                 last_hundred = results[-100:]
                 batch_error_rate = calculate_error_rate(last_hundred)
                 cumulative_error_rate = calculate_error_rate(results)
-                error_rate_points.append({
-                    'examples_processed': len(results),
-                    'batch_error_rate': batch_error_rate,
-                    'cumulative_error_rate': cumulative_error_rate
-                })
+                
                 # Calculate majority correct rate for last 100 examples
                 last_hundred = results[-100:]
                 majority_correct_count = sum(1 for r in last_hundred if r['attempts']['correct_count'] > args.best_of // 2)
                 majority_correct_rate = majority_correct_count / len(last_hundred)
                 
-                majority_correct_points.append({
-                    'examples_processed': len(results),
-                    'batch_majority_correct_rate': majority_correct_rate,
-                })
-                
                 print(f"\nAt {len(results)} examples:")
                 print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
                 print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
-                
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                intermediate_filename = os.path.join('results', 
-                    f"benchmark_numeric_{args.solver}_{timestamp}.json")
-                output_data = {
-                    'error_rate_points': error_rate_points,
-                    'current_batch_error_rate': batch_error_rate,
-                    'current_cumulative_error_rate': cumulative_error_rate
-                }
-                os.makedirs('results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"\nSaved intermediate results after {len(results)} examples")
-            
-            if current_batch:
-                save_augmented_data(current_batch, augmented_filename, len(results))
-                current_batch = []
             
         progress_bar.update(1)
     progress_bar.close()
@@ -344,70 +304,8 @@ async def main():
     else:
         print("No examples were successfully processed.")
 
-    os.makedirs('results', exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('results', 
-                                  f"benchmark_numeric_{args.solver}_{timestamp}.json")
-    
-    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
-    final_cumulative_error_rate = calculate_error_rate(results)
-    error_rate_points.append({
-        'examples_processed': len(results),
-        'batch_error_rate': final_batch_error_rate,
-        'cumulative_error_rate': final_cumulative_error_rate
-    })
-    
-    run_parameters = {
-        'solver': args.solver,
-        'split': args.split,
-        'source': args.source,
-        'max_concurrent': args.max_concurrent,
-        'best_of': args.best_of,
-        'temperature': args.temperature,
-        'tolerance': args.tolerance
-    }
-
     end_time = datetime.now()
     total_duration = end_time - start_time
-
-    final_statistics = {
-        'total_examples': len(results),
-        'any_correct': any_correct_count,
-        'any_correct_accuracy': any_accuracy,
-        'majority_correct': majority_correct_count,
-        'majority_correct_accuracy': majority_accuracy,
-        'best_of_stats': {
-            'at_least_one_correct': at_least_one_correct,
-            'at_least_one_correct_percentage': (at_least_one_correct/len(results))*100,
-            'majority_correct': majority_correct,
-            'majority_correct_percentage': (majority_correct/len(results))*100
-        },
-        'timing': {
-            'total_duration_seconds': total_duration.total_seconds(),
-            'average_time_per_example': total_duration.total_seconds() / len(results)
-        }
-    }
-
-    output_data = {
-        'run_parameters': run_parameters,
-        'error_rate_points': error_rate_points,
-        'majority_correct_points': majority_correct_points,
-        'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate,
-        'final_statistics': final_statistics
-    }
-    with open(results_filename, 'w') as f:
-        json.dump(output_data, f, indent=2)
-    print(f"\nResults saved to {results_filename}")
-    
-    if current_batch:
-        save_augmented_data(current_batch, augmented_filename, len(results))
-    
-    print("\nError Rate Progression:")
-    for point in error_rate_points:
-        print(f"After {point['examples_processed']} examples:")
-        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
-        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
 
     end_time = datetime.now()
     total_duration = end_time - start_time
