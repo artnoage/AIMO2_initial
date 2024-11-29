@@ -14,13 +14,6 @@ async def verify_solution(solution: str, correct_answer: str, problem: str, veri
     if answer is None:
         return None, False
         
-    # Check required keywords
-    solution_lower = solution.lower()
-    has_required = all(kw in solution_lower for kw in ['problem', 'analysis', 'step'])
-    
-    if not has_required:
-        return answer, False
-    
     is_correct = await compare_math_answers(answer, correct_answer, problem, verifier_model)
     return answer, is_correct
 
