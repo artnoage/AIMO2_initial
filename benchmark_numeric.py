@@ -158,6 +158,9 @@ async def main():
         if result:
             progress_tracker.add_result(result)
             progress_tracker.print_progress()
+            # Save checkpoint every 100 examples
+            if len(progress_tracker.results) % 100 == 0:
+                progress_tracker.save_results(config.solver, config.split, is_checkpoint=True)
         progress_bar.update(1)
     progress_bar.close()
     
