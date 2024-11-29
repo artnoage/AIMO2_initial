@@ -106,6 +106,8 @@ async def main():
     try:
         username = HfApi().whoami()["name"]
         dataset = load_dataset(f"{username}/Numina", split=config.split)
+        if config.split_slice:
+            dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
