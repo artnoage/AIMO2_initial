@@ -19,12 +19,8 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL = "/Home/stat/laschos/AIMO2_initial/models/20241127_144900"
-    GROQ = "llama-3.1-70b-versatile"
-    NOUS ="nousresearch/hermes-3-llama-3.1-405b:free"
+    LOCAL = "mistralai/Mathstral-7B-v0.1"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
-    SAMBA_BIG= "Meta-Llama-3.1-405B-Instruct"
-    SAMBA_SMALL= "Meta-Llama-3.1-70B-Instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
 def get_model(model: ModelOption, temp: float = 0.1):
@@ -39,12 +35,6 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1")
-    elif model == ModelOption.SAMBA_BIG or model==ModelOption.SAMBA_SMALL :
-        return ChatOpenAI(
-            model=model.value,
-            temperature=temp,
-            api_key=os.getenv("SAMBANOVA_API_KEY"),
-            base_url="https://api.sambanova.ai/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:

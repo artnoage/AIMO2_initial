@@ -47,28 +47,21 @@ SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be give
 
 DO:
 ▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification. 
+▪ If possible each step must contain a justification
 ▪ Use LaTeX notation
+▪ Your final answer MUST be a single number in a LaTeX box
 
 FORMAT:
 
 **Problem Analysis and Approach**:
-1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
-2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
+1. Start by categorizing the problem
+2. List specific tools or theorems that will guide your solution
 
 **PROOF**:
-Example format for each step:
-Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
-
-Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
-Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
-Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
-Step 4. Thus, \\( abc \\leq 1 \\), as required.  
-
-For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
+Show your work step by step with clear justifications in brackets.
 
 **ANSWER**:
-\\(\\boxed{\\text{result}}\\) """
+\\(\\boxed{n}\\) where n is your final answer"""
 
 
 
@@ -255,7 +248,7 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
-                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Olympiads), or aime (AIME validation)')
+                       help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Numerics), or aime (AIME validation)')
     parser.add_argument('--max-concurrent', type=int, default=16,
                        help='Maximum number of concurrent problems (default: 32)')
     parser.add_argument('--best-of', type=int, default=5,
