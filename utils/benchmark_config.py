@@ -7,6 +7,7 @@ from utils.utils import ModelOption
 class BaseConfig:
     """Base configuration shared between benchmark types"""
     solver: str
+    dataset: str = 'original'
     split: str = 'train'
     split_slice: slice = None
     source: str = 'all'
@@ -19,6 +20,9 @@ class BaseConfig:
         parser.add_argument('--solver', type=str, 
                           choices=[model.name for model in ModelOption],
                           default='LOCAL', help='Model to use for solving problems')
+        parser.add_argument('--dataset', type=str,
+                          choices=['original', 'filtered', 'aime'],
+                          default='original', help='Dataset to use')
         parser.add_argument('--split', type=str, default='train',
                           help='Dataset split to use (train/validation/test)')
         parser.add_argument('--source', type=str, default='all',
