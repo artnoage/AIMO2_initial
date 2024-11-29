@@ -63,6 +63,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         solution = best_solution if best_solution is not None else solutions[0]['solution']
         model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
+        # Print statistics for this example
+        print(f"\nExample {running_id + 1}:")
+        print(f"Problem: {example['problem'][:200]}...")  # First 200 chars of problem
+        print(f"Correct answer: {correct_answer}")
+        print(f"Model answers: {[s['answer'] for s in solutions]}")
+        print(f"Correct solutions: {correct_count}/{best_of}")
+        print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
+        print("-" * 80)
+        
         return {
             'id': example_id,
             'problem': example['problem'],
