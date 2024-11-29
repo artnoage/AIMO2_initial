@@ -99,7 +99,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
-    verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
+    verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     await run_benchmark(config, process_example, BENCHMARK_SYSTEM_PROMPT, verifier_model)
 
 if __name__ == "__main__":

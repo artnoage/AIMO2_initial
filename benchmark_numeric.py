@@ -2,8 +2,6 @@ import asyncio
 from typing import Optional, Dict, Tuple
 from utils.utils import *
 
-# Tolerance for numeric answer comparison
-tolerance = 1e-6
 from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
@@ -13,7 +11,7 @@ async def verify_numeric(solution: str, correct_answer: float) -> Tuple[float, b
     answer = extract_numeric_answer(solution)
     if answer is None:
         return None, False
-    return answer, is_answer_correct(answer, correct_answer, tolerance)
+    return answer, is_answer_correct(answer, correct_answer, config.tolerance)
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
     """Process a single example for numeric benchmarks"""
@@ -91,7 +89,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
 async def main():
     """Main function for benchmarking numeric problem solving."""
-    config = BenchmarkConfig.from_args('Benchmark model on numeric problems')
+    config = NumericConfig.from_args('Benchmark model on numeric problems')
     verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
     await run_benchmark(config, process_example, NUMERIC_SOLVER_SYSTEM_PROMPT, verifier_model)
 
