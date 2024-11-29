@@ -3,6 +3,7 @@ import json
 import random
 from typing import List, Dict, Tuple, Optional
 import sys
+from transformers import AutoTokenizer
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file."""
@@ -13,7 +14,12 @@ def load_json_file(filename: str) -> List[Dict]:
         print(f"Error loading {filename}: {str(e)}")
         sys.exit(1)
 
-def select_rejected_response(responses: List[str], verification_results: List[int], strategy: str) -> Optional[str]:
+def check_token_length(text: str, tokenizer) -> bool:
+    """Check if text has at least 3000 tokens"""
+    return len(tokenizer.encode(text)) >= 3000
+
+def select_rejected_response(responses: List[str], verification_results: List[int], strategy: str, 
+                           chosen_response: str, tokenizer) -> Optional[str]:
     """
     Select a rejected response based on the specified strategy.
     
@@ -21,28 +27,37 @@ def select_rejected_response(responses: List[str], verification_results: List[in
         responses: List of model responses
         verification_results: List of verification levels (0-4)
         strategy: One of 'second_best', 'random', or 'worst'
+        chosen_response: The chosen response to compare against
+        tokenizer: The tokenizer for length validation
     
     Returns:
         Selected response or None if no suitable response found
     """
     # Create pairs of (score, response) for non-4 responses
-    non_perfect = [(score, resp) for score, resp in zip(verification_results, responses) if score != 4]
+    non_perfect = [(score, resp) for score, resp in zip(verification_results, responses) 
+                  if score != 4 and check_token_length(resp, tokenizer)]
     
     if not non_perfect:
         return None
         
     if strategy == 'second_best':
-        # Sort by score descending and take highest non-4
-        return max(non_perfect)[1]
+        # Get all responses with the highest non-4 score
+        max_score = max(score for score, _ in non_perfect)
+        best_responses = [resp for score, resp in non_perfect if score == max_score]
+        # Randomly select from the best responses
+        return random.choice(best_responses)
     elif strategy == 'worst':
-        # Take lowest score
-        return min(non_perfect)[1]
+        # Get all responses with the lowest score
+        min_score = min(score for score, _ in non_perfect)
+        worst_responses = [resp for score, resp in non_perfect if score == min_score]
+        # Randomly select from the worst responses
+        return random.choice(worst_responses)
     else:  # random
-        # Random choice from non-4 responses
+        # Random choice from valid non-4 responses
         _, selected_response = random.choice(non_perfect)
         return selected_response
 
-def process_file(input_file: str, output_file: str, rejection_strategy: str) -> Tuple[int, int]:
+def process_file(input_file: str, output_file: str, rejection_strategy: str, tokenizer) -> Tuple[int, int]:
     """
     Process synthetic.py output file and create DPO dataset.
     Returns: (total_entries, successful_pairs)
@@ -85,6 +100,10 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
             chosen_idx = entry['verification_results'].index(4)
             chosen_response = entry['model_responses'][chosen_idx]
             
+            # Skip if chosen response doesn't meet token requirement
+            if not check_token_length(chosen_response, tokenizer):
+                continue
+                
             # Select rejected response based on strategy
             if rejection_strategy == 'all':
                 # Try all strategies
@@ -93,7 +112,9 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
                     rejected_response = select_rejected_response(
                         entry['model_responses'],
                         entry['verification_results'],
-                        strat
+                        strat,
+                        chosen_response,
+                        tokenizer
                     )
                     
                     if rejected_response:
@@ -113,7 +134,9 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
                 rejected_response = select_rejected_response(
                     entry['model_responses'],
                     entry['verification_results'],
-                    rejection_strategy
+                    rejection_strategy,
+                    chosen_response,
+                    tokenizer
                 )
                 
                 if rejected_response:
@@ -140,6 +163,13 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
     return len(data), successful_pairs
 
 def main():
+    # Initialize tokenizer
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+    except Exception as e:
+        print(f"Error initializing tokenizer: {str(e)}")
+        sys.exit(1)
+
     parser = argparse.ArgumentParser(description='Create DPO dataset from synthetic.py output')
     parser.add_argument('-i', '--input', required=True,
                        help='Input JSON file from synthetic.py')
@@ -155,7 +185,8 @@ def main():
     total_entries, successful_pairs = process_file(
         args.input, 
         args.output,
-        args.rejection_strategy
+        args.rejection_strategy,
+        tokenizer
     )
     
     print(f"Total entries processed: {total_entries}")
