@@ -158,6 +158,54 @@ async def get_model_response(solver_model, prompt, running_id: int, attempt: int
     response = await solver_model.ainvoke(prompt)
     return response.content
 
+BENCHMARK_SYSTEM_PROMPT = """You are a precise mathematical problem solver. You will be given a problem to solve.
+
+DO:
+▪ List applicable theorems/techniques upfront
+▪ If possible each step must contain a justification
+▪ Use LaTeX notation
+▪ Your final answer MUST be a single number in a LaTeX box
+
+FORMAT:
+
+**Problem Analysis and Approach**:
+1. Start by categorizing the problem
+2. List specific tools or theorems that will guide your solution
+
+**PROOF**:
+Show your work step by step with clear justifications in brackets.
+
+**ANSWER**:
+\\(\\boxed{n}\\) where n is your final answer"""
+
+async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
+    """Use the model to compare two mathematical answers"""
+    if model_answer is None or correct_answer is None:
+        return False
+        
+    comparison_prompt = [
+        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+    ]
+    
+    max_retries = 3
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            response = await asyncio.wait_for(
+                model.ainvoke(comparison_prompt),
+                timeout=300
+            )
+            return response.content.strip().lower() == 'yes'
+        except Exception as e:
+            retry_count += 1
+            if retry_count == max_retries:
+                print(f"Verification failed after {max_retries} attempts")
+                return False
+            print(f"Connection error during verification. Retrying... ({retry_count}/{max_retries})")
+            await asyncio.sleep(1)
+    return False
+
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
