@@ -36,15 +36,14 @@ class ProgressTracker:
             print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
             print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
 
-    def save_results(self, model_name: str, split: str, is_checkpoint: bool = False) -> None:
+    def save_results(self, model_name: str, split: str) -> None:
         """Save results to a JSON file with timestamp"""
         if not self.results:
             print("No results to save")
             return
             
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
-        prefix = "checkpoint_" if is_checkpoint else "bm_numeric_"
-        filename = f"{prefix}{model_name}_{timestamp}.json"
+        filename = f"bm_numeric_{model_name}_{timestamp}.json"
         
         output = {
             "metadata": {
