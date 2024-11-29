@@ -18,7 +18,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, config: BenchmarkConfig) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -255,7 +255,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, config)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, config.best_of)
 
     # Create tasks for all examples with best_of parameter
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
