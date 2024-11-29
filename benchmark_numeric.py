@@ -2,15 +2,15 @@ import os
 import json
 import asyncio
 import argparse
-from asyncio import TimeoutError
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from utils.utils import ModelOption, get_model
+from utils.utils import ModelOption, get_model, extract_answer_from_solution
+from utils.async_utils import async_retry
+from utils.progress_tracker import ProgressTracker
 from langchain_core.messages import HumanMessage, SystemMessage
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
-from utils.utils import extract_answer_from_solution
 
 SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
@@ -57,6 +57,12 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
+@async_retry(max_retries=3, timeout=300)
+async def get_model_response(solver_model, prompt, running_id: int, attempt: int) -> str:
+    """Get response from model with retry logic"""
+    response = await solver_model.ainvoke(prompt)
+    return response.content
+
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int = 1) -> Optional[Dict]:
     """Process a single example and return results"""
     try:
@@ -82,25 +88,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         best_answer = None
         
         for attempt in range(best_of):
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
-                try:
-                    response = await asyncio.wait_for(
-                        solver_model.ainvoke(prompt),
-                        timeout=300
-                    )
-                    current_solution = response.content
-                    break
-                except (Exception, TimeoutError) as e:
-                    retry_count += 1
-                    if retry_count == max_retries:
-                        print(f"Failed after {max_retries} attempts for problem {running_id + 1}, attempt {attempt + 1}")
-                        if isinstance(e, TimeoutError):
-                            print(f"Timeout error: Model took longer than 5 minutes to respond")
-                        raise e
-                    print(f"{'Timeout' if isinstance(e, TimeoutError) else 'Connection'} error for problem {running_id + 1}, attempt {attempt + 1}. Retrying... ({retry_count}/{max_retries})")
-                    await asyncio.sleep(1)
+            try:
+                current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
 
             current_answer = extract_numeric_answer(current_solution)
             is_correct = is_answer_correct(current_answer, correct_answer)
@@ -214,17 +203,8 @@ async def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    def calculate_error_rate(results):
-        if not results:
-            return 0.0
-        correct_count = sum(1 for r in results if any(r['is_correct_list']))
-        return 1.0 - (correct_count / len(results))
-
-    results = []
-    error_rate_points = []
-    majority_correct_points = []
-    total_examples = len(example_data)
-    print(f"\nStarting processing of {total_examples} examples...")
+    progress_tracker = ProgressTracker(total_examples=len(example_data), best_of=args.best_of)
+    print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
 
     semaphore = asyncio.Semaphore(args.max_concurrent)
 
@@ -258,59 +238,14 @@ async def main():
             }
             current_batch.append(augmented_example)
             
-            if len(results) % 100 == 0:
-                last_hundred = results[-100:]
-                batch_error_rate = calculate_error_rate(last_hundred)
-                cumulative_error_rate = calculate_error_rate(results)
-                
-                # Calculate majority correct rate for last 100 examples
-                last_hundred = results[-100:]
-                majority_correct_count = sum(1 for r in last_hundred if r['attempts']['correct_count'] > args.best_of // 2)
-                majority_correct_rate = majority_correct_count / len(last_hundred)
-                
-                print(f"\nAt {len(results)} examples:")
-                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
-                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
-                print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
+            progress_tracker.add_result(result)
+            progress_tracker.print_progress()
             
         progress_bar.update(1)
     progress_bar.close()
 
-    if not results:
-        print("\nNo examples were successfully processed.")
-        return
-
-    results.sort(key=lambda x: x['id'])
-
-    any_correct_count = sum(1 for r in results if any(r['is_correct_list']))
-    majority_correct_count = sum(1 for r in results if sum(r['is_correct_list']) > len(r['is_correct_list'])/2)
-
     progress_bar.close()
-    print("\n\nFinal Results:")
-    print(f"Total examples processed: {len(results)}")
-    
-    if len(results) > 0:
-        any_accuracy = (any_correct_count / len(results)) * 100
-        majority_accuracy = (majority_correct_count / len(results)) * 100
-        print(f"Any-Correct Accuracy: {any_correct_count}/{len(results)} = {any_accuracy:.2f}%")
-        print(f"Majority-Correct Accuracy: {majority_correct_count}/{len(results)} = {majority_accuracy:.2f}%")
-        
-        at_least_one_correct = sum(1 for r in results if r['attempts']['correct_count'] > 0)
-        majority_correct = sum(1 for r in results if r['attempts']['correct_count'] > args.best_of // 2)
-        
-        print(f"\nBest-of-{args.best_of} Statistics:")
-        print(f"Problems with at least one correct solution: {at_least_one_correct}/{len(results)} = {(at_least_one_correct/len(results))*100:.2f}%")
-        print(f"Problems with majority correct solutions: {majority_correct}/{len(results)} = {(majority_correct/len(results))*100:.2f}%")
-    else:
-        print("No examples were successfully processed.")
-
-    end_time = datetime.now()
-    total_duration = end_time - start_time
-
-    end_time = datetime.now()
-    total_duration = end_time - start_time
-    print(f"\nTotal execution time: {total_duration}")
-    print(f"Average time per example: {total_duration.total_seconds() / len(results):.2f} seconds")
+    progress_tracker.print_final_stats()
 
 if __name__ == "__main__":
     asyncio.run(main())
