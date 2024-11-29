@@ -12,7 +12,7 @@ async def verify_numeric(solution: str, correct_answer: float) -> Tuple[float, b
         return None, False
     return answer, is_answer_correct(answer, correct_answer, tolerance)
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
     """Process a single example for numeric benchmarks"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -64,7 +64,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for benchmarking numeric problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on numeric problems')
-    await run_benchmark(config, process_example, NUMERIC_SOLVER_SYSTEM_PROMPT)
+    verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
+    await run_benchmark(config, process_example, NUMERIC_SOLVER_SYSTEM_PROMPT, verifier_model)
 
 if __name__ == "__main__":
     try:
