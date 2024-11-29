@@ -226,7 +226,7 @@ async def main():
     print(f"\nBenchmarking solver: {config.solver}, verifier: {extra_args.verifier} on {config.split} split...")
 
 
-    progress_tracker = ProgressTracker(total_examples=len(dataset), best_of=args.best_of)
+    progress_tracker = ProgressTracker(total_examples=len(dataset), best_of=config.best_of)
     # Prepare the list of examples to process
     example_data = []
     for example in dataset:
