@@ -1,3 +1,5 @@
+import os
+import json
 from typing import List, Dict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -33,6 +35,32 @@ class ProgressTracker:
             print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
             print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
             print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
+
+    def save_results(self, model_name: str, split: str) -> None:
+        """Save results to a JSON file with timestamp"""
+        if not self.results:
+            print("No results to save")
+            return
+            
+        timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
+        filename = f"results_{model_name}_{split}_{timestamp}.json"
+        
+        output = {
+            "metadata": {
+                "model": model_name,
+                "split": split,
+                "total_examples": self.total_examples,
+                "best_of": self.best_of,
+                "start_time": self.start_time.isoformat(),
+                "end_time": datetime.now().isoformat()
+            },
+            "results": self.results
+        }
+        
+        os.makedirs("results", exist_ok=True)
+        with open(os.path.join("results", filename), 'w') as f:
+            json.dump(output, f, indent=2)
+        print(f"\nResults saved to: {filename}")
 
     def print_final_stats(self) -> None:
         if not self.results:

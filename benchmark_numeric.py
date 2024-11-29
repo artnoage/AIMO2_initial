@@ -184,6 +184,7 @@ async def main():
     progress_bar.close()
     
     progress_tracker.print_final_stats()
+    progress_tracker.save_results(args.solver, args.split)
 
 if __name__ == "__main__":
     asyncio.run(main())
