@@ -85,24 +85,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    start_time = datetime.now()
+    """Main function for benchmarking numeric problem solving.
     
-    parser = argparse.ArgumentParser(description='Benchmark model on numeric problems')
-    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
-    parser.add_argument('--split', type=str, default='train',
-                       help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--source', type=str, default='all',
-                       help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=256,
-                       help='Maximum number of concurrent problems (default: 16)')
-    parser.add_argument('--best-of', type=int, default=5,
-                       help='Number of attempts per problem (default: 5)')
-    parser.add_argument('--temperature', type=float, default=0.7,
-                       help='Temperature for model generation (default: 0.7)')
-    parser.add_argument('--tolerance', type=float, default=0.01,
-                       help='Tolerance for numeric comparison (default: 0.001)')
-    args = parser.parse_args()
+    Loads dataset, initializes model, and processes examples concurrently
+    while tracking progress and saving results.
+    """
+    config = BenchmarkConfig.from_args('Benchmark model on numeric problems')
 
     if args.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
@@ -178,5 +166,21 @@ async def main():
     progress_tracker.print_final_stats()
     progress_tracker.save_results(args.solver, args.split)
 
+async def cleanup_resources(solver_model=None):
+    """Cleanup any resources used by the model"""
+    try:
+        if solver_model:
+            await solver_model.aclose()
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
+    finally:
+        # Ensure resources are cleaned up
+        asyncio.run(cleanup_resources())

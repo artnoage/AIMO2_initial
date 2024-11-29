@@ -157,29 +157,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    # Start timing the entire process
-    start_time = datetime.now()
+    """Main function for benchmarking mathematical problem solving.
     
-    # Argument parser for command-line options
-    parser = argparse.ArgumentParser(description='Benchmark model on NuminaMath-CoT dataset')
-    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
-    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for verifying answers')
-    parser.add_argument('--split', type=str, default='train',
-                       help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--source', type=str, default='all',
-                       help='Filter problems by source (default: all)')
+    Loads dataset, initializes models, and processes examples concurrently
+    while tracking progress and saving results.
+    """
+    config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
+    
+    # Additional verifier argument specific to this benchmark
+    parser = ArgumentParser(description='Additional verifier configuration')
+    parser.add_argument('--verifier', type=str, 
+                       choices=[model.name for model in ModelOption],
+                       default='GEMINI_FLASH', 
+                       help='Model to use for verifying answers')
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Numerics), or aime (AIME validation)')
-    parser.add_argument('--max-concurrent', type=int, default=16,
-                       help='Maximum number of concurrent problems (default: 32)')
-    parser.add_argument('--best-of', type=int, default=5,
-                       help='Number of attempts per problem (default: 1)')
-    parser.add_argument('--temperature', type=float, default=0.7,
-                       help='Temperature for model generation (default: 0.5)')
-    args = parser.parse_args()
+    verifier_args = parser.parse_args()
 
     # Validate max concurrent
     if args.max_concurrent < 1:
@@ -264,20 +258,34 @@ async def main():
     print(f"\nWill process {len(example_data)} examples")
         
     # Process all examples with progress bar
-    progress_bar = tqdm(total=total_examples, desc="Processing examples")
-    current_batch = []
+    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
             progress_tracker.add_result(result)
             progress_tracker.print_progress()
-            
         progress_bar.update(1)
-    progress_bar.close()
-
     progress_bar.close()
     progress_tracker.print_final_stats()
     progress_tracker.save_results(args.solver, args.split)
 
+async def cleanup_resources(solver_model=None, verifier_model=None):
+    """Cleanup any resources used by the models"""
+    try:
+        if solver_model:
+            await solver_model.aclose()
+        if verifier_model:
+            await verifier_model.aclose()
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
+    finally:
+        # Ensure resources are cleaned up
+        asyncio.run(cleanup_resources())
