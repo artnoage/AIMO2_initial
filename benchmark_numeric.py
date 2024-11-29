@@ -210,32 +210,15 @@ async def main():
         
     print(f"\nWill process {len(example_data)} examples")
     
-    results = []
     progress_bar = tqdm(total=len(example_data), desc="Processing examples")
-    current_batch = []
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
-            results.append(result)
-            augmented_example = {
-                'id': result['id'],
-                'problem': result['problem'],
-                'solution': str(result['correct_answer']),
-                'model_responses': result['model_responses'],
-                'is_correct_list': result['is_correct_list'],
-                'solver': args.solver,
-                'total_attempts': len(result['model_responses']),
-                'correct_answer': result['correct_answer']
-            }
-            current_batch.append(augmented_example)
-            
             progress_tracker.add_result(result)
             progress_tracker.print_progress()
-            
         progress_bar.update(1)
     progress_bar.close()
-
-    progress_bar.close()
+    
     progress_tracker.print_final_stats()
 
 if __name__ == "__main__":
