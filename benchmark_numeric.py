@@ -90,19 +90,19 @@ async def main():
     """
     config = BenchmarkConfig.from_args('Benchmark model on numeric problems')
 
-    if args.max_concurrent < 1:
+    if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
 
     try:
         username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina", split=args.split)
+        dataset = load_dataset(f"{username}/Numina", split=config.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
 
-    if args.source.lower() != 'all':
-        dataset = dataset.filter(lambda x: x['source'] == args.source)
+    if config.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == config.source)
     
     dataset = dataset.shuffle(seed=42)
 
@@ -115,12 +115,12 @@ async def main():
         return
 
     try:
-        solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
+        solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     except Exception as e:
         print(f"Error initializing model: {e}")
         return
 
-    print(f"\nBenchmarking solver: {args.solver} on {args.split} split...")
+    print(f"\nBenchmarking solver: {config.solver} on {config.split} split...")
 
     example_data = []
     for example in dataset:
@@ -135,14 +135,14 @@ async def main():
         print("No valid examples to process after initial filtering.")
         return
 
-    progress_tracker = ProgressTracker(total_examples=len(example_data), best_of=args.best_of)
+    progress_tracker = ProgressTracker(total_examples=len(example_data), best_of=config.best_of)
     print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
 
-    semaphore = asyncio.Semaphore(args.max_concurrent)
+    semaphore = asyncio.Semaphore(config.max_concurrent)
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, args.best_of)
+            return await process_example(example, running_id, example['id'], solver_model, config.best_of)
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     
@@ -162,7 +162,7 @@ async def main():
     progress_bar.close()
     
     progress_tracker.print_final_stats()
-    progress_tracker.save_results(args.solver, args.split)
+    progress_tracker.save_results(config.solver, config.split)
 
 async def cleanup_resources(solver_model=None):
     """Cleanup any resources used by the model"""
