@@ -135,12 +135,12 @@ async def run_benchmark(
             progress_tracker.print_progress()
             # Save progress every 100 examples
             if len(progress_tracker.results) % 100 == 0:
-                progress_tracker.save_results(config.solver, config.split)
+                progress_tracker.save_results(f"bm_numeric_{config.solver}", config.split)
         progress_bar.update(1)
     progress_bar.close()
     
     progress_tracker.print_final_stats()
-    progress_tracker.save_results(config.solver, config.split)
+    progress_tracker.save_results(f"bm_verifier_{config.solver}", config.split)
 
     try:
         if solver_model:
