@@ -148,8 +148,8 @@ async def main():
     """
     config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
     
-    # Add verifier configuration to BenchmarkConfig
-    parser = ArgumentParser(description='Additional verifier configuration')
+    # Add additional configuration options
+    parser = ArgumentParser(description='Additional configuration')
     parser.add_argument('--verifier', type=str, 
                        choices=[model.name for model in ModelOption],
                        default='GEMINI_FLASH', 
@@ -157,7 +157,23 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Numerics), or aime (AIME validation)')
+    parser.add_argument('--split', type=str, default='train',
+                       help='Dataset split to use (train/validation/test), optionally with slice notation (e.g. train[:1000])')
     extra_args = parser.parse_args()
+
+    # Parse split argument for slice notation
+    split_parts = extra_args.split.split('[')
+    if len(split_parts) > 1:
+        config.split = split_parts[0]
+        slice_str = split_parts[1].rstrip(']')
+        
+        # Parse slice notation
+        slice_parts = slice_str.split(':')
+        start = int(slice_parts[0]) if slice_parts[0] else None
+        stop = int(slice_parts[1]) if len(slice_parts) > 1 and slice_parts[1] else None
+        step = int(slice_parts[2]) if len(slice_parts) > 2 and slice_parts[2] else None
+        
+        config.split_slice = slice(start, stop, step)
 
     # Validate max concurrent
     if config.max_concurrent < 1:
