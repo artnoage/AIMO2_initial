@@ -1,6 +1,5 @@
 """Shared configuration for benchmark scripts"""
 from dataclasses import dataclass
-from typing import Optional
 from argparse import ArgumentParser
 from utils.utils import ModelOption
 
