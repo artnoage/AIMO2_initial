@@ -34,7 +34,7 @@ class BaseConfig:
 class BenchmarkConfig(BaseConfig):
     """Configuration for standard benchmark with verifier"""
     verifier: str = 'LOCAL'
-    verifier_temp: float = 0.1
+    verifier_temp: float = 0
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -43,7 +43,7 @@ class BenchmarkConfig(BaseConfig):
         parser.add_argument('--verifier', type=str,
                           choices=[model.name for model in ModelOption],
                           default='LOCAL', help='Model to use for verification')
-        parser.add_argument('--verifier-temp', type=float, default=0.1,
+        parser.add_argument('--verifier-temp', type=float, default=0,
                           help='Temperature for verifier model')
         args = parser.parse_args()
         return cls(**vars(args))
