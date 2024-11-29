@@ -68,7 +68,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         # Use first attempt if no correct solution found
         solution = best_solution if best_solution is not None else solutions[0]['solution']
-        model_answer = best_answer[0] if best_answer is not None else solutions[0]['answer']
+        model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # Print statistics
         print(f"\nExample {running_id + 1}:")
