@@ -168,11 +168,17 @@ async def main():
     try:
         if extra_args.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
+            if config.split_slice:
+                dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
         elif extra_args.dataset == 'aime':
             dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
+            if config.split_slice:
+                dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
         else:  # filtered
             username = HfApi().whoami()["name"]
             dataset = load_dataset(f"{username}/Numina", split=config.split)
+            if config.split_slice:
+                dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
