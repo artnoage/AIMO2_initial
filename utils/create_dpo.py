@@ -15,8 +15,8 @@ def load_json_file(filename: str) -> List[Dict]:
         sys.exit(1)
 
 def check_token_length(text: str, tokenizer) -> bool:
-    """Check if text has at least 3000 tokens"""
-    return len(tokenizer.encode(text)) >= 3000
+    """Check if text has at most 3000 tokens"""
+    return len(tokenizer.encode(text)) <= 3000
 
 def select_rejected_response(responses: List[str], verification_results: List[int], strategy: str, 
                            chosen_response: str, tokenizer) -> Optional[str]:
