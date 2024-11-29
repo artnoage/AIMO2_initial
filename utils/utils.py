@@ -4,6 +4,7 @@ import asyncio
 from enum import Enum
 from functools import wraps
 from typing import Optional, List, Dict, Tuple, TypeVar, Callable, Any
+from langchain_core.messages import SystemMessage, HumanMessage
 
 T = TypeVar('T')
 
