@@ -1,11 +1,55 @@
 import asyncio
-from typing import Optional, Dict, List, Callable, Any
+from typing import Optional, Dict, List, Callable, Any, Tuple
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_config import BenchmarkConfig
-from utils.utils import get_model, ModelOption
+from utils.utils import get_model, ModelOption, get_model_response
+
+async def process_attempts(
+    solver_model,
+    prompt: List,
+    best_of: int,
+    running_id: int,
+    verify_func: Callable
+) -> Tuple[List[Dict], Optional[str], Optional[Any], int]:
+    """
+    Make multiple solution attempts and track results
+    Returns: (solutions, best_solution, best_answer, correct_count)
+    """
+    solutions = []
+    correct_count = 0
+    best_solution = None
+    best_answer = None
+    
+    for attempt in range(best_of):
+        try:
+            current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
+            current_answer = verify_func(current_solution)
+            is_correct = current_answer[1] if isinstance(current_answer, tuple) else current_answer
+            
+            if is_correct:
+                correct_count += 1
+                if best_solution is None:
+                    best_solution = current_solution
+                    best_answer = current_answer[0] if isinstance(current_answer, tuple) else current_answer
+        except Exception as e:
+            print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+            current_solution = "Error occurred"
+            current_answer = None
+            is_correct = False
+        
+        solutions.append({
+            'solution': current_solution,
+            'answer': current_answer[0] if isinstance(current_answer, tuple) else current_answer,
+            'is_correct': is_correct
+        })
+        
+        if attempt >= best_of - 1:
+            break
+            
+    return solutions, best_solution, best_answer, correct_count
 
 async def run_benchmark(
     config: BenchmarkConfig,
