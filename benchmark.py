@@ -42,7 +42,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
-                if is_correct:
+                if is_correct and current_answer is not None:
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
