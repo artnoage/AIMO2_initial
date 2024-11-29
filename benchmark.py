@@ -8,101 +8,44 @@ from utils.benchmark_utils import run_benchmark
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+async def verify_solution(solution: str, correct_answer: str, problem: str) -> Tuple[str, bool]:
+    """Verify a solution and return (answer, is_correct)"""
+    answer = extract_answer_from_solution(solution)
+    if answer is None:
+        return None, False
+        
+    # Check required keywords
+    solution_lower = solution.lower()
+    has_required = all(kw in solution_lower for kw in ['problem', 'analysis', 'step'])
+    
+    if not has_required:
+        return answer, False
+        
+    return answer, await compare_math_answers(answer, correct_answer, problem, verifier_model)
+
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int) -> Optional[Dict]:
-    """
-    Process a single example and print its results immediately:
-    - Count input tokens
-    - Extract the correct answer from the solution
-    - Generate the solution using the model
-    - Extract the model's answer
-    - Count output tokens
-    - Determine correctness
-    - Print results
-    """
+    """Process a single example for the standard benchmark"""
     try:
-        # Validate input data
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
             
-        # Extract the correct answer
-        try:
-            correct_answer = extract_answer_from_solution(example['solution'])
-            if correct_answer is None:
-                print(f"Warning: Could not extract answer from solution for example {running_id}")
-                print(f"Solution text: {example['solution']}...")
-                return None
-        except Exception as e:
-            print(f"Error extracting answer from solution for example {running_id}: {str(e)}")
+        correct_answer = extract_answer_from_solution(example['solution'])
+        if correct_answer is None:
+            print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
-        # Create the chat prompt
+
         prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        # Make multiple attempts
-        solutions = []
-        correct_count = 0
-        best_solution = None
-        best_answer = None
+        verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"])
+        solutions, best_solution, best_answer, correct_count = await process_attempts(
+            solver_model, prompt, best_of, running_id, verify_func)
         
-        for attempt in range(best_of):
-            # Try up to 3 times for each attempt in case of connection errors
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
-                try:
-                    # Add 5 minute timeout
-                    response = await asyncio.wait_for(
-                        solver_model.ainvoke(prompt),
-                        timeout=300  # 5 minutes in seconds
-                    )
-                    current_solution = response.content
-                    break
-                except (Exception, TimeoutError) as e:
-                    retry_count += 1
-                    if retry_count == max_retries:
-                        print(f"Failed after {max_retries} attempts for problem {running_id + 1}, attempt {attempt + 1}")
-                        if isinstance(e, TimeoutError):
-                            print(f"Timeout error: Model took longer than 5 minutes to respond")
-                        raise e
-                    print(f"{'Timeout' if isinstance(e, TimeoutError) else 'Connection'} error for problem {running_id + 1}, attempt {attempt + 1}. Retrying... ({retry_count}/{max_retries})")
-                    await asyncio.sleep(1)  # Wait a second before retrying
-            current_answer = extract_answer_from_solution(current_solution)
-            
-            # Verify the solution
-            is_correct = await compare_math_answers(current_answer, correct_answer, example["problem"], verifier_model)
-            
-            if is_correct:
-                correct_count += 1
-                if best_solution is None:  # Keep the first correct solution
-                    best_solution = current_solution
-                    best_answer = current_answer
-            
-            solutions.append({
-                'solution': current_solution,
-                'answer': current_answer,
-                'is_correct': is_correct
-            })
-            
-            # Always collect all attempts up to best_of
-            if attempt >= best_of - 1:
-                break
-        
-        # Use the best solution if we found one, otherwise use the first attempt
+        # Use first attempt if no correct solution found
         solution = best_solution if best_solution is not None else solutions[0]['solution']
-        model_answer = best_answer if best_answer is not None else solutions[0]['answer']
+        model_answer = best_answer[0] if best_answer is not None else solutions[0]['answer']
         
-        # First check if solution contains required keywords
-        solution_lower = solution.lower()
-        has_problem = 'problem' in solution_lower
-        has_analysis = 'analysis' in solution_lower
-        has_step = 'step' in solution_lower
-        
-        # Only verify if all required words are present
-        is_correct = False
-        if has_problem and has_analysis and has_step:
-            is_correct = await compare_math_answers(model_answer, correct_answer, example["problem"], verifier_model)
-        
-        # Print results immediately
+        # Print results
         success_ratio = f"{correct_count}/{best_of}"
         success_percentage = (correct_count / best_of) * 100
         print(f"\nProblem {running_id + 1}: {success_ratio} ({success_percentage:.1f}%)")
@@ -110,7 +53,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print(f"Model's Answer: {model_answer}")
         print("-" * 80)
         
-        # Return the result
         return {
             'id': example_id,
             'problem': example['problem'],
@@ -118,7 +60,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_responses': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'model_answer_raw': model_answer,  # Keep the best/last answer for compatibility
+            'model_answer_raw': model_answer,
             'correct_answer_raw': correct_answer,
             'attempts': {
                 'total': len(solutions),
