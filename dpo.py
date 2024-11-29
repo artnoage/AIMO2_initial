@@ -1,5 +1,6 @@
 from datasets import load_dataset
 from datetime import datetime
+from tqdm import tqdm
 from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
@@ -115,23 +116,34 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
     
-    print("\nToken counts for all examples:")
+    from tqdm import tqdm
+    import numpy as np
+    
+    print("\nAnalyzing token counts...")
+    prompt_tokens = []
+    chosen_tokens = []
+    rejected_tokens = []
     total_tokens = 0
-    for i in range(len(raw_datasets)):
-        row = raw_datasets[i]
+    
+    for row in tqdm(raw_datasets, desc="Counting tokens"):
         tokens_prompt = len(tokenizer.encode(row["prompt"]))
         tokens_chosen = len(tokenizer.encode(row["chosen"]))
         tokens_rejected = len(tokenizer.encode(row["rejected"]))
-        example_total = tokens_prompt + tokens_chosen + tokens_rejected
-        total_tokens += example_total
-        print(f"\nExample {i}:")
-        print(f"Prompt tokens: {tokens_prompt}")
-        print(f"Chosen tokens: {tokens_chosen}")
-        print(f"Rejected tokens: {tokens_rejected}")
-        print(f"Example total: {example_total}")
+        
+        prompt_tokens.append(tokens_prompt)
+        chosen_tokens.append(tokens_chosen)
+        rejected_tokens.append(tokens_rejected)
+        total_tokens += tokens_prompt + tokens_chosen + tokens_rejected
     
-    print(f"\nTotal tokens across all examples: {total_tokens}")
-    print(f"Average tokens per example: {total_tokens / len(raw_datasets):.1f}")
+    print("\nToken Statistics:")
+    print(f"Total tokens across all examples: {total_tokens:,}")
+    print(f"Average tokens per example: {total_tokens / len(raw_datasets):,.1f}")
+    print("\nPrompt tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
+        np.min(prompt_tokens), np.max(prompt_tokens), np.mean(prompt_tokens), np.median(prompt_tokens)))
+    print("Chosen tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
+        np.min(chosen_tokens), np.max(chosen_tokens), np.mean(chosen_tokens), np.median(chosen_tokens)))
+    print("Rejected tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
+        np.min(rejected_tokens), np.max(rejected_tokens), np.mean(rejected_tokens), np.median(rejected_tokens)))
 
 
     training_args = DPOConfig(
