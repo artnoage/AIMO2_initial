@@ -13,30 +13,6 @@ from huggingface_hub import HfApi
 from tqdm import tqdm
 from utils.utils import extract_answer_from_solution
 
-def load_intermediate_results(solver_model: ModelOption, verifier_model: ModelOption) -> Tuple[Optional[List[int]], Optional[List[str]], Optional[List[float]]]:
-    """Load intermediate results from saved JSON files"""
-    intermediate_files = [f for f in os.listdir('benchmark_results') 
-                        if f.startswith(f'benchmark_intermediate_{solver_model.name}_{verifier_model.name}')]
-    if not intermediate_files:
-        return None, None, None
-    
-    # Load the intermediate results in chronological order
-    intermediate_results = []
-    intermediate_timestamps = []
-    intermediate_accuracies = []
-    for filename in sorted(intermediate_files):
-        filepath = os.path.join('benchmark_results', filename)
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            examples_processed = len(data)  # Count examples in the augmented data
-            correct_count = sum(1 for ex in data if ex['is_correct'])
-            accuracy = (correct_count / examples_processed) * 100 if examples_processed > 0 else 0
-            
-            intermediate_results.append(examples_processed)
-            intermediate_timestamps.append(datetime.now().isoformat())
-            intermediate_accuracies.append(accuracy)
-    
-    return intermediate_results, intermediate_timestamps, intermediate_accuracies
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
