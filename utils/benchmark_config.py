@@ -28,8 +28,5 @@ class BenchmarkConfig:
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--temperature', type=float, default=0.7,
                           help='Temperature for model generation (default: 0.7)')
-        parser.add_argument('--tolerance', type=float, default=0.01,
-                          help='Tolerance for numeric comparison (default: 0.01)')
-        
         args = parser.parse_args()
         return cls(**vars(args))
