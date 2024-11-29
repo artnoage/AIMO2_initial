@@ -69,12 +69,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         solution = best_solution if best_solution is not None else solutions[0]['solution']
         model_answer = best_answer[0] if best_answer is not None else solutions[0]['answer']
         
-        # Print results
-        success_ratio = f"{correct_count}/{best_of}"
-        success_percentage = (correct_count / best_of) * 100
-        print(f"\nProblem {running_id + 1}: {success_ratio} ({success_percentage:.1f}%)")
-        print(f"Extracted Answer: {correct_answer}")
-        print(f"Model's Answer: {model_answer}")
+        # Print statistics
+        print(f"\nExample {running_id + 1}:")
+        print(f"Problem: {example['problem'][:200]}...")
+        print(f"Correct answer: {correct_answer}")
+        print(f"Model answers: {[s['answer'] for s in solutions]}")
+        print(f"Correct solutions: {correct_count}/{best_of}")
+        print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
         print("-" * 80)
         
         return {
@@ -100,7 +101,10 @@ async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
     verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-    await run_benchmark(config, process_example, BENCHMARK_SYSTEM_PROMPT, verifier_model)
+    await run_benchmark(config, 
+                       process_example,
+                       BENCHMARK_SYSTEM_PROMPT, 
+                       verifier_model)
 
 if __name__ == "__main__":
     try:
