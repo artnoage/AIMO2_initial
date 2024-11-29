@@ -6,14 +6,14 @@ from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
 
-async def verify_numeric(solution: str, correct_answer: float) -> Tuple[float, bool]:
+async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[float, bool]:
     """Verify a numeric solution and return (answer, is_correct)"""
     answer = extract_numeric_answer(solution)
     if answer is None:
         return None, False
-    return answer, is_answer_correct(answer, correct_answer, config.tolerance)
+    return answer, is_answer_correct(answer, correct_answer, tolerance)
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, tolerance: float = 1e-6) -> Optional[Dict]:
     """Process a single example for numeric benchmarks"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -27,7 +27,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         prompt = [SystemMessage(content=NUMERIC_SOLVER_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        verify_func = lambda sol: verify_numeric(sol, correct_answer)
+        verify_func = lambda sol: verify_numeric(sol, correct_answer, tolerance)
         solutions = []
         correct_count = 0
         best_solution = None
@@ -91,7 +91,10 @@ async def main():
     """Main function for benchmarking numeric problem solving."""
     config = NumericConfig.from_args('Benchmark model on numeric problems')
     verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
-    await run_benchmark(config, process_example, NUMERIC_SOLVER_SYSTEM_PROMPT, verifier_model)
+    await run_benchmark(config, 
+                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, vm, bo, config.tolerance),
+                       NUMERIC_SOLVER_SYSTEM_PROMPT, 
+                       verifier_model)
 
 if __name__ == "__main__":
     try:
