@@ -1,16 +1,11 @@
 import asyncio
 from typing import Optional, Dict
 from utils.utils import *
-from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
-from datasets import load_dataset
-from huggingface_hub import HfApi
-from tqdm import tqdm
 from utils.benchmark_config import *
 
-
-
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int = 1, tolerance: float = 0.01) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int) -> Optional[Dict]:
     """Process a single example and return results"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -92,99 +87,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    """Main function for benchmarking numeric problem solving.
-    
-    Loads dataset, initializes model, and processes examples concurrently
-    while tracking progress and saving results.
-    """
+    """Main function for benchmarking numeric problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on numeric problems')
-
-    if config.max_concurrent < 1:
-        print("Error: Maximum concurrent problems must be at least 1")
-        return
-
-    try:
-        username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina", split=config.split)
-        if config.split_slice:
-            dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        return
-
-    if config.source.lower() != 'all':
-        dataset = dataset.filter(lambda x: x['source'] == config.source)
-    
-    dataset = dataset.shuffle(seed=42)
-
-    print("\nDataset Information:")
-    num_examples = len(dataset)
-    print(f"Number of examples: {num_examples}")
-
-    if num_examples == 0:
-        print("Error: Dataset is empty! Check your source filter and split arguments.")
-        return
-
-    try:
-        solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
-    except Exception as e:
-        print(f"Error initializing model: {e}")
-        return
-
-    print(f"\nBenchmarking solver: {config.solver} on {config.split} split...")
-
-    example_data = []
-    for example in dataset:
-        processed = {
-            'id': example['id'],
-            'problem': example['problem'],
-            'solution': example['solution']
-        }
-        example_data.append(processed)
-    
-    if not example_data:
-        print("No valid examples to process after initial filtering.")
-        return
-
-    progress_tracker = ProgressTracker(total_examples=len(example_data), best_of=config.best_of)
-    print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
-
-    semaphore = asyncio.Semaphore(config.max_concurrent)
-
-    async def process_with_semaphore(example, running_id):
-        async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, config.best_of, tolerance=0.01)
-
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
-    
-    if not example_data:
-        print("No examples to process!")
-        return
-        
-    print(f"\nWill process {len(example_data)} examples")
-    
-    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
-    for coro in asyncio.as_completed(tasks):
-        result = await coro
-        if result:
-            progress_tracker.add_result(result)
-            progress_tracker.print_progress()
-            # Save progress every 100 examples
-            if len(progress_tracker.results) % 100 == 0:
-                progress_tracker.save_results(config.solver, config.split)
-        progress_bar.update(1)
-    progress_bar.close()
-    
-    progress_tracker.print_final_stats()
-    progress_tracker.save_results(config.solver, config.split)
-
-async def cleanup_resources(solver_model=None):
-    """Cleanup any resources used by the model"""
-    try:
-        if solver_model:
-            await solver_model.aclose()
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
+    await run_benchmark(config, process_example, NUMERIC_SOLVER_SYSTEM_PROMPT)
 
 if __name__ == "__main__":
     try:
@@ -193,6 +98,3 @@ if __name__ == "__main__":
         print("\nBenchmark interrupted by user")
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")
-    finally:
-        # Ensure resources are cleaned up
-        asyncio.run(cleanup_resources())
