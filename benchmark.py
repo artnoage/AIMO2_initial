@@ -20,8 +20,9 @@ async def verify_solution(solution: str, correct_answer: str, problem: str, veri
     
     if not has_required:
         return answer, False
-        
-    return answer, await compare_math_answers(answer, correct_answer, problem, verifier_model)
+    
+    is_correct = await compare_math_answers(answer, correct_answer, problem, verifier_model)
+    return answer, is_correct
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
     """Process a single example for the standard benchmark"""
