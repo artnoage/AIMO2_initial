@@ -175,27 +175,28 @@ async def main():
     verifier_args = parser.parse_args()
 
     # Validate max concurrent
-    if args.max_concurrent < 1:
+    if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
-    args = parser.parse_args()
 
+    verifier_args = parser.parse_args()
+    
     # Load the dataset based on selection
     try:
-        if args.dataset == 'original':
-            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
-        elif args.dataset == 'aime':
-            dataset = load_dataset("AI-MO/aimo-validation-aime", split=args.split)
+        if verifier_args.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
+        elif verifier_args.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
         else:  # filtered
             username = HfApi().whoami()["name"]
-            dataset = load_dataset(f"{username}/Numina", split=args.split)
+            dataset = load_dataset(f"{username}/Numina", split=config.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
 
     # Filter by source if specified
-    if args.source.lower() != 'all':
-        dataset = dataset.filter(lambda x: x['source'] == args.source)
+    if config.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == config.source)
     
     # Shuffle the dataset for randomness
     dataset = dataset.shuffle(seed=42)
@@ -211,13 +212,13 @@ async def main():
 
     # Initialize the models
     try:
-        solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
-        verifier_model = get_model(ModelOption[args.verifier])
+        solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
+        verifier_model = get_model(ModelOption[verifier_args.verifier])
     except Exception as e:
         print(f"Error initializing models: {e}")
         return
 
-    print(f"\nBenchmarking solver: {args.solver}, verifier: {args.verifier} on {args.split} split...")
+    print(f"\nBenchmarking solver: {config.solver}, verifier: {verifier_args.verifier} on {config.split} split...")
 
 
     progress_tracker = ProgressTracker(total_examples=len(dataset), best_of=args.best_of)
@@ -245,11 +246,11 @@ async def main():
     print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
 
     # Create a semaphore to limit concurrency
-    semaphore = asyncio.Semaphore(args.max_concurrent)
+    semaphore = asyncio.Semaphore(config.max_concurrent)
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, args.best_of)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, config.best_of)
 
     # Create tasks for all examples with best_of parameter
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
@@ -266,7 +267,7 @@ async def main():
         progress_bar.update(1)
     progress_bar.close()
     progress_tracker.print_final_stats()
-    progress_tracker.save_results(args.solver, args.split)
+    progress_tracker.save_results(config.solver, config.split)
 
 async def cleanup_resources(solver_model=None, verifier_model=None):
     """Cleanup any resources used by the models"""
