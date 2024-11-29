@@ -147,7 +147,7 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     except ValueError:
         return None
 
-def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.01) -> bool:
+def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
     if model_answer is None or correct_answer is None:
         return False

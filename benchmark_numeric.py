@@ -10,7 +10,7 @@ from utils.benchmark_config import *
 
 
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int = 1) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, best_of: int = 1, tolerance: float = 0.01) -> Optional[Dict]:
     """Process a single example and return results"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -38,7 +38,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             try:
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
                 current_answer = extract_numeric_answer(current_solution)
-                is_correct = is_answer_correct(current_answer, correct_answer)
+                is_correct = is_answer_correct(current_answer, correct_answer, tolerance)
                 
                 if is_correct:
                     correct_count += 1
@@ -142,7 +142,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, config.best_of)
+            return await process_example(example, running_id, example['id'], solver_model, config.best_of, tolerance=0.01)
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
     

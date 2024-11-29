@@ -12,7 +12,6 @@ class BenchmarkConfig:
     max_concurrent: int = 256
     best_of: int = 5
     temperature: float = 0.7
-    tolerance: float = 0.01
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
