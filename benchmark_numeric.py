@@ -1,6 +1,9 @@
 import asyncio
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 from utils.utils import *
+
+# Tolerance for numeric answer comparison
+tolerance = 1e-6
 from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
@@ -27,11 +30,36 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         prompt = [SystemMessage(content=NUMERIC_SOLVER_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         verify_func = lambda sol: verify_numeric(sol, correct_answer)
-        solutions, best_solution, best_answer, correct_count = await process_attempts(
-            solver_model, prompt, best_of, running_id, verify_func)
+        solutions = []
+        correct_count = 0
+        best_solution = None
+        best_answer = None
         
+        for attempt in range(best_of):
+            try:
+                current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
+                current_answer, is_correct = await verify_func(current_solution)
+                
+                if is_correct:
+                    correct_count += 1
+                    if best_solution is None:
+                        best_solution = current_solution
+                        best_answer = current_answer
+            except Exception as e:
+                print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+                current_solution = "Error occurred"
+                current_answer = None
+                is_correct = False
+            
+            solutions.append({
+                'solution': current_solution,
+                'answer': current_answer,
+                'is_correct': is_correct
+            })
+        
+        # Use first attempt if no correct solution found
         solution = best_solution if best_solution is not None else solutions[0]['solution']
-        model_answer = best_answer[0] if best_answer is not None else solutions[0]['answer']
+        model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # Print statistics
         print(f"\nExample {running_id + 1}:")
