@@ -18,22 +18,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 
-def save_results(results: list, model_name: str):
-    """
-    Save the benchmarking results to a JSON file within the benchmark_results directory.
-    The filename includes the model name and a timestamp for uniqueness.
-    """
-    os.makedirs('../benchmark_results', exist_ok=True)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = os.path.join('benchmark_results', f"benchmark_results_{model_name}_{timestamp}.json")
-    
-    with open(filename, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"\nResults saved to {filename}")
-
-
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int = 1) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, config: BenchmarkConfig) -> Optional[Dict]:
     """
     Process a single example and print its results immediately:
     - Count input tokens
@@ -163,7 +148,7 @@ async def main():
     """
     config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
     
-    # Additional verifier argument specific to this benchmark
+    # Add verifier configuration to BenchmarkConfig
     parser = ArgumentParser(description='Additional verifier configuration')
     parser.add_argument('--verifier', type=str, 
                        choices=[model.name for model in ModelOption],
@@ -172,20 +157,18 @@ async def main():
     parser.add_argument('--dataset', type=str, default='filtered',
                        choices=['original', 'filtered', 'aime'],
                        help='Dataset to use: original (NuminaMath-CoT), filtered (Numina-Numerics), or aime (AIME validation)')
-    verifier_args = parser.parse_args()
+    extra_args = parser.parse_args()
 
     # Validate max concurrent
     if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
-
-    verifier_args = parser.parse_args()
     
     # Load the dataset based on selection
     try:
-        if verifier_args.dataset == 'original':
+        if extra_args.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
-        elif verifier_args.dataset == 'aime':
+        elif extra_args.dataset == 'aime':
             dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
         else:  # filtered
             username = HfApi().whoami()["name"]
@@ -213,12 +196,12 @@ async def main():
     # Initialize the models
     try:
         solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
-        verifier_model = get_model(ModelOption[verifier_args.verifier])
+        verifier_model = get_model(ModelOption[extra_args.verifier])
     except Exception as e:
         print(f"Error initializing models: {e}")
         return
 
-    print(f"\nBenchmarking solver: {config.solver}, verifier: {verifier_args.verifier} on {config.split} split...")
+    print(f"\nBenchmarking solver: {config.solver}, verifier: {extra_args.verifier} on {config.split} split...")
 
 
     progress_tracker = ProgressTracker(total_examples=len(dataset), best_of=args.best_of)
@@ -250,7 +233,7 @@ async def main():
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
-            return await process_example(example, running_id, example['id'], solver_model, verifier_model, config.best_of)
+            return await process_example(example, running_id, example['id'], solver_model, verifier_model, config)
 
     # Create tasks for all examples with best_of parameter
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
