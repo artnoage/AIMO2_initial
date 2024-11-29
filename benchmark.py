@@ -348,7 +348,6 @@ async def main():
             
             # Save current batch of augmented data
             if current_batch:
-                save_augmented_data(current_batch, augmented_filename, len(results))
                 current_batch = []
             
         progress_bar.update(1)
@@ -449,7 +448,7 @@ async def main():
     
     # Save final augmented data batch
     if current_batch:
-        save_augmented_data(current_batch, augmented_filename, len(results))
+        current_batch = []
     
     # Print error rate progression
     print("\nError Rate Progression:")
