@@ -8,7 +8,7 @@ from utils.benchmark_utils import run_benchmark
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def verify_solution(solution: str, correct_answer: str, problem: str) -> Tuple[str, bool]:
+async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model) -> Tuple[str, bool]:
     """Verify a solution and return (answer, is_correct)"""
     answer = extract_answer_from_solution(solution)
     if answer is None:
@@ -37,7 +37,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"])
+        verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"], verifier_model)
         solutions = []
         correct_count = 0
         best_solution = None
