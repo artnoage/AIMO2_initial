@@ -4,32 +4,19 @@ import asyncio
 import argparse
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from utils.utils import ModelOption, get_model, extract_answer_from_solution, async_retry
+from utils.utils import (
+    ModelOption, 
+    get_model, 
+    extract_answer_from_solution, 
+    async_retry,
+    NUMERIC_SOLVER_SYSTEM_PROMPT
+)
 from utils.progress_tracker import ProgressTracker
 from langchain_core.messages import HumanMessage, SystemMessage
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
 
-SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
-
-DO:
-▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification
-▪ Use LaTeX notation
-▪ Your final answer MUST be a single number in a LaTeX box
-
-FORMAT:
-
-**Problem Analysis and Approach**:
-1. Start by categorizing the problem
-2. List specific tools or theorems that will guide your solution
-
-**PROOF**:
-Show your work step by step with clear justifications in brackets.
-
-**ANSWER**:
-\\(\\boxed{n}\\) where n is your final numeric answer"""
 
 def extract_numeric_answer(solution: str) -> Optional[float]:
     """
@@ -79,7 +66,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Error extracting answer from solution for example {running_id}: {str(e)}")
             return None
 
-        prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
+        prompt = [SystemMessage(content=NUMERIC_SOLVER_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         solutions = []
         correct_count = 0
