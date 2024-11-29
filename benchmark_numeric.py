@@ -223,6 +223,7 @@ async def main():
 
     results = []
     error_rate_points = []
+    majority_correct_points = []
     total_examples = len(example_data)
     print(f"\nStarting processing of {total_examples} examples...")
 
@@ -280,9 +281,20 @@ async def main():
                     'batch_error_rate': batch_error_rate,
                     'cumulative_error_rate': cumulative_error_rate
                 })
+                # Calculate majority correct rate for last 100 examples
+                last_hundred = results[-100:]
+                majority_correct_count = sum(1 for r in last_hundred if r['attempts']['correct_count'] > args.best_of // 2)
+                majority_correct_rate = majority_correct_count / len(last_hundred)
+                
+                majority_correct_points.append({
+                    'examples_processed': len(results),
+                    'batch_majority_correct_rate': majority_correct_rate,
+                })
+                
                 print(f"\nAt {len(results)} examples:")
                 print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
                 print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
+                print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
                 
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 intermediate_filename = os.path.join('results', 
@@ -379,6 +391,7 @@ async def main():
     output_data = {
         'run_parameters': run_parameters,
         'error_rate_points': error_rate_points,
+        'majority_correct_points': majority_correct_points,
         'final_batch_error_rate': final_batch_error_rate,
         'final_cumulative_error_rate': final_cumulative_error_rate,
         'final_statistics': final_statistics
