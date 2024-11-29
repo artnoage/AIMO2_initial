@@ -4,8 +4,7 @@ import asyncio
 import argparse
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
-from utils.utils import ModelOption, get_model, extract_answer_from_solution
-from utils.async_utils import async_retry
+from utils.utils import ModelOption, get_model, extract_answer_from_solution, async_retry
 from utils.progress_tracker import ProgressTracker
 from langchain_core.messages import HumanMessage, SystemMessage
 from datasets import load_dataset
