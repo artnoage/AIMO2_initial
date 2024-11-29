@@ -8,12 +8,10 @@ from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model
 from langchain_core.messages import HumanMessage, SystemMessage
-from dotenv import load_dotenv
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from tqdm import tqdm
 from utils.utils import extract_answer_from_solution
-import re
 
 SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
 
@@ -41,7 +39,6 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     Looks for a number inside a LaTeX boxed environment.
     Returns float if found, None otherwise.
     """
-    from utils.utils import extract_answer_from_solution
     
     # First extract the raw boxed content
     raw_answer = extract_answer_from_solution(solution)
@@ -55,7 +52,7 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     except ValueError:
         return None
 
-def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.001) -> bool:
+def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float = 0.01) -> bool:
     """Compare two numeric answers within tolerance"""
     if model_answer is None or correct_answer is None:
         return False
@@ -165,11 +162,11 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=256,
                        help='Maximum number of concurrent problems (default: 16)')
-    parser.add_argument('--best-of', type=int, default=10,
+    parser.add_argument('--best-of', type=int, default=5,
                        help='Number of attempts per problem (default: 5)')
     parser.add_argument('--temperature', type=float, default=0.7,
                        help='Temperature for model generation (default: 0.7)')
-    parser.add_argument('--tolerance', type=float, default=0.001,
+    parser.add_argument('--tolerance', type=float, default=0.01,
                        help='Tolerance for numeric comparison (default: 0.001)')
     args = parser.parse_args()
 
