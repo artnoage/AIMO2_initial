@@ -13,7 +13,7 @@ from unsloth import is_bfloat16_supported
 import re
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
@@ -38,8 +38,8 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models",
-        max_seq_length=8192,
+        model_name="mistralai/Mathstral-7B-v0.1",
+        max_seq_length=4096,
         load_in_4bit=False)
         
     print("\n=== After Model Load ===")
@@ -68,9 +68,6 @@ def main():
         map_eos_token=True,
     )
 
-    def _strip_prefix(s, pattern):
-        # Use re.escape to escape any special characters in the pattern
-        return re.sub(f"^{re.escape(pattern)}", "", s)
 
     def apply_chat_template(example, tokenizer):
         if all(k in example.keys() for k in ("chosen", "rejected")):
@@ -95,7 +92,7 @@ def main():
             )
 
     # Load the DPO dataset
-    raw_datasets = load_dataset("artnoage/dpo3", split="train")
+    raw_datasets = load_dataset("artnoage/dpo_full", split="train")
     print("\nDataset keys before mapping:")
     print(raw_datasets.column_names)
     column_names = list(raw_datasets.features)
@@ -120,30 +117,30 @@ def main():
     
     print("\nToken counts for all examples:")
     total_tokens = 0
-    #for i in range(len(raw_datasets)):
-        #row = raw_datasets[i]
-        #tokens_prompt = len(tokenizer.encode(row["prompt"]))
-        #tokens_chosen = len(tokenizer.encode(row["chosen"]))
-        #tokens_rejected = len(tokenizer.encode(row["rejected"]))
-        #example_total = tokens_prompt + tokens_chosen + tokens_rejected
-        #total_tokens += example_total
-        #print(f"\nExample {i}:")
-        #print(f"Prompt tokens: {tokens_prompt}")
-        #print(f"Chosen tokens: {tokens_chosen}")
-        #print(f"Rejected tokens: {tokens_rejected}")
-        #print(f"Example total: {example_total}")
+    for i in range(len(raw_datasets)):
+        row = raw_datasets[i]
+        tokens_prompt = len(tokenizer.encode(row["prompt"]))
+        tokens_chosen = len(tokenizer.encode(row["chosen"]))
+        tokens_rejected = len(tokenizer.encode(row["rejected"]))
+        example_total = tokens_prompt + tokens_chosen + tokens_rejected
+        total_tokens += example_total
+        print(f"\nExample {i}:")
+        print(f"Prompt tokens: {tokens_prompt}")
+        print(f"Chosen tokens: {tokens_chosen}")
+        print(f"Rejected tokens: {tokens_rejected}")
+        print(f"Example total: {example_total}")
     
     print(f"\nTotal tokens across all examples: {total_tokens}")
     print(f"Average tokens per example: {total_tokens / len(raw_datasets):.1f}")
 
 
     training_args = DPOConfig(
-        per_gpu_train_batch_size = 1,
-        gradient_accumulation_steps = 64,
+        per_gpu_train_batch_size = 2,
+        gradient_accumulation_steps = 32,
         num_train_epochs = 1,
-        learning_rate = 5e-6,
+        learning_rate = 4e-6,
         logging_steps = 1,
-        optim = "adamw_torch",
+        optim = "adamw_8bit",
         seed = 42,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
@@ -155,7 +152,7 @@ def main():
         train_dataset=raw_datasets,
         tokenizer=tokenizer,
         args=training_args,
-        max_length = 8192,
+        max_length = 4096,
         max_prompt_length = 1024,
     )
 
