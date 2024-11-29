@@ -6,7 +6,12 @@ from asyncio import TimeoutError
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
-from utils.utils import ModelOption, get_model
+from utils.utils import (
+    ModelOption, 
+    get_model,
+    BENCHMARK_SYSTEM_PROMPT,
+    compare_math_answers
+)
 from langchain_core.messages import  HumanMessage, SystemMessage
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -43,29 +48,6 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 # Load environment variables from .env file
 load_dotenv()
 
-SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
-
-DO:
-▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification
-▪ Use LaTeX notation
-▪ Your final answer MUST be a single number in a LaTeX box
-
-FORMAT:
-
-**Problem Analysis and Approach**:
-1. Start by categorizing the problem
-2. List specific tools or theorems that will guide your solution
-
-**PROOF**:
-Show your work step by step with clear justifications in brackets.
-
-**ANSWER**:
-\\(\\boxed{n}\\) where n is your final answer"""
-
-
-
-
 
 def save_results(results: list, model_name: str):
     """
@@ -81,34 +63,6 @@ def save_results(results: list, model_name: str):
         json.dump(results, f, indent=2)
     print(f"\nResults saved to {filename}")
 
-async def compare_math_answers(model_answer: Optional[str], correct_answer: Optional[str], problem: str, model) -> bool:
-    """Use the model to compare two mathematical answers"""
-    if model_answer is None or correct_answer is None:
-        return False
-        
-    comparison_prompt = [
-        SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-        HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-    ]
-    
-    max_retries = 3
-    retry_count = 0
-    while retry_count < max_retries:
-        try:
-            # Add 5 minute timeout
-            response = await asyncio.wait_for(
-                model.ainvoke(comparison_prompt),
-                timeout=300  # 5 minutes in seconds
-            )
-            return response.content.strip().lower() == 'yes'
-        except Exception as e:
-            retry_count += 1
-            if retry_count == max_retries:
-                print(f"Verification failed after {max_retries} attempts")
-                return False
-            print(f"Connection error during verification. Retrying... ({retry_count}/{max_retries})")
-            await asyncio.sleep(1)  # Wait a second before retrying
-    return False
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int = 1) -> Optional[Dict]:
     """
@@ -138,7 +92,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Error extracting answer from solution for example {running_id}: {str(e)}")
             return None
         # Create the chat prompt
-        prompt = [SystemMessage(content=SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
+        prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
         # Make multiple attempts
         solutions = []
