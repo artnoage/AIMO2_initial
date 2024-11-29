@@ -248,11 +248,7 @@ async def main():
         correct_count = sum(1 for r in results if any(r['is_correct_list']))
         return 1.0 - (correct_count / len(results))
 
-    # Process examples with controlled concurrency
-    results = []
-    error_rate_points = []
-    total_examples = len(example_data)
-    print(f"\nStarting processing of {total_examples} examples...")
+    print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
 
     # Create a semaphore to limit concurrency
     semaphore = asyncio.Semaphore(args.max_concurrent)
@@ -272,166 +268,15 @@ async def main():
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
-            results.append(result)
-            # Add to current batch using data we already have
-            augmented_example = {
-                'id': result['id'],
-                'problem': result['problem'],
-                'solution': result['correct_answer'],
-                'model_responses': result['model_responses'],
-                'is_correct_list': result['is_correct_list'],
-                'solver': args.solver,
-                'verifier': args.verifier,
-                'total_attempts': len(result['model_responses']),
-                'correct_answer': result['correct_answer']
-            }
-            current_batch.append(augmented_example)
-            
-            # Save error rate every 100 examples
-            if len(results) % 100 == 0:
-                # Calculate error rate for the last 100 results
-                last_hundred = results[-100:]
-                batch_error_rate = calculate_error_rate(last_hundred)
-                # Also calculate cumulative error rate
-                cumulative_error_rate = calculate_error_rate(results)
-                error_rate_points.append({
-                    'examples_processed': len(results),
-                    'batch_error_rate': batch_error_rate,
-                    'cumulative_error_rate': cumulative_error_rate
-                })
-                print(f"\nAt {len(results)} examples:")
-                print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
-                print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
-                
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                intermediate_filename = os.path.join('results', 
-                    f"benchmark_intermediate_{args.solver}_{args.verifier}_{timestamp}.json")
-                output_data = {
-                    'error_rate_points': error_rate_points,
-                    'current_batch_error_rate': batch_error_rate,
-                    'current_cumulative_error_rate': cumulative_error_rate
-                }
-                os.makedirs('results', exist_ok=True)
-                with open(intermediate_filename, 'w') as f:
-                    json.dump(output_data, f, indent=2)
-                print(f"\nSaved intermediate results after {len(results)} examples")
-            
-            # Save current batch of augmented data
-            if current_batch:
-                current_batch = []
+            progress_tracker.add_result(result)
+            progress_tracker.print_progress()
             
         progress_bar.update(1)
     progress_bar.close()
 
-    if not results:
-        print("\nNo examples were successfully processed.")
-        return
-
-    # Sort results by ID to maintain the original order
-    results.sort(key=lambda x: x['id'])
-
-    # Calculate final statistics
-    any_correct_count = sum(1 for r in results if any(r['is_correct_list']))
-    majority_correct_count = sum(1 for r in results if sum(r['is_correct_list']) > len(r['is_correct_list'])/2)
-
-    # Print final results
     progress_bar.close()
-    print("\n\nFinal Results:")
-    print(f"Total examples processed: {len(results)}")
-    
-    if len(results) > 0:
-        any_accuracy = (any_correct_count / len(results)) * 100
-        majority_accuracy = (majority_correct_count / len(results)) * 100
-        print(f"Any-Correct Accuracy: {any_correct_count}/{len(results)} = {any_accuracy:.2f}%")
-        print(f"Majority-Correct Accuracy: {majority_correct_count}/{len(results)} = {majority_accuracy:.2f}%")
-        
-        # Calculate best-of-N statistics
-        at_least_one_correct = sum(1 for r in results if r['attempts']['correct_count'] > 0)
-        majority_correct = sum(1 for r in results if r['attempts']['correct_count'] > args.best_of // 2)
-        
-        print(f"\nBest-of-{args.best_of} Statistics:")
-        print(f"Problems with at least one correct solution: {at_least_one_correct}/{len(results)} = {(at_least_one_correct/len(results))*100:.2f}%")
-        print(f"Problems with majority correct solutions: {majority_correct}/{len(results)} = {(majority_correct/len(results))*100:.2f}%")
-    else:
-        print("No examples were successfully processed.")
-
-    # Save final results
-    os.makedirs('results', exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_filename = os.path.join('results', 
-                                  f"benchmark_results_{args.solver}_{args.verifier}_{timestamp}.json")
-    
-    # Save final error rate and points
-    final_batch_error_rate = calculate_error_rate(results[-100:] if len(results) >= 100 else results)
-    final_cumulative_error_rate = calculate_error_rate(results)
-    error_rate_points.append({
-        'examples_processed': len(results),
-        'batch_error_rate': final_batch_error_rate,
-        'cumulative_error_rate': final_cumulative_error_rate
-    })
-    
-    # Collect all command line parameters
-    run_parameters = {
-        'solver': args.solver,
-        'verifier': args.verifier,
-        'split': args.split,
-        'source': args.source,
-        'dataset': args.dataset,
-        'max_concurrent': args.max_concurrent,
-        'best_of': args.best_of,
-        'temperature': args.temperature
-    }
-
-    # Calculate timing information
-    end_time = datetime.now()
-    total_duration = end_time - start_time
-
-    # Collect final statistics
-    final_statistics = {
-        'total_examples': len(results),
-        'any_correct': any_correct_count,
-        'any_correct_accuracy': any_accuracy,
-        'majority_correct': majority_correct_count,
-        'majority_correct_accuracy': majority_accuracy,
-        'best_of_stats': {
-            'at_least_one_correct': at_least_one_correct,
-            'at_least_one_correct_percentage': (at_least_one_correct/len(results))*100,
-            'majority_correct': majority_correct,
-            'majority_correct_percentage': (majority_correct/len(results))*100
-        },
-        'timing': {
-            'total_duration_seconds': total_duration.total_seconds(),
-            'average_time_per_example': total_duration.total_seconds() / len(results)
-        }
-    }
-
-    output_data = {
-        'run_parameters': run_parameters,
-        'error_rate_points': error_rate_points,
-        'final_batch_error_rate': final_batch_error_rate,
-        'final_cumulative_error_rate': final_cumulative_error_rate,
-        'final_statistics': final_statistics
-    }
-    with open(results_filename, 'w') as f:
-        json.dump(output_data, f, indent=2)
-    print(f"\nResults saved to {results_filename}")
-    
-    # Save final augmented data batch
-    if current_batch:
-        current_batch = []
-    
-    # Print error rate progression
-    print("\nError Rate Progression:")
-    for point in error_rate_points:
-        print(f"After {point['examples_processed']} examples:")
-        print(f"  Batch Error Rate (last 100): {point['batch_error_rate']:.4f}")
-        print(f"  Cumulative Error Rate: {point['cumulative_error_rate']:.4f}")
-
-    # Calculate and print timing information
-    end_time = datetime.now()
-    total_duration = end_time - start_time
-    print(f"\nTotal execution time: {total_duration}")
-    print(f"Average time per example: {total_duration.total_seconds() / len(results):.2f} seconds")
+    progress_tracker.print_final_stats()
+    progress_tracker.save_results(args.solver, args.split)
 
 if __name__ == "__main__":
     asyncio.run(main())
