@@ -127,6 +127,25 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
         return wrapper
     return decorator
 
+def extract_numeric_answer(solution: str) -> Optional[float]:
+    """
+    Extract numeric answer from a solution string.
+    Looks for a number inside a LaTeX boxed environment.
+    Returns float if found, None otherwise.
+    """
+    
+    # First extract the raw boxed content
+    raw_answer = extract_answer_from_solution(solution)
+    if raw_answer is None:
+        return None
+        
+    # Clean the answer and try to convert to float
+    clean_answer = raw_answer.strip()
+    try:
+        return float(clean_answer)
+    except ValueError:
+        return None
+
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
