@@ -43,7 +43,7 @@ class ProgressTracker:
             return
             
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
-        filename = f"results_{model_name}_{split}_{timestamp}.json"
+        filename = f"bm_numeric_{model_name}_{timestamp}.json"
         
         output = {
             "metadata": {
