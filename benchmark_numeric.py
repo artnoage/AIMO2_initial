@@ -9,15 +9,21 @@ from utils.benchmark_config import *
 async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[Optional[float], bool]:
     """Verify a numeric solution and return (answer, is_correct)"""
     answer = extract_numeric_answer(solution)
-    if answer is None:
+    
+    # Handle invalid answers
+    if answer is None or not isinstance(answer, (int, float)):
         return None, False
     
-    # First check if we got a valid numeric answer
-    if not isinstance(answer, (int, float)):
-        return answer, False
+    try:
+        # Convert both to float for comparison
+        answer_float = float(answer)
+        correct_float = float(correct_answer)
         
-    is_correct = is_answer_correct(answer, correct_answer, tolerance)
-    return answer, is_correct
+        # Check if the difference is within tolerance
+        is_correct = abs(answer_float - correct_float) <= tolerance
+        return answer_float, is_correct
+    except (ValueError, TypeError):
+        return None, False
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, tolerance: float = 1e-6) -> Optional[Dict]:
     """Process a single example for numeric benchmarks"""
@@ -44,8 +50,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
-                # Only count as correct if we have a valid numeric answer that matches
-                if is_correct and current_answer is not None and isinstance(current_answer, (int, float)):
+                # Only count as correct if we have a valid numeric answer that matches exactly
+                if (is_correct and current_answer is not None and 
+                    isinstance(current_answer, (int, float)) and 
+                    abs(float(current_answer) - float(correct_answer)) <= tolerance):
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
