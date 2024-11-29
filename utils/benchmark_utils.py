@@ -142,8 +142,5 @@ async def run_benchmark(
     progress_tracker.print_final_stats()
     progress_tracker.save_results(f"bm_verifier_{config.solver}", config.split)
 
-    try:
-        if solver_model:
-            await solver_model.aclose()
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
+    # Cleanup is handled by the context managers in get_model()
+    pass
