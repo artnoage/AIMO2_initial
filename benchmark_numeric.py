@@ -90,15 +90,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         for attempt in range(best_of):
             try:
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
-
-            current_answer = extract_numeric_answer(current_solution)
-            is_correct = is_answer_correct(current_answer, correct_answer)
-            
-            if is_correct:
-                correct_count += 1
-                if best_solution is None:
-                    best_solution = current_solution
-                    best_answer = current_answer
+                current_answer = extract_numeric_answer(current_solution)
+                is_correct = is_answer_correct(current_answer, correct_answer)
+                
+                if is_correct:
+                    correct_count += 1
+                    if best_solution is None:
+                        best_solution = current_solution
+                        best_answer = current_answer
+            except Exception as e:
+                print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+                current_solution = "Error occurred"
+                current_answer = None
+                is_correct = False
             
             solutions.append({
                 'solution': current_solution,
