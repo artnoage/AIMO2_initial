@@ -11,7 +11,8 @@ async def verify_numeric(solution: str, correct_answer: float, tolerance: float)
     answer = extract_numeric_answer(solution)
     if answer is None:
         return None, False
-    return answer, is_answer_correct(answer, correct_answer, tolerance)
+    is_correct = is_answer_correct(answer, correct_answer, tolerance)
+    return answer, is_correct
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, tolerance: float = 1e-6) -> Optional[Dict]:
     """Process a single example for numeric benchmarks"""
