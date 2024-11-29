@@ -6,11 +6,16 @@ from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
 
-async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[float, bool]:
+async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[Optional[float], bool]:
     """Verify a numeric solution and return (answer, is_correct)"""
     answer = extract_numeric_answer(solution)
     if answer is None:
         return None, False
+    
+    # First check if we got a valid numeric answer
+    if not isinstance(answer, (int, float)):
+        return answer, False
+        
     is_correct = is_answer_correct(answer, correct_answer, tolerance)
     return answer, is_correct
 
@@ -39,7 +44,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
-                if is_correct:
+                # Only count as correct if we have a valid numeric answer that matches
+                if is_correct and current_answer is not None and isinstance(current_answer, (int, float)):
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
