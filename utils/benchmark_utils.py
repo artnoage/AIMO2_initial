@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Optional, Dict, List, Callable, Any, Tuple
 from tqdm import tqdm
 from datasets import load_dataset
@@ -80,7 +81,25 @@ async def run_benchmark(
     if config.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == config.source)
     
+    # Load exclude IDs if specified
+    exclude_ids = set()
+    if config.exclude:
+        try:
+            with open(config.exclude, 'r') as f:
+                exclude_data = json.load(f)
+                exclude_ids = {str(item['id']) for item in exclude_data.get('results', [])}
+            print(f"\nLoaded {len(exclude_ids)} IDs to exclude from {config.exclude}")
+        except Exception as e:
+            print(f"Warning: Could not load exclude file {config.exclude}: {e}")
+    
     dataset = dataset.shuffle(seed=42)
+    
+    # Filter out excluded examples
+    original_len = len(dataset)
+    if exclude_ids:
+        dataset = dataset.filter(lambda x: str(x['id']) not in exclude_ids)
+        excluded_count = original_len - len(dataset)
+        print(f"Excluded {excluded_count} examples based on ID list")
 
     print("\nDataset Information:")
     num_examples = len(dataset)
