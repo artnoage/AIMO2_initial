@@ -7,7 +7,7 @@ from utils.utils import ModelOption
 class BaseConfig:
     """Base configuration shared between benchmark types"""
     solver: str
-    dataset: str = 'original'
+    dataset: str = 'filtered'
     split: str = 'train'
     split_slice: slice = None
     source: str = 'all'
@@ -22,7 +22,7 @@ class BaseConfig:
                           default='LOCAL', help='Model to use for solving problems')
         parser.add_argument('--dataset', type=str,
                           choices=['original', 'filtered', 'aime'],
-                          default='original', help='Dataset to use')
+                          default='filtered', help='Dataset to use')
         parser.add_argument('--split', type=str, default='train',
                           help='Dataset split to use (train/validation/test)')
         parser.add_argument('--source', type=str, default='all',
@@ -46,7 +46,7 @@ class BenchmarkConfig(BaseConfig):
         cls.add_base_args(parser)
         parser.add_argument('--verifier', type=str,
                           choices=[model.name for model in ModelOption],
-                          default='LOCAL', help='Model to use for verification')
+                          default='GEMINI_FLASH', help='Model to use for verification')
         parser.add_argument('--verifier-temp', type=float, default=0,
                           help='Temperature for verifier model')
         args = parser.parse_args()
