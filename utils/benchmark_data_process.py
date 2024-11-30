@@ -171,9 +171,9 @@ def main():
     parser = argparse.ArgumentParser(description='Process benchmark results and filter by success rate')
     parser.add_argument('input_file', help='Input benchmark JSON file')
     parser.add_argument('--clean', action='store_true',
-                      help='Clean JSON content before parsing (fixes unterminated strings)')
-    parser.add_argument('--clean-only', action='store_true',
-                      help='Only clean and export the JSON file without filtering')
+                      help='Clean JSON content before parsing (fixes formatting issues)')
+    parser.add_argument('--export-cleaned', action='store_true',
+                      help='Export the cleaned JSON file (only meaningful with --clean)')
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-export-bigger', type=float,
@@ -191,8 +191,8 @@ def main():
         # Load and validate data
         data = load_benchmark_file(args.input_file, clean=args.clean or args.clean_only)
         
-        # If clean-only mode, just save the cleaned data and exit
-        if args.clean_only:
+        # If requested, export the cleaned data
+        if args.clean and args.export_cleaned:
             base_name = os.path.splitext(args.input_file)[0]
             output_file = f"{base_name}_cleaned.json"
             with open(output_file, 'w') as f:
