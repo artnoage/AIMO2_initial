@@ -105,8 +105,10 @@ def main():
     parser.add_argument('input_file', help='Input benchmark JSON file')
     parser.add_argument('--clean', action='store_true',
                       help='Clean JSON content before parsing (fixes unterminated strings)')
+    parser.add_argument('--clean-only', action='store_true',
+                      help='Only clean and export the JSON file without filtering')
     
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument('-export-bigger', type=float,
                       help='Export full entries with success rate bigger than threshold (0-1)')
     group.add_argument('-export-smaller', type=float,
@@ -120,9 +122,20 @@ def main():
     
     try:
         # Load and validate data
-        data = load_benchmark_file(args.input_file, clean=args.clean)
-        if 'results' not in data:
-            raise ValueError("Invalid benchmark file format: 'results' key not found")
+        data = load_benchmark_file(args.input_file, clean=args.clean or args.clean_only)
+        
+        # If clean-only mode, just save the cleaned data and exit
+        if args.clean_only:
+            base_name = os.path.splitext(args.input_file)[0]
+            output_file = f"{base_name}_cleaned.json"
+            with open(output_file, 'w') as f:
+                json.dump(data, f, indent=2)
+            print(f"\nCleaned data saved to: {output_file}")
+            return 0
+            
+        # For filtering operations, validate data structure
+        if not isinstance(data, list):
+            raise ValueError("Invalid benchmark file format: expected a list of results")
         
         # Determine operation and threshold
         if args.export_bigger is not None:
@@ -131,8 +144,11 @@ def main():
             operation, mode, threshold = 'export', 'smaller', args.export_smaller
         elif args.list_bigger is not None:
             operation, mode, threshold = 'list', 'bigger', args.list_bigger
-        else:  # list_smaller
+        elif args.list_smaller is not None:
             operation, mode, threshold = 'list', 'smaller', args.list_smaller
+        else:
+            print("No operation specified. Use --help to see available options.")
+            return 1
             
         # Filter results
         filtered_results = filter_examples(data, threshold, mode)
