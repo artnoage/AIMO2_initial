@@ -3,11 +3,36 @@ import argparse
 from typing import List, Dict
 import os
 
+def clean_json_string(text: str) -> str:
+    """Clean JSON string by handling common issues like unterminated strings"""
+    # Replace any unescaped newlines inside strings
+    in_string = False
+    cleaned = []
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if char == '"' and (i == 0 or text[i-1] != '\\'):
+            in_string = not in_string
+        if in_string and char in '\n\r':
+            cleaned.append(' ')
+        else:
+            cleaned.append(char)
+        i += 1
+    
+    # Force terminate any unterminated strings
+    if in_string:
+        cleaned.append('"')
+    
+    return ''.join(cleaned)
+
 def load_benchmark_file(filename: str) -> List[Dict]:
     """Load benchmark results from JSON file"""
     try:
         with open(filename, 'r') as f:
-            data = json.load(f)
+            content = f.read()
+            # Clean the JSON content
+            cleaned_content = clean_json_string(content)
+            data = json.loads(cleaned_content)
             # Handle both old format (with metadata) and new format (direct list)
             if isinstance(data, dict) and "results" in data:
                 return data["results"]
