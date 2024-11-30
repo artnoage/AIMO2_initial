@@ -7,23 +7,56 @@ def clean_json_string(text: str) -> str:
     """Clean JSON string by handling common issues like unterminated strings"""
     # Replace any unescaped newlines inside strings
     in_string = False
+    escaped = False
     cleaned = []
     i = 0
+    
     while i < len(text):
         char = text[i]
-        if char == '"' and (i == 0 or text[i-1] != '\\'):
+        
+        # Handle escape sequences
+        if char == '\\' and not escaped:
+            escaped = True
+            cleaned.append(char)
+            i += 1
+            continue
+            
+        # Handle quotes
+        if char == '"' and not escaped:
             in_string = not in_string
-        if in_string and char in '\n\r':
-            cleaned.append(' ')
+        
+        # Clean problematic characters in strings
+        if in_string:
+            if char in '\n\r':
+                cleaned.append(' ')
+            elif char == '\t':
+                cleaned.append(' ')
+            elif ord(char) < 32:  # Control characters
+                cleaned.append(' ')
+            else:
+                cleaned.append(char)
         else:
             cleaned.append(char)
+            
+        escaped = False
         i += 1
     
     # Force terminate any unterminated strings
     if in_string:
         cleaned.append('"')
+        
+    # Balance any unmatched braces/brackets
+    result = ''.join(cleaned)
+    open_braces = result.count('{')
+    close_braces = result.count('}')
+    open_brackets = result.count('[')
+    close_brackets = result.count(']')
     
-    return ''.join(cleaned)
+    # Add missing closing braces/brackets
+    result += '}' * (open_braces - close_braces)
+    result += ']' * (open_brackets - close_brackets)
+    
+    return result
 
 def load_benchmark_file(filename: str, clean: bool = False) -> List[Dict]:
     """
@@ -33,18 +66,31 @@ def load_benchmark_file(filename: str, clean: bool = False) -> List[Dict]:
         clean: Whether to clean the JSON content before parsing
     """
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             content = f.read()
-            # Clean the JSON content if requested
-            if clean:
-                content = clean_json_string(content)
+            
+        # Clean the JSON content if requested
+        if clean:
+            content = clean_json_string(content)
+            
+        try:
             data = json.loads(content)
-            # Handle both old format (with metadata) and new format (direct list)
-            if isinstance(data, dict) and "results" in data:
-                return data["results"]
-            return data
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error at position {e.pos}, attempting cleanup...")
+            # Try cleaning even if not explicitly requested
+            content = clean_json_string(content)
+            data = json.loads(content)
+            
+        # Handle both old format (with metadata) and new format (direct list)
+        if isinstance(data, dict) and "results" in data:
+            return data["results"]
+        return data
+            
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON parsing error: {str(e)}\n"
+                        f"Error location: line {e.lineno}, column {e.colno}")
     except Exception as e:
-        raise ValueError(f"Error loading benchmark file: {e}")
+        raise ValueError(f"Error loading benchmark file: {str(e)}")
 
 def calculate_success_rate(result: Dict) -> float:
     """Calculate success rate for a single result"""
