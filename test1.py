@@ -7,6 +7,7 @@ from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent
 from langchain_core.messages import HumanMessage, SystemMessage
+from benchmark_numeric import verify_numeric
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -55,13 +56,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     has_answer = current_answer is not None
                     
                     if has_answer:
-                        # Verify the answer
-                        is_correct = await compare_math_answers(
-                            current_answer, 
-                            correct_answer,
-                            example["problem"],
-                            verifier_model
-                        )
+                        # Verify the numeric answer
+                        current_answer_float, is_correct = await verify_numeric(current_solution, correct_answer, 1e-6)
                         
                         if is_correct:
                             correct_count += 1
@@ -126,12 +122,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
 async def main():
     """Main function for testing step-by-step solution generation."""
-    config = BenchmarkConfig.from_args('Test step-by-step solution generation')
-    verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    config = NumericConfig.from_args('Test step-by-step solution generation')
     await run_benchmark(config, 
-                       process_example,
+                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
                        BENCHMARK_SYSTEM_PROMPT,
-                       verifier_model)
+                       None)
 
 if __name__ == "__main__":
     try:
