@@ -14,6 +14,7 @@ class BaseConfig:
     max_concurrent: int = 256
     best_of: int = 5
     temperature: float = 0.7
+    exclude: str = None
 
     @classmethod
     def add_base_args(cls, parser: ArgumentParser):
