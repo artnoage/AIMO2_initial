@@ -36,7 +36,7 @@ class NextStepAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, current_solution: str = "", is_final: bool = False) -> str:
+    async def generate(self, problem: str, current_solution: str = "") -> str:
         """Generate the next solution step"""
         input_text = (
             f"Here is a mathematical problem:\n\n{problem}\n\n"
@@ -49,9 +49,6 @@ class NextStepAgent:
             "- Include justification in [brackets]\n"
             "- Number your step appropriately\n"
         )
-        
-        if is_final:
-            input_text += "\n- This is the final step, end with a boxed answer using \\boxed{}\n"
             
         if current_solution:
             input_text += f"\nHere are the steps so far:\n\n{current_solution}\n\nProvide the next step:"

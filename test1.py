@@ -41,13 +41,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 # Keep adding steps until we get an answer or hit max steps
                 while not has_answer and steps_taken < max_steps:
                     steps_taken += 1
-                    is_final = steps_taken == max_steps  # Force final step if at max
-                    
                     # Get next step
                     next_step = await step_agent.generate(
                         example["problem"], 
-                        current_solution,
-                        is_final=is_final
+                        current_solution
                     )
                     
                     # Add the step to current solution
