@@ -20,6 +20,8 @@ class BaseConfig:
         parser.add_argument('--solver', type=str, 
                           choices=[model.name for model in ModelOption],
                           default='LOCAL', help='Model to use for solving problems')
+        parser.add_argument('--exclude', type=str,
+                          help='JSON file containing IDs to exclude from processing')
         parser.add_argument('--dataset', type=str,
                           choices=['original', 'filtered', 'aime'],
                           default='filtered', help='Dataset to use')
