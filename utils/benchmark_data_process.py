@@ -54,29 +54,20 @@ def save_results(results: List[Dict], original_file: str, threshold: float,
     threshold_str = f"{int(threshold*100)}"
     output_file = f"{base_name}_{operation}_{mode}_{threshold_str}.json"
     
+    # For list operation, create minimal entries with just IDs
     if operation == 'list':
-        # For list operation, only save IDs
-        output_data = {
-            'metadata': {
-                'original_file': original_file,
-                'threshold': threshold,
-                'operation': operation,
-                'mode': mode,
-                'total_examples': len(results)
-            },
-            'ids': [result['id'] for result in results]
-        }
-    else:  # export operation
-        output_data = {
-            'metadata': {
-                'original_file': original_file,
-                'threshold': threshold,
-                'operation': operation,
-                'mode': mode,
-                'total_examples': len(results)
-            },
-            'results': results
-        }
+        results = [{'id': result['id']} for result in results]
+    
+    output_data = {
+        'metadata': {
+            'original_file': original_file,
+            'threshold': threshold,
+            'operation': operation,
+            'mode': mode,
+            'total_examples': len(results)
+        },
+        'results': results
+    }
     
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
