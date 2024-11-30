@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from huggingface_hub import HfApi, login
+from huggingface_hub import  login
 import json
 import argparse
 

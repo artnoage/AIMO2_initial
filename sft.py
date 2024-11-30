@@ -12,7 +12,7 @@ from unsloth import is_bfloat16_supported
 from datetime import datetime
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
@@ -38,9 +38,8 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
-        max_seq_length=8192,
-        dtype="bfloat16",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241129_162819",
+        max_seq_length=4096,
         load_in_4bit=False)
         
     print("\n=== After Model Load ===")
@@ -51,12 +50,13 @@ def main():
     model,
     r = 64, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                      "gate_proj", "up_proj", "down_proj",],
+                      "gate_proj", "up_proj", "down_proj",
+                      "lm_head", "embed_tokens",],
     lora_alpha = 64,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = True, # True or "unsloth" for very long context
+    use_gradient_checkpointing = False, # True or "unsloth" for very long context
     random_state = 3407,
     use_rslora = False)
     
@@ -79,7 +79,7 @@ def main():
         return {"text": texts}
 
 
-    dataset = load_dataset("artnoage/sft_corrected", split="train")
+    dataset = load_dataset("artnoage/sft_full", split="train")
 
     # Print original format
     print("\nFirst conversation before formatting:")
@@ -97,15 +97,15 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=2,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=64,
-        learning_rate=5e-6,
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=32,
+        learning_rate=4e-6,
         logging_steps=1,
         save_strategy="steps",
         save_steps=200,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_torch",
+        optim = "adamw_8bit",
     )
 
     # Initialize SFT trainer
