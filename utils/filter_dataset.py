@@ -5,14 +5,62 @@ from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
 from utils import extract_answer_from_solution
 
+def count_boxed_answers(solution: str) -> int:
+    """Count number of \boxed{...} occurrences in solution"""
+    count = 0
+    pos = 0
+    while True:
+        pos = solution.find('\\boxed{', pos)
+        if pos == -1:
+            break
+        count += 1
+        pos += 1
+    return count
+
+def contains_http(text: str) -> bool:
+    """Check if text contains http links"""
+    return 'http' in text.lower()
+
+def is_numeric_answer(answer: str) -> bool:
+    """Check if the answer represents a number (integer or decimal)"""
+    # Remove LaTeX formatting
+    clean_answer = answer.replace('\\boxed{', '').replace('}', '').strip()
+    try:
+        float(clean_answer)
+        return True
+    except ValueError:
+        return False
+
+def contains_non_latin(text: str) -> bool:
+    """Check if text contains Chinese or Russian characters"""
+    for char in text:
+        # Check for Chinese characters
+        if '\u4e00' <= char <= '\u9fff':
+            return True
+        # Check for Russian characters
+        if '\u0400' <= char <= '\u04FF':
+            return True
+    return False
+
 def main():
     # Initialize Hugging Face API
     api = HfApi()
     parser = argparse.ArgumentParser(description='Filter NuminaMath-CoT dataset for olympiads with valid answers')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
+    parser.add_argument('--source', type=str, default='all',
+                       help='Filter problems by source (default: all)')
+    parser.add_argument('--repo-name', type=str, default='artnoage/Numina',
+                       help='HuggingFace repository name')
+    parser.add_argument('--only-numbers', action='store_true',
+                       help='Only keep problems where the answer is a number')
     args = parser.parse_args()
 
+    # Suppress warnings
+    import warnings
+    warnings.filterwarnings("ignore", message="Metadata validation was skipped")
+    warnings.filterwarnings("ignore", message="Found cached dataset")
+    
     # Load the dataset
     try:
         dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
@@ -22,21 +70,93 @@ def main():
 
     print(f"\nOriginal dataset size: {len(dataset)}")
 
-    # Filter for olympiads source
-    olympiads_dataset = dataset.filter(lambda x: x['source'] == 'olympiads')
-    print(f"After filtering for olympiads: {len(olympiads_dataset)}")
+    # Initialize detailed statistics
+    stats = {
+        'original': len(dataset),
+        'removed_source': 0,
+        'removed_no_boxed': 0,
+        'removed_multiple_boxed': 0,
+        'removed_http_problem': 0,
+        'removed_http_solution': 0,
+        'removed_non_latin_problem': 0,
+        'removed_non_latin_solution': 0,
+        'removed_invalid_answer': 0,
+        'removed_non_numeric': 0
+    }
 
-    # Filter for solutions containing 'boxed'
-    def has_boxed_answer(example):
+    # Filter by source if specified
+    if args.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == args.source)
+        stats['removed_source'] = stats['original'] - len(dataset)
+        print(f"After filtering for {args.source}: {len(dataset)}")
+    
+    # Filter for solutions containing exactly one boxed answer
+    def has_valid_answer(example):
         if 'solution' not in example:
+            stats['removed_no_boxed'] += 1
             return False
-        if 'boxed' not in example['solution'].lower():
+            
+        # Check for exactly one boxed answer
+        boxed_count = count_boxed_answers(example['solution'])
+        if boxed_count == 0:
+            stats['removed_no_boxed'] += 1
             return False
+        elif boxed_count > 1:
+            stats['removed_multiple_boxed'] += 1
+            return False
+            
+        # Check for HTTP links
+        if contains_http(example['problem']):
+            stats['removed_http_problem'] += 1
+            return False
+        if contains_http(example['solution']):
+            stats['removed_http_solution'] += 1
+            return False
+            
+        # Check for non-Latin characters
+        if contains_non_latin(example['problem']):
+            stats['removed_non_latin_problem'] += 1
+            return False
+        if contains_non_latin(example['solution']):
+            stats['removed_non_latin_solution'] += 1
+            return False
+            
+        # Verify answer extraction
         answer = extract_answer_from_solution(example['solution'])
-        return answer is not None and answer.strip() != ""
+        if answer is None or answer.strip() == "":
+            stats['removed_invalid_answer'] += 1
+            return False
+            
+        if args.only_numbers and not is_numeric_answer(answer):
+            stats['removed_non_numeric'] += 1
+            return False
+            
+        return True
 
-    filtered_dataset = olympiads_dataset.filter(has_boxed_answer)
-    print(f"After filtering for valid answers: {len(filtered_dataset)}")
+    # Apply filters and update statistics
+    filtered_dataset = dataset.filter(has_valid_answer)
+    
+    # Calculate detailed statistics
+    stats['final'] = len(filtered_dataset)
+    stats['removed_invalid'] = len(dataset) - len(filtered_dataset)
+    
+    # Print detailed statistics
+    print("\nDetailed Filtering Statistics:")
+    print(f"Original dataset size: {stats['original']}")
+    if args.source.lower() != 'all':
+        print(f"Removed due to source filter: {stats['removed_source']}")
+    print("\nRemoved due to:")
+    print(f"- Missing boxed answer: {stats['removed_no_boxed']}")
+    print(f"- Multiple boxed answers: {stats['removed_multiple_boxed']}")
+    print(f"- HTTP links in problem: {stats['removed_http_problem']}")
+    print(f"- HTTP links in solution: {stats['removed_http_solution']}")
+    print(f"- Non-Latin chars in problem: {stats['removed_non_latin_problem']}")
+    print(f"- Non-Latin chars in solution: {stats['removed_non_latin_solution']}")
+    print(f"- Invalid/empty answer: {stats['removed_invalid_answer']}")
+    if args.only_numbers:
+        print(f"- Non-numeric answer: {stats['removed_non_numeric']}")
+    print(f"\nFinal dataset size: {stats['final']}")
+    print(f"Total reduction: {((stats['original'] - stats['final'])/stats['original'])*100:.1f}%")
 
     # Convert to Hugging Face dataset format with explicit schema
     from datasets import Features, Value
@@ -133,7 +253,7 @@ def main():
     try:
         # Get the username from huggingface-cli
         username = api.whoami()["name"]
-        repo_id = "Metaskepsis/Numina-Olympiads"
+        repo_id = args.repo_name
         
         # Create or get the repository
         try:
@@ -218,18 +338,11 @@ The dataset is particularly useful for:
             repo_id=repo_id,
             repo_type="dataset"
         )
-        print("\nSuccessfully pushed dataset to Hugging Face Hub as 'Numina-Olympiads'")
+        print("\nSuccessfully pushed dataset to Hugging Face Hub")
     except Exception as e:
         print(f"\nFailed to push to Hugging Face Hub: {e}")
         print("You can still use the locally saved dataset")
 
-    # Print some statistics
-    print("\nSample problems from filtered dataset:")
-    for idx, example in enumerate(filtered_dataset.select(range(min(3, len(filtered_dataset))))):
-        print(f"\nProblem {idx + 1}:")
-        print(f"Source: {example['source']}")
-        print(f"Answer: {extract_answer_from_solution(example['solution'])}")
-        print("-" * 80)
 
 if __name__ == "__main__":
     main()
