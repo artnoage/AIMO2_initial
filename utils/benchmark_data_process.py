@@ -4,12 +4,13 @@ from typing import List, Dict
 import os
 
 def clean_json_string(text: str) -> str:
-    """Clean JSON string by handling common issues like unterminated strings"""
+    """Clean JSON string by handling common issues like unterminated strings and missing commas"""
     # Replace any unescaped newlines inside strings
     in_string = False
     escaped = False
     cleaned = []
     i = 0
+    last_token = ''
     
     while i < len(text):
         char = text[i]
@@ -24,7 +25,7 @@ def clean_json_string(text: str) -> str:
         # Handle quotes
         if char == '"' and not escaped:
             in_string = not in_string
-        
+            
         # Clean problematic characters in strings
         if in_string:
             if char in '\n\r':
@@ -36,7 +37,24 @@ def clean_json_string(text: str) -> str:
             else:
                 cleaned.append(char)
         else:
-            cleaned.append(char)
+            # Handle missing commas between elements
+            if char in '{[':
+                if last_token and last_token not in '{[,':
+                    cleaned.append(',')
+                cleaned.append(char)
+            elif char in '}]':
+                if last_token and last_token in ',':
+                    cleaned.pop()  # Remove trailing comma
+                cleaned.append(char)
+            elif char == '"':
+                if last_token and last_token not in '{[,':
+                    cleaned.append(',')
+                cleaned.append(char)
+            else:
+                cleaned.append(char)
+                
+            if not char.isspace():
+                last_token = char
             
         escaped = False
         i += 1
@@ -55,6 +73,9 @@ def clean_json_string(text: str) -> str:
     # Add missing closing braces/brackets
     result += '}' * (open_braces - close_braces)
     result += ']' * (open_brackets - close_brackets)
+    
+    # Clean up any double commas that might have been introduced
+    result = result.replace(',,', ',')
     
     return result
 
