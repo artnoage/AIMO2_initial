@@ -3,11 +3,15 @@ import argparse
 from typing import List, Dict
 import os
 
-def load_benchmark_file(filename: str) -> Dict:
+def load_benchmark_file(filename: str) -> List[Dict]:
     """Load benchmark results from JSON file"""
     try:
         with open(filename, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            # Handle both old format (with metadata) and new format (direct list)
+            if isinstance(data, dict) and "results" in data:
+                return data["results"]
+            return data
     except Exception as e:
         raise ValueError(f"Error loading benchmark file: {e}")
 
@@ -21,14 +25,14 @@ def calculate_success_rate(result: Dict) -> float:
     
     return correct / total if total > 0 else 0.0
 
-def filter_examples(data: Dict, threshold: float, comparison: str = 'bigger') -> List[Dict]:
+def filter_examples(results: List[Dict], threshold: float, comparison: str = 'bigger') -> List[Dict]:
     """Filter examples based on success rate threshold"""
     if not 0 <= threshold <= 1:
         raise ValueError("Threshold must be between 0 and 1")
         
     filtered_results = []
     
-    for result in data['results']:
+    for result in results:
         success_rate = calculate_success_rate(result)
         should_include = (success_rate > threshold if comparison == 'bigger' 
                          else success_rate < threshold)
@@ -58,16 +62,7 @@ def save_results(results: List[Dict], original_file: str, threshold: float,
     if operation == 'list':
         results = [{'id': result['id']} for result in results]
     
-    output_data = {
-        'metadata': {
-            'original_file': original_file,
-            'threshold': threshold,
-            'operation': operation,
-            'mode': mode,
-            'total_examples': len(results)
-        },
-        'results': results
-    }
+    output_data = results
     
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)

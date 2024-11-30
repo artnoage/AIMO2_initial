@@ -65,17 +65,8 @@ class ProgressTracker:
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         filename = f"bm_numeric_{model_name}_{timestamp}.json"
         
-        output = {
-            "metadata": {
-                "model": model_name,
-                "split": split,
-                "total_examples": self.total_examples,
-                "best_of": self.best_of,
-                "start_time": self.start_time.isoformat(),
-                "end_time": datetime.now().isoformat()
-            },
-            "results": self.results
-        }
+        # Save just the results array directly
+        output = self.results
         
         os.makedirs("results", exist_ok=True)
         with open(os.path.join("results", filename), 'w') as f:
