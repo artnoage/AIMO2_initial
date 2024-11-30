@@ -87,7 +87,11 @@ async def run_benchmark(
         try:
             with open(config.exclude, 'r') as f:
                 exclude_data = json.load(f)
-                exclude_ids = {str(item['id']) for item in exclude_data.get('results', [])}
+                # Handle both old format (with metadata) and new format (direct list)
+                if isinstance(exclude_data, dict) and "results" in exclude_data:
+                    exclude_ids = {str(item['id']) for item in exclude_data["results"]}
+                else:
+                    exclude_ids = {str(item['id']) for item in exclude_data}
             print(f"\nLoaded {len(exclude_ids)} IDs to exclude from {config.exclude}")
         except Exception as e:
             print(f"Warning: Could not load exclude file {config.exclude}: {e}")
