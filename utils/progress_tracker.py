@@ -10,6 +10,22 @@ class ProgressTracker:
     best_of: int
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
+    
+    def _save_progress_stats(self, stats: str) -> None:
+        """Save progress statistics to a markdown file"""
+        timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
+        os.makedirs("results", exist_ok=True)
+        stats_file = os.path.join("results", f"progress_stats_{timestamp}.md")
+        
+        # Create file if it doesn't exist
+        if not os.path.exists(stats_file):
+            with open(stats_file, 'w') as f:
+                f.write(f"# Benchmark Progress Statistics\n\n")
+                f.write(f"Started at: {self.start_time.isoformat()}\n\n")
+        
+        # Append new stats
+        with open(stats_file, 'a') as f:
+            f.write(stats)
 
     def add_result(self, result: Dict) -> None:
         if result:
@@ -31,10 +47,14 @@ class ProgressTracker:
                                        if r['attempts']['correct_count'] > self.best_of // 2)
             majority_correct_rate = majority_correct_count / len(last_hundred)
             
-            print(f"\nAt {len(self.results)} examples:")
-            print(f"Batch Error Rate (last 100): {batch_error_rate:.4f}")
-            print(f"Cumulative Error Rate: {cumulative_error_rate:.4f}")
-            print(f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}")
+            stats = f"\nAt {len(self.results)} examples:\n"
+            stats += f"Batch Error Rate (last 100): {batch_error_rate:.4f}\n"
+            stats += f"Cumulative Error Rate: {cumulative_error_rate:.4f}\n"
+            stats += f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}\n"
+            stats += "-" * 80 + "\n"
+            
+            print(stats)
+            self._save_progress_stats(stats)
 
     def save_results(self, model_name: str, split: str) -> None:
         """Save results to a JSON file with timestamp"""
@@ -64,7 +84,9 @@ class ProgressTracker:
 
     def print_final_stats(self) -> None:
         if not self.results:
-            print("\nNo examples were successfully processed.")
+            msg = "\nNo examples were successfully processed."
+            print(msg)
+            self._save_progress_stats(msg + "\n")
             return
 
         total = len(self.results)
@@ -75,22 +97,27 @@ class ProgressTracker:
         any_accuracy = (any_correct_count / total) * 100
         majority_accuracy = (majority_correct_count / total) * 100
 
-        print("\n\nFinal Results:")
-        print(f"Total examples processed: {total}")
-        print(f"Any-Correct Accuracy: {any_correct_count}/{total} = {any_accuracy:.2f}%")
-        print(f"Majority-Correct Accuracy: {majority_correct_count}/{total} = {majority_accuracy:.2f}%")
-
         at_least_one_correct = sum(1 for r in self.results if r['attempts']['correct_count'] > 0)
         majority_correct = sum(1 for r in self.results 
                              if r['attempts']['correct_count'] > self.best_of // 2)
 
-        print(f"\nBest-of-{self.best_of} Statistics:")
-        print(f"Problems with at least one correct solution: {at_least_one_correct}/{total} = "
-              f"{(at_least_one_correct/total)*100:.2f}%")
-        print(f"Problems with majority correct solutions: {majority_correct}/{total} = "
-              f"{(majority_correct/total)*100:.2f}%")
-
         end_time = datetime.now()
         total_duration = end_time - self.start_time
-        print(f"\nTotal execution time: {total_duration}")
-        print(f"Average time per example: {total_duration.total_seconds() / total:.2f} seconds")
+
+        stats = "\n\n## Final Results\n\n"
+        stats += f"- Total examples processed: {total}\n"
+        stats += f"- Any-Correct Accuracy: {any_correct_count}/{total} = {any_accuracy:.2f}%\n"
+        stats += f"- Majority-Correct Accuracy: {majority_correct_count}/{total} = {majority_accuracy:.2f}%\n\n"
+
+        stats += f"### Best-of-{self.best_of} Statistics\n\n"
+        stats += f"- Problems with at least one correct solution: {at_least_one_correct}/{total} = "
+        stats += f"{(at_least_one_correct/total)*100:.2f}%\n"
+        stats += f"- Problems with majority correct solutions: {majority_correct}/{total} = "
+        stats += f"{(majority_correct/total)*100:.2f}%\n\n"
+
+        stats += "### Timing Information\n\n"
+        stats += f"- Total execution time: {total_duration}\n"
+        stats += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
+
+        print(stats)
+        self._save_progress_stats(stats)
