@@ -11,10 +11,9 @@ import torch
 import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
-import re
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
@@ -39,7 +38,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241129_162714",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -50,8 +49,9 @@ def main():
     model = FastLanguageModel.get_peft_model(
         model,
         r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj",],
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj",
+                      "lm_head", "embed_tokens",],
         lora_alpha=64,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
@@ -116,39 +116,10 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
     
-    from tqdm import tqdm
-    import numpy as np
-    
-    print("\nAnalyzing token counts...")
-    prompt_tokens = []
-    chosen_tokens = []
-    rejected_tokens = []
-    total_tokens = 0
-    
-    for row in tqdm(raw_datasets, desc="Counting tokens"):
-        tokens_prompt = len(tokenizer.encode(row["prompt"]))
-        tokens_chosen = len(tokenizer.encode(row["chosen"]))
-        tokens_rejected = len(tokenizer.encode(row["rejected"]))
-        
-        prompt_tokens.append(tokens_prompt)
-        chosen_tokens.append(tokens_chosen)
-        rejected_tokens.append(tokens_rejected)
-        total_tokens += tokens_prompt + tokens_chosen + tokens_rejected
-    
-    print("\nToken Statistics:")
-    print(f"Total tokens across all examples: {total_tokens:,}")
-    print(f"Average tokens per example: {total_tokens / len(raw_datasets):,.1f}")
-    print("\nPrompt tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
-        np.min(prompt_tokens), np.max(prompt_tokens), np.mean(prompt_tokens), np.median(prompt_tokens)))
-    print("Chosen tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
-        np.min(chosen_tokens), np.max(chosen_tokens), np.mean(chosen_tokens), np.median(chosen_tokens)))
-    print("Rejected tokens - min: {:.0f}, max: {:.0f}, mean: {:.1f}, median: {:.0f}".format(
-        np.min(rejected_tokens), np.max(rejected_tokens), np.mean(rejected_tokens), np.median(rejected_tokens)))
-
 
     training_args = DPOConfig(
         per_gpu_train_batch_size = 2,
-        gradient_accumulation_steps = 32,
+        gradient_accumulation_steps = 64,
         num_train_epochs = 1,
         learning_rate = 4e-6,
         logging_steps = 1,
