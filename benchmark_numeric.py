@@ -1,37 +1,45 @@
-import os
-from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage
+import asyncio
+from typing import Optional, Dict, Tuple
 from utils.utils import *
-from utils.benchmark_config import *
+
 from utils.benchmark_utils import run_benchmark
+from langchain_core.messages import HumanMessage, SystemMessage
+from utils.benchmark_config import *
 
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-load_dotenv()
-
-async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model) -> Tuple[str, bool]:
-    """Verify a solution and return (answer, is_correct)"""
-    answer = extract_answer_from_solution(solution)
-    if answer is None:
+async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[Optional[float], bool]:
+    """Verify a numeric solution and return (answer, is_correct)"""
+    answer = extract_numeric_answer(solution)
+    
+    # Handle invalid answers
+    if answer is None or not isinstance(answer, (int, float)):
         return None, False
+    
+    try:
+        # Convert both to float for comparison
+        answer_float = float(answer)
+        correct_float = float(correct_answer)
         
-    is_correct = await compare_math_answers(answer, correct_answer, problem, verifier_model)
-    return answer, is_correct
+        # Check if the difference is within tolerance
+        is_correct = abs(answer_float - correct_float) <= tolerance
+        return answer_float, is_correct
+    except (ValueError, TypeError):
+        return None, False
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
-    """Process a single example for the standard benchmark"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, tolerance: float = 1e-6) -> Optional[Dict]:
+    """Process a single example for numeric benchmarks"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
             
-        correct_answer = extract_answer_from_solution(example['solution'])
+        correct_answer = extract_numeric_answer(example['solution'])
         if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {running_id}")
+            print(f"Warning: Could not extract numeric answer from solution for example {running_id}")
             return None
 
-        prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
+        prompt = [SystemMessage(content=NUMERIC_SOLVER_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
         
-        verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"], verifier_model)
+        verify_func = lambda sol: verify_numeric(sol, correct_answer, tolerance)
         solutions = []
         correct_count = 0
         best_solution = None
@@ -42,7 +50,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
-                if is_correct and current_answer is not None:
+                # Only count as correct if we have a valid numeric answer that matches exactly
+                if (is_correct and current_answer is not None and 
+                    isinstance(current_answer, (int, float)) and 
+                    abs(float(current_answer) - float(correct_answer)) <= tolerance):
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
@@ -59,7 +70,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 'is_correct': is_correct
             })
         
-    
+        # Use first attempt if no correct solution found
+        solution = best_solution if best_solution is not None else solutions[0]['solution']
         model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # Print statistics
@@ -93,12 +105,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    """Main function for benchmarking mathematical problem solving."""
-    config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
-    verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    """Main function for benchmarking numeric problem solving."""
+    config = NumericConfig.from_args('Benchmark model on numeric problems')
+    verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
     await run_benchmark(config, 
-                       process_example,
-                       BENCHMARK_SYSTEM_PROMPT, 
+                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, vm, bo, config.tolerance),
+                       NUMERIC_SOLVER_SYSTEM_PROMPT, 
                        verifier_model)
 
 if __name__ == "__main__":

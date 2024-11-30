@@ -100,7 +100,8 @@ def check_format(response: str, full_solution: str) -> bool:
     required_words = ['analysis', 'problem', 'step']
     has_required_words = all(word in lower_response for word in required_words)
     is_long_enough = len(response) >= len(full_solution) * 1.03
-    return has_required_words and is_long_enough
+    has_no_links = 'http' not in lower_response
+    return has_required_words and is_long_enough and has_no_links
 
 async def process_example(
     example: Dict,
@@ -198,9 +199,9 @@ async def main():
                        help='Filter problems by source (default: all)')
     parser.add_argument('--max-concurrent', type=int, default=512,
                        help='Maximum number of concurrent problems')
-    parser.add_argument('--max-attempts', type=int, default=40,
+    parser.add_argument('--max-attempts', type=int, default=200,
                        help='Maximum attempts per problem')
-    parser.add_argument('--temperature', type=float, default=0.9,
+    parser.add_argument('--temperature', type=float, default=0.8,
                        help='Temperature for model generation')
     args = parser.parse_args()
 
@@ -210,7 +211,7 @@ async def main():
 
     try:
         username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina-Olympiads", split=args.split)
+        dataset = load_dataset(f"{username}/Numina", split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
