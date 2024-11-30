@@ -21,8 +21,8 @@ def calculate_success_rate(result: Dict) -> float:
     
     return correct / total if total > 0 else 0.0
 
-def filter_successful_examples(data: Dict, threshold: float) -> List[Dict]:
-    """Filter examples with success rate above threshold"""
+def filter_examples(data: Dict, threshold: float, comparison: str = 'bigger') -> List[Dict]:
+    """Filter examples based on success rate threshold"""
     if not 0 <= threshold <= 1:
         raise ValueError("Threshold must be between 0 and 1")
         
@@ -30,40 +30,72 @@ def filter_successful_examples(data: Dict, threshold: float) -> List[Dict]:
     
     for result in data['results']:
         success_rate = calculate_success_rate(result)
-        if success_rate > threshold:
+        should_include = (success_rate > threshold if comparison == 'bigger' 
+                         else success_rate < threshold)
+        
+        if should_include:
             filtered_results.append({
                 'id': result['id'],
                 'problem': result['problem'],
                 'correct_answer': result['correct_answer'],
-                'success_rate': success_rate
+                'success_rate': success_rate,
+                'model_responses': result.get('model_responses', []),
+                'model_answers': result.get('model_answers', []),
+                'is_correct_list': result.get('is_correct_list', []),
+                'attempts': result.get('attempts', {})
             })
     
     return filtered_results
 
-def save_filtered_results(results: List[Dict], original_file: str, threshold: float) -> None:
+def save_results(results: List[Dict], original_file: str, threshold: float, 
+                operation: str, mode: str) -> None:
     """Save filtered results to a new JSON file"""
     base_name = os.path.splitext(original_file)[0]
-    output_file = f"{base_name}_filtered_{int(threshold*100)}.json"
+    threshold_str = f"{int(threshold*100)}"
+    output_file = f"{base_name}_{operation}_{mode}_{threshold_str}.json"
     
-    output = {
-        'metadata': {
-            'original_file': original_file,
-            'threshold': threshold,
-            'total_examples': len(results)
-        },
-        'results': results
-    }
+    if operation == 'list':
+        # For list operation, only save IDs
+        output_data = {
+            'metadata': {
+                'original_file': original_file,
+                'threshold': threshold,
+                'operation': operation,
+                'mode': mode,
+                'total_examples': len(results)
+            },
+            'ids': [result['id'] for result in results]
+        }
+    else:  # export operation
+        output_data = {
+            'metadata': {
+                'original_file': original_file,
+                'threshold': threshold,
+                'operation': operation,
+                'mode': mode,
+                'total_examples': len(results)
+            },
+            'results': results
+        }
     
     with open(output_file, 'w') as f:
-        json.dump(output, f, indent=2)
-    print(f"\nFiltered results saved to: {output_file}")
-    print(f"Total examples meeting threshold: {len(results)}")
+        json.dump(output_data, f, indent=2)
+    print(f"\nResults saved to: {output_file}")
+    print(f"Total examples {mode} than {threshold}: {len(results)}")
 
 def main():
     parser = argparse.ArgumentParser(description='Process benchmark results and filter by success rate')
     parser.add_argument('input_file', help='Input benchmark JSON file')
-    parser.add_argument('-export', type=float, required=True,
-                      help='Success rate threshold (0-1) for filtering examples')
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-export-bigger', type=float,
+                      help='Export full entries with success rate bigger than threshold (0-1)')
+    group.add_argument('-export-smaller', type=float,
+                      help='Export full entries with success rate smaller than threshold (0-1)')
+    group.add_argument('-list-bigger', type=float,
+                      help='List IDs with success rate bigger than threshold (0-1)')
+    group.add_argument('-list-smaller', type=float,
+                      help='List IDs with success rate smaller than threshold (0-1)')
     
     args = parser.parse_args()
     
@@ -72,12 +104,22 @@ def main():
         data = load_benchmark_file(args.input_file)
         if 'results' not in data:
             raise ValueError("Invalid benchmark file format: 'results' key not found")
+        
+        # Determine operation and threshold
+        if args.export_bigger is not None:
+            operation, mode, threshold = 'export', 'bigger', args.export_bigger
+        elif args.export_smaller is not None:
+            operation, mode, threshold = 'export', 'smaller', args.export_smaller
+        elif args.list_bigger is not None:
+            operation, mode, threshold = 'list', 'bigger', args.list_bigger
+        else:  # list_smaller
+            operation, mode, threshold = 'list', 'smaller', args.list_smaller
             
         # Filter results
-        filtered_results = filter_successful_examples(data, args.export)
+        filtered_results = filter_examples(data, threshold, mode)
         
-        # Save filtered results
-        save_filtered_results(filtered_results, args.input_file, args.export)
+        # Save results
+        save_results(filtered_results, args.input_file, threshold, operation, mode)
         
     except Exception as e:
         print(f"Error: {e}")
