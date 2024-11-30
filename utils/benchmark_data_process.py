@@ -25,14 +25,20 @@ def clean_json_string(text: str) -> str:
     
     return ''.join(cleaned)
 
-def load_benchmark_file(filename: str) -> List[Dict]:
-    """Load benchmark results from JSON file"""
+def load_benchmark_file(filename: str, clean: bool = False) -> List[Dict]:
+    """
+    Load benchmark results from JSON file
+    Args:
+        filename: Path to JSON file
+        clean: Whether to clean the JSON content before parsing
+    """
     try:
         with open(filename, 'r') as f:
             content = f.read()
-            # Clean the JSON content
-            cleaned_content = clean_json_string(content)
-            data = json.loads(cleaned_content)
+            # Clean the JSON content if requested
+            if clean:
+                content = clean_json_string(content)
+            data = json.loads(content)
             # Handle both old format (with metadata) and new format (direct list)
             if isinstance(data, dict) and "results" in data:
                 return data["results"]
@@ -97,6 +103,8 @@ def save_results(results: List[Dict], original_file: str, threshold: float,
 def main():
     parser = argparse.ArgumentParser(description='Process benchmark results and filter by success rate')
     parser.add_argument('input_file', help='Input benchmark JSON file')
+    parser.add_argument('--clean', action='store_true',
+                      help='Clean JSON content before parsing (fixes unterminated strings)')
     
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-export-bigger', type=float,
@@ -112,7 +120,7 @@ def main():
     
     try:
         # Load and validate data
-        data = load_benchmark_file(args.input_file)
+        data = load_benchmark_file(args.input_file, clean=args.clean)
         if 'results' not in data:
             raise ValueError("Invalid benchmark file format: 'results' key not found")
         
