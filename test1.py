@@ -40,33 +40,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await analysis_agent.generate(example["problem"])
                 steps_taken = 0
                 has_answer = False
-                
+                current_solution=current_solution.content
                 # Keep adding steps until we get an answer or hit max steps
                 while not has_answer and steps_taken < max_steps:
                     steps_taken += 1
                     # Get next step
                     next_step = await step_agent.generate(
                         example["problem"], 
-                        current_solution
+                        HumanMessage(content=current_solution)
                     )
                     
                     # Handle AIMessage or string content
                     step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
-                    
-                    # Clean and isolate just the response content
-                    clean_step = step_content.split("Problem:")[0].strip()
-                    clean_step = clean_step.split("Let's solve this step by step:")[0].strip()
-                    
-                    # Print and add the cleaned step
-                    print(f"\nStep {steps_taken}:\n{clean_step}\n")
-                    current_solution = f"{current_solution}\n\n{clean_step}"
+                    current_solution = current_solution + step_content
                     
                     # Check if we have an answer
                     current_answer = extract_answer_from_solution(current_solution)
                     has_answer = current_answer is not None
                     
                     if has_answer:
-                        print("answer found for attempt", attempt, "in problem", running_id )
                         # Verify the numeric answer
                         current_answer_float, is_correct = await verify_numeric(current_solution, correct_answer, 1e-6)
                         
