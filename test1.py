@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import re
 from typing import Optional, Dict, List
 from datetime import datetime
 from dotenv import load_dotenv
@@ -10,6 +11,10 @@ from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent
 from langchain_core.messages import HumanMessage, SystemMessage
 from benchmark_numeric import verify_numeric
+
+def normalize_latex(text: str) -> str:
+    """Replace more than two backslashes with two backslashes to fix excessive escaping"""
+    return re.sub(r'\\{3,}', r'\\\\', text)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -40,7 +45,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await analysis_agent.generate(example["problem"])
                 steps_taken = 0
                 has_answer = False
-                current_solution=current_solution.content
+                current_solution = normalize_latex(current_solution.content)
                 # Keep adding steps until we get an answer or hit max steps
                 while not has_answer and steps_taken < max_steps:
                     steps_taken += 1
@@ -52,6 +57,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     
                     # Handle AIMessage or string content
                     step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
+                    step_content = normalize_latex(step_content)
                     current_solution = current_solution + step_content
                     
                     # Check if we have an answer
