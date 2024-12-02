@@ -1,7 +1,8 @@
 import os
 import json
 import asyncio
-from typing import Optional, Dict, List
+import re
+from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
 from utils.utils import *
@@ -10,6 +11,12 @@ from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent, CompletionAgent
 from langchain_core.messages import HumanMessage, SystemMessage
 from benchmark_numeric import verify_numeric
+
+def count_solution_steps(solution: str) -> int:
+    """Count the number of steps in a solution by looking for 'Step X' patterns"""
+    # Look for patterns like "Step 1", "Step 2", etc.
+    steps = re.findall(r'Step\s+\d+', solution, re.IGNORECASE)
+    return len(steps)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -77,7 +84,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'complete_solution': complete_solution,
                     'answer': current_answer,
                     'is_correct': is_correct,
-                    'steps': steps_taken
+                    'steps_before_completion': steps_taken,
+                    'total_steps': count_solution_steps(complete_solution)
                 })
                     
             except Exception as e:
@@ -94,7 +102,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Correct answer: {correct_answer}")
         print(f"Model answers: {[s['answer'] for s in solutions]}")
-        print(f"Steps taken: {[s['steps'] for s in solutions]}")
+        print(f"Steps before completion: {[s['steps_before_completion'] for s in solutions]}")
+        print(f"Total solution steps: {[s['total_steps'] for s in solutions]}")
         print(f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}")
         print(f"Correct solutions: {correct_count}/{best_of}")
         print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
@@ -107,7 +116,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_responses': [s['complete_solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
             'intermediate_solutions': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Intermediate steps
             'model_answers': [s['answer'] for s in solutions],
-            'steps_taken': [s['steps'] for s in solutions],
+            'steps_before_completion': [s['steps_before_completion'] for s in solutions],
+            'total_solution_steps': [s['total_steps'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
             'correct_binary': [1 if s['is_correct'] else 0 for s in solutions],
             'model_answer_raw': solutions[0]['answer'],
