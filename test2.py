@@ -38,19 +38,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             try:
                 # Start with analysis
                 current_solution = await analysis_agent.generate(example["problem"])
-                if not isinstance(current_solution, str):
-                    print(f"Warning: Invalid analysis response in attempt {attempt + 1}")
-                    raise ValueError("Analysis response must be a string")
-                
-                # Generate first two steps individually (unless we get an answer sooner)
+                current_solution = current_solution.content
+                steps_taken = 0
                 complete_solution = current_solution
                 for step in range(2):
-                    next_step = await step_agent.generate(example["problem"], current_solution)
-                    if not isinstance(next_step, str):
-                        print(f"Warning: Invalid step response in attempt {attempt + 1}")
-                        raise ValueError("Step response must be a string")
-                    
-                    current_solution = f"{current_solution}\n\n{next_step}"
+                    steps_taken += 1
+                    next_step = await step_agent.generate(
+                        example["problem"], 
+                        HumanMessage(content=current_solution)
+                    )
+                    step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
+                    current_solution = f"{current_solution}\n\n{step_content}"
                     # Check if we already have an answer
                     if extract_answer_from_solution(current_solution) is not None:
                         print("answer found in step", step + 1, "for attempt", attempt, "in problem", running_id)
@@ -58,24 +56,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         break
                 else:
                     # Complete the solution if we didn't find an answer in the first two steps
+                    steps_taken += 1
                     completion = await completion_agent.generate(example["problem"], current_solution)
-                    if not isinstance(completion, str):
-                        print(f"Warning: Invalid completion response in attempt {attempt + 1}")
-                        raise ValueError("Completion response must be a string")
-                    complete_solution = completion
-                
+                    completion_content = completion.content if hasattr(completion, 'content') else str(completion)
+                    complete_solution = completion_content
+
                 # Extract and verify answer
                 current_answer = extract_answer_from_solution(complete_solution)
                 
-                # Verify the numeric answer
-                current_answer_float, is_correct = await verify_numeric(complete_solution, correct_answer, 1e-6)
-                if is_correct:
-                    correct_count += 1
+                if current_answer is not None:
+                    # Verify the numeric answer
+                    current_answer_float, is_correct = await verify_numeric(complete_solution, correct_answer, 1e-6)
+                    if is_correct:
+                        correct_count += 1
+                else:
+                    is_correct = False
                 
                 solutions.append({
                     'solution': complete_solution,
                     'answer': current_answer,
-                    'is_correct': is_correct
+                    'is_correct': is_correct,
+                    'steps': steps_taken
                 })
                     
             except Exception as e:
@@ -83,7 +84,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 solutions.append({
                     'solution': "Error occurred",
                     'answer': None,
-                    'is_correct': False
+                    'is_correct': False,
+                    'steps': 0
                 })
         
         # Print statistics
@@ -91,6 +93,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Correct answer: {correct_answer}")
         print(f"Model answers: {[s['answer'] for s in solutions]}")
+        print(f"Steps taken: {[s['steps'] for s in solutions]}")
         print(f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}")
         print(f"Correct solutions: {correct_count}/{best_of}")
         print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
@@ -100,8 +103,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_responses': [s['solution'] for s in solutions],
+            'model_responses': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
             'model_answers': [s['answer'] for s in solutions],
+            'steps_taken': [s['steps'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
             'correct_binary': [1 if s['is_correct'] else 0 for s in solutions],
             'model_answer_raw': solutions[0]['answer'],
