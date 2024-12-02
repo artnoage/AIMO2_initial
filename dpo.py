@@ -1,6 +1,5 @@
 from datasets import load_dataset
 from datetime import datetime
-from tqdm import tqdm
 from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
@@ -88,17 +87,22 @@ def main():
     # Load and format dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
     print("\nFirst example before formatting:")
-    print(dataset[0])
-    
+    print(dataset[0]["prompt"])
+    print(dataset["prompt"][0])
     formatted_dataset = dataset.map(
         formatting_func,
         batched=True,
-        remove_columns=dataset.column_names,
         desc="Applying chat template"
     )
-    
-    print("\nFirst example after formatting:")
-    print(formatted_dataset[0])
+    import pprint
+    pprint.pprint("\nFirst example after formatting:")
+    row0=formatted_dataset[0]
+    row1=formatted_dataset[1]
+    row2=formatted_dataset[4]
+    pprint.pprint(len(formatted_dataset))
+    pprint.pprint(row0["chosen"])
+    pprint.pprint(row1["chosen"])
+    pprint.pprint(row2["prompt"])
     # Print formatted example
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -106,7 +110,7 @@ def main():
     
 
     training_args = DPOConfig(
-        per_gpu_train_batch_size = 2,
+        per_device_train_batch_size = 2,
         gradient_accumulation_steps = 64,
         num_train_epochs = 1,
         learning_rate = 4e-6,
@@ -125,9 +129,7 @@ def main():
         tokenizer=tokenizer,
         beta=0.1,
         max_length=4096,
-        max_prompt_length=1024,
-        packing=False,
-    )
+        max_prompt_length=1024)
 
     # Train the model
     trainer.train()

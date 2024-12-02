@@ -65,7 +65,8 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL = "/Home/stat/laschos/AIMO2_initial/models/20241130_144413"
+    #LOCAL = "/Home/stat/laschos/AIMO2_initial/models/20241130_144413"
+    LOCAL ="artnoage/metastral"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
@@ -80,7 +81,7 @@ def get_model(model: ModelOption, temp: float = 0.1):
             model=model.value,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:8000/v1")
+            base_url="http://localhost:6000/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:

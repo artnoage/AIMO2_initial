@@ -9,7 +9,6 @@ from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent
-from langchain_core.messages import HumanMessage, SystemMessage
 from benchmark_numeric import verify_numeric
 
 def normalize_latex(text: str) -> str:
@@ -52,7 +51,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     # Get next step
                     next_step = await step_agent.generate(
                         example["problem"], 
-                        HumanMessage(content=current_solution)
+                        current_solution
                     )
                     
                     # Handle AIMessage or string content
