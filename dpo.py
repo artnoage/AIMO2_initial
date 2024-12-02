@@ -71,29 +71,13 @@ def main():
 
 
     def apply_chat_template(example, tokenizer):
-        if all(k in example.keys() for k in ("chosen", "rejected")):
-                # Compared to reward modeling, we filter out the prompt, so the text is everything after the last assistant token
-                prompt_messages = [[msg for msg in example["chosen"] if msg["role"] == "user"][0]]
-                # Insert system message
-                if example["chosen"][0]["role"] != "system":
-                    prompt_messages.insert(0, {"role": "system", "content": ""})
-                else:
-                    prompt_messages.insert(0, example["chosen"][0])
-                chosen_messages = example["chosen"][1:]
-                rejected_messages = example["rejected"][1:]
-                example["text_chosen"] = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
-                example["text_rejected"] = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
-                example["text_prompt"] = tokenizer.apply_chat_template(
-                prompt_messages, tokenize=False, add_generation_prompt=True
-            )
-                return example
-        else:
-            raise ValueError(
-                f"Could not format example as dialogue for `dpo` task! Require `[chosen, rejected]` keys but found {list(example.keys())}"
-            )
+        example["text_prompt"] = tokenizer.apply_chat_template(example["prompt"], tokenize=False)
+        example["text_chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
+        example["text_rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
+        return example
 
-    # Load the DPO dataset
-    raw_datasets = load_dataset("artnoage/dpo_full", split="train")
+    # Load the local DPO dataset
+    raw_datasets = load_dataset("json", data_files="dpo_dataset.json", split="train")
     print("\nDataset keys before mapping:")
     print(raw_datasets.column_names)
     column_names = list(raw_datasets.features)
