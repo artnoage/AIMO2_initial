@@ -106,7 +106,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_responses': [s['solution'] for s in solutions],
+            'model_responses': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
             'model_answers': [s['answer'] for s in solutions],
             'steps_taken': [s['steps'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
