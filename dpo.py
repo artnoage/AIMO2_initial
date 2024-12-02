@@ -13,7 +13,7 @@ from transformers import logging
 from unsloth import is_bfloat16_supported
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 def print_gpu_utilization():
     visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
@@ -38,7 +38,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241129_162714",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241130_144413",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -63,32 +63,33 @@ def main():
     print_gpu_utilization()
 
     # Setup chat template
+    # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
-        map_eos_token=True,
-    )
+        map_eos_token=True)
 
 
-    def apply_chat_template(example, tokenizer):
+    def apply_chat_template(example):
         example["prompt"] = tokenizer.apply_chat_template(example["prompt"], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
         example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
         return example
 
     # Load the local DPO dataset
-    raw_datasets = load_dataset("json", data_files="dpo_dataset.json", split="train")
+    dataset = load_dataset("artnoage/dpo_full", split="train")
     print("\nDataset keys before mapping:")
-    print(raw_datasets.column_names)
+    print(dataset.column_names)
     
-    raw_datasets = raw_datasets.map(
+    dataset = dataset.map(
         apply_chat_template,
         fn_kwargs = {"tokenizer": tokenizer},
         num_proc = 12,
         desc = "Formatting comparisons with prompt template")
 
     print("\nDataset keys after mapping:")
-    print(raw_datasets.column_names)
+    print(dataset.column_names)
+    print(dataset["prompt"][0])
     # Print formatted example
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,7 +111,7 @@ def main():
     
     trainer = DPOTrainer(
         model=model,
-        train_dataset=raw_datasets,
+        train_dataset=dataset,
         tokenizer=tokenizer,
         args=training_args,
         max_length = 4096,
