@@ -70,26 +70,38 @@ def main():
         map_eos_token=True)
 
 
-    def apply_chat_template(example):
-        example["prompt"] = tokenizer.apply_chat_template(example["prompt"], tokenize=False)
-        example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
-        example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
-        return example
+    def formatting_func(examples):
+        formatted_pairs = []
+        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+            # Format chosen conversation
+            chosen_conv = [prompt, chosen]
+            chosen_text = tokenizer.apply_chat_template(chosen_conv, tokenize=False)
+            
+            # Format rejected conversation
+            rejected_conv = [prompt, rejected]
+            rejected_text = tokenizer.apply_chat_template(rejected_conv, tokenize=False)
+            
+            formatted_pairs.append({
+                "chosen": chosen_text,
+                "rejected": rejected_text,
+            })
+        return formatted_pairs
 
-    # Load the local DPO dataset
+    # Load dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
-    print("\nDataset keys before mapping:")
-    print(dataset.column_names)
+    print("\nFirst example before formatting:")
+    print(dataset[0])
     
-    dataset = dataset.map(
-        apply_chat_template,
-        fn_kwargs = {"tokenizer": tokenizer},
-        num_proc = 12,
-        desc = "Formatting comparisons with prompt template")
-
-    print("\nDataset keys after mapping:")
-    print(dataset.column_names)
-    print(dataset["prompt"][0])
+    # Apply formatting
+    formatted_dataset = dataset.map(
+        formatting_func,
+        batched=True,
+        remove_columns=dataset.column_names,
+        desc="Formatting conversations"
+    )
+    
+    print("\nFirst example after formatting:")
+    print(formatted_dataset[0])
     # Print formatted example
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
