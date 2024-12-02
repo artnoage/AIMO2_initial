@@ -50,9 +50,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         current_solution
                     )
                     
-                    # Print and add the step to current solution
-                    print(f"\nStep {steps_taken}:\n{next_step}\n")
-                    current_solution = f"{current_solution}\n\n{next_step}"
+                    # Clean and isolate just the response content
+                    clean_step = next_step.split("Problem:")[0].strip()
+                    clean_step = clean_step.split("Let's solve this step by step:")[0].strip()
+                    
+                    # Print and add the cleaned step
+                    print(f"\nStep {steps_taken}:\n{clean_step}\n")
+                    current_solution = f"{current_solution}\n\n{clean_step}"
                     
                     # Check if we have an answer
                     current_answer = extract_answer_from_solution(current_solution)
