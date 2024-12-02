@@ -45,6 +45,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         current_solution = f"{current_solution}\n\n{next_step}"
                         # Check if we already have an answer
                         if extract_answer_from_solution(current_solution) is not None:
+                            print("answer found in step", step + 1, "for attempt", attempt, "in problem", running_id)
                             complete_solution = current_solution
                             break
                     else:
