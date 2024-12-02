@@ -114,19 +114,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for testing hybrid solution generation."""
     config = NumericConfig.from_args('Test hybrid solution generation')
-    await run_benchmark(config, 
-                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
-                       BENCHMARK_SYSTEM_PROMPT,
-                       None)
+    results = await run_benchmark(config, 
+                                lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
+                                BENCHMARK_SYSTEM_PROMPT,
+                                None)
+    return results
 
 if __name__ == "__main__":
     try:
-        results = asyncio.run(main())
+        all_results = asyncio.run(main())
+        # Filter out None results and prepare final output
+        final_results = [r for r in all_results if r is not None]
+        
         # Save results to JSON file with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_file = f"test2_results_{timestamp}.json"
         with open(output_file, 'w') as f:
-            json.dump(results, f, indent=2)
+            json.dump(final_results, f, indent=2)
         print(f"\nResults saved to {output_file}")
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
