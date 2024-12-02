@@ -38,17 +38,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await analysis_agent.generate(example["problem"])
                 
                 # Generate first two steps individually (unless we get an answer sooner)
+                complete_solution = current_solution
                 for step in range(2):
                     next_step = await step_agent.generate(example["problem"], current_solution)
-                    current_solution = f"{current_solution}\n\n{next_step}"
-                    
-                    # Check if we already have an answer
-                    if extract_answer_from_solution(current_solution) is not None:
-                        complete_solution = current_solution
+                    if isinstance(next_step, str):  # Verify we got a valid string response
+                        current_solution = f"{current_solution}\n\n{next_step}"
+                        # Check if we already have an answer
+                        if extract_answer_from_solution(current_solution) is not None:
+                            complete_solution = current_solution
+                            break
+                    else:
+                        print(f"Warning: Invalid step response in attempt {attempt + 1}")
                         break
                 else:
                     # Complete the solution if we didn't find an answer in the first two steps
-                    complete_solution = await completion_agent.generate(example["problem"], current_solution)
+                    completion = await completion_agent.generate(example["problem"], current_solution)
+                    if isinstance(completion, str):  # Verify we got a valid string response
+                        complete_solution = completion
                 
                 # Extract and verify answer
                 current_answer = extract_answer_from_solution(complete_solution)
