@@ -119,14 +119,9 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
                     
                     if rejected_response:
                         dpo_entries.append({
-                            "chosen": [
-                                {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                                {"role": "assistant", "content": chosen_response}
-                            ],
-                            "rejected": [
-                                {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                                {"role": "assistant", "content": rejected_response}
-                            ]
+                            "prompt": system_prompt + "\n\n" + entry['problem'],
+                            "chosen": chosen_response,
+                            "rejected": rejected_response
                         })
                         successful_pairs += 1
             else:
@@ -141,14 +136,9 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
                 
                 if rejected_response:
                     dpo_entries.append({
-                        "chosen": [
-                            {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                            {"role": "assistant", "content": chosen_response}
-                        ],
-                        "rejected": [
-                            {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
-                            {"role": "assistant", "content": rejected_response}
-                        ]
+                        "prompt": system_prompt + "\n\n" + entry['problem'],
+                        "chosen": chosen_response,
+                        "rejected": rejected_response
                     })
                     successful_pairs += 1
                 
