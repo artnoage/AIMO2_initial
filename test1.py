@@ -50,7 +50,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         current_solution
                     )
                     
-                    # Add the step to current solution
+                    # Print and add the step to current solution
+                    print(f"\nStep {steps_taken}:\n{next_step}\n")
                     current_solution = f"{current_solution}\n\n{next_step}"
                     
                     # Check if we have an answer
