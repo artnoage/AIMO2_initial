@@ -73,7 +73,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     is_correct = False
                 
                 solutions.append({
-                    'solution': complete_solution,
+                    'solution': current_solution,
+                    'complete_solution': complete_solution,
                     'answer': current_answer,
                     'is_correct': is_correct,
                     'steps': steps_taken
@@ -103,7 +104,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_responses': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
+            'model_responses': [s['complete_solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
+            'intermediate_solutions': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Intermediate steps
             'model_answers': [s['answer'] for s in solutions],
             'steps_taken': [s['steps'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
