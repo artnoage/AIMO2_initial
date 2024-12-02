@@ -50,8 +50,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         current_solution
                     )
                     
+                    # Handle AIMessage or string content
+                    step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
+                    
                     # Clean and isolate just the response content
-                    clean_step = next_step.split("Problem:")[0].strip()
+                    clean_step = step_content.split("Problem:")[0].strip()
                     clean_step = clean_step.split("Let's solve this step by step:")[0].strip()
                     
                     # Print and add the cleaned step
