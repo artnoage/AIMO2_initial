@@ -71,28 +71,22 @@ def main():
 
 
     def apply_chat_template(example, tokenizer):
-        example["text_prompt"] = tokenizer.apply_chat_template(example["prompt"], tokenize=False)
-        example["text_chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
-        example["text_rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
+        example["prompt"] = tokenizer.apply_chat_template(example["prompt"], tokenize=False)
+        example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
+        example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
         return example
 
     # Load the local DPO dataset
     raw_datasets = load_dataset("json", data_files="dpo_dataset.json", split="train")
     print("\nDataset keys before mapping:")
     print(raw_datasets.column_names)
-    column_names = list(raw_datasets.features)
+    
     raw_datasets = raw_datasets.map(
         apply_chat_template,
         fn_kwargs = {"tokenizer": tokenizer},
         num_proc = 12,
-        remove_columns = column_names,
         desc = "Formatting comparisons with prompt template")
 
-    print("\nDataset keys after mapping:")
-    print(raw_datasets.column_names)
-
-    # Replace column names with what TRL needs, text_chosen -> chosen and text_rejected -> rejected
-    raw_datasets = raw_datasets.rename_columns({"text_prompt": "prompt", "text_chosen": "chosen", "text_rejected": "rejected"})
     print("\nDataset keys after mapping:")
     print(raw_datasets.column_names)
     # Print formatted example
