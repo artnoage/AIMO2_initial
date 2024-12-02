@@ -30,7 +30,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         solutions = []
         correct_count = 0
-        max_steps = 10  # Maximum steps to prevent infinite loops
+        max_steps = 20  # Maximum steps to prevent infinite loops
         
         for attempt in range(best_of):
             try:
@@ -56,6 +56,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     has_answer = current_answer is not None
                     
                     if has_answer:
+                        print("answer found for attempt", attempt, "in problem", running_id )
                         # Verify the numeric answer
                         current_answer_float, is_correct = await verify_numeric(current_solution, correct_answer, 1e-6)
                         
