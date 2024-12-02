@@ -71,21 +71,21 @@ def main():
 
 
     def formatting_func(examples):
-        formatted_pairs = []
+        outputs = {
+            "prompt": [],
+            "chosen": [],
+            "rejected": []
+        }
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Format chosen conversation
+            # Format conversations using chat template
             chosen_conv = [prompt, chosen]
-            chosen_text = tokenizer.apply_chat_template(chosen_conv, tokenize=False)
-            
-            # Format rejected conversation
             rejected_conv = [prompt, rejected]
-            rejected_text = tokenizer.apply_chat_template(rejected_conv, tokenize=False)
             
-            formatted_pairs.append({
-                "chosen": chosen_text,
-                "rejected": rejected_text,
-            })
-        return formatted_pairs
+            outputs["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
+            outputs["chosen"].append(tokenizer.apply_chat_template(chosen_conv, tokenize=False))
+            outputs["rejected"].append(tokenizer.apply_chat_template(rejected_conv, tokenize=False))
+            
+        return outputs
 
     # Load dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
