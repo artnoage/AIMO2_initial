@@ -70,38 +70,10 @@ def main():
         map_eos_token=True)
 
 
-    def formatting_func(examples):
-        outputs = {
-            "prompt": [],
-            "chosen": [],
-            "rejected": []
-        }
-        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Format conversations using chat template
-            chosen_conv = [prompt, chosen]
-            rejected_conv = [prompt, rejected]
-            
-            outputs["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
-            outputs["chosen"].append(tokenizer.apply_chat_template(chosen_conv, tokenize=False))
-            outputs["rejected"].append(tokenizer.apply_chat_template(rejected_conv, tokenize=False))
-            
-        return outputs
-
     # Load dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
-    print("\nFirst example before formatting:")
+    print("\nFirst example from dataset:")
     print(dataset[0])
-    
-    # Apply formatting
-    formatted_dataset = dataset.map(
-        formatting_func,
-        batched=True,
-        remove_columns=dataset.column_names,
-        desc="Formatting conversations"
-    )
-    
-    print("\nFirst example after formatting:")
-    print(formatted_dataset[0])
     # Print formatted example
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -123,11 +95,13 @@ def main():
     
     trainer = DPOTrainer(
         model=model,
+        args=training_args,
         train_dataset=dataset,
         tokenizer=tokenizer,
-        args=training_args,
-        max_length = 4096,
-        max_prompt_length = 1024,
+        beta=0.1,
+        max_length=4096,
+        max_prompt_length=1024,
+        packing=False,
     )
 
     # Train the model
