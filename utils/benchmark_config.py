@@ -40,7 +40,7 @@ class BaseConfig:
 @dataclass
 class BenchmarkConfig(BaseConfig):
     """Configuration for standard benchmark with verifier"""
-    verifier: str = 'LOCAL'
+    verifier: str = 'GEMINI_FLASH'
     verifier_temp: float = 0
     
     @classmethod

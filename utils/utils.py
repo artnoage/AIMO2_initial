@@ -65,7 +65,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL = "artnoage/metastral"
+    LOCAL = "/Home/stat/laschos/AIMO2_initial/models/20241130_144413"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
@@ -174,7 +174,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=3, timeout=300)
+@async_retry(max_retries=3, timeout=120)
 async def get_model_response(solver_model, prompt, running_id: int, attempt: int) -> str:
     """Get response from model with retry logic"""
     response = await solver_model.ainvoke(prompt)
