@@ -1,6 +1,8 @@
 import os
+import json
 import asyncio
 from typing import Optional, Dict, List
+from datetime import datetime
 from dotenv import load_dotenv
 from utils.utils import *
 from utils.benchmark_config import *
@@ -119,7 +121,13 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        results = asyncio.run(main())
+        # Save results to JSON file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = f"test2_results_{timestamp}.json"
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nResults saved to {output_file}")
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
     except Exception as e:
