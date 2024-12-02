@@ -14,8 +14,8 @@ from benchmark_numeric import verify_numeric
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
-    """Process a single example using hybrid approach: analysis + 2 steps + completion"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, initial_steps: int = 0) -> Optional[Dict]:
+    """Process a single example using hybrid approach: analysis + initial_steps + completion"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -41,7 +41,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = current_solution.content
                 steps_taken = 0
                 complete_solution = current_solution
-                for step in range(2):
+                for step in range(initial_steps):
                     steps_taken += 1
                     next_step = await step_agent.generate(
                         example["problem"], 
@@ -124,7 +124,7 @@ async def main():
     """Main function for testing hybrid solution generation."""
     config = NumericConfig.from_args('Test hybrid solution generation')
     results = await run_benchmark(config, 
-                                lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
+                                lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo, initial_steps=2),
                                 BENCHMARK_SYSTEM_PROMPT,
                                 None)
     return results
