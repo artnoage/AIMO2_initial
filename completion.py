@@ -122,22 +122,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_responses': [s['complete_solution'].split("Problem:")[0].strip() for s in solutions],  # Remove metadata
-            'intermediate_solutions': [s['solution'].split("Problem:")[0].strip() for s in solutions],  # Intermediate steps
             'model_answers': [s['answer'] for s in solutions],
-            'steps_before_completion': [s['steps_before_completion'] for s in solutions],
-            'total_solution_steps': [s['total_steps'] for s in solutions],
-            'verification_levels': [s['verification_level'] for s in solutions],
             'is_correct_list': [s['verification_level'] == 4 for s in solutions],
-            'correct_binary': [1 if s['verification_level'] == 4 else 0 for s in solutions],
-            'model_answer_raw': solutions[0]['answer'],
-            'correct_answer_raw': correct_answer,
-            'attempts': {
-                'total': len(solutions),
-                'correct_count': correct_count
-            },
-            'steps_taken': [s['steps_before_completion'] for s in solutions],
-            'solution_type': 'hybrid'  # Indicate this uses hybrid generation approach
+            'manual_step_counts': [count_manual_steps(s['complete_solution']) for s in solutions],
+            'algorithmic_step_counts': [s['steps_before_completion'] for s in solutions]
         }
         
     except Exception as e:

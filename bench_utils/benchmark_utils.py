@@ -136,6 +136,26 @@ async def get_model_response(solver_model, prompt) -> str:
     response = await solver_model.ainvoke(prompt, max_tokens=2048)
     return response.content
 
+def count_manual_steps(solution: str) -> int:
+    """Count steps in a solution by looking for step indicators"""
+    # Look for common step patterns
+    step_patterns = [
+        r'Step\s+\d+',  # "Step 1", "Step 2", etc.
+        r'\d+\)\s',     # "1)", "2)", etc.
+        r'\d+\.\s',     # "1.", "2.", etc.
+        r'First,',      # Common word indicators
+        r'Second,',
+        r'Third,',
+        r'Finally,'
+    ]
+    
+    total_steps = 0
+    for pattern in step_patterns:
+        steps = re.findall(pattern, solution, re.IGNORECASE)
+        total_steps += len(steps)
+    
+    return max(1, total_steps)  # Return at least 1 step
+
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
