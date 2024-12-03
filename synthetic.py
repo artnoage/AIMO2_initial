@@ -85,17 +85,12 @@ async def process_example(
             print(f"Error processing example {running_id}: Invalid example format")
             return None
 
-        prompt = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=example['problem'])
-        ]
-        
+        solution_agent = FullSolutionAgent(solver_model)
         model_responses = []
         verification_results = []
         
         for attempt in range(max_attempts):
-            response = await solver_model.ainvoke(prompt)
-            model_solution = response.content
+            model_solution = await solution_agent.generate(example['problem'], running_id, attempt)
             model_responses.append(model_solution)
             
             # Check format and verify solution
