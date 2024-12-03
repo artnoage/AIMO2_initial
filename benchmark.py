@@ -67,8 +67,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 }
                 solutions.append(solution_info)
         
-    
-        model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
