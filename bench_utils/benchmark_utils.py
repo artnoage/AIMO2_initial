@@ -313,7 +313,7 @@ async def run_benchmark(
     progress_bar.close()
     
     progress_tracker.print_final_stats()
-    progress_tracker.save_results(config.solver, config.split)
+    progress_tracker.save_results()
 
     # Cleanup is handled by the context managers in get_model()
     pass
