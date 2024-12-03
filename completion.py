@@ -61,7 +61,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 else:
                     # Complete the solution if we didn't find an answer in the first two steps
                     steps_taken += 1
-                    complete_solution  = await completion_agent.generate(example["problem"], current_solution)
+                    complete_solution  = current_solution+ await completion_agent.generate(example["problem"], current_solution)
 
                 # Create and use appropriate verifier
                 verifier = create_verifier(

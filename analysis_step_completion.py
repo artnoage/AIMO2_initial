@@ -44,7 +44,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 # Get analysis and first step
                 current_solution = await analysis_step_agent.generate(example["problem"])
                 steps_taken = 1
-
                 # Check if we already have an answer
                 if extract_answer_from_solution(current_solution) is not None:
                     print("answer found in analysis+step for attempt", attempt, "in problem", running_id)
@@ -52,7 +51,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 else:
                     # Complete the solution if we don't have an answer yet
                     steps_taken += 1
-                    complete_solution = await completion_agent.generate(example["problem"], current_solution)
+                    complete_solution = current_solution + await completion_agent.generate(example["problem"], current_solution)
 
                 # Create and use appropriate verifier
                 verifier = create_verifier(
