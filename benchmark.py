@@ -6,6 +6,7 @@ from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
 from bench_utils.verify import *
+from bench_utils.progress_tracker import ProgressTracker
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
@@ -113,6 +114,12 @@ async def main():
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
+    global progress_tracker
+    progress_tracker = ProgressTracker(
+        total_examples=config.num_examples,
+        best_of=config.best_of
+    )
+    
     await run_benchmark(
         config=config,
         process_example_func=process_example,
@@ -124,11 +131,17 @@ if __name__ == "__main__":
     progress_tracker = None
     try:
         asyncio.run(main())
+        if progress_tracker:
+            model_name = str(progress_tracker.total_examples) + "_examples"
+            progress_tracker.save_results(model_name, "complete")
+            progress_tracker.print_final_stats()
     except KeyboardInterrupt:
         print("\nBenchmark interrupted by user")
         if progress_tracker:
             progress_tracker.save_results("interrupted", "interrupted")
+            progress_tracker.print_final_stats()
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")
         if progress_tracker:
             progress_tracker.save_results("error", "error")
+            progress_tracker.print_final_stats()
