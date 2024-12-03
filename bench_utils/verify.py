@@ -30,20 +30,38 @@ class NumericVerifier(BaseVerifier):
         self.tolerance = tolerance
         
     async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[int, Optional[str]]:
+        if not solution or not correct_answer:
+            return 0, None
+            
         model_answer = extract_answer_from_solution(solution)
-        if model_answer is None or solution is None:
+        if model_answer is None:
             return 0, None
             
         try:
+            # Try to convert both answers to float
             numeric_answer = extract_numeric_answer(solution)
-            correct_float = float(correct_answer)
-            
-            if numeric_answer is None or not isinstance(numeric_answer, (int, float)):
+            if numeric_answer is None:
                 return 1, model_answer
                 
-            is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
-            return 4 if is_correct else 1, model_answer
-        except (ValueError, TypeError):
+            try:
+                correct_float = float(correct_answer.strip())
+            except (ValueError, TypeError, AttributeError):
+                print(f"Warning: Could not convert correct answer '{correct_answer}' to float")
+                return 1, model_answer
+                
+            if not isinstance(numeric_answer, (int, float)):
+                return 1, model_answer
+                
+            # Compare with tolerance
+            try:
+                is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
+                return 4 if is_correct else 1, model_answer
+            except (ValueError, TypeError) as e:
+                print(f"Warning: Error comparing answers: {e}")
+                return 1, model_answer
+                
+        except Exception as e:
+            print(f"Warning: Verification error: {e}")
             return 1, model_answer
 
 class AnswerVerifier(BaseVerifier):

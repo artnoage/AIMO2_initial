@@ -98,17 +98,31 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     Looks for a number inside a LaTeX boxed environment.
     Returns float if found, None otherwise.
     """
+    if not solution:
+        return None
     
     # First extract the raw boxed content
     raw_answer = extract_answer_from_solution(solution)
     if raw_answer is None:
         return None
         
-    # Clean the answer and try to convert to float
+    # Clean the answer string
     clean_answer = raw_answer.strip()
+    if not clean_answer:
+        return None
+        
+    # Remove any LaTeX formatting that might interfere with number parsing
+    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)
+    clean_answer = clean_answer.replace('\\', '')
+    
     try:
+        # Handle fractions like "1/2"
+        if '/' in clean_answer:
+            num, denom = clean_answer.split('/')
+            return float(num.strip()) / float(denom.strip())
         return float(clean_answer)
-    except ValueError:
+    except (ValueError, ZeroDivisionError) as e:
+        print(f"Warning: Could not convert answer '{clean_answer}' to float: {e}")
         return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
