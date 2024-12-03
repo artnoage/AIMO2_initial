@@ -55,7 +55,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'answer': current_answer,
                     'verification_score': score,
                     'verification_steps': total_steps,
-                    'is_correct': level == 4
+                    'is_correct': score == total_steps
                 })
             except Exception as e:
                 print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
