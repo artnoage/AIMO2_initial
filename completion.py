@@ -48,16 +48,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             try:
                 # Start with analysis
                 current_solution = await analysis_agent.generate(example["problem"])
-                current_solution = current_solution.content
+                current_solution = current_solution
                 steps_taken = 0
                 complete_solution = current_solution
                 for step in range(initial_steps):
                     steps_taken += 1
-                    next_step = await step_agent.generate(
-                        example["problem"], 
-                        HumanMessage(content=current_solution)
-                    )
-                    step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
+                    next_step = await step_agent.generate(example["problem"], current_solution)
+                    step_content = next_step
                     current_solution = f"{current_solution}\n\n{step_content}"
                     # Check if we already have an answer
                     if extract_answer_from_solution(current_solution) is not None:
@@ -68,8 +65,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     # Complete the solution if we didn't find an answer in the first two steps
                     steps_taken += 1
                     completion = await completion_agent.generate(example["problem"], current_solution)
-                    completion_content = completion.content if hasattr(completion, 'content') else str(completion)
-                    complete_solution = completion_content
+                    complete_solution = completion
 
                 # Create and use appropriate verifier
                 verifier = create_verifier(
@@ -141,14 +137,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    """Main function for testing hybrid solution generation."""
-    config = BenchmarkConfig.from_args('Test hybrid solution generation')
+    """Main function for benchmarking mathematical problem solving."""
+    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
-    # Initialize solver model
+    # Initialize models
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
+    global progress_tracker
     
     await run_benchmark(
         config=config,
@@ -160,15 +157,17 @@ async def main():
     
     if progress_tracker:
         progress_tracker.print_final_stats()
+        progress_tracker.save_results(config.solver, config.split)
 
 if __name__ == "__main__":
+    progress_tracker = None  # Will be initialized in run_benchmark
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nTest interrupted by user")
+        print("\nBenchmark interrupted by user")
         if progress_tracker:
             progress_tracker.print_final_stats()
     except Exception as e:
-        print(f"\nTest failed with error: {e}")
+        print(f"\nBenchmark failed with error: {e}")
         if progress_tracker:
             progress_tracker.print_final_stats()
