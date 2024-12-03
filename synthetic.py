@@ -12,7 +12,7 @@ from utils.agents import FullSolutionAgent, AnswerVerifierAgent, SolutionVerifie
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-from utils.verification import verify_solution_with_model
+from utils.verification import verify_solution_with_model, verify_numeric
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
