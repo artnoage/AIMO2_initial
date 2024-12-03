@@ -179,7 +179,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 from tqdm import tqdm
 from datasets import load_dataset
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, whoami
 from bench_utils.progress_tracker import ProgressTracker
 from bench_utils.benchmark_config import BenchmarkConfig
 from bench_utils.utils import get_model, ModelOption
@@ -201,7 +201,7 @@ async def run_benchmark(
         elif config.dataset == 'aime':
             dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
         else:  # filtered
-            username = HfApi().whoami()["name"]
+            username = whoami()["name"]
             dataset = load_dataset(f"{username}/Numina", split=config.split)
             
         if config.split_slice:
