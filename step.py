@@ -153,7 +153,7 @@ async def main():
     # Initialize solver model
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    # Initialize progress tracker
+    global progress_tracker
     progress_tracker = ProgressTracker(
         total_examples=config.split_slice.stop if config.split_slice else 0,
         best_of=config.best_of
@@ -168,9 +168,19 @@ async def main():
     )
 
 if __name__ == "__main__":
+    progress_tracker = None
     try:
         asyncio.run(main())
+        if progress_tracker:
+            progress_tracker.save_results()
+            progress_tracker.print_final_stats()
     except KeyboardInterrupt:
-        print("\nTest interrupted by user")
+        print("\nBenchmark interrupted by user")
+        if progress_tracker:
+            progress_tracker.save_results()
+            progress_tracker.print_final_stats()
     except Exception as e:
-        print(f"\nTest failed with error: {e}")
+        print(f"\nBenchmark failed with error: {e}")
+        if progress_tracker:
+            progress_tracker.save_results()
+            progress_tracker.print_final_stats()
