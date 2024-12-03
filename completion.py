@@ -72,15 +72,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     completion_content = completion.content if hasattr(completion, 'content') else str(completion)
                     complete_solution = completion_content
 
-                # Verify solution using configured verification type
-                level, current_answer = await verify_solution(
+                # Create and use appropriate verifier
+                verifier = create_verifier(
+                    config.verification_type,
+                    verifier_model=verifier_model,
+                    second_verifier_model=second_verifier_model,
+                    tolerance=config.tolerance
+                )
+                level, current_answer = await verifier.verify(
                     complete_solution,
                     correct_answer,
-                    example['problem'],
-                    config.verification_type if 'verification_type' in config else 'numeric',
-                    verifier_model,
-                    second_verifier_model,
-                    config.tolerance if 'tolerance' in config else 1e-6
+                    example["problem"]
                 )
                 
                 if level == 4:

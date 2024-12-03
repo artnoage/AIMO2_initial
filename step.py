@@ -70,15 +70,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     has_answer = extract_answer_from_solution(current_solution) is not None
                 
                     if has_answer:
-                        # Verify solution using configured verification type
-                        level, current_answer = await verify_solution(
+                        # Create and use appropriate verifier
+                        verifier = create_verifier(
+                            config.verification_type,
+                            verifier_model=verifier_model,
+                            second_verifier_model=second_verifier_model,
+                            tolerance=config.tolerance
+                        )
+                        level, current_answer = await verifier.verify(
                             current_solution,
                             correct_answer,
-                            example['problem'],
-                            config.verification_type if 'verification_type' in config else 'numeric',
-                            verifier_model,
-                            second_verifier_model,
-                            config.tolerance if 'tolerance' in config else 1e-6
+                            example["problem"]
                         )
                         
                         if level == 4:
@@ -152,6 +154,12 @@ async def main():
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
+    
+    # Initialize progress tracker
+    progress_tracker = ProgressTracker(
+        total_examples=config.split_slice.stop if config.split_slice else 0,
+        best_of=config.best_of
+    )
     
     await run_benchmark(
         config,
