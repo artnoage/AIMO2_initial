@@ -150,6 +150,9 @@ async def main():
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
+    # Initialize solver model
+    solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
+    
     # Initialize progress tracker
     progress_tracker = ProgressTracker(
         total_examples=config.split_slice.stop if config.split_slice else 0,
