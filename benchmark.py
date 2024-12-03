@@ -57,7 +57,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 # Store the solution information
                 solution_info = {
                     'solution': current_solution,
-                    'answer': current_answer,
+                    'answer': current_answer if current_answer is not None else "",
                     'verification_level': level,
                     'is_correct': level == 4
                 }
