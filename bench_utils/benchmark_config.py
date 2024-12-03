@@ -40,6 +40,7 @@ class BenchmarkConfig:
     # Execution settings
     max_concurrent: int = 256
     best_of: int = 5
+    initial_steps: int = 1
     
     # Verification settings
     verification_type: str = 'numeric'  # 'numeric', 'answer', or 'solution'
@@ -75,6 +76,8 @@ class BenchmarkConfig:
                           help='Maximum number of concurrent problems (default: 256)')
         parser.add_argument('--best-of', type=int, default=5,
                           help='Number of attempts per problem (default: 5)')
+        parser.add_argument('--initial-steps', type=int, default=1,
+                          help='Number of initial steps before completion (default: 1)')
                           
         # Verification arguments
         parser.add_argument('--verifier', type=str,
