@@ -10,7 +10,6 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 
-
 def count_solution_steps(solution: str) -> int:
     """
     Count the number of steps in a solution by looking for 'Step X' patterns

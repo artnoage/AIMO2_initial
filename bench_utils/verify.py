@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Literal
 VerificationType = Literal['numeric', 'answer', 'solution']
 from abc import ABC, abstractmethod
 from langchain_core.messages import SystemMessage, HumanMessage
-from benchmark_utils import *
+from bench_utils.benchmark_utils import *
 
 class BaseVerifier(ABC):
     @abstractmethod
