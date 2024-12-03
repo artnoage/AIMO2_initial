@@ -110,6 +110,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'solution': "Error occurred",
                     'answer': None,
                     'is_correct': False,
+                    'verification_level': 0,
                     'steps': 0
                 })
         
