@@ -132,9 +132,7 @@ async def main():
     """Main function for testing step-by-step solution generation."""
     config = BenchmarkConfig.from_args('Test step-by-step solution generation')
     await run_benchmark(config, 
-                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
-                       None,
-                       None)
+                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo))
 
 if __name__ == "__main__":
     try:
