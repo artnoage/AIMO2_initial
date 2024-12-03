@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
@@ -29,8 +28,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        prompt = [SystemMessage(content=BENCHMARK_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
-        
+        solution_agent = FullSolutionAgent(solver_model)
         verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"], verifier_model)
         solutions = []
         correct_count = 0
@@ -39,7 +37,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         for attempt in range(best_of):
             try:
-                current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
+                current_solution = await solution_agent.generate(example["problem"], running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
                 if is_correct and current_answer is not None:
@@ -98,7 +96,7 @@ async def main():
     verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     await run_benchmark(config, 
                        process_example,
-                       BENCHMARK_SYSTEM_PROMPT, 
+                       None,
                        verifier_model)
 
 if __name__ == "__main__":
