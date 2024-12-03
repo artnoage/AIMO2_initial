@@ -1,4 +1,6 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Literal
+
+VerificationType = Literal['numeric', 'answer', 'solution']
 from abc import ABC, abstractmethod
 from langchain_core.messages import SystemMessage, HumanMessage
 from benchmark_utils import *
@@ -91,7 +93,7 @@ class SolutionVerifier(BaseVerifier):
             
         return 4, model_answer
 
-def create_verifier(verification_type: VerificationType, **kwargs) -> BaseVerifier:
+def create_verifier(verification_type: str, **kwargs) -> BaseVerifier:
     """Factory function to create appropriate verifier"""
     if verification_type == 'numeric':
         return NumericVerifier(tolerance=kwargs.get('tolerance', 1e-6))
