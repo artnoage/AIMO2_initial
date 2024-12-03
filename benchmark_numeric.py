@@ -107,7 +107,7 @@ async def main():
     verifier_model = get_model(ModelOption.LOCAL, temp=0.1)
     await run_benchmark(config, 
                        lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, vm, bo, config.tolerance),
-                       NUMERIC_SOLVER_SYSTEM_PROMPT, 
+                       None,
                        verifier_model)
 
 if __name__ == "__main__":
