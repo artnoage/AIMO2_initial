@@ -1,7 +1,27 @@
 """Configuration for benchmark scripts"""
 from dataclasses import dataclass
 from argparse import ArgumentParser
-from bench_utils.benchmark_utils import ModelOption
+from enum import Enum
+
+class ModelOption(Enum):
+    """Enum class representing different model options for chat completion.
+    
+    Each enum value corresponds to a specific model endpoint that can be used
+    with either OpenRouter API, SambaNova API, or local deployment.
+    """
+    CLAUDE = "anthropic/claude-3.5-sonnet:beta"
+    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
+    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
+    GEMINI_PRO = "google/gemini-pro-1.5"
+    GEMINI_FLASH="google/gemini-flash-1.5"
+    GPT = "openai/gpt-4o"
+    GPT_MINI="openai/gpt-4o-mini"
+    MASTER = "openai/o1-preview-2024-09-12"
+    MASTER_MINI="openai/o1-mini"
+    LOCAL = "/Home/stat/laschos/AIMO2_initial/models/20241130_144413"
+    #LOCAL ="artnoage/metastral"
+    NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
+    CODER="qwen/qwen-2.5-coder-32b-instruct"
 
 @dataclass
 class BenchmarkConfig:
