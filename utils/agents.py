@@ -152,6 +152,30 @@ class FullSolutionAgent:
         ]
         return await get_model_response(self.model, prompt, running_id, attempt)
 
+class VerifierAgent:
+    """Agent that verifies mathematical solutions"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def verify(self, problem: str, model_solution: str, correct_solution: str, running_id: int = 0, attempt: int = 0) -> bool:
+        """Verify if two solutions are mathematically equivalent"""
+        prompt = [
+            SystemMessage(content=VERIFIER_SYSTEM_PROMPT),
+            HumanMessage(content=(
+                f"Problem:\n{problem}\n\n"
+                f"Model's solution:\n{model_solution}\n\n"
+                f"Correct solution:\n{correct_solution}\n\n"
+                "Are these solutions mathematically equivalent? Consider:\n"
+                "1. The final answers may be in different but equivalent forms\n"
+                "2. Different valid solution approaches may be used\n"
+                "3. Intermediate steps may vary but lead to the same result\n\n"
+                "Return only True or False:"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, running_id, attempt)
+        return response.lower().strip() == "true"
+
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
