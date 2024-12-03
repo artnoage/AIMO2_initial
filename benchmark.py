@@ -1,4 +1,6 @@
 import os
+import asyncio
+from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from utils.utils import *
 from utils.benchmark_config import *
@@ -8,17 +10,32 @@ from utils.agents import FullSolutionAgent
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model) -> Tuple[str, bool]:
-    """Verify a solution and return (answer, is_correct)"""
+async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model, numeric: bool = False, tolerance: float = 1e-6) -> Tuple[Optional[float], bool]:
+    """Verify a solution using either numeric comparison or verifier model"""
     answer = extract_answer_from_solution(solution)
     if answer is None:
         return None, False
         
-    is_correct = await compare_math_answers(answer, correct_answer, problem, verifier_model)
-    return answer, is_correct
+    if numeric:
+        try:
+            # Extract and compare numeric answers
+            model_answer = extract_numeric_answer(solution)
+            correct_float = float(correct_answer)
+            
+            if model_answer is None or not isinstance(model_answer, (int, float)):
+                return None, False
+                
+            is_correct = abs(float(model_answer) - correct_float) <= tolerance
+            return model_answer, is_correct
+        except (ValueError, TypeError):
+            return None, False
+    else:
+        # Use verifier model for semantic comparison
+        is_correct = await compare_math_answers(answer, correct_answer, problem, verifier_model)
+        return answer, is_correct
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
-    """Process a single example for the standard benchmark"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
+    """Process a single example with either numeric or semantic verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -93,12 +110,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
 async def main():
     """Main function for benchmarking mathematical problem solving."""
-    config = BenchmarkConfig.from_args('Benchmark model on NuminaMath-CoT dataset')
-    verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-    await run_benchmark(config, 
-                       process_example,
-                       None,
-                       verifier_model)
+    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
+    verifier_model = None if config.numeric else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    
+    await run_benchmark(
+        config,
+        lambda ex, rid, eid, sm, vm, bo: process_example(
+            ex, rid, eid, sm, vm, bo,
+            numeric=config.numeric,
+            tolerance=config.tolerance
+        ),
+        None,
+        verifier_model
+    )
 
 if __name__ == "__main__":
     try:
