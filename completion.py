@@ -5,6 +5,7 @@ import re
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
+from utils.progress_tracker import ProgressTracker
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
@@ -142,6 +143,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for testing hybrid solution generation."""
     config = BenchmarkConfig.from_args('Test hybrid solution generation')
+    
+    # Initialize progress tracker
+    progress_tracker = ProgressTracker(
+        total_examples=config.split_slice.stop if config.split_slice else 0,
+        best_of=config.best_of
+    )
+    
     await run_benchmark(
         config,
         lambda example, running_id, example_id, solver_model, verifier_model, best_of:
@@ -152,8 +160,13 @@ async def main():
                 solver_model=solver_model,
                 verifier_model=verifier_model,
                 best_of=best_of
-            )
+            ),
+        progress_tracker=progress_tracker
     )
+    
+    # Save final results
+    progress_tracker.save_results(config.solver, config.split)
+    progress_tracker.print_final_stats()
 
 if __name__ == "__main__":
     try:
