@@ -39,12 +39,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     second_verifier_model=second_verifier_model,
                     tolerance=config.tolerance
                 )
-                level, current_answer = await verifier.verify(
+                score, total_steps, current_answer = await verifier.verify(
                     current_solution,
                     correct_answer,
                     example["problem"]
                 )
-                if level == 4:
+                if score == total_steps:
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
@@ -53,7 +53,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 solutions.append({
                     'solution': current_solution,
                     'answer': current_answer,
-                    'verification_level': level,
+                    'verification_score': score,
+                    'verification_steps': total_steps,
                     'is_correct': level == 4
                 })
             except Exception as e:
