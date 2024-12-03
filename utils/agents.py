@@ -1,6 +1,5 @@
-from typing import Optional, Dict
-from langchain_core.messages import HumanMessage, SystemMessage
-
+from typing import Dict
+from langchain_core.messages import HumanMessage
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     

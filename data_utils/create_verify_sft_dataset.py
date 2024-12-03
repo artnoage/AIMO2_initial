@@ -4,7 +4,7 @@ import argparse
 from typing import List, Dict, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
-from utils import extract_answer_from_solution, filter_by_token_ranges
+from utils.utils import extract_answer_from_solution, filter_by_token_ranges
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""

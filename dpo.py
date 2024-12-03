@@ -6,34 +6,16 @@ from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from trl import DPOTrainer
 import os
-import torch
-import GPUtil
 from transformers import logging
 from unsloth import is_bfloat16_supported
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
-def print_gpu_utilization():
-    visible_gpus = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-    if visible_gpus:
-        visible_ids = [int(x) for x in visible_gpus.split(",")]
-        GPUs = [gpu for gpu in GPUtil.getGPUs() if gpu.id in visible_ids]
-        for gpu in GPUs:
-            print(f'\nGPU ID: {gpu.id} ({gpu.name})')
-            print(f'GPU load: {gpu.load*100:.1f}%')
-            print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
-            print(f'GPU memory free: {gpu.memoryFree}MB')
-        if torch.cuda.is_available():
-            print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
-            print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
 
 def main():
     logging.set_verbosity_info()
-    print("\n=== Initial GPU State ===")
-    print_gpu_utilization()
-    print("\n=== Before Model Load ===")
-    print_gpu_utilization()
+
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
@@ -41,8 +23,7 @@ def main():
         max_seq_length=4096,
         load_in_4bit=False)
         
-    print("\n=== After Model Load ===")
-    print_gpu_utilization()
+
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -57,11 +38,7 @@ def main():
         use_gradient_checkpointing=True,  # True or "unsloth" for very long context
         random_state=3407,
         use_rslora=False)
-    
-    print("\n=== After LoRA Configuration ===")
-    print_gpu_utilization()
 
-    # Setup chat template
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
@@ -86,24 +63,12 @@ def main():
 
     # Load and format dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
-    print("\nFirst example before formatting:")
-    print(dataset[0]["prompt"])
-    print(dataset["prompt"][0])
     formatted_dataset = dataset.map(
         formatting_func,
         batched=True,
         desc="Applying chat template"
     )
-    import pprint
-    pprint.pprint("\nFirst example after formatting:")
-    row0=formatted_dataset[0]
-    row1=formatted_dataset[1]
-    row2=formatted_dataset[4]
-    pprint.pprint(len(formatted_dataset))
-    pprint.pprint(row0["chosen"])
-    pprint.pprint(row1["chosen"])
-    pprint.pprint(row2["prompt"])
-    # Print formatted example
+    print(formatted_dataset[0])
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
