@@ -143,7 +143,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
         if progress_tracker:
-            model_name = str(progress_tracker.total_examples) + "_examples"
+            model_name = f"{progress_tracker.total_examples}_examples"
             progress_tracker.save_results(model_name, "complete")
             progress_tracker.print_final_stats()
     except KeyboardInterrupt:
