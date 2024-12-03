@@ -166,7 +166,8 @@ async def run_benchmark(
     config: BenchmarkConfig,
     process_example_func: Callable,
     system_prompt=None,
-    verifier_model=None
+    verifier_model=None,
+    second_verifier_model=None
 ) -> None:
     """Generic benchmark runner that handles dataset loading and example processing"""
     if config.max_concurrent < 1:
@@ -252,8 +253,14 @@ async def run_benchmark(
     async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
         async with semaphore:
             return await process_example_func(
-                example, running_id, example['id'],
-                solver_model, verifier_model, config.best_of
+                example=example,
+                running_id=running_id,
+                example_id=example['id'],
+                solver_model=solver_model,
+                verifier_model=verifier_model,
+                second_verifier_model=second_verifier_model,
+                best_of=config.best_of,
+                config=config
             )
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]

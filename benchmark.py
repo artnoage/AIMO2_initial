@@ -114,18 +114,10 @@ async def main():
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
     await run_benchmark(
-        config,
-        lambda example, running_id, example_id, solver_model, verifier_model, best_of:
-            process_example(
-                example=example,
-                running_id=running_id,
-                example_id=example_id,
-                solver_model=solver_model,
-                verifier_model=verifier_model,
-                second_verifier_model=second_verifier_model,
-                best_of=best_of,
-                config=config
-            )
+        config=config,
+        process_example_func=process_example,
+        verifier_model=verifier_model,
+        second_verifier_model=second_verifier_model
     )
 
 if __name__ == "__main__":
