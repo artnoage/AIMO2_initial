@@ -134,8 +134,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
 async def main():
     """Main function for testing hybrid solution generation."""
-    config = NumericConfig.from_args('Test hybrid solution generation')
-    results = await run_benchmark(
+    config = BenchmarkConfig.from_args('Test hybrid solution generation')
+    await run_benchmark(
         config,
         lambda example, running_id, example_id, solver_model, verifier_model, best_of:
             process_example(
@@ -151,16 +151,7 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        all_results = asyncio.run(main())
-        # Filter out None results and prepare final output
-        final_results = [r for r in all_results if r is not None]
-        
-        # Save results to JSON file with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"test2_results_{timestamp}.json"
-        with open(output_file, 'w') as f:
-            json.dump(final_results, f, indent=2)
-        print(f"\nResults saved to {output_file}")
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
     except Exception as e:
