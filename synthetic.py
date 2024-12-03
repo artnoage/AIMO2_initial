@@ -7,12 +7,13 @@ from utils.progress_tracker import ProgressTracker
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
-from utils.agents import FullSolutionAgent, AnswerVerifierAgent, SolutionVerifierAgent
+from utils.agents import FullSolutionAgent
+from utils.verification import verify_solution_with_model
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-from utils.verification import verify_solution_with_model
+
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
