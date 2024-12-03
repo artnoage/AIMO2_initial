@@ -91,8 +91,10 @@ class ProgressTracker:
                     'id': result.get('id'),
                     'problem': result.get('problem'),
                     'correct_answer': result.get('correct_answer'),
-                    'model_answers': result.get('model_answers', []),
+                    'model_solutions': result.get('model_solutions', []),  # Full responses
+                    'extracted_answers': result.get('extracted_answers', []),
                     'is_correct_list': result.get('is_correct_list', []),
+                    'verification_levels': result.get('verification_levels', []),
                     'manual_step_counts': result.get('manual_step_counts', []),
                     'algorithmic_step_counts': result.get('algorithmic_step_counts', [])
                 }
