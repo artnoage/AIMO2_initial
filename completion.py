@@ -149,6 +149,22 @@ async def main():
     # Initialize solver model
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
+    # Load dataset
+    try:
+        if config.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
+        elif config.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
+        else:  # filtered
+            username = whoami()["name"]
+            dataset = load_dataset(f"{username}/Numina", split=config.split)
+            
+        if config.split_slice:
+            dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        return
+
     # Initialize progress tracker with actual dataset length
     dataset_length = len(dataset)
     if config.split_slice:
