@@ -22,18 +22,16 @@ class ProgressTracker:
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a markdown file"""
-        timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         os.makedirs("results", exist_ok=True)
-        stats_file = os.path.join("results", f"progress_stats_{timestamp}.md")
+        stats_file = os.path.join("results", f"progress_stats_{self.start_time.strftime('%Y%m%d_%H%M%S')}.md")
         
-        # Create file if it doesn't exist
-        if not os.path.exists(stats_file):
-            with open(stats_file, 'w') as f:
+        # Open in append mode, which will create the file if it doesn't exist
+        with open(stats_file, 'a') as f:
+            # If file is empty, write the header
+            if f.tell() == 0:
                 f.write(f"# Benchmark Progress Statistics\n\n")
                 f.write(f"Started at: {self.start_time.isoformat()}\n\n")
-        
-        # Append new stats
-        with open(stats_file, 'a') as f:
+            # Append new stats
             f.write(stats)
 
     def add_result(self, result: Dict) -> None:
