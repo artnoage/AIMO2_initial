@@ -43,6 +43,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_answer,
                     example["problem"]
                 )
+                print (score,total_steps)
                 if score == total_steps:
                     correct_count += 1
                     if best_solution is None:
