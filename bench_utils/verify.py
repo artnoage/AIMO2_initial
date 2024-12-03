@@ -83,28 +83,29 @@ class SolutionVerifier(BaseVerifier):
     async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[int, int, Optional[str]]:
         model_answer = extract_answer_from_solution(solution)
         if model_answer is None or solution is None:
-            return 0, 2, None
+            return 0, 4, None
             
         score = 0
-        # First verifier
-        first_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nIs this solution mathematically correct and complete?")
+        verification_steps = [
+            ("Check mathematical correctness", self.first_model, 
+             "You are a mathematical solution validator focused on correctness. Given a problem and solution, respond ONLY with 'yes' if all mathematical steps and calculations are correct, or 'no' if there are any mathematical errors. Just one word."),
+            ("Check solution completeness", self.first_model,
+             "You are a mathematical solution validator focused on completeness. Given a problem and solution, respond ONLY with 'yes' if the solution includes all necessary steps and explanations, or 'no' if steps are missing or unclear. Just one word."),
+            ("Verify final answer", self.second_model,
+             "You are a mathematical solution validator focused on the final answer. Given a problem and solution, respond ONLY with 'yes' if the final answer is correctly derived and matches the solution steps, or 'no' if there are inconsistencies. Just one word."),
+            ("Validate overall coherence", self.second_model,
+             "You are a mathematical solution validator focused on coherence. Given a problem and solution, respond ONLY with 'yes' if the solution flows logically and all steps connect properly, or 'no' if there are logical gaps or inconsistencies. Just one word.")
         ]
-        first_response = await get_model_response(self.first_model, first_prompt)
-        if first_response.strip().lower() == 'yes':
-            score += 1
-            
-            # Second verifier
-            second_prompt = [
-                SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
-                HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nIs this solution mathematically correct and complete?")
+        
+        for step_name, model, system_content in verification_steps:
+            prompt = [
+                HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nVerification task - {step_name}: Is this aspect of the solution correct?")
             ]
-            second_response = await get_model_response(self.second_model, second_prompt)
-            if second_response.strip().lower() == 'yes':
+            response = await get_model_response(model, prompt)
+            if response.strip().lower() == 'yes':
                 score += 1
-            
-        return score, 2, model_answer
+                
+        return score, 4, model_answer
 
 def create_verifier(verification_type: str, **kwargs) -> BaseVerifier:
     """Factory function to create appropriate verifier"""
