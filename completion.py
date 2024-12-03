@@ -11,7 +11,19 @@ from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent, CompletionAgent
 from langchain_core.messages import HumanMessage, SystemMessage
-from utils.verification import verify_numeric
+def verify_numeric(solution: str, correct_answer: str, tolerance: float = 1e-6) -> Tuple[Optional[float], bool]:
+    """Verify solution using numeric comparison"""
+    try:
+        model_answer = extract_numeric_answer(solution)
+        correct_float = float(correct_answer)
+        
+        if model_answer is None or not isinstance(model_answer, (int, float)):
+            return None, False
+            
+        is_correct = abs(float(model_answer) - correct_float) <= tolerance
+        return model_answer, is_correct
+    except (ValueError, TypeError):
+        return None, False
 
 def count_solution_steps(solution: str) -> int:
     """
