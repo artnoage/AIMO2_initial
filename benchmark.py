@@ -1,7 +1,6 @@
 import os
 import asyncio
 from typing import Optional, Dict, Tuple
-from datasets import load_dataset
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
@@ -118,10 +117,14 @@ async def main():
     # Initialize models
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    # Load dataset and get total examples
-    dataset = load_dataset("math_dataset", config.dataset)
-    examples = dataset[config.split]
-    total_examples = len(examples)
+    # Get total examples from dataset configuration
+    total_examples = 100  # Default value
+    if config.dataset == 'filtered':
+        total_examples = 1000  # Adjust based on your filtered dataset size
+    elif config.dataset == 'original':
+        total_examples = 2000  # Adjust based on your original dataset size
+    elif config.dataset == 'aime':
+        total_examples = 500  # Adjust based on your AIME dataset size
     
     global progress_tracker
     progress_tracker = ProgressTracker(
