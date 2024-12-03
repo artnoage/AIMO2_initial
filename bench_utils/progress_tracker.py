@@ -58,8 +58,9 @@ class ProgressTracker:
             print(stats)
             self._save_progress_stats(stats)
             
-            # Save results every 100 examples
-            self.save_results(model_name, split)
+            # Automatically save results every 100 examples
+            if model_name and split:
+                self.save_results(model_name, split)
 
     def save_results(self, model_name: str = None, split: str = None) -> None:
         """Save results to a JSON file"""

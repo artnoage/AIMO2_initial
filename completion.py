@@ -163,14 +163,17 @@ async def main():
         second_verifier_model=second_verifier_model
     )
     
-    # Save final results
-    progress_tracker.save_results(config.solver, config.split)
-    progress_tracker.print_final_stats()
+    if progress_tracker:
+        progress_tracker.print_final_stats()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
+        if progress_tracker:
+            progress_tracker.print_final_stats()
     except Exception as e:
         print(f"\nTest failed with error: {e}")
+        if progress_tracker:
+            progress_tracker.print_final_stats()
