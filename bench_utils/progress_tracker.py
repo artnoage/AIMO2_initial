@@ -43,7 +43,7 @@ class ProgressTracker:
     def calculate_error_rate(self, results: List[Dict]) -> float:
         if not results:
             return 0.0
-        correct_count = sum(1 for r in results if r.get('solved', False))
+        correct_count = sum(1 for r in results if any(r.get('is_correct_list', [])))
         return 1.0 - (correct_count / len(results))
 
     def print_progress(self) -> None:
@@ -52,17 +52,17 @@ class ProgressTracker:
             batch_error_rate = self.calculate_error_rate(last_hundred)
             cumulative_error_rate = self.calculate_error_rate(self.results)
             
-            # Calculate verification level statistics
+            # Calculate success statistics
             level_counts = {i: 0 for i in range(5)}
             total_verifications = 0
             
             for r in last_hundred:
-                for solution in r.get('model_responses', []):
-                    if isinstance(solution, dict) and 'verification_level' in solution:
-                        level = solution['verification_level']
-                        if isinstance(level, int) and 0 <= level <= 4:
-                            level_counts[level] += 1
-                            total_verifications += 1
+                for is_correct in r.get('is_correct_list', []):
+                    if is_correct:
+                        level_counts[4] += 1
+                    else:
+                        level_counts[0] += 1
+                    total_verifications += 1
             
             level_ratios = {
                 i: (level_counts[i] / total_verifications * 100) if total_verifications > 0 else 0 
