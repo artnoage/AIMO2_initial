@@ -54,14 +54,20 @@ class ProgressTracker:
             
             # Calculate verification level statistics
             level_counts = {i: 0 for i in range(5)}
-            for r in last_hundred:
-                metadata = r.get('metadata', {})
-                for i in range(5):
-                    level_counts[i] += metadata.get(f'verification_level_{i}', 0)
+            total_verifications = 0
             
-            total_verifications = sum(level_counts.values())
-            level_ratios = {i: level_counts[i] / total_verifications * 100 if total_verifications else 0 
-                           for i in range(5)}
+            for r in last_hundred:
+                for solution in r.get('model_responses', []):
+                    if isinstance(solution, dict) and 'verification_level' in solution:
+                        level = solution['verification_level']
+                        if isinstance(level, int) and 0 <= level <= 4:
+                            level_counts[level] += 1
+                            total_verifications += 1
+            
+            level_ratios = {
+                i: (level_counts[i] / total_verifications * 100) if total_verifications > 0 else 0 
+                for i in range(5)
+            }
             
             stats = f"\nAt {len(self.results)} examples:\n"
             stats += f"Batch Error Rate (last 100): {batch_error_rate:.4f}\n"
