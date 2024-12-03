@@ -51,7 +51,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await analysis_agent.generate(example["problem"])
                 steps_taken = 0
                 has_answer = False
-                current_solution = normalize_latex(current_solution.content)
+                current_solution = normalize_latex(current_solution)
                 # Keep adding steps until we get an answer or hit max steps
                 while not has_answer and steps_taken < max_steps:
                     steps_taken += 1
@@ -62,7 +62,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     )
                     
                     # Handle AIMessage or string content
-                    step_content = next_step.content if hasattr(next_step, 'content') else str(next_step)
+                    step_content = next_step 
                     step_content = normalize_latex(step_content)
                     current_solution = current_solution + step_content
                     
@@ -145,15 +145,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return None
 
 async def main():
-    """Main function for testing step-by-step solution generation."""
-    config = BenchmarkConfig.from_args('Test step-by-step solution generation')
+    """Main function for benchmarking mathematical problem solving."""
+    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
-    # Initialize solver model
+    # Initialize models
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    progress_tracker = None
+    global progress_tracker
     
     await run_benchmark(
         config=config,
@@ -165,9 +165,10 @@ async def main():
     
     if progress_tracker:
         progress_tracker.print_final_stats()
+        progress_tracker.save_results(config.solver, config.split)
 
 if __name__ == "__main__":
-    progress_tracker = None
+    progress_tracker = None  # Will be initialized in run_benchmark
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
