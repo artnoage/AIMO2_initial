@@ -24,7 +24,7 @@ def count_solution_steps(solution: str) -> int:
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig, initial_steps: int = 0) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig, initial_steps: int = 1) -> Optional[Dict]:
     """Process a single example using hybrid approach: analysis + initial_steps + completion"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -48,14 +48,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             try:
                 # Start with analysis
                 current_solution = await analysis_agent.generate(example["problem"])
-                current_solution = current_solution
                 steps_taken = 0
-                complete_solution = current_solution
                 for step in range(initial_steps):
                     steps_taken += 1
                     next_step = await step_agent.generate(example["problem"], current_solution)
-                    step_content = next_step
-                    current_solution = f"{current_solution}\n\n{step_content}"
+                    current_solution = current_solution + next_step
                     # Check if we already have an answer
                     if extract_answer_from_solution(current_solution) is not None:
                         print("answer found in step", step + 1, "for attempt", attempt, "in problem", running_id)
@@ -64,8 +61,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 else:
                     # Complete the solution if we didn't find an answer in the first two steps
                     steps_taken += 1
-                    completion = await completion_agent.generate(example["problem"], current_solution)
-                    complete_solution = completion
+                    complete_solution  = await completion_agent.generate(example["problem"], current_solution)
 
                 # Create and use appropriate verifier
                 verifier = create_verifier(
