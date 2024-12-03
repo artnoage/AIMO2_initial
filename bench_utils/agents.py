@@ -43,11 +43,9 @@ class AnalysisAgent:
     async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
         """Generate analysis for a given problem"""
         prompt = [
-            SystemMessage(content=(
-                "You are a mathematical analysis expert. Your role is to analyze problems "
-                "and outline solution approaches without solving them."
-            )),
             HumanMessage(content=(
+                "You are a mathematical analysis expert. Your role is to analyze problems "
+                "and outline solution approaches without solving them.\n\n"
                 f"Here is a mathematical problem:\n\n{problem}\n\n"
                 "Before solving this problem step-by-step, provide a thorough analysis that:\n"
                 "1. Categorizes the problem type\n"
@@ -71,13 +69,8 @@ class NextStepAgent:
         
     async def generate(self, problem: str, current_solution: str = "", running_id: int = 0, attempt: int = 0, timeout: int = 300) -> str:
         """Generate the next solution step"""
-        prompt = [
-            SystemMessage(content=(
-                "You are a mathematical solution expert focused on providing clear, detailed solution steps."
-            ))
-        ]
-        
         input_text = (
+            "You are a mathematical solution expert focused on providing clear, detailed solution steps.\n\n"
             f"Here is a mathematical problem:\n\n{problem}\n\n"
             "Your task is to provide the next step in the solution. "
             "Make sure your step is detailed and mathematically rigorous.\n\n"
@@ -94,7 +87,7 @@ class NextStepAgent:
         else:
             input_text += "\nStart the solution with Step 1:"
             
-        prompt.append(HumanMessage(content=input_text))
+        prompt = [HumanMessage(content=input_text)]
         return await get_model_response(self.model, prompt)
 
 class CompletionAgent:
@@ -106,10 +99,8 @@ class CompletionAgent:
     async def generate(self, problem: str, partial_solution: str, running_id: int = 0, attempt: int = 0) -> str:
         """Complete a partial solution"""
         prompt = [
-            SystemMessage(content=(
-                "You are a mathematical solution expert who excels at completing partial solutions."
-            )),
             HumanMessage(content=(
+                "You are a mathematical solution expert who excels at completing partial solutions.\n\n"
                 f"Here is a mathematical problem:\n\n{problem}\n\n"
                 "I will show you the beginning of a step-by-step mathematical solution. "
                 "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
@@ -136,8 +127,8 @@ class FullSolutionAgent:
     async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
         """Generate a complete solution with analysis and steps"""
         prompt = [
-            SystemMessage(content=self.system_prompt),
             HumanMessage(content=(
+                f"{self.system_prompt}\n\n"
                 f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
                 "Please provide a complete solution following these guidelines:\n"
                 "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
