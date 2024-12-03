@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
@@ -26,7 +26,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         solutions = []
         correct_count = 0
         best_solution = None
-        best_answer = None
         
         for attempt in range(best_of):
             try:
@@ -48,7 +47,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
-                        best_answer = current_answer
                         
                 solutions.append({
                     'solution': current_solution,
