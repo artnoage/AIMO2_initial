@@ -125,25 +125,6 @@ class CompletionAgent:
         ]
         return await get_model_response(self.model, prompt, running_id, attempt)
 
-class FullSolutionAgent:
-    """Agent that provides complete solutions with analysis and steps"""
-    
-    def __init__(self, model, numeric: bool = False):
-        self.model = model
-        from utils.utils import NUMERIC_SOLVER_SYSTEM_PROMPT, BENCHMARK_SYSTEM_PROMPT
-        self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
-        
-    async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
-        """Generate a complete solution with analysis and steps"""
-        prompt = [
-            SystemMessage(content=self.system_prompt),
-            HumanMessage(content=(
-                f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
-                "Please solve the problem completely following the format specified in the system prompt."
-            ))
-        ]
-        return await get_model_response(self.model, prompt, running_id, attempt)
-
 class VerifierAgent:
     """Agent that verifies mathematical solutions"""
     
@@ -184,8 +165,9 @@ class VerifierAgent:
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
-    def __init__(self, model):
+    def __init__(self, model, numeric: bool = False):
         self.model = model
+        self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
     async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
         """Generate a complete solution with analysis and steps"""
