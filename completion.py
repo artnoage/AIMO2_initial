@@ -149,9 +149,12 @@ async def main():
     # Initialize solver model
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    # Initialize progress tracker
+    # Initialize progress tracker with actual dataset length
+    dataset_length = len(dataset)
+    if config.split_slice:
+        dataset_length = min(config.split_slice.stop, dataset_length)
     progress_tracker = ProgressTracker(
-        total_examples=config.split_slice.stop if config.split_slice else 0,
+        total_examples=dataset_length,
         best_of=config.best_of
     )
     
