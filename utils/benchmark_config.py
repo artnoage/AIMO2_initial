@@ -22,10 +22,10 @@ class BenchmarkConfig:
     best_of: int = 5
     
     # Verification settings
+    verification_type: str = 'numeric'  # 'numeric', 'answer', or 'solution'
     verifier: str = 'GEMINI_FLASH'
     second_verifier: str = 'CODER'
     verifier_temp: float = 0
-    numeric: bool = False
     tolerance: float = 1e-6
     
     @classmethod
@@ -65,8 +65,10 @@ class BenchmarkConfig:
                           default='CODER', help='Second model to use for verification')
         parser.add_argument('--verifier-temp', type=float, default=0,
                           help='Temperature for verifier models')
-        parser.add_argument('--numeric', action='store_true',
-                          help='Use numeric verification instead of verifier model')
+        parser.add_argument('--verification-type', type=str,
+                          choices=['numeric', 'answer', 'solution'],
+                          default='numeric',
+                          help='Type of verification to use')
         parser.add_argument('--tolerance', type=float, default=1e-6,
                           help='Tolerance for numeric answer comparison (only used with --numeric)')
                           
