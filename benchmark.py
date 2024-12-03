@@ -48,7 +48,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_answer,
                     example["problem"]
                 )
-                
+                print(level)
                 if level == 4:
                     correct_count += 1
                     if best_solution is None:
