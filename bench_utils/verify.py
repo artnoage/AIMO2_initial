@@ -83,30 +83,39 @@ class SolutionVerifier(BaseVerifier):
     async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[int, int, Optional[str]]:
         model_answer = extract_answer_from_solution(solution)
         if model_answer is None or solution is None:
-            return 0, 4, None
+            return 0, 3, None
             
         score = 0
-        verification_steps = [
-            ("Mathematical correctness", self.first_model, 
-             "You are a strict mathematical validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if ALL mathematical steps and calculations are correct, otherwise 'no'."),
-            ("Solution completeness", self.first_model,
-             "You are a strict solution validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the solution includes ALL necessary steps and explanations, otherwise 'no'."),
-            ("Final answer verification", self.second_model,
-             "You are a strict answer validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the final answer is correctly derived and matches the solution steps, otherwise 'no'."),
-            ("Logical coherence", self.second_model,
-             "You are a strict logic validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the solution flows logically and all steps connect properly, otherwise 'no'.")
+        total_steps = 3  # Answer check + two solution validations
+        
+        # Step 1: Check if the answer is correct
+        answer_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
         ]
         
-        for step_name, model, system_content in verification_steps:
-            prompt = [
-                HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nVerification task - {step_name}: Is this aspect of the solution correct? Answer ONLY with 'yes' or 'no'.")
-            ]
-            response = await get_model_response(model, prompt)
-            response_text = response.strip().lower()
-            if response_text == 'yes':
-                score += 1
-                
-        return score, 4, model_answer
+        response = await get_model_response(self.first_model, answer_prompt)
+        if response.strip().lower() != 'yes':
+            return score, total_steps, model_answer
+        score += 1
+        
+        # Step 2: First model solution validation
+        solution_prompt = [
+            SystemMessage(content="You are a mathematical solution validator. Verify if the solution is complete, correct, and well-explained. Respond ONLY with 'yes' or 'no'."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nSolution:\n{solution}\n\nIs this solution mathematically correct and complete? Answer ONLY with 'yes' or 'no'.")
+        ]
+        
+        response = await get_model_response(self.first_model, solution_prompt)
+        if response.strip().lower() != 'yes':
+            return score, total_steps, model_answer
+        score += 1
+        
+        # Step 3: Second model solution validation
+        response = await get_model_response(self.second_model, solution_prompt)
+        if response.strip().lower() == 'yes':
+            score += 1
+            
+        return score, total_steps, model_answer
 
 def create_verifier(verification_type: str, **kwargs) -> BaseVerifier:
     """Factory function to create appropriate verifier"""
