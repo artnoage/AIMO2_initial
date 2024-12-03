@@ -88,26 +88,26 @@ class ProgressTracker:
         try:
             timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
             
-            # Create simplified results list
-            simplified_results = []
+            # Create results list with answers and correctness as lists
+            results_list = []
             for result in self.results:
-                simplified_result = {
+                result_entry = {
                     'id': result.get('id'),
                     'problem': result.get('problem'),
                     'correct_answer': result.get('correct_answer'),
                     'model_answers': result.get('model_answers', []),
                     'is_correct_list': result.get('is_correct_list', [])
                 }
-                simplified_results.append(simplified_result)
+                results_list.append(result_entry)
             
-            # Save results directly as a list
+            # Save results list
             filename = f"benchmark_{model_name}_{timestamp}.json"
             filepath = os.path.join("results", filename)
             print(f"\nAttempting to save results to: {filepath}")
             print(f"Number of results to save: {len(self.results)}")
             
             with open(filepath, 'w') as f:
-                json.dump(simplified_results, f, indent=2)
+                json.dump(results_list, f, indent=2)
             print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:

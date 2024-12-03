@@ -90,17 +90,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_responses': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
-            'is_correct_list': [s['is_correct'] for s in solutions],
-            'correct_binary': [1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions],
-            'model_answer_raw': model_answer,
-            'correct_answer_raw': correct_answer,
-            'attempts': {
-                'total': len(solutions),
-                'correct_count': correct_count
-            },
-            'solution_type': 'complete'  # Indicate this is a complete solution, not step-by-step
+            'is_correct_list': [s['is_correct'] for s in solutions]
         }
         
     except Exception as e:
