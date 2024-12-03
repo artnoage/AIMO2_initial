@@ -131,7 +131,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 'total': len(solutions),
                 'correct_count': correct_count
             },
-            'steps_taken': [s['steps_before_completion'] for s in solutions]
+            'steps_taken': [s['steps_before_completion'] for s in solutions],
+            'solution_type': 'hybrid'  # Indicate this uses hybrid generation approach
         }
         
     except Exception as e:

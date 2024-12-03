@@ -12,7 +12,19 @@ from utils.agents import AnalysisAgent, NextStepAgent
 from benchmark import verify_solution
 
 def normalize_latex(text: str) -> str:
-    """Replace more than two backslashes with two backslashes to fix excessive escaping"""
+    """
+    Replace more than two backslashes with two backslashes to fix excessive escaping.
+    
+    Args:
+        text: Input string containing LaTeX notation
+        
+    Returns:
+        Normalized string with consistent backslash escaping
+        
+    Example:
+        >>> normalize_latex(r'\\\\frac{1}{2}')
+        '\\\\frac{1}{2}'
+    """
     return re.sub(r'\\{3,}', r'\\\\', text)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"

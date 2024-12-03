@@ -10,7 +10,7 @@ from utils.agents import FullSolutionAgent, VerifierAgent
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model, numeric: bool = False, tolerance: float = 1e-6) -> Tuple[Optional[float], bool]:
+async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model, numeric: bool = False, tolerance: float = 1e-6, timeout: int = 300) -> Tuple[Optional[float], bool]:
     """Verify a solution using either numeric comparison or verifier model"""
     answer = extract_answer_from_solution(solution)
     if answer is None:
