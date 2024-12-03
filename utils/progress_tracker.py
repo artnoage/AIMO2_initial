@@ -6,6 +6,15 @@ from datetime import datetime
 
 @dataclass
 class ProgressTracker:
+    """
+    Tracks progress and statistics during benchmark runs.
+    
+    Attributes:
+        total_examples: Total number of examples to process
+        best_of: Number of attempts per example
+        results: List of processed results
+        start_time: Timestamp when tracking started
+    """
     total_examples: int
     best_of: int
     results: List[Dict] = field(default_factory=list)

@@ -13,10 +13,15 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from benchmark_numeric import verify_numeric
 
 def count_solution_steps(solution: str) -> int:
-    """Count the number of steps in a solution by looking for 'Step X' patterns"""
+    """
+    Count the number of steps in a solution by looking for 'Step X' patterns
+    Returns the highest step number found to handle missing intermediate steps
+    """
     # Look for patterns like "Step 1", "Step 2", etc.
-    steps = re.findall(r'Step\s+\d+', solution, re.IGNORECASE)
-    return len(steps)
+    step_numbers = [
+        int(num) for num in re.findall(r'Step\s+(\d+)', solution, re.IGNORECASE)
+    ]
+    return max(step_numbers) if step_numbers else 0
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
