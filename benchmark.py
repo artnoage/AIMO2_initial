@@ -16,7 +16,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {str(running_id)}: Invalid example format")
             return None
-            
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
@@ -43,9 +42,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_answer,
                     example["problem"]
                 )
-                print(f"Verification result - Score: {score}/{total_steps}")
                 # For solution verification, consider it correct if it passes majority of steps
-                threshold = total_steps if config.verification_type != 'solution' else (total_steps * 0.75)
+                threshold = total_steps 
                 if score >= threshold:
                     correct_count += 1
                     if best_solution is None:

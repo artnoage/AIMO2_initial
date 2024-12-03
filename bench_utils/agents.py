@@ -5,11 +5,12 @@ from bench_utils.benchmark_utils import get_model_response
 BENCHMARK_SYSTEM_PROMPT = """You are a mathematical problem solver. Your task is to solve mathematical problems step by step.
 
 Guidelines:
-1. Read the problem carefully
-2. Show your work clearly with numbered steps
-3. Use LaTeX notation for mathematical expressions
-4. Explain your reasoning in [brackets]
-5. End with a final answer in \boxed{}
+1. Read the problem carefully.
+2. Start with an analysis of the problem.
+3. Show your work clearly with numbered steps.
+4. Use LaTeX notation for mathematical expressions.
+5. Explain your reasoning in [brackets].
+6. End with a final answer in \boxed{}.
 """
 
 NUMERIC_SOLVER_SYSTEM_PROMPT = """You are a mathematical problem solver focused on numerical answers. Your task is to solve mathematical 
@@ -129,19 +130,6 @@ class FullSolutionAgent:
         prompt = [
             HumanMessage(content=(
                 f"{self.system_prompt}\n\n"
-                f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
-                "Please provide a complete solution following these guidelines:\n"
-                "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
-                "   - Problem type and key concepts involved\n"
-                "   - Relevant theorems and techniques\n"
-                "   - Overall solution strategy\n\n"
-                "2. Then provide a detailed step-by-step solution:\n"
-                "   - Number each step clearly (Step 1, Step 2, etc.)\n"
-                "   - Show all work and intermediate calculations\n"
-                "   - Use LaTeX notation for mathematical expressions\n"
-                "   - Provide justification in [brackets] for key steps\n"
-                "   - End with final answer in \\boxed{}\n\n"
-                "Please solve the problem completely:"
-            ))
+                f"Here is a mathematical problem to solve:\n\n{problem}\n\n"))
         ]
         return await get_model_response(self.model, prompt)
