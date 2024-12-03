@@ -1,7 +1,6 @@
 import asyncio
 from typing import Optional, Dict, Tuple
 from utils.utils import *
-
 from utils.benchmark_utils import run_benchmark
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
