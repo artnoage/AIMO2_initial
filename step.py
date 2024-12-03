@@ -30,7 +30,7 @@ def normalize_latex(text: str) -> str:
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int) -> Optional[Dict]:
     """Process a single example using sequential agents"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -72,8 +72,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     current_solution = current_solution + step_content
                     
                     # Check if we have an answer
-                    current_answer = extract_answer_from_solution(current_solution)
-                    has_answer = current_answer is not None
+                    has_answer = extract_answer_from_solution(current_solution) is not None
                 
                     if has_answer:
                         # Verify solution using configured verification type
@@ -87,7 +86,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                             config.tolerance
                         )
                         
-                        if is_correct:
+                        if level == 4:
                             correct_count += 1
                             
                         solutions.append({
