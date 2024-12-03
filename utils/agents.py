@@ -137,16 +137,38 @@ class SolutionVerifierAgent:
     
     def __init__(self, model):
         self.model = model
+        self._cache = {}  # Solution hash -> verification result
         
     async def verify(self, problem: str, solution: str) -> bool:
+        # Check cache first
+        cache_key = hash(f"{problem}:{solution}")
+        if cache_key in self._cache:
+            return self._cache[cache_key]
         """Verify if a solution is mathematically correct and complete"""
         prompt = [
             SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
             HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nIs this solution mathematically correct and complete?")
         ]
         
-        response = await self.model.ainvoke(prompt)
-        return response.content.strip().lower() == 'yes'
+        max_retries = 3
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                response = await asyncio.wait_for(
+                    self.model.ainvoke(prompt),
+                    timeout=300
+                )
+                result = response.content.strip().lower() == 'yes'
+                self._cache[cache_key] = result
+                return result
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    print(f"Verification failed after {max_retries} attempts")
+                    return False
+                print(f"Connection error during verification. Retrying... ({retry_count}/{max_retries})")
+                await asyncio.sleep(1)
+        return False
         
     async def verify(self, problem: str, model_solution: str, correct_solution: str, running_id: int = 0, attempt: int = 0) -> bool:
         """Verify if two solutions are mathematically equivalent"""
