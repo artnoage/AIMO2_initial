@@ -102,7 +102,7 @@ def count_solution_steps(solution: str) -> int:
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, initial_steps: int = 0) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig, initial_steps: int = 0) -> Optional[Dict]:
     """Process a single example using hybrid approach: analysis + initial_steps + completion"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -154,10 +154,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     complete_solution,
                     correct_answer,
                     example['problem'],
-                    config.verification_type,
+                    config.verification_type if 'verification_type' in config else 'numeric',
                     verifier_model,
                     second_verifier_model,
-                    config.tolerance
+                    config.tolerance if 'tolerance' in config else 1e-6
                 )
                 
                 if level == 4:
@@ -239,7 +239,8 @@ async def main():
                 example_id=example_id,
                 solver_model=solver_model,
                 verifier_model=verifier_model,
-                best_of=best_of
+                best_of=best_of,
+                config=config
             ),
         progress_tracker=progress_tracker
     )
