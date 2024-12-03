@@ -11,7 +11,7 @@ from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent, CompletionAgent
 from langchain_core.messages import HumanMessage, SystemMessage
-from utils.verification import verify_numeric
+from utils.verification import verify_numeric, verify_solution_with_model
 
 def count_solution_steps(solution: str) -> int:
     """
