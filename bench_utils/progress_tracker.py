@@ -84,10 +84,8 @@ class ProgressTracker:
             self._save_progress_stats(stats)
 
     def save_results(self, model_name: str, split: str) -> None:
-        """Save results to a JSON file with timestamp"""
+        """Save results to a JSON file, updating existing file if present"""
         try:
-            timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
-            
             # Create results list with answers and correctness as lists
             results_list = []
             for result in self.results:
@@ -102,8 +100,8 @@ class ProgressTracker:
                 }
                 results_list.append(result_entry)
             
-            # Save results list
-            filename = f"benchmark_{model_name}_{timestamp}.json"
+            # Use a fixed filename based on the start timestamp
+            filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
             filepath = os.path.join("results", filename)
             print(f"\nAttempting to save results to: {filepath}")
             print(f"Number of results to save: {len(self.results)}")
