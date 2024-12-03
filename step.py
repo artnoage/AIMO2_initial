@@ -85,7 +85,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         solutions.append({
                             'solution': current_solution,
                             'answer': current_answer,
-                            'is_correct': is_correct,
+                            'verification_level': level,
+                            'is_correct': level == 4,
                             'steps': steps_taken
                         })
                         break
@@ -145,6 +146,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for testing step-by-step solution generation."""
     config = BenchmarkConfig.from_args('Test step-by-step solution generation')
+    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     await run_benchmark(
         config,
         lambda example, running_id, example_id, solver_model, verifier_model, best_of: 
