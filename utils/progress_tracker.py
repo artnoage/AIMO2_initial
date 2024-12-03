@@ -65,8 +65,12 @@ class ProgressTracker:
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         
         # Calculate aggregate statistics
-        all_steps = []
         success_rates = []
+        step_stats = {
+            'total_solution_steps': [],
+            'steps_before_completion': [],
+            'steps_taken': []
+        }
         
         for result in self.results:
             # Track success rate
@@ -75,18 +79,24 @@ class ProgressTracker:
             if total_attempts > 0:
                 success_rates.append(correct_count / total_attempts)
             
-            # Collect all step counts (from any source)
-            if 'total_solution_steps' in result:
-                all_steps.extend(result['total_solution_steps'])
-            if 'steps_before_completion' in result:
-                all_steps.extend(result['steps_before_completion'])
-            if 'steps_taken' in result:
-                all_steps.extend(result['steps_taken'])
+            # Collect all step counts by type
+            for step_key in step_stats:
+                if step_key in result:
+                    if isinstance(result[step_key], list):
+                        step_stats[step_key].extend(result[step_key])
+                    else:
+                        step_stats[step_key].append(result[step_key])
         
         # Calculate statistics
         avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
-        avg_steps = sum(all_steps) / len(all_steps) if all_steps else 0
-        max_steps = max(all_steps) if all_steps else 0
+        
+        # Calculate step statistics for each type
+        step_statistics = {}
+        for step_type, steps in step_stats.items():
+            if steps:
+                step_statistics[f'avg_{step_type}'] = sum(steps) / len(steps)
+                step_statistics[f'max_{step_type}'] = max(steps)
+                step_statistics[f'min_{step_type}'] = min(steps)
         
         # Create unified output structure
         output = {
@@ -97,8 +107,7 @@ class ProgressTracker:
                 'total_examples': len(self.results),
                 'statistics': {
                     'average_success_rate': avg_success_rate,
-                    'average_steps': avg_steps,
-                    'max_steps': max_steps
+                    **step_statistics
                 }
             },
             'results': self.results
