@@ -28,7 +28,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         for attempt in range(best_of):
             try:
-                current_solution = await solution_agent.generate(example["problem"], running_id, attempt)
+                current_solution = await solution_agent.generate(example["problem"])
                 
                 # Create and use appropriate verifier
                 verifier = create_verifier(
