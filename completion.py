@@ -88,12 +88,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_count += 1
                 
                 solutions.append({
-                    'solution': current_solution,
-                    'complete_solution': complete_solution,
+                    'solution': complete_solution,
                     'answer': current_answer,
                     'verification_level': level,
-                    'steps_before_completion': steps_taken,
-                    'total_steps': count_solution_steps(complete_solution),
                     'is_correct': level == 4
                 })
                     
@@ -126,7 +123,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['verification_level'] == 4 for s in solutions],
             'model_solutions': [s['solution'] for s in solutions],
-            'extracted_answers': [s['answer'] for s in solutions],
+            'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
             'verification_levels': [s['verification_level'] for s in solutions]
         }

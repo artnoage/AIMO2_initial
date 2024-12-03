@@ -50,14 +50,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         best_solution = current_solution
                         best_answer = current_answer
                         
-                # Store the solution information
-                solution_info = {
-                    'solution': current_solution,  # Full model response
-                    'extracted_answer': current_answer if current_answer is not None else "",
+                solutions.append({
+                    'solution': current_solution,
+                    'answer': current_answer,
                     'verification_level': level,
                     'is_correct': level == 4
-                }
-                solutions.append(solution_info)
+                })
             except Exception as e:
                 print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
                 # Handle error case
@@ -87,7 +85,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'model_solutions': [s['solution'] for s in solutions],
-            'extracted_answers': [s['extracted_answer'] for s in solutions],
+            'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
             'verification_levels': [s['verification_level'] for s in solutions]
         }
