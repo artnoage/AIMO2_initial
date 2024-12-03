@@ -68,13 +68,17 @@ class ProgressTracker:
             return
             
         try:
+            # Get model and split from config if not provided
+            from bench_utils.benchmark_config import BenchmarkConfig
+            config = BenchmarkConfig.from_args('Get defaults')
+            
             # Create metadata
             metadata = {
                 "timestamp": self.start_time.isoformat(),
                 "total_examples": self.total_examples,
                 "best_of": self.best_of,
-                "model": model_name,
-                "split": split,
+                "model": model_name if model_name else config.solver,
+                "split": split if split else config.split,
                 "results": self.results
             }
             
