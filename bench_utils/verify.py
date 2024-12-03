@@ -43,22 +43,21 @@ class NumericVerifier(BaseVerifier):
             if numeric_answer is None:
                 return 1, model_answer
                 
+            # First try to convert the correct answer
             try:
                 correct_float = float(correct_answer.strip())
             except (ValueError, TypeError, AttributeError):
-                print(f"Warning: Could not convert correct answer '{correct_answer}' to float")
+                # If correct answer isn't numeric, return the raw answer string and mark as wrong
                 return 1, model_answer
-                
+
+            # Then try to convert the numeric answer
             if not isinstance(numeric_answer, (int, float)):
+                # If model answer isn't numeric, return it as string and mark as wrong
                 return 1, model_answer
-                
-            # Compare with tolerance
-            try:
-                is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
-                return 4 if is_correct else 1, model_answer
-            except (ValueError, TypeError) as e:
-                print(f"Warning: Error comparing answers: {e}")
-                return 1, model_answer
+
+            # Only compare if both are valid numbers
+            is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
+            return 4 if is_correct else 1, model_answer
                 
         except Exception as e:
             print(f"Warning: Verification error: {e}")
