@@ -128,8 +128,18 @@ class FullSolutionAgent:
     async def generate(self, problem: str) -> str:
         """Generate a complete solution with analysis and steps"""
         prompt = [
-            HumanMessage(content=(
-                f"{self.system_prompt}\n\n"
-                f"Here is a mathematical problem to solve:\n\n{problem}\n\n"))
+            HumanMessage(content=( f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
+                "Please provide a complete solution following these guidelines:\n"
+                "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
+                "   - Problem type and key concepts involved\n"
+                "   - Relevant theorems and techniques\n"
+                "   - Overall solution strategy\n\n"
+                "2. Then provide a detailed step-by-step solution:\n"
+                "   - Number each step clearly (Step 1, Step 2, etc.)\n"
+                "   - Show all work and intermediate calculations\n"
+                "   - Use LaTeX notation for mathematical expressions\n"
+                "   - Provide justification in [brackets] for key steps\n"
+                "   - End with final answer in \\boxed{}\n\n"
+                "Please solve the problem completely:"))
         ]
         return await get_model_response(self.model, prompt)
