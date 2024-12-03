@@ -198,7 +198,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 async def run_benchmark(
     config: BenchmarkConfig,
     process_example_func: Callable,
-    system_prompt=None,
+    solver_model=None,
     verifier_model=None,
     second_verifier_model=None
 ) -> None:

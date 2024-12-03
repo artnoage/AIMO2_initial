@@ -121,6 +121,7 @@ async def main():
     await run_benchmark(
         config=config,
         process_example_func=process_example,
+        solver_model=solver_model,
         verifier_model=verifier_model,
         second_verifier_model=second_verifier_model
     )
