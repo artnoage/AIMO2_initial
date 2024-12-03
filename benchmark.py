@@ -1,39 +1,81 @@
 import os
 import asyncio
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, Literal
 from dotenv import load_dotenv
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
-from utils.agents import FullSolutionAgent, AnswerVerifierAgent
+from utils.agents import FullSolutionAgent, AnswerVerifierAgent, SolutionVerifierAgent
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def verify_solution(solution: str, correct_answer: str, problem: str, verifier_model, numeric: bool = False, tolerance: float = 1e-6, timeout: int = 300) -> Tuple[Optional[float], bool]:
-    """Verify a solution using either numeric comparison or verifier model"""
-    answer = extract_answer_from_solution(solution)
-    if answer is None:
-        return None, False
-        
-    if numeric:
+VerificationType = Literal['numeric', 'answer', 'solution']
+
+async def verify_solution(
+    solution: str,
+    correct_answer: str,
+    problem: str,
+    verification_type: VerificationType,
+    verifier_model=None,
+    second_verifier_model=None,
+    tolerance: float = 1e-6
+) -> Tuple[int, Optional[str]]:
+    """
+    Verify solution using specified verification method
+    Returns:
+    - verification_level (0-4)
+    - extracted_answer or None
+    
+    Levels:
+    0 - Failed format/extraction check
+    1 - Failed verification
+    2 - Failed first solution verification (solution type only)
+    3 - Failed second verification (solution type only)
+    4 - Passed all checks
+    """
+    model_answer = extract_answer_from_solution(solution)
+    if model_answer is None or solution is None:
+        return 0, None
+
+    if verification_type == 'numeric':
         try:
-            # Extract and compare numeric answers
-            model_answer = extract_numeric_answer(solution)
+            numeric_answer = extract_numeric_answer(solution)
             correct_float = float(correct_answer)
             
-            if model_answer is None or not isinstance(model_answer, (int, float)):
-                return None, False
+            if numeric_answer is None or not isinstance(numeric_answer, (int, float)):
+                return 1, model_answer
                 
-            is_correct = abs(float(model_answer) - correct_float) <= tolerance
-            return model_answer, is_correct
+            is_correct = abs(float(numeric_answer) - correct_float) <= tolerance
+            return 4 if is_correct else 1, model_answer
         except (ValueError, TypeError):
-            return None, False
-    else:
-        # Use answer verifier model for semantic comparison
+            return 1, model_answer
+            
+    elif verification_type == 'answer':
+        if not verifier_model:
+            raise ValueError("Verifier model required for answer verification")
+            
         answer_verifier = AnswerVerifierAgent(verifier_model)
         is_correct = await answer_verifier.verify(problem, solution, correct_answer)
-        return answer, is_correct
+        return 4 if is_correct else 1, model_answer
+        
+    elif verification_type == 'solution':
+        if not verifier_model or not second_verifier_model:
+            raise ValueError("Both verifier models required for solution verification")
+            
+        # First verifier
+        solution_verifier = SolutionVerifierAgent(verifier_model)
+        if not await solution_verifier.verify(problem, solution):
+            return 2, model_answer
+            
+        # Second verifier
+        second_solution_verifier = SolutionVerifierAgent(second_verifier_model)
+        if not await second_solution_verifier.verify(problem, solution):
+            return 3, model_answer
+            
+        return 4, model_answer
+    
+    raise ValueError(f"Unknown verification type: {verification_type}")
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
     """Process a single example with either numeric or semantic verification"""
