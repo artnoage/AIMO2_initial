@@ -269,7 +269,7 @@ async def main():
                 
                 # Count verification levels
                 level_counts = {i: 0 for i in range(5)}  # 0-4 levels
-                for r in results:
+                for r in tracker.results:
                     for level in r['verification_results']:
                         level_counts[level] += 1
                         
@@ -281,17 +281,17 @@ async def main():
                 print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
                 
                 # Save current batch of augmented data
-                save_augmented_data(current_batch, augmented_filename, len(results))
+                save_augmented_data(current_batch, augmented_filename, len(tracker.results))
                 current_batch = []
                 
                 # Calculate detailed statistics
-                total_attempts = sum(len(r['verification_results']) for r in results)
-                avg_attempts = total_attempts / len(results)
-                successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
+                total_attempts = sum(len(r['verification_results']) for r in tracker.results)
+                avg_attempts = total_attempts / len(tracker.results)
+                successful_attempts = [len(r['verification_results']) for r in tracker.results if r['solved']]
                 avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
                 
                 # Calculate level ratios
-                total_verifications = sum(len(r['verification_results']) for r in results)
+                total_verifications = sum(len(r['verification_results']) for r in tracker.results)
                 level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
                 
                 print("\nDetailed Statistics:")
@@ -311,15 +311,15 @@ async def main():
                             'id': r['id'],
                             'solved': r['solved'],
                             'attempts_used': len(r['verification_results'])
-                        } for r in results],
+                        } for r in tracker.results],
                         'metadata': {
                             'solver': args.solver,
                             'verifier': args.verifier,
                             'second_verifier': args.second_verifier,
                             'temperature': args.temperature,
                             'max_attempts': args.max_attempts,
-                            'examples_processed': len(results),
-                            'success_rate': (solved_count/len(results)) * 100,
+                            'examples_processed': len(tracker.results),
+                            'success_rate': (sum(1 for r in tracker.results if r['solved'])/len(tracker.results)) * 100,
                             'statistics': {
                                 'average_attempts': avg_attempts,
                                 'average_successful_attempts': avg_successful_attempts,
@@ -340,7 +340,7 @@ async def main():
     
     # Save any remaining augmented data
     if current_batch:
-        save_augmented_data(current_batch, augmented_filename, len(results))
+        save_augmented_data(current_batch, augmented_filename, len(tracker.results))
         
     print(f"\nResults saved to {results_file}")
     print(f"Augmented data saved to {augmented_filename}")
