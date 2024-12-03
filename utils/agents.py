@@ -70,7 +70,7 @@ class NextStepAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, current_solution: str = "", running_id: int = 0, attempt: int = 0) -> str:
+    async def generate(self, problem: str, current_solution: str = "", running_id: int = 0, attempt: int = 0, timeout: int = 300) -> str:
         """Generate the next solution step"""
         prompt = [
             SystemMessage(content=(
