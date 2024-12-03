@@ -166,6 +166,9 @@ async def main():
         verifier_model=verifier_model,
         second_verifier_model=second_verifier_model
     )
+    
+    if progress_tracker:
+        progress_tracker.save_results(config.solver, config.split)
 
 if __name__ == "__main__":
     progress_tracker = None

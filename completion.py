@@ -164,7 +164,7 @@ async def main():
     )
     
     # Save final results
-    progress_tracker.save_results()
+    progress_tracker.save_results(config.solver, config.split)
     progress_tracker.print_final_stats()
 
 if __name__ == "__main__":

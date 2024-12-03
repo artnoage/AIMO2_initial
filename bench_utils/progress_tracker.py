@@ -44,7 +44,7 @@ class ProgressTracker:
         correct_count = sum(1 for r in results if any(r.get('is_correct_list', [])))
         return 1.0 - (correct_count / len(results))
 
-    def print_progress(self) -> None:
+    def print_progress(self, model_name: str = None, split: str = None) -> None:
         if len(self.results) % 100 == 0 and self.results:
             last_hundred = self.results[-100:]
             batch_error_rate = self.calculate_error_rate(last_hundred)
@@ -57,23 +57,39 @@ class ProgressTracker:
             
             print(stats)
             self._save_progress_stats(stats)
+            
+            # Save results every 100 examples
+            self.save_results(model_name, split)
 
-    def save_results(self) -> None:
+    def save_results(self, model_name: str = None, split: str = None) -> None:
         """Save results to a JSON file"""
         try:
-            # Create results list with answers and correctness as lists
+            # Create results list with all benchmark data
             results_list = []
             for result in self.results:
                 results_list.append(result)
             
+            # Create metadata
+            metadata = {
+                "timestamp": self.start_time.isoformat(),
+                "total_examples": self.total_examples,
+                "best_of": self.best_of,
+                "model": model_name,
+                "split": split,
+                "results": results_list
+            }
+            
             # Use a fixed filename based on the start timestamp
             filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
             filepath = os.path.join("results", filename)
-            print(f"\nAttempting to save results to: {filepath}")
-            print(f"Number of results to save: {len(self.results)}")
+            
+            # Create results directory if it doesn't exist
+            os.makedirs("results", exist_ok=True)
+            
+            print(f"\nSaving {len(self.results)} results to: {filepath}")
             
             with open(filepath, 'w') as f:
-                json.dump(results_list, f, indent=2)
+                json.dump(metadata, f, indent=2)
             print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
