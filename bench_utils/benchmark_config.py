@@ -1,7 +1,7 @@
 """Configuration for benchmark scripts"""
 from dataclasses import dataclass
 from argparse import ArgumentParser
-from benchmark_utils.utils import ModelOption
+from bench_utils import ModelOption
 
 @dataclass
 class BenchmarkConfig:

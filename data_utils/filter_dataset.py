@@ -3,7 +3,7 @@ import json
 import argparse
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
-from benchmark_utils.utils import extract_answer_from_solution
+from bench_utils.utils import extract_answer_from_solution
 
 def count_boxed_answers(solution: str) -> int:
     """Count number of \boxed{...} occurrences in solution"""
