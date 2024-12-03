@@ -88,7 +88,7 @@ class ProgressTracker:
         try:
             timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
             
-            # Create simplified results structure
+            # Create simplified results list
             simplified_results = []
             for result in self.results:
                 simplified_result = {
@@ -100,24 +100,14 @@ class ProgressTracker:
                 }
                 simplified_results.append(simplified_result)
             
-            # Create output structure
-            output = {
-                'metadata': {
-                    'model': model_name,
-                    'timestamp': timestamp,
-                    'total_examples': len(self.results)
-                },
-                'results': simplified_results
-            }
-            
-            # Save results
+            # Save results directly as a list
             filename = f"benchmark_{model_name}_{timestamp}.json"
             filepath = os.path.join("results", filename)
             print(f"\nAttempting to save results to: {filepath}")
             print(f"Number of results to save: {len(self.results)}")
             
             with open(filepath, 'w') as f:
-                json.dump(output, f, indent=2)
+                json.dump(simplified_results, f, indent=2)
             print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
