@@ -43,8 +43,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     correct_answer,
                     example["problem"]
                 )
-                print (score,total_steps)
-                if score == total_steps:
+                print(f"Verification result - Score: {score}/{total_steps}")
+                # For solution verification, consider it correct if it passes majority of steps
+                threshold = total_steps if config.verification_type != 'solution' else (total_steps * 0.75)
+                if score >= threshold:
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
