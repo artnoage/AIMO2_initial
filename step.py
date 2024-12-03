@@ -74,10 +74,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     # Check if we have an answer
                     current_answer = extract_answer_from_solution(current_solution)
                     has_answer = current_answer is not None
-                    
+                
                     if has_answer:
-                        # Verify the answer
-                        current_answer_float, is_correct = await verify_solution(current_solution, correct_answer, example["problem"], None, numeric=True, tolerance=1e-6)
+                        # Verify solution using configured verification type
+                        level, current_answer = await verify_solution(
+                            current_solution,
+                            correct_answer,
+                            example['problem'],
+                            config.verification_type,
+                            verifier_model,
+                            second_verifier_model,
+                            config.tolerance
+                        )
                         
                         if is_correct:
                             correct_count += 1
