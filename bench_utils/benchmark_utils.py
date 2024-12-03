@@ -6,11 +6,11 @@ from enum import Enum
 from functools import wraps
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from langchain_openai import ChatOpenAI
-from bench_utils.progress_tracker import *
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi, whoami
 from bench_utils.benchmark_config import *
+from bench_utils.progress_tracker import *
 T = TypeVar('T')
 
 class ModelOption(Enum):
