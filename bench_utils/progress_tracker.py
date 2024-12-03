@@ -159,30 +159,34 @@ class ProgressTracker:
             return
 
         total = len(self.results)
-        any_correct_count = sum(1 for r in self.results if any(r['is_correct_list']))
-        majority_correct_count = sum(1 for r in self.results 
-                                   if r['attempts']['correct_count'] > self.best_of // 2)
-
-        any_accuracy = (any_correct_count / total) * 100
-        majority_accuracy = (majority_correct_count / total) * 100
-
-        at_least_one_correct = sum(1 for r in self.results if r['attempts']['correct_count'] > 0)
+        
+        # Calculate success metrics
+        any_correct = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
         majority_correct = sum(1 for r in self.results 
-                             if r['attempts']['correct_count'] > self.best_of // 2)
+                             if sum(r.get('is_correct_list', [])) > self.best_of // 2)
+        
+        # Calculate per-attempt success rates
+        total_attempts = sum(len(r.get('is_correct_list', [])) for r in self.results)
+        successful_attempts = sum(sum(r.get('is_correct_list', [])) for r in self.results)
+        
+        # Calculate percentages
+        any_accuracy = (any_correct / total) * 100 if total > 0 else 0
+        majority_accuracy = (majority_correct / total) * 100 if total > 0 else 0
+        attempt_accuracy = (successful_attempts / total_attempts) * 100 if total_attempts > 0 else 0
 
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
         stats = "\n\n## Final Results\n\n"
         stats += f"- Total examples processed: {total}\n"
-        stats += f"- Any-Correct Accuracy: {any_correct_count}/{total} = {any_accuracy:.2f}%\n"
-        stats += f"- Majority-Correct Accuracy: {majority_correct_count}/{total} = {majority_accuracy:.2f}%\n\n"
+        stats += f"- Any-Correct Accuracy: {any_correct}/{total} = {any_accuracy:.2f}%\n"
+        stats += f"- Majority-Correct Accuracy: {majority_correct}/{total} = {majority_accuracy:.2f}%\n"
+        stats += f"- Per-Attempt Accuracy: {successful_attempts}/{total_attempts} = {attempt_accuracy:.2f}%\n\n"
 
         stats += f"### Best-of-{self.best_of} Statistics\n\n"
-        stats += f"- Problems with at least one correct solution: {at_least_one_correct}/{total} = "
-        stats += f"{(at_least_one_correct/total)*100:.2f}%\n"
-        stats += f"- Problems with majority correct solutions: {majority_correct}/{total} = "
-        stats += f"{(majority_correct/total)*100:.2f}%\n\n"
+        stats += f"- Problems with at least one correct solution: {any_correct}/{total} = {any_accuracy:.2f}%\n"
+        stats += f"- Problems with majority correct solutions: {majority_correct}/{total} = {majority_accuracy:.2f}%\n"
+        stats += f"- Total successful attempts: {successful_attempts}/{total_attempts} = {attempt_accuracy:.2f}%\n\n"
 
         stats += "### Timing Information\n\n"
         stats += f"- Total execution time: {total_duration}\n"
