@@ -126,12 +126,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'is_correct_list': [s['verification_level'] == 4 for s in solutions],
             'model_solutions': [s['solution'] for s in solutions],
             'extracted_answers': [s['answer'] for s in solutions],
-            'is_correct_list': [s['is_correct'] for s in solutions],
-            'metadata': {
-                'benchmark_type': 'completion',
-                'manual_step_counts': [count_manual_steps(s['complete_solution']) for s in solutions],
-                'algorithmic_step_counts': [s['steps_before_completion'] for s in solutions]
-            }
+            'is_correct_list': [s['is_correct'] for s in solutions]
         }
         
     except Exception as e:
