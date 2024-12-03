@@ -1,6 +1,7 @@
 import os
 import asyncio
 from typing import Optional, Dict, Tuple
+from datasets import load_dataset
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
@@ -114,9 +115,17 @@ async def main():
     verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
     second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
+    # Initialize models
+    solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
+    
+    # Load dataset and get total examples
+    dataset = load_dataset("math_dataset", config.dataset)
+    examples = dataset[config.split]
+    total_examples = len(examples)
+    
     global progress_tracker
     progress_tracker = ProgressTracker(
-        total_examples=config.num_examples,
+        total_examples=total_examples,
         best_of=config.best_of
     )
     
