@@ -88,9 +88,9 @@ class ProgressTracker:
         # Always try to save, even if results list is empty
         try:
             timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
-        
-        # Calculate aggregate statistics
-        success_rates = []
+            
+            # Calculate aggregate statistics
+            success_rates = []
         # Initialize empty stats collectors
         step_stats = {}
         
@@ -145,6 +145,8 @@ class ProgressTracker:
         with open(filepath, 'w') as f:
             json.dump(output, f, indent=2)
         print(f"Results successfully saved to: {filepath}")
+        except Exception as e:
+            print(f"Error saving results: {str(e)}")
         
         # Print statistics
         print("\nBenchmark Statistics:")
