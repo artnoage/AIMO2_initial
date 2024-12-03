@@ -121,9 +121,14 @@ async def main():
     )
 
 if __name__ == "__main__":
+    progress_tracker = None
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nBenchmark interrupted by user")
+        if progress_tracker:
+            progress_tracker.save_results("interrupted", "interrupted")
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")
+        if progress_tracker:
+            progress_tracker.save_results("error", "error")

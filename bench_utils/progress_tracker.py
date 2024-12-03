@@ -85,9 +85,8 @@ class ProgressTracker:
 
     def save_results(self, model_name: str, split: str) -> None:
         """Save results to a JSON file with timestamp"""
-        if not self.results:
-            print("No results to save")
-            return
+        # Always try to save, even if results list is empty
+        try:
             
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         
@@ -140,10 +139,13 @@ class ProgressTracker:
         }
         
         filename = f"benchmark_{model_name}_{timestamp}.json"
-        os.makedirs("results", exist_ok=True)
-        with open(os.path.join("results", filename), 'w') as f:
+        filepath = os.path.join("results", filename)
+        print(f"\nAttempting to save results to: {filepath}")
+        print(f"Number of results to save: {len(self.results)}")
+        
+        with open(filepath, 'w') as f:
             json.dump(output, f, indent=2)
-        print(f"\nResults saved to: {filename}")
+        print(f"Results successfully saved to: {filepath}")
         
         # Print statistics
         print("\nBenchmark Statistics:")
