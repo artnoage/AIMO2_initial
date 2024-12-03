@@ -92,7 +92,7 @@ def verify_numeric(solution: str, correct_answer: str, tolerance: float = 1e-6) 
         return None, False
     
     
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with configured verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -199,7 +199,8 @@ async def main():
                 solver_model=solver_model,
                 verifier_model=verifier_model,
                 second_verifier_model=second_verifier_model,
-                best_of=best_of
+                best_of=best_of,
+                config=config
             )
     )
 
