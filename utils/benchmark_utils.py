@@ -11,6 +11,7 @@ from utils.utils import get_model, ModelOption
 async def run_benchmark(
     config: BenchmarkConfig,
     process_example_func: Callable,
+    system_prompt=None,
     verifier_model=None
 ) -> None:
     """Generic benchmark runner that handles dataset loading and example processing"""
