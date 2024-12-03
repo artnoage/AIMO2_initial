@@ -122,7 +122,6 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
             return float(num.strip()) / float(denom.strip())
         return float(clean_answer)
     except (ValueError, ZeroDivisionError) as e:
-        print(f"Warning: Could not convert answer '{clean_answer}' to float: {e}")
         return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
