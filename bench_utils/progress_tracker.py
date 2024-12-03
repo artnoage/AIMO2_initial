@@ -50,32 +50,9 @@ class ProgressTracker:
             batch_error_rate = self.calculate_error_rate(last_hundred)
             cumulative_error_rate = self.calculate_error_rate(self.results)
             
-            # Calculate success statistics
-            level_counts = {i: 0 for i in range(5)}
-            total_verifications = 0
-            
-            for r in last_hundred:
-                for is_correct in r.get('is_correct_list', []):
-                    if is_correct:
-                        level_counts[4] += 1
-                    else:
-                        level_counts[0] += 1
-                    total_verifications += 1
-            
-            level_ratios = {
-                i: (level_counts[i] / total_verifications * 100) if total_verifications > 0 else 0 
-                for i in range(5)
-            }
-            
             stats = f"\nAt {len(self.results)} examples:\n"
-            stats += f"Batch Error Rate (last 100): {batch_error_rate:.4f}\n"
-            stats += f"Cumulative Error Rate: {cumulative_error_rate:.4f}\n"
-            stats += "\nVerification Level Distribution (last 100):\n"
-            stats += f"Format Check Failed: {level_ratios[0]:.2f}%\n"
-            stats += f"Answer Check Failed: {level_ratios[1]:.2f}%\n"
-            stats += f"First Verifier Failed: {level_ratios[2]:.2f}%\n"
-            stats += f"Second Verifier Failed: {level_ratios[3]:.2f}%\n"
-            stats += f"All Checks Passed: {level_ratios[4]:.2f}%\n"
+            stats += f"Batch Success Rate (last 100): {1 - batch_error_rate:.4f}\n"
+            stats += f"Cumulative Success Rate: {1 - cumulative_error_rate:.4f}\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
