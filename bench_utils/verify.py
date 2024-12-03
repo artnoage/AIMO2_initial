@@ -87,19 +87,19 @@ class SolutionVerifier(BaseVerifier):
             
         score = 0
         verification_steps = [
-            ("Check mathematical correctness", self.first_model, 
-             "You are a mathematical solution validator focused on correctness. Given a problem and solution, respond ONLY with 'yes' if all mathematical steps and calculations are correct, or 'no' if there are any mathematical errors. Just one word."),
-            ("Check solution completeness", self.first_model,
-             "You are a mathematical solution validator focused on completeness. Given a problem and solution, respond ONLY with 'yes' if the solution includes all necessary steps and explanations, or 'no' if steps are missing or unclear. Just one word."),
-            ("Verify final answer", self.second_model,
-             "You are a mathematical solution validator focused on the final answer. Given a problem and solution, respond ONLY with 'yes' if the final answer is correctly derived and matches the solution steps, or 'no' if there are inconsistencies. Just one word."),
-            ("Validate overall coherence", self.second_model,
-             "You are a mathematical solution validator focused on coherence. Given a problem and solution, respond ONLY with 'yes' if the solution flows logically and all steps connect properly, or 'no' if there are logical gaps or inconsistencies. Just one word.")
+            ("Mathematical correctness", self.first_model, 
+             "You are a strict mathematical validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if ALL mathematical steps and calculations are correct, otherwise 'no'."),
+            ("Solution completeness", self.first_model,
+             "You are a strict solution validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the solution includes ALL necessary steps and explanations, otherwise 'no'."),
+            ("Final answer verification", self.second_model,
+             "You are a strict answer validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the final answer is correctly derived and matches the solution steps, otherwise 'no'."),
+            ("Logical coherence", self.second_model,
+             "You are a strict logic validator. Your ONLY allowed responses are 'yes' or 'no'. Respond 'yes' if the solution flows logically and all steps connect properly, otherwise 'no'.")
         ]
         
         for step_name, model, system_content in verification_steps:
             prompt = [
-                HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nVerification task - {step_name}: Is this aspect of the solution correct?")
+                HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nVerification task - {step_name}: Is this aspect of the solution correct? Answer ONLY with 'yes' or 'no'.")
             ]
             response = await get_model_response(model, prompt)
             response_text = response.strip().lower()
