@@ -78,20 +78,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     second_verifier_model=second_verifier_model,
                     tolerance=config.tolerance
                 )
-                level, current_answer = await verifier.verify(
+                score, total_steps, current_answer = await verifier.verify(
                     complete_solution,
                     correct_answer,
                     example["problem"]
                 )
                 
-                if level == 4:
+                if score == total_steps:
                     correct_count += 1
                 
                 solutions.append({
                     'solution': complete_solution,
                     'answer': current_answer,
-                    'verification_level': level,
-                    'is_correct': level == 4,
+                    'verification_score': score,
+                    'verification_steps': total_steps,
+                    'is_correct': score == total_steps,
                     'steps_taken': steps_taken,
                     'total_steps': count_solution_steps(complete_solution)
                 })
