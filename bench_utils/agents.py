@@ -41,7 +41,7 @@ class AnalysisAgent:
         self.model = model
         self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
-    async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
+    async def generate(self, problem: str) -> str:
         """Generate analysis for a given problem"""
         prompt = [
             HumanMessage(content=(
@@ -68,7 +68,7 @@ class NextStepAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, current_solution: str = "", running_id: int = 0, attempt: int = 0, timeout: int = 300) -> str:
+    async def generate(self, problem: str, current_solution: str = "") -> str:
         """Generate the next solution step"""
         input_text = (
             "You are a mathematical solution expert focused on providing clear, detailed solution steps.\n\n"
@@ -97,7 +97,7 @@ class CompletionAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, partial_solution: str, running_id: int = 0, attempt: int = 0) -> str:
+    async def generate(self, problem: str, partial_solution: str) -> str:
         """Complete a partial solution"""
         prompt = [
             HumanMessage(content=(
@@ -125,7 +125,7 @@ class FullSolutionAgent:
         self.model = model
         self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
-    async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
+    async def generate(self, problem: str) -> str:
         """Generate a complete solution with analysis and steps"""
         prompt = [
             HumanMessage(content=(
