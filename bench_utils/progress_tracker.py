@@ -58,8 +58,8 @@ class ProgressTracker:
             print(stats)
             self._save_progress_stats(stats)
 
-    def save_results(self, model_name: str, split: str) -> None:
-        """Save results to a JSON file, updating existing file if present"""
+    def save_results(self) -> None:
+        """Save results to a JSON file"""
         try:
             # Create results list with answers and correctness as lists
             results_list = []
