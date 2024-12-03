@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.utils import get_model_response, extract_answer_from_solution
 
@@ -13,7 +13,8 @@ Guidelines:
 5. End with a final answer in \boxed{}
 """
 
-NUMERIC_SOLVER_SYSTEM_PROMPT = """You are a mathematical problem solver focused on numerical answers. Your task is to solve mathematical problems and provide precise numeric solutions.
+NUMERIC_SOLVER_SYSTEM_PROMPT = """You are a mathematical problem solver focused on numerical answers. Your task is to solve mathematical 
+problems and provide precise numeric solutions.
 
 Guidelines:
 1. Read the problem carefully
@@ -61,7 +62,7 @@ class AnalysisAgent:
                 "Please provide the analysis:"
             ))
         ]
-        return await get_model_response(self.model, prompt)
+        return await get_model_response(self.model, prompt, running_id, attempt)
 
 class NextStepAgent:
     """Agent that provides the next step in a solution"""
