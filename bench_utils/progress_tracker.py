@@ -87,8 +87,7 @@ class ProgressTracker:
         """Save results to a JSON file with timestamp"""
         # Always try to save, even if results list is empty
         try:
-            
-        timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
+            timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         
         # Calculate aggregate statistics
         success_rates = []
