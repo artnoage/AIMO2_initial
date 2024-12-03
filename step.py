@@ -121,7 +121,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'attempts': {
                 'total': len(solutions),
                 'correct_count': correct_count
-            }
+            },
+            'total_solution_steps': [s['steps'] for s in solutions]
         }
         
     except Exception as e:
