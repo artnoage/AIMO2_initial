@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Literal
+from typing import Optional, Tuple
 from abc import ABC, abstractmethod
 from langchain_core.messages import SystemMessage, HumanMessage
 from benchmark_utils.utils import (
@@ -7,7 +7,7 @@ from benchmark_utils.utils import (
     get_model_response
 )
 
-VerificationType = Literal['numeric', 'answer', 'solution']
+from benchmark_utils import VerificationType
 
 class BaseVerifier(ABC):
     @abstractmethod
