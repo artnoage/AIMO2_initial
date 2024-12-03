@@ -103,12 +103,8 @@ class SolutionVerifier(BaseVerifier):
             ]
             response = await get_model_response(model, prompt)
             response_text = response.strip().lower()
-            print(f"Verification step '{step_name}' response: '{response_text}'")
             if response_text == 'yes':
                 score += 1
-                print(f"Step passed: {step_name}")
-            else:
-                print(f"Step failed: {step_name}")
                 
         return score, 4, model_answer
 
