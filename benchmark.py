@@ -46,7 +46,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        solution_agent = FullSolutionAgent(solver_model)
+        solution_agent = FullSolutionAgent(solver_model, numeric=numeric)
         verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"], verifier_model)
         solutions = []
         correct_count = 0

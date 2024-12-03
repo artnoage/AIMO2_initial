@@ -36,8 +36,9 @@ Guidelines:
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     
-    def __init__(self, model):
+    def __init__(self, model, numeric: bool = False):
         self.model = model
+        self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
     async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
         """Generate analysis for a given problem"""
@@ -199,9 +200,7 @@ class FullSolutionAgent:
     async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
         """Generate a complete solution with analysis and steps"""
         prompt = [
-            SystemMessage(content=(
-                "You are a comprehensive mathematical solution expert who provides thorough analysis and detailed solutions."
-            )),
+            SystemMessage(content=self.system_prompt),
             HumanMessage(content=(
                 f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
                 "Please provide a complete solution following these guidelines:\n"
