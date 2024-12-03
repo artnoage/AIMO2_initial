@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
-from utils.agents import FullSolutionAgent, VerifierAgent
+from utils.agents import FullSolutionAgent, AnswerVerifierAgent
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -30,9 +30,9 @@ async def verify_solution(solution: str, correct_answer: str, problem: str, veri
         except (ValueError, TypeError):
             return None, False
     else:
-        # Use verifier model for semantic comparison
-        verifier = VerifierAgent(verifier_model)
-        is_correct = await verifier.verify(problem, solution, correct_answer)
+        # Use answer verifier model for semantic comparison
+        answer_verifier = AnswerVerifierAgent(verifier_model)
+        is_correct = await answer_verifier.verify(problem, solution, correct_answer)
         return answer, is_correct
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
