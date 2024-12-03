@@ -102,7 +102,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         'solution': current_solution,
                         'answer': None,
                         'is_correct': False,
-                        'steps': steps_taken
+                        'steps_taken': steps_taken
                     })
                     
             except Exception as e:
@@ -121,7 +121,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Correct answer: {correct_answer}")
         print(f"Model answers: {[s['answer'] for s in solutions]}")
-        print(f"Steps taken: {[s['steps'] for s in solutions]}")
+        print(f"Steps taken: {[s.get('steps_taken', 0) for s in solutions]}")
         print(f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}")
         print(f"Correct solutions: {correct_count}/{best_of}")
         print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
