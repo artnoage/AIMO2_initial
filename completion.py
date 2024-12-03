@@ -104,7 +104,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'answer': current_answer,
                     'verification_level': level,
                     'steps_before_completion': steps_taken,
-                    'total_steps': count_solution_steps(complete_solution)
+                    'total_steps': count_solution_steps(complete_solution),
+                    'is_correct': level == 4
                 })
                     
             except Exception as e:
