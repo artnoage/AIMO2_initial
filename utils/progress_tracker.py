@@ -122,8 +122,14 @@ class ProgressTracker:
         # Print statistics
         print("\nBenchmark Statistics:")
         print(f"Average Success Rate: {avg_success_rate:.2f}")
-        print(f"Average Steps: {avg_steps:.2f}")
-        print(f"Maximum Steps: {max_steps}")
+        
+        # Print step statistics for each type
+        for step_type, steps in step_stats.items():
+            if steps:
+                avg = sum(steps) / len(steps)
+                max_val = max(steps)
+                print(f"Average {step_type}: {avg:.2f}")
+                print(f"Maximum {step_type}: {max_val}")
 
     def print_final_stats(self) -> None:
         if not self.results:
