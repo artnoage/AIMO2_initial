@@ -67,8 +67,7 @@ class AnswerVerifier(BaseVerifier):
             return 0, 1, None
             
         prompt = [
-            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+            HumanMessage(content=f"You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation.\n\nProblem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
         ]
         
         response = await get_model_response(self.model, prompt)
@@ -90,8 +89,7 @@ class SolutionVerifier(BaseVerifier):
         
         # Step 1: Check if the answer is correct
         answer_prompt = [
-            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+            HumanMessage(content=f"You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation.\n\nProblem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
         ]
         
         response = await get_model_response(self.first_model, answer_prompt)
@@ -101,8 +99,7 @@ class SolutionVerifier(BaseVerifier):
         
         # Step 2: First model solution validation
         solution_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Verify if the solution is complete, correct, and well-explained. Respond ONLY with 'yes' or 'no'."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nSolution:\n{solution}\n\nIs this solution mathematically correct and complete? Answer ONLY with 'yes' or 'no'.")
+            HumanMessage(content=f"You are a mathematical solution validator. Verify if the solution is complete, correct, and well-explained. Respond ONLY with 'yes' or 'no'.\n\nProblem:\n{problem}\n\nSolution:\n{solution}\n\nIs this solution mathematically correct and complete? Answer ONLY with 'yes' or 'no'.")
         ]
         
         response = await get_model_response(self.first_model, solution_prompt)
