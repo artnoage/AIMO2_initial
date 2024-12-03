@@ -89,7 +89,7 @@ def main():
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
-    
+    exit()
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
