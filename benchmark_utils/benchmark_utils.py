@@ -4,9 +4,9 @@ from typing import Optional, Dict, List, Callable
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi
-from utils.progress_tracker import ProgressTracker
-from utils.benchmark_config import BenchmarkConfig
-from utils.utils import get_model, ModelOption
+from benchmark_utils.progress_tracker import ProgressTracker
+from benchmark_utils.benchmark_config import BenchmarkConfig
+from benchmark_utils.utils import get_model, ModelOption
 
 async def run_benchmark(
     config: BenchmarkConfig,

@@ -2,10 +2,10 @@ import os
 import asyncio
 from typing import Optional, Dict, Tuple, Literal
 from dotenv import load_dotenv
-from utils.utils import *
-from utils.benchmark_config import *
-from utils.benchmark_utils import *
-from utils.agents import *
+from benchmark_utils.utils import *
+from benchmark_utils.benchmark_config import *
+from benchmark_utils.benchmark_utils import *
+from benchmark_utils.agents import *
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
