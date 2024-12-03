@@ -160,21 +160,34 @@ class VerifierAgent:
         
     async def verify(self, problem: str, model_solution: str, correct_solution: str, running_id: int = 0, attempt: int = 0) -> bool:
         """Verify if two solutions are mathematically equivalent"""
-        prompt = [
-            SystemMessage(content=VERIFIER_SYSTEM_PROMPT),
-            HumanMessage(content=(
-                f"Problem:\n{problem}\n\n"
-                f"Model's solution:\n{model_solution}\n\n"
-                f"Correct solution:\n{correct_solution}\n\n"
-                "Are these solutions mathematically equivalent? Consider:\n"
-                "1. The final answers may be in different but equivalent forms\n"
-                "2. Different valid solution approaches may be used\n"
-                "3. Intermediate steps may vary but lead to the same result\n\n"
-                "Return only True or False:"
-            ))
+        model_answer = extract_answer_from_solution(model_solution)
+        correct_answer = extract_answer_from_solution(correct_solution)
+        
+        if model_answer is None or correct_answer is None:
+            return False
+            
+        comparison_prompt = [
+            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
         ]
-        response = await get_model_response(self.model, prompt, running_id, attempt)
-        return response.lower().strip() == "true"
+        
+        max_retries = 3
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                response = await asyncio.wait_for(
+                    self.model.ainvoke(comparison_prompt),
+                    timeout=300
+                )
+                return response.content.strip().lower() == 'yes'
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    print(f"Verification failed after {max_retries} attempts")
+                    return False
+                print(f"Connection error during verification. Retrying... ({retry_count}/{max_retries})")
+                await asyncio.sleep(1)
+        return False
 
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
