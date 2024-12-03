@@ -17,12 +17,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
     """Process a single example with configured verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            print(f"Error processing example {running_id}: Invalid example format")
+            print(f"Error processing example {str(running_id)}: Invalid example format")
             return None
             
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {running_id}")
+            print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
         solution_agent = FullSolutionAgent(solver_model)
@@ -63,7 +63,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 }
                 solutions.append(solution_info)
             except Exception as e:
-                print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+                print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
                 # Handle error case
                 solution_info = {
                     'solution': "Error occurred",
@@ -77,7 +77,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         model_answer = best_answer if best_answer is not None else solutions[0]['answer']
         
         # Print statistics
-        print(f"\nExample {running_id + 1}:")
+        print(f"\nExample {str(running_id + 1)}:")
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Correct answer: {correct_answer}")
         print(f"Model answers: {[s['answer'] for s in solutions]}")
@@ -104,7 +104,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         }
         
     except Exception as e:
-        print(f"Error processing example {running_id}: {e}")
+        print(f"Error processing example {str(running_id)}: {e}")
         return None
 
 async def main():
