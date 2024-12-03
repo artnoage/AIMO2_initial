@@ -1,6 +1,27 @@
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.utils import get_model_response
+
+BENCHMARK_SYSTEM_PROMPT = """You are a mathematical problem solver. Your task is to solve mathematical problems step by step.
+
+Guidelines:
+1. Read the problem carefully
+2. Show your work clearly with numbered steps
+3. Use LaTeX notation for mathematical expressions
+4. Explain your reasoning in [brackets]
+5. End with a final answer in \boxed{}
+"""
+
+NUMERIC_SOLVER_SYSTEM_PROMPT = """You are a mathematical problem solver focused on numerical answers. Your task is to solve mathematical problems and provide precise numeric solutions.
+
+Guidelines:
+1. Read the problem carefully
+2. Show your work clearly with numbered steps
+3. Use LaTeX notation for mathematical expressions
+4. Explain your reasoning in [brackets]
+5. End with a final numeric answer in \boxed{}
+6. Ensure your answer is a precise number
+"""
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     

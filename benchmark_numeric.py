@@ -2,7 +2,6 @@ import asyncio
 from typing import Optional, Dict, Tuple
 from utils.utils import *
 from utils.benchmark_utils import run_benchmark
-from langchain_core.messages import HumanMessage, SystemMessage
 from utils.benchmark_config import *
 
 async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[Optional[float], bool]:
@@ -36,8 +35,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract numeric answer from solution for example {running_id}")
             return None
 
-        prompt = [SystemMessage(content=NUMERIC_SOLVER_SYSTEM_PROMPT)] + [HumanMessage(content=example["problem"])]
-        
+        solution_agent = FullSolutionAgent(solver_model)
         verify_func = lambda sol: verify_numeric(sol, correct_answer, tolerance)
         solutions = []
         correct_count = 0
@@ -46,7 +44,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         
         for attempt in range(best_of):
             try:
-                current_solution = await get_model_response(solver_model, prompt, running_id, attempt)
+                current_solution = await solution_agent.generate(example["problem"], running_id, attempt)
                 current_answer, is_correct = await verify_func(current_solution)
                 
                 # Only count as correct if we have a valid numeric answer that matches exactly
