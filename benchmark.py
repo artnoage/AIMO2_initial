@@ -90,10 +90,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'model_solutions': [s['solution'] for s in solutions],  # Full responses
+            'model_solutions': [s['solution'] for s in solutions],
             'extracted_answers': [s['extracted_answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'verification_levels': [s['verification_level'] for s in solutions]
+            'verification_levels': [s['verification_level'] for s in solutions],
+            'metadata': {
+                'benchmark_type': 'standard'
+            }
         }
         
     except Exception as e:

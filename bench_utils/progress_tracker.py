@@ -87,18 +87,7 @@ class ProgressTracker:
             # Create results list with answers and correctness as lists
             results_list = []
             for result in self.results:
-                result_entry = {
-                    'id': result.get('id'),
-                    'problem': result.get('problem'),
-                    'correct_answer': result.get('correct_answer'),
-                    'model_solutions': result.get('model_solutions', []),  # Full responses
-                    'extracted_answers': result.get('extracted_answers', []),
-                    'is_correct_list': result.get('is_correct_list', []),
-                    'verification_levels': result.get('verification_levels', []),
-                    'manual_step_counts': result.get('manual_step_counts', []),
-                    'algorithmic_step_counts': result.get('algorithmic_step_counts', [])
-                }
-                results_list.append(result_entry)
+                results_list.append(result)
             
             # Use a fixed filename based on the start timestamp
             filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
