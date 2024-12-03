@@ -4,7 +4,6 @@ import asyncio
 from typing import Optional, Dict, List
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_config import BenchmarkConfig
-from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -182,23 +181,6 @@ async def main():
     results_file = os.path.join('results', f"synthetic_results_{timestamp}.json")
     augmented_filename = os.path.join('augmented_datasets', "synthetic_augmented.json")
     
-    # Get existing IDs to skip
-    existing_ids = get_existing_ids(augmented_filename)
-    if existing_ids:
-        print(f"\nFound {len(existing_ids)} existing examples - will skip these IDs")
-    
-    # Filter out examples with existing IDs
-    dataset = dataset.filter(lambda x: x['id'] not in existing_ids)
-    print(f"\nWill process {len(dataset)} new examples")
-    
-    if len(dataset) == 0:
-        print("All examples have already been processed!")
-        return
-        
-    # Check if user wants to proceed with augmented data handling
-    if not handle_augmented_data_file(augmented_filename):
-        print("Operation cancelled by user.")
-        return
 
     # Process examples with controlled concurrency
     semaphore = asyncio.Semaphore(config.max_concurrent)
@@ -236,16 +218,6 @@ async def main():
                 }
             })
             
-            # Add to current batch for augmented data
-            current_batch.append({
-                'id': result['id'],
-                'problem': result['problem'],
-                'correct_solution': result['correct_solution'],
-                'model_responses': result['model_responses'],
-                'verification_results': result['verification_results'],
-                'solved': result['solved']
-            })
-            
             # Print progress and save data every 100 examples
             if len(tracker.results) % 100 == 0:
                 tracker.print_progress()
@@ -262,10 +234,6 @@ async def main():
                 print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
                 print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
                 print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
-                
-                # Save current batch of augmented data
-                save_augmented_data(current_batch, augmented_filename, len(tracker.results))
-                current_batch = []
                 
                 # Calculate detailed statistics
                 total_attempts = sum(len(r['verification_results']) for r in tracker.results)
@@ -321,10 +289,6 @@ async def main():
     # Save final results with all metadata
     tracker.save_results(config.solver, config.split)
     
-    # Save any remaining augmented data
-    if current_batch:
-        save_augmented_data(current_batch, augmented_filename, len(tracker.results))
-        
     print(f"\nResults saved to {results_file}")
     print(f"Augmented data saved to {augmented_filename}")
     print(f"Total execution time: {datetime.now() - start_time}")
