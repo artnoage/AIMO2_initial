@@ -66,12 +66,8 @@ class ProgressTracker:
         
         # Calculate aggregate statistics
         success_rates = []
-        step_stats = {
-            'total_solution_steps': [],
-            'steps_before_completion': [],
-            'steps_taken': [],
-            'solution_types': []  # Track which scripts use step-by-step vs complete solutions
-        }
+        # Initialize empty stats collectors
+        step_stats = {}
         
         for result in self.results:
             # Track success rate
@@ -80,16 +76,15 @@ class ProgressTracker:
             if total_attempts > 0:
                 success_rates.append(correct_count / total_attempts)
             
-            # Track solution type
-            step_stats['solution_types'].append(result.get('solution_type', 'step-by-step'))
-            
-            # Collect all step counts by type
-            for step_key in ['total_solution_steps', 'steps_before_completion', 'steps_taken']:
-                if step_key in result:
-                    if isinstance(result[step_key], list):
-                        step_stats[step_key].extend(result[step_key])
+            # Collect all available step-related metrics
+            for key, value in result.items():
+                if any(metric in key.lower() for metric in ['step', 'solution_type']):
+                    if key not in step_stats:
+                        step_stats[key] = []
+                    if isinstance(value, list):
+                        step_stats[key].extend(value)
                     else:
-                        step_stats[step_key].append(result[step_key])
+                        step_stats[key].append(value)
         
         # Calculate statistics
         avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
