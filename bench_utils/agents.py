@@ -95,7 +95,7 @@ class NextStepAgent:
             input_text += "\nStart the solution with Step 1:"
             
         prompt.append(HumanMessage(content=input_text))
-        return await get_model_response(self.model, prompt, running_id, attempt)
+        return await get_model_response(self.model, prompt)
 
 class CompletionAgent:
     """Agent that completes partial solutions"""
@@ -123,7 +123,7 @@ class CompletionAgent:
                 "Please complete the remaining steps following the same format:"
             ))
         ]
-        return await get_model_response(self.model, prompt, running_id, attempt)
+        return await get_model_response(self.model, prompt)
 
 
 class FullSolutionAgent:
@@ -153,4 +153,4 @@ class FullSolutionAgent:
                 "Please solve the problem completely:"
             ))
         ]
-        return await get_model_response(self.model, prompt, running_id, attempt)
+        return await get_model_response(self.model, prompt)
