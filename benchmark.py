@@ -112,18 +112,9 @@ async def main():
     # Initialize models
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    # Get total examples from dataset configuration
-    total_examples = 100  # Default value
-    if config.dataset == 'filtered':
-        total_examples = 1000  # Adjust based on your filtered dataset size
-    elif config.dataset == 'original':
-        total_examples = 2000  # Adjust based on your original dataset size
-    elif config.dataset == 'aime':
-        total_examples = 500  # Adjust based on your AIME dataset size
-    
     global progress_tracker
     progress_tracker = ProgressTracker(
-        total_examples=total_examples,
+        total_examples=config.split_slice.stop if config.split_slice else 0,
         best_of=config.best_of
     )
     
