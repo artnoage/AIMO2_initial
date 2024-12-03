@@ -8,10 +8,55 @@ from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import FullSolutionAgent
-from utils.verification import verify_solution_with_model
-
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
+
+async def verify_solution_with_model(
+    solution: str,
+    correct_answer: str,
+    problem: str,
+    verifier_model,
+    second_verifier_model=None
+) -> Tuple[int, Optional[str]]:
+    """
+    Verify solution using model-based verification
+    Returns:
+    - verification_level (0-4)
+    - extracted_answer or None
+    
+    Levels:
+    0 - Failed format check
+    1 - Failed answer verification
+    2 - Failed first solution verification
+    3 - Failed second verifier (if provided)
+    4 - Passed all checks
+    """
+    model_answer = extract_answer_from_solution(solution)
+    if model_answer is None or solution is None:
+        return 0, None
+
+    try:
+        # Check answer equivalence
+        answer_verifier = AnswerVerifierAgent(verifier_model)
+        if not await answer_verifier.verify(problem, solution, correct_answer):
+            return 1, model_answer
+
+        # Check solution completeness
+        solution_verifier = SolutionVerifierAgent(verifier_model)
+        if not await solution_verifier.verify(problem, solution):
+            return 2, model_answer
+            
+        # Only check second verifier if provided
+        if second_verifier_model:
+            second_solution_verifier = SolutionVerifierAgent(second_verifier_model)
+            if not await second_solution_verifier.verify(problem, solution):
+                return 3, model_answer
+            
+        return 4, model_answer
+
+    except Exception as e:
+        print(f"Verification error: {e}")
+        return 0, None
 
 
 
