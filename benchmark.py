@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import Optional, Dict, Tuple, Literal
+from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from benchmark_utils.utils import *
 from benchmark_utils.benchmark_config import *
@@ -10,8 +10,7 @@ from benchmark_utils.agents import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-VerificationType = Literal['numeric', 'answer', 'solution']
-
+from benchmark_utils import VerificationType
 from benchmark_utils.verification import create_verifier
     
     
