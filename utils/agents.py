@@ -22,6 +22,16 @@ Guidelines:
 5. End with a final numeric answer in \boxed{}
 6. Ensure your answer is a precise number
 """
+
+VERIFIER_SYSTEM_PROMPT = """You are a mathematical solution verifier. Your task is to verify if two solutions are equivalent.
+
+Guidelines:
+1. Compare the final answers carefully
+2. Consider mathematical equivalence, not just exact matches
+3. Account for different forms of the same answer
+4. Be precise in your verification
+5. Return True only if answers are mathematically equivalent
+"""
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     
