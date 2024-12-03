@@ -5,7 +5,7 @@ import re
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
-from utils.utils import filter_by_token_ranges
+from benchmark_utils.utils import filter_by_token_ranges
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
