@@ -69,7 +69,8 @@ class ProgressTracker:
         step_stats = {
             'total_solution_steps': [],
             'steps_before_completion': [],
-            'steps_taken': []
+            'steps_taken': [],
+            'solution_types': []  # Track which scripts use step-by-step vs complete solutions
         }
         
         for result in self.results:
@@ -79,8 +80,11 @@ class ProgressTracker:
             if total_attempts > 0:
                 success_rates.append(correct_count / total_attempts)
             
+            # Track solution type
+            step_stats['solution_types'].append(result.get('solution_type', 'step-by-step'))
+            
             # Collect all step counts by type
-            for step_key in step_stats:
+            for step_key in ['total_solution_steps', 'steps_before_completion', 'steps_taken']:
                 if step_key in result:
                     if isinstance(result[step_key], list):
                         step_stats[step_key].extend(result[step_key])
