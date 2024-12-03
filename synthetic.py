@@ -1,9 +1,9 @@
 import os
 import json
 import asyncio
-import argparse
 from typing import Optional, Dict, List
 from utils.progress_tracker import ProgressTracker
+from utils.benchmark_config import BenchmarkConfig
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
@@ -214,7 +214,7 @@ async def main():
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
     
     # Initialize progress tracker
-    tracker = ProgressTracker(len(dataset), args.max_attempts)
+    tracker = ProgressTracker(len(dataset), config.best_of)
     progress_bar = tqdm(total=len(dataset), desc="Processing examples")
     current_batch = []
     
@@ -319,7 +319,7 @@ async def main():
     tracker.print_final_stats()
     
     # Save final results with all metadata
-    tracker.save_results(args.solver, args.split)
+    tracker.save_results(config.solver, config.split)
     
     # Save any remaining augmented data
     if current_batch:
