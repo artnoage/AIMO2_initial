@@ -122,7 +122,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 'total': len(solutions),
                 'correct_count': correct_count
             },
-            'total_solution_steps': [s['steps'] for s in solutions]
+            'total_solution_steps': [s['steps'] for s in solutions],
+            'solution_type': 'step-by-step'  # Indicate this uses step-by-step generation
         }
         
     except Exception as e:
