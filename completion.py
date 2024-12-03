@@ -122,7 +122,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'correct_solution': example['solution'],
             'correct_answer': correct_answer,
             'model_answers': [s['answer'] for s in solutions],
-            'is_correct_list': [s['verification_level'] == 4 for s in solutions],
+            'is_correct_list': [s['is_correct'] for s in solutions],
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
