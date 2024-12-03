@@ -130,7 +130,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
 async def main():
     """Main function for testing step-by-step solution generation."""
-    config = NumericConfig.from_args('Test step-by-step solution generation')
+    config = BenchmarkConfig.from_args('Test step-by-step solution generation')
     await run_benchmark(config, 
                        lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
                        BENCHMARK_SYSTEM_PROMPT,
