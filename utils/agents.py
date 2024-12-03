@@ -25,7 +25,7 @@ Guidelines:
 6. Ensure your answer is a precise number
 """
 
-VERIFIER_SYSTEM_PROMPT = """You are a mathematical solution verifier. Your task is to verify if two solutions are equivalent.
+ANSWER_VERIFIER_SYSTEM_PROMPT = """You are a mathematical solution verifier. Your task is to verify if two solutions are equivalent.
 
 Guidelines:
 1. Compare the final answers carefully
@@ -126,7 +126,7 @@ class CompletionAgent:
         ]
         return await get_model_response(self.model, prompt, running_id, attempt)
 
-class VerifierAgent:
+class AnswerVerifierAgent:
     """Agent that verifies mathematical solutions"""
     
     def __init__(self, model):
