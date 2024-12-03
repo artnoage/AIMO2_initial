@@ -116,13 +116,17 @@ async def main():
     
     await run_benchmark(
         config,
-        lambda ex, rid, eid, sm, vm, bo: process_example(
-            ex, rid, eid, sm, vm, bo,
-            numeric=config.numeric,
-            tolerance=config.tolerance
-        ),
-        None,
-        verifier_model
+        lambda example, running_id, example_id, solver_model, verifier_model, best_of:
+            process_example(
+                example=example,
+                running_id=running_id,
+                example_id=example_id,
+                solver_model=solver_model,
+                verifier_model=verifier_model,
+                best_of=best_of,
+                numeric=config.numeric,
+                tolerance=config.tolerance
+            )
     )
 
 if __name__ == "__main__":
