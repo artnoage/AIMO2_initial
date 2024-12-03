@@ -141,6 +141,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for testing hybrid solution generation."""
     config = BenchmarkConfig.from_args('Test hybrid solution generation')
+    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
+    
+    # Initialize solver model
+    solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
     # Initialize progress tracker
     progress_tracker = ProgressTracker(
