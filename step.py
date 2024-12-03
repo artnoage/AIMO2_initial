@@ -231,8 +231,7 @@ async def main():
                 solver_model=solver_model,
                 verifier_model=verifier_model,
                 second_verifier_model=second_verifier_model,
-                best_of=best_of,
-                initial_steps=0
+                best_of=best_of
             ),
         config=config
     )
