@@ -39,9 +39,11 @@ class BaseConfig:
 
 @dataclass
 class BenchmarkConfig(BaseConfig):
-    """Configuration for standard benchmark with verifier"""
+    """Configuration for benchmark with optional numeric verification"""
     verifier: str = 'GEMINI_FLASH'
     verifier_temp: float = 0
+    numeric: bool = False
+    tolerance: float = 1e-6
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -52,19 +54,9 @@ class BenchmarkConfig(BaseConfig):
                           default='GEMINI_FLASH', help='Model to use for verification')
         parser.add_argument('--verifier-temp', type=float, default=0,
                           help='Temperature for verifier model')
-        args = parser.parse_args()
-        return cls(**vars(args))
-
-@dataclass
-class NumericConfig(BaseConfig):
-    """Configuration for numeric benchmark with tolerance"""
-    tolerance: float = 1e-6
-    
-    @classmethod
-    def from_args(cls, description: str) -> 'NumericConfig':
-        parser = ArgumentParser(description=description)
-        cls.add_base_args(parser)
+        parser.add_argument('--numeric', action='store_true',
+                          help='Use numeric verification instead of verifier model')
         parser.add_argument('--tolerance', type=float, default=1e-6,
-                          help='Tolerance for numeric answer comparison')
+                          help='Tolerance for numeric answer comparison (only used with --numeric)')
         args = parser.parse_args()
         return cls(**vars(args))
