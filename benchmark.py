@@ -13,8 +13,8 @@ load_dotenv()
 VerificationType = Literal['numeric', 'answer', 'solution']
 
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
-    """Process a single example with either numeric or semantic verification"""
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int) -> Optional[Dict]:
+    """Process a single example with configured verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -25,8 +25,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             print(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        solution_agent = FullSolutionAgent(solver_model, numeric=numeric)
-        verify_func = lambda sol: verify_solution(sol, correct_answer, example["problem"], verifier_model)
+        solution_agent = FullSolutionAgent(solver_model)
         solutions = []
         correct_count = 0
         best_solution = None
@@ -35,13 +34,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         for attempt in range(best_of):
             try:
                 current_solution = await solution_agent.generate(example["problem"], running_id, attempt)
-                current_answer, is_correct = await verify_func(current_solution)
                 
-                if is_correct and current_answer is not None:
+                # Verify solution using configured verification type
+                level, current_answer = await verify_solution(
+                    current_solution,
+                    correct_answer,
+                    example["problem"],
+                    config.verification_type,
+                    verifier_model,
+                    second_verifier_model,
+                    config.tolerance
+                )
+                
+                if level == 4:
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
                         best_answer = current_answer
+                        
+                solutions.append({
+                    'solution': current_solution,
+                    'answer': current_answer,
+                    'verification_level': level,
+                    'is_correct': level == 4
+                })
             except Exception as e:
                 print(f"Error in attempt {attempt + 1} for example {running_id}: {str(e)}")
                 current_solution = "Error occurred"
@@ -91,8 +107,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
-    verifier_model = None if config.numeric else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-    second_verifier_model = None if config.numeric else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
+    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
     await run_benchmark(
         config,
@@ -104,9 +120,7 @@ async def main():
                 solver_model=solver_model,
                 verifier_model=verifier_model,
                 second_verifier_model=second_verifier_model,
-                best_of=best_of,
-                numeric=config.numeric,
-                tolerance=config.tolerance
+                best_of=best_of
             )
     )
 
