@@ -133,7 +133,7 @@ async def main():
     config = BenchmarkConfig.from_args('Test step-by-step solution generation')
     await run_benchmark(config, 
                        lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo),
-                       BENCHMARK_SYSTEM_PROMPT,
+                       None,
                        None)
 
 if __name__ == "__main__":
