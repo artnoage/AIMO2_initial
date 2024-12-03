@@ -103,7 +103,7 @@ async def main():
     # Initialize models
     solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
-    global progress_tracker
+    progress_tracker = None
     
     await run_benchmark(
         config=config,
