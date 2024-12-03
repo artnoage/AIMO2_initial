@@ -36,18 +36,18 @@ async def run_benchmark(
     if config.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == config.source)
     
-    # Load exclude IDs if specified
-    exclude_ids = set()
+    # Load problems to exclude
+    exclude_problems = set()
     if config.exclude:
         try:
             with open(config.exclude, 'r') as f:
                 exclude_data = json.load(f)
                 # Handle both old format (with metadata) and new format (direct list)
                 if isinstance(exclude_data, dict) and "results" in exclude_data:
-                    exclude_ids = {str(item['id']) for item in exclude_data["results"]}
+                    exclude_problems = {item['problem'] for item in exclude_data["results"]}
                 else:
-                    exclude_ids = {str(item['id']) for item in exclude_data}
-            print(f"\nLoaded {len(exclude_ids)} IDs to exclude from {config.exclude}")
+                    exclude_problems = {item['problem'] for item in exclude_data}
+            print(f"\nLoaded {len(exclude_problems)} problems to exclude from {config.exclude}")
         except Exception as e:
             print(f"Warning: Could not load exclude file {config.exclude}: {e}")
     
@@ -55,10 +55,10 @@ async def run_benchmark(
     
     # Filter out excluded examples
     original_len = len(dataset)
-    if exclude_ids:
-        dataset = dataset.filter(lambda x: str(x['id']) not in exclude_ids)
+    if exclude_problems:
+        dataset = dataset.filter(lambda x: x['problem'] not in exclude_problems)
         excluded_count = original_len - len(dataset)
-        print(f"Excluded {excluded_count} examples based on ID list")
+        print(f"Excluded {excluded_count} examples based on problem text")
 
     print("\nDataset Information:")
     num_examples = len(dataset)
