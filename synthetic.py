@@ -2,7 +2,8 @@ import os
 import json
 import asyncio
 import argparse
-from typing import Optional, Dict
+from typing import Optional, Dict, List
+from utils.progress_tracker import ProgressTracker
 from utils.augmented_data_handler import handle_augmented_data_file, save_augmented_data, get_existing_ids
 from utils.utils import ModelOption, get_model, extract_answer_from_solution
 from datetime import datetime
@@ -229,32 +230,42 @@ async def main():
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
     
-    # Process examples with progress bar
-    results = []
-    current_batch = []
+    # Initialize progress tracker
+    tracker = ProgressTracker(len(dataset), args.max_attempts)
     progress_bar = tqdm(total=len(dataset), desc="Processing examples")
+    current_batch = []
     
     for coro in asyncio.as_completed(tasks):
         result = await coro
         if result:
-            results.append(result)
+            # Add result to tracker
+            tracker.add_result({
+                **result,
+                'metadata': {
+                    'verification_levels': result['verification_results'],
+                    'attempts_to_solve': len(result['verification_results']),
+                    'best_verification_level': max(result['verification_results']),
+                    'format_check_fails': result['verification_results'].count(0),
+                    'answer_check_fails': result['verification_results'].count(1),
+                    'first_verifier_fails': result['verification_results'].count(2),
+                    'second_verifier_fails': result['verification_results'].count(3),
+                    'full_success': result['verification_results'].count(4)
+                }
+            })
             
-            # Add to current batch
-            augmented_example = {
+            # Add to current batch for augmented data
+            current_batch.append({
                 'id': result['id'],
                 'problem': result['problem'],
                 'correct_solution': result['correct_solution'],
                 'model_responses': result['model_responses'],
                 'verification_results': result['verification_results'],
                 'solved': result['solved']
-            }
-            current_batch.append(augmented_example)
+            })
             
-            # Save intermediate results every 100 examples
-            if len(results) % 100 == 0:
-                solved_count = sum(1 for r in results if r['solved'])
-                print(f"\nProcessed {len(results)} examples:")
-                print(f"Current success rate: {solved_count}/{len(results)} = {(solved_count/len(results))*100:.2f}%")
+            # Print progress and save data every 100 examples
+            if len(tracker.results) % 100 == 0:
+                tracker.print_progress()
                 
                 # Count verification levels
                 level_counts = {i: 0 for i in range(5)}  # 0-4 levels
@@ -321,80 +332,11 @@ async def main():
     
     progress_bar.close()
 
-    if not results:
-        print("\nNo examples were successfully processed.")
-        return
-
-    # Calculate and display final statistics
-    solved_count = sum(1 for r in results if r['solved'])
-    success_rate = (solved_count / len(results)) * 100
-
-    print("\nFinal Results:")
-    print(f"Total examples processed: {len(results)}")
-    print(f"Successfully solved: {solved_count}/{len(results)} = {success_rate:.2f}%")
+    # Print final statistics
+    tracker.print_final_stats()
     
-    # Count final verification levels
-    level_counts = {i: 0 for i in range(5)}  # 0-4 levels
-    for r in results:
-        for level in r['verification_results']:
-            level_counts[level] += 1
-            
-    print("\nFinal Verification Level Statistics:")
-    print(f"Level 0 (Format Check Failed): {level_counts[0]} times")
-    print(f"Level 1 (Answer Verification Failed): {level_counts[1]} times")
-    print(f"Level 2 (First Solution Verification Failed): {level_counts[2]} times")
-    print(f"Level 3 (Second Solution Verification Failed): {level_counts[3]} times")
-    print(f"Level 4 (All Verifications Passed): {level_counts[4]} times")
-    
-    # Calculate average attempts needed for successful solutions
-    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
-    if successful_attempts:
-        avg_attempts = sum(successful_attempts) / len(successful_attempts)
-        print(f"Average attempts for successful solutions: {avg_attempts:.2f}")
-
-    # Calculate final detailed statistics
-    total_attempts = sum(len(r['verification_results']) for r in results)
-    avg_attempts = total_attempts / len(results)
-    successful_attempts = [len(r['verification_results']) for r in results if r['solved']]
-    avg_successful_attempts = sum(successful_attempts) / len(successful_attempts) if successful_attempts else 0
-    
-    # Calculate final level ratios
-    total_verifications = sum(len(r['verification_results']) for r in results)
-    level_ratios = {i: level_counts[i] / total_verifications * 100 for i in range(5)}
-    
-    print("\nFinal Detailed Statistics:")
-    print(f"Average attempts per problem: {avg_attempts:.2f}")
-    print(f"Average attempts for successful solutions: {avg_successful_attempts:.2f}")
-    print("\nFinal Verification Level Ratios:")
-    print(f"Format Check Failed: {level_ratios[0]:.2f}%")
-    print(f"Answer Check Failed: {level_ratios[1]:.2f}%")
-    print(f"First Verifier Failed: {level_ratios[2]:.2f}%")
-    print(f"Second Verifier Failed: {level_ratios[3]:.2f}%")
-    print(f"All Checks Passed: {level_ratios[4]:.2f}%")
-    
-    # Save final results with detailed statistics
-    with open(results_file, 'w') as f:
-        json.dump({
-            'scores': [{
-                'id': r['id'],
-                'solved': r['solved'],
-                'attempts_used': len(r['verification_results'])
-            } for r in results],
-            'metadata': {
-                'solver': args.solver,
-                'verifier': args.verifier,
-                'second_verifier': args.second_verifier,
-                'temperature': args.temperature,
-                'max_attempts': args.max_attempts,
-                'final_success_rate': success_rate,
-                'total_duration_seconds': (datetime.now() - start_time).total_seconds(),
-                'statistics': {
-                    'average_attempts': avg_attempts,
-                    'average_successful_attempts': avg_successful_attempts,
-                    'level_ratios': level_ratios
-                }
-            }
-        }, f, indent=2)
+    # Save final results with all metadata
+    tracker.save_results(args.solver, args.split)
     
     # Save any remaining augmented data
     if current_batch:

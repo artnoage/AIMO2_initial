@@ -43,7 +43,7 @@ class ProgressTracker:
     def calculate_error_rate(self, results: List[Dict]) -> float:
         if not results:
             return 0.0
-        correct_count = sum(1 for r in results if any(r['is_correct_list']))
+        correct_count = sum(1 for r in results if r.get('solved', False))
         return 1.0 - (correct_count / len(results))
 
     def print_progress(self) -> None:
@@ -52,14 +52,26 @@ class ProgressTracker:
             batch_error_rate = self.calculate_error_rate(last_hundred)
             cumulative_error_rate = self.calculate_error_rate(self.results)
             
-            majority_correct_count = sum(1 for r in last_hundred 
-                                       if r['attempts']['correct_count'] > self.best_of // 2)
-            majority_correct_rate = majority_correct_count / len(last_hundred)
+            # Calculate verification level statistics
+            level_counts = {i: 0 for i in range(5)}
+            for r in last_hundred:
+                metadata = r.get('metadata', {})
+                for i in range(5):
+                    level_counts[i] += metadata.get(f'verification_level_{i}', 0)
+            
+            total_verifications = sum(level_counts.values())
+            level_ratios = {i: level_counts[i] / total_verifications * 100 if total_verifications else 0 
+                           for i in range(5)}
             
             stats = f"\nAt {len(self.results)} examples:\n"
             stats += f"Batch Error Rate (last 100): {batch_error_rate:.4f}\n"
             stats += f"Cumulative Error Rate: {cumulative_error_rate:.4f}\n"
-            stats += f"Batch Majority Correct Rate (last 100): {majority_correct_rate:.4f}\n"
+            stats += "\nVerification Level Distribution (last 100):\n"
+            stats += f"Format Check Failed: {level_ratios[0]:.2f}%\n"
+            stats += f"Answer Check Failed: {level_ratios[1]:.2f}%\n"
+            stats += f"First Verifier Failed: {level_ratios[2]:.2f}%\n"
+            stats += f"Second Verifier Failed: {level_ratios[3]:.2f}%\n"
+            stats += f"All Checks Passed: {level_ratios[4]:.2f}%\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
