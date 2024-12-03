@@ -85,80 +85,81 @@ class ProgressTracker:
 
     def save_results(self, model_name: str, split: str) -> None:
         """Save results to a JSON file with timestamp"""
-        # Always try to save, even if results list is empty
         try:
+            # Always try to save, even if results list is empty
             timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
             
             # Calculate aggregate statistics
             success_rates = []
-        # Initialize empty stats collectors
-        step_stats = {}
-        
-        for result in self.results:
-            # Track success rate
-            correct_count = sum(1 for is_correct in result.get('is_correct_list', []) if is_correct)
-            total_attempts = len(result.get('is_correct_list', []))
-            if total_attempts > 0:
-                success_rates.append(correct_count / total_attempts)
+            # Initialize empty stats collectors
+            step_stats = {}
             
-            # Collect all available step-related metrics
-            for key, value in result.items():
-                if any(metric in key.lower() for metric in ['step', 'solution_type']):
-                    if key not in step_stats:
-                        step_stats[key] = []
-                    if isinstance(value, list):
-                        step_stats[key].extend(value)
-                    else:
-                        step_stats[key].append(value)
-        
-        # Calculate statistics
-        avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
-        
-        # Calculate step statistics for each type
-        step_statistics = {}
-        for step_type, steps in step_stats.items():
-            if steps:
-                step_statistics[f'avg_{step_type}'] = sum(steps) / len(steps)
-                step_statistics[f'max_{step_type}'] = max(steps)
-                step_statistics[f'min_{step_type}'] = min(steps)
-        
-        # Create unified output structure
-        output = {
-            'metadata': {
-                'model': model_name,
-                'split': split,
-                'timestamp': timestamp,
-                'total_examples': len(self.results),
-                'statistics': {
-                    'average_success_rate': avg_success_rate,
-                    **step_statistics
-                }
-            },
-            'results': self.results
-        }
-        
-        filename = f"benchmark_{model_name}_{timestamp}.json"
-        filepath = os.path.join("results", filename)
-        print(f"\nAttempting to save results to: {filepath}")
-        print(f"Number of results to save: {len(self.results)}")
-        
-        with open(filepath, 'w') as f:
-            json.dump(output, f, indent=2)
-        print(f"Results successfully saved to: {filepath}")
+            for result in self.results:
+                # Track success rate
+                correct_count = sum(1 for is_correct in result.get('is_correct_list', []) if is_correct)
+                total_attempts = len(result.get('is_correct_list', []))
+                if total_attempts > 0:
+                    success_rates.append(correct_count / total_attempts)
+                
+                # Collect all available step-related metrics
+                for key, value in result.items():
+                    if any(metric in key.lower() for metric in ['step', 'solution_type']):
+                        if key not in step_stats:
+                            step_stats[key] = []
+                        if isinstance(value, list):
+                            step_stats[key].extend(value)
+                        else:
+                            step_stats[key].append(value)
+            
+            # Calculate statistics
+            avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
+            
+            # Calculate step statistics for each type
+            step_statistics = {}
+            for step_type, steps in step_stats.items():
+                if steps:
+                    step_statistics[f'avg_{step_type}'] = sum(steps) / len(steps)
+                    step_statistics[f'max_{step_type}'] = max(steps)
+                    step_statistics[f'min_{step_type}'] = min(steps)
+            
+            # Create unified output structure
+            output = {
+                'metadata': {
+                    'model': model_name,
+                    'split': split,
+                    'timestamp': timestamp,
+                    'total_examples': len(self.results),
+                    'statistics': {
+                        'average_success_rate': avg_success_rate,
+                        **step_statistics
+                    }
+                },
+                'results': self.results
+            }
+            
+            filename = f"benchmark_{model_name}_{timestamp}.json"
+            filepath = os.path.join("results", filename)
+            print(f"\nAttempting to save results to: {filepath}")
+            print(f"Number of results to save: {len(self.results)}")
+            
+            with open(filepath, 'w') as f:
+                json.dump(output, f, indent=2)
+            print(f"Results successfully saved to: {filepath}")
+
+            # Print statistics
+            print("\nBenchmark Statistics:")
+            print(f"Average Success Rate: {avg_success_rate:.2f}")
+            
+            # Print step statistics for each type
+            for step_type, steps in step_stats.items():
+                if steps:
+                    avg = sum(steps) / len(steps)
+                    max_val = max(steps)
+                    print(f"Average {step_type}: {avg:.2f}")
+                    print(f"Maximum {step_type}: {max_val}")
+
         except Exception as e:
             print(f"Error saving results: {str(e)}")
-        
-        # Print statistics
-        print("\nBenchmark Statistics:")
-        print(f"Average Success Rate: {avg_success_rate:.2f}")
-        
-        # Print step statistics for each type
-        for step_type, steps in step_stats.items():
-            if steps:
-                avg = sum(steps) / len(steps)
-                max_val = max(steps)
-                print(f"Average {step_type}: {avg:.2f}")
-                print(f"Maximum {step_type}: {max_val}")
 
     def print_final_stats(self) -> None:
         if not self.results:
