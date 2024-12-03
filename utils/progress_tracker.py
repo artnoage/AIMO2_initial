@@ -64,68 +64,57 @@ class ProgressTracker:
             
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
         
-        # Extract metadata about solution steps
-        step_stats = {
-            'total_steps': [],
-            'steps_before_completion': [],
-            'steps_per_attempt': []
-        }
+        # Calculate aggregate statistics
+        all_steps = []
+        success_rates = []
         
         for result in self.results:
-            # Get total solution steps if available (test2)
+            # Track success rate
+            correct_count = sum(1 for is_correct in result.get('is_correct_list', []) if is_correct)
+            total_attempts = len(result.get('is_correct_list', []))
+            if total_attempts > 0:
+                success_rates.append(correct_count / total_attempts)
+            
+            # Collect all step counts (from any source)
             if 'total_solution_steps' in result:
-                step_stats['total_steps'].extend(result['total_solution_steps'])
-                
-            # Get steps before completion if available (test2)
+                all_steps.extend(result['total_solution_steps'])
             if 'steps_before_completion' in result:
-                step_stats['steps_before_completion'].extend(result['steps_before_completion'])
-                
-            # Get steps per attempt if available (test1)
+                all_steps.extend(result['steps_before_completion'])
             if 'steps_taken' in result:
-                step_stats['steps_per_attempt'].extend(result['steps_taken'])
+                all_steps.extend(result['steps_taken'])
         
-        # Calculate step statistics
-        stats = {
-            'step_statistics': {
-                'average_total_steps': sum(step_stats['total_steps']) / len(step_stats['total_steps']) if step_stats['total_steps'] else None,
-                'average_steps_before_completion': sum(step_stats['steps_before_completion']) / len(step_stats['steps_before_completion']) if step_stats['steps_before_completion'] else None,
-                'average_steps_per_attempt': sum(step_stats['steps_per_attempt']) / len(step_stats['steps_per_attempt']) if step_stats['steps_per_attempt'] else None,
-                'max_steps': max(step_stats['total_steps'] + step_stats['steps_before_completion'] + step_stats['steps_per_attempt'], default=None)
-            }
-        }
+        # Calculate statistics
+        avg_success_rate = sum(success_rates) / len(success_rates) if success_rates else 0
+        avg_steps = sum(all_steps) / len(all_steps) if all_steps else 0
+        max_steps = max(all_steps) if all_steps else 0
         
-        # Add metadata to results
+        # Create unified output structure
         output = {
             'metadata': {
                 'model': model_name,
                 'split': split,
                 'timestamp': timestamp,
                 'total_examples': len(self.results),
-                'step_statistics': stats['step_statistics']
+                'statistics': {
+                    'average_success_rate': avg_success_rate,
+                    'average_steps': avg_steps,
+                    'max_steps': max_steps
+                }
             },
             'results': self.results
         }
         
-        # Determine benchmark type from results structure
-        if any('total_solution_steps' in r for r in self.results):
-            benchmark_type = 'test2'
-        elif any('steps_taken' in r for r in self.results):
-            benchmark_type = 'test1'
-        else:
-            benchmark_type = 'benchmark'
-            
-        filename = f"{benchmark_type}_{model_name}_{timestamp}.json"
-        
+        filename = f"benchmark_{model_name}_{timestamp}.json"
         os.makedirs("results", exist_ok=True)
         with open(os.path.join("results", filename), 'w') as f:
             json.dump(output, f, indent=2)
         print(f"\nResults saved to: {filename}")
         
-        # Print step statistics
-        print("\nStep Statistics:")
-        for key, value in stats['step_statistics'].items():
-            if value is not None:
-                print(f"{key}: {value:.2f}")
+        # Print statistics
+        print("\nBenchmark Statistics:")
+        print(f"Average Success Rate: {avg_success_rate:.2f}")
+        print(f"Average Steps: {avg_steps:.2f}")
+        print(f"Maximum Steps: {max_steps}")
 
     def print_final_stats(self) -> None:
         if not self.results:
