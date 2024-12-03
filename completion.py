@@ -39,7 +39,7 @@ def count_solution_steps(solution: str) -> int:
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, initial_steps: int = 0) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, initial_steps: int = 0) -> Optional[Dict]:
     """Process a single example using hybrid approach: analysis + initial_steps + completion"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -86,22 +86,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     completion_content = completion.content if hasattr(completion, 'content') else str(completion)
                     complete_solution = completion_content
 
-                # Extract and verify answer
-                current_answer = extract_answer_from_solution(complete_solution)
+                # Verify solution
+                level, current_answer = await verify_solution_with_model(
+                    complete_solution,
+                    correct_answer,
+                    example['problem'],
+                    verifier_model,
+                    second_verifier_model
+                )
                 
-                if current_answer is not None:
-                    # Verify the numeric answer
-                    current_answer_float, is_correct = await verify_numeric(complete_solution, correct_answer, 1e-6)
-                    if is_correct:
-                        correct_count += 1
-                else:
-                    is_correct = False
+                if level == 4:
+                    correct_count += 1
                 
                 solutions.append({
                     'solution': current_solution,
                     'complete_solution': complete_solution,
                     'answer': current_answer,
-                    'is_correct': is_correct,
+                    'verification_level': level,
                     'steps_before_completion': steps_taken,
                     'total_steps': count_solution_steps(complete_solution)
                 })
@@ -136,8 +137,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_answers': [s['answer'] for s in solutions],
             'steps_before_completion': [s['steps_before_completion'] for s in solutions],
             'total_solution_steps': [s['total_steps'] for s in solutions],
-            'is_correct_list': [s['is_correct'] for s in solutions],
-            'correct_binary': [1 if s['is_correct'] else 0 for s in solutions],
+            'verification_levels': [s['verification_level'] for s in solutions],
+            'is_correct_list': [s['verification_level'] == 4 for s in solutions],
+            'correct_binary': [1 if s['verification_level'] == 4 else 0 for s in solutions],
             'model_answer_raw': solutions[0]['answer'],
             'correct_answer_raw': correct_answer,
             'attempts': {
