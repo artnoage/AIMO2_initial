@@ -61,7 +61,7 @@ class AnalysisAgent:
                 "Please provide the analysis:"
             ))
         ]
-        return await get_model_response(self.model, prompt, running_id, attempt)
+        return await get_model_response(self.model, prompt)
 
 class NextStepAgent:
     """Agent that provides the next step in a solution"""

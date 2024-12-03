@@ -134,7 +134,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
     return abs(model_answer - correct_answer) <= tolerance
 
 @async_retry(max_retries=3, timeout=120)
-async def get_model_response(solver_model, prompt, running_id=0, attempt=0) -> str:
+async def get_model_response(solver_model, prompt) -> str:
     """Get response from model with retry logic"""
     response = await solver_model.ainvoke(prompt, max_tokens=2048)
     return response.content
