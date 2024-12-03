@@ -90,7 +90,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                             'solution': current_solution,
                             'answer': current_answer,
                             'verification_level': level,
-                            'is_correct': level == 4
+                            'is_correct': level == 4,
+                            'steps_taken': steps_taken
                         })
                         break
                 
@@ -133,7 +134,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'verification_levels': [s['verification_level'] for s in solutions]
+            'verification_levels': [s['verification_level'] for s in solutions],
+            'steps_info': [s.get('steps_taken', 0) for s in solutions]
         }
         
     except Exception as e:

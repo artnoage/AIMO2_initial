@@ -91,7 +91,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'solution': complete_solution,
                     'answer': current_answer,
                     'verification_level': level,
-                    'is_correct': level == 4
+                    'is_correct': level == 4,
+                    'steps_taken': steps_taken,
+                    'total_steps': count_solution_steps(complete_solution)
                 })
                     
             except Exception as e:
@@ -125,7 +127,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'verification_levels': [s['verification_level'] for s in solutions]
+            'verification_levels': [s['verification_level'] for s in solutions],
+            'steps_info': [{
+                'steps_taken': s.get('steps_taken', 0),
+                'total_steps': s.get('total_steps', 0)
+            } for s in solutions]
         }
         
     except Exception as e:
