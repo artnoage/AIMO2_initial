@@ -35,7 +35,7 @@ async def verify_solution(solution: str, correct_answer: str, problem: str, veri
         is_correct = await answer_verifier.verify(problem, solution, correct_answer)
         return answer, is_correct
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, numeric: bool = False, tolerance: float = 1e-6) -> Optional[Dict]:
     """Process a single example with either numeric or semantic verification"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -114,6 +114,7 @@ async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     verifier_model = None if config.numeric else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    second_verifier_model = None if config.numeric else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
     
     await run_benchmark(
         config,
@@ -124,6 +125,7 @@ async def main():
                 example_id=example_id,
                 solver_model=solver_model,
                 verifier_model=verifier_model,
+                second_verifier_model=second_verifier_model,
                 best_of=best_of,
                 numeric=config.numeric,
                 tolerance=config.tolerance

@@ -23,6 +23,7 @@ class BenchmarkConfig:
     
     # Verification settings
     verifier: str = 'GEMINI_FLASH'
+    second_verifier: str = 'CODER'
     verifier_temp: float = 0
     numeric: bool = False
     tolerance: float = 1e-6
@@ -59,8 +60,11 @@ class BenchmarkConfig:
         parser.add_argument('--verifier', type=str,
                           choices=[model.name for model in ModelOption],
                           default='GEMINI_FLASH', help='Model to use for verification')
+        parser.add_argument('--second-verifier', type=str,
+                          choices=[model.name for model in ModelOption],
+                          default='CODER', help='Second model to use for verification')
         parser.add_argument('--verifier-temp', type=float, default=0,
-                          help='Temperature for verifier model')
+                          help='Temperature for verifier models')
         parser.add_argument('--numeric', action='store_true',
                           help='Use numeric verification instead of verifier model')
         parser.add_argument('--tolerance', type=float, default=1e-6,
