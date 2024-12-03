@@ -63,12 +63,10 @@ class ProgressTracker:
 
     def save_results(self, model_name: str = None, split: str = None) -> None:
         """Save results to a JSON file"""
-        try:
-            # Create results list with all benchmark data
-            results_list = []
-            for result in self.results:
-                results_list.append(result)
+        if not self.results:
+            return
             
+        try:
             # Create metadata
             metadata = {
                 "timestamp": self.start_time.isoformat(),
@@ -76,7 +74,7 @@ class ProgressTracker:
                 "best_of": self.best_of,
                 "model": model_name,
                 "split": split,
-                "results": results_list
+                "results": self.results
             }
             
             # Use a fixed filename based on the start timestamp
