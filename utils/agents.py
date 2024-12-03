@@ -131,6 +131,22 @@ class AnswerVerifierAgent:
     
     def __init__(self, model):
         self.model = model
+
+class SolutionVerifierAgent:
+    """Agent that verifies complete mathematical solutions"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def verify(self, problem: str, solution: str) -> bool:
+        """Verify if a solution is mathematically correct and complete"""
+        prompt = [
+            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
+            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{solution}\n\nIs this solution mathematically correct and complete?")
+        ]
+        
+        response = await self.model.ainvoke(prompt)
+        return response.content.strip().lower() == 'yes'
         
     async def verify(self, problem: str, model_solution: str, correct_solution: str, running_id: int = 0, attempt: int = 0) -> bool:
         """Verify if two solutions are mathematically equivalent"""

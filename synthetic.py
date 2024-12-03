@@ -15,32 +15,7 @@ from tqdm import tqdm
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-SYSTEM_PROMPT="""You are a precise mathematical problem solver. You will be given a problem to solve.
-
-DO:
-▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification. 
-▪ Use LaTeX notation
-
-FORMAT:
-
-**Problem Analysis and Approach**:
-1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
-2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
-
-**PROOF**:
-Example format for each step:
-Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
-
-Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
-Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
-Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
-Step 4. Thus, \\( abc \\leq 1 \\), as required.  
-
-For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
-
-**ANSWER**:
-\\(\\boxed{\\text{result}}\\) """
+from utils.agents import FullSolutionAgent, AnswerVerifierAgent, SolutionVerifierAgent
 
 async def verify_solution(
     model_solution: Optional[str],
@@ -65,28 +40,19 @@ async def verify_solution(
         return 0
 
     try:
-        # Check answer equivalence 
-        comparison_prompt = [
-            SystemMessage(content="You are a mathematical answer validator. Given a problem and two answers, respond ONLY with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-        ]
-        first_response = await verifier_model.ainvoke(comparison_prompt)
-        if first_response.content.strip().lower() != 'yes':
+        # Check answer equivalence using AnswerVerifierAgent
+        answer_verifier = AnswerVerifierAgent(verifier_model)
+        if not await answer_verifier.verify(problem, model_solution, correct_answer):
             return 1
 
         # Check solution completeness with first verifier
-        solution_prompt = [
-            SystemMessage(content="You are a mathematical solution validator. Given a problem and a proposed solution, respond ONLY with 'yes' if the solution is mathematically correct, detailed and coherent, or 'no' if it contains any errors, lacks detail, or has incoherent reasoning. Just one word, no explanation."),
-            HumanMessage(content=f"Problem:\n{problem}\n\nProposed solution:\n{model_solution}\n\nIs this solution mathematically correct and complete?")
-        ]
-        
-        first_verifier = await verifier_model.ainvoke(solution_prompt)
-        if first_verifier.content.strip().lower() != 'yes':
+        solution_verifier = SolutionVerifierAgent(verifier_model)
+        if not await solution_verifier.verify(problem, model_solution):
             return 2
             
         # Only check second verifier if first one passed
-        second_verifier = await second_verifier_model.ainvoke(solution_prompt)
-        if second_verifier.content.strip().lower() != 'yes':
+        second_solution_verifier = SolutionVerifierAgent(second_verifier_model)
+        if not await second_solution_verifier.verify(problem, model_solution):
             return 3
             
         return 4
