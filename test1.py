@@ -131,8 +131,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 async def main():
     """Main function for testing step-by-step solution generation."""
     config = BenchmarkConfig.from_args('Test step-by-step solution generation')
-    await run_benchmark(config, 
-                       lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, vm, bo))
+    await run_benchmark(
+        config,
+        lambda example, running_id, example_id, solver_model, verifier_model, best_of: 
+            process_example(
+                example=example,
+                running_id=running_id,
+                example_id=example_id,
+                solver_model=solver_model,
+                verifier_model=verifier_model,
+                best_of=best_of
+            )
+    )
 
 if __name__ == "__main__":
     try:
