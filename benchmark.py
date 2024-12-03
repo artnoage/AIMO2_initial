@@ -10,10 +10,6 @@ from bench_utils.progress_tracker import ProgressTracker
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-
-
-    
-    
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with configured verification"""
     try:
