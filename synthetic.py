@@ -123,12 +123,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return {
             'id': example_id,
             'problem': example['problem'],
-            'correct_solution': example['solution'],
+            'correct_answer': example['solution'],
             'model_responses': solutions,
+            'model_answers': [extract_answer_from_solution(s) for s in solutions],
             'verification_levels': verification_levels,
             'level_counts': level_counts,
-            'best_solution': best_solution,
-            'solved': 4 in verification_levels,
+            'is_correct_list': [level == 4 for level in verification_levels],
+            'correct_binary': [1 if level == 4 else 0 for level in verification_levels],
+            'model_answer_raw': extract_answer_from_solution(solutions[0]) if solutions else None,
+            'correct_answer_raw': extract_answer_from_solution(example['solution']),
+            'attempts': {
+                'total': len(solutions),
+                'correct_count': verification_levels.count(4)
+            },
             'solution_type': 'synthetic'
         }
         
