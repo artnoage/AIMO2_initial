@@ -9,7 +9,7 @@ from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
 from utils.agents import AnalysisAgent, NextStepAgent
-from benchmark_numeric import verify_numeric
+from benchmark import verify_solution
 
 def normalize_latex(text: str) -> str:
     """Replace more than two backslashes with two backslashes to fix excessive escaping"""
@@ -64,8 +64,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     has_answer = current_answer is not None
                     
                     if has_answer:
-                        # Verify the numeric answer
-                        current_answer_float, is_correct = await verify_numeric(current_solution, correct_answer, 1e-6)
+                        # Verify the answer
+                        current_answer_float, is_correct = await verify_solution(current_solution, correct_answer, example["problem"], None, numeric=True, tolerance=1e-6)
                         
                         if is_correct:
                             correct_count += 1
