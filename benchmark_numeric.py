@@ -3,6 +3,7 @@ from typing import Optional, Dict, Tuple
 from utils.utils import *
 from utils.benchmark_utils import run_benchmark
 from utils.benchmark_config import *
+from utils.agents import FullSolutionAgent
 
 async def verify_numeric(solution: str, correct_answer: float, tolerance: float) -> Tuple[Optional[float], bool]:
     """Verify a numeric solution and return (answer, is_correct)"""

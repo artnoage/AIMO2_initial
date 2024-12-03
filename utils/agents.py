@@ -126,6 +126,35 @@ class CompletionAgent:
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
+    def __init__(self, model, system_prompt=BENCHMARK_SYSTEM_PROMPT):
+        self.model = model
+        self.system_prompt = system_prompt
+        
+    async def generate(self, problem: str, running_id: int = 0, attempt: int = 0) -> str:
+        """Generate a complete solution with analysis and steps"""
+        prompt = [
+            SystemMessage(content=self.system_prompt),
+            HumanMessage(content=(
+                f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
+                "Please provide a complete solution following these guidelines:\n"
+                "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
+                "   - Problem type and key concepts involved\n"
+                "   - Relevant theorems and techniques\n"
+                "   - Overall solution strategy\n\n"
+                "2. Then provide a detailed step-by-step solution:\n"
+                "   - Number each step clearly (Step 1, Step 2, etc.)\n"
+                "   - Show all work and intermediate calculations\n"
+                "   - Use LaTeX notation for mathematical expressions\n"
+                "   - Provide justification in [brackets] for key steps\n"
+                "   - End with final answer in \\boxed{}\n\n"
+                "Please solve the problem completely:"
+            ))
+        ]
+        return await get_model_response(self.model, prompt, running_id, attempt)
+
+class FullSolutionAgent:
+    """Agent that provides complete solutions with analysis and steps"""
+    
     def __init__(self, model):
         self.model = model
         

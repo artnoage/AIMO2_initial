@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from utils.utils import *
 from utils.benchmark_config import *
 from utils.benchmark_utils import run_benchmark
+from utils.agents import FullSolutionAgent
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
