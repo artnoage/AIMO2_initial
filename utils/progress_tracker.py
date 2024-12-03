@@ -63,15 +63,69 @@ class ProgressTracker:
             return
             
         timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
-        filename = f"bm_numeric_{model_name}_{timestamp}.json"
         
-        # Save just the results array directly
-        output = self.results
+        # Extract metadata about solution steps
+        step_stats = {
+            'total_steps': [],
+            'steps_before_completion': [],
+            'steps_per_attempt': []
+        }
+        
+        for result in self.results:
+            # Get total solution steps if available (test2)
+            if 'total_solution_steps' in result:
+                step_stats['total_steps'].extend(result['total_solution_steps'])
+                
+            # Get steps before completion if available (test2)
+            if 'steps_before_completion' in result:
+                step_stats['steps_before_completion'].extend(result['steps_before_completion'])
+                
+            # Get steps per attempt if available (test1)
+            if 'steps_taken' in result:
+                step_stats['steps_per_attempt'].extend(result['steps_taken'])
+        
+        # Calculate step statistics
+        stats = {
+            'step_statistics': {
+                'average_total_steps': sum(step_stats['total_steps']) / len(step_stats['total_steps']) if step_stats['total_steps'] else None,
+                'average_steps_before_completion': sum(step_stats['steps_before_completion']) / len(step_stats['steps_before_completion']) if step_stats['steps_before_completion'] else None,
+                'average_steps_per_attempt': sum(step_stats['steps_per_attempt']) / len(step_stats['steps_per_attempt']) if step_stats['steps_per_attempt'] else None,
+                'max_steps': max(step_stats['total_steps'] + step_stats['steps_before_completion'] + step_stats['steps_per_attempt'], default=None)
+            }
+        }
+        
+        # Add metadata to results
+        output = {
+            'metadata': {
+                'model': model_name,
+                'split': split,
+                'timestamp': timestamp,
+                'total_examples': len(self.results),
+                'step_statistics': stats['step_statistics']
+            },
+            'results': self.results
+        }
+        
+        # Determine benchmark type from results structure
+        if any('total_solution_steps' in r for r in self.results):
+            benchmark_type = 'test2'
+        elif any('steps_taken' in r for r in self.results):
+            benchmark_type = 'test1'
+        else:
+            benchmark_type = 'benchmark'
+            
+        filename = f"{benchmark_type}_{model_name}_{timestamp}.json"
         
         os.makedirs("results", exist_ok=True)
         with open(os.path.join("results", filename), 'w') as f:
             json.dump(output, f, indent=2)
         print(f"\nResults saved to: {filename}")
+        
+        # Print step statistics
+        print("\nStep Statistics:")
+        for key, value in stats['step_statistics'].items():
+            if value is not None:
+                print(f"{key}: {value:.2f}")
 
     def print_final_stats(self) -> None:
         if not self.results:
