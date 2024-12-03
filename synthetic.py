@@ -148,38 +148,21 @@ async def process_example(
 async def main():
     start_time = datetime.now()
     
-    parser = argparse.ArgumentParser(description='Synthetic Model Benchmark')
-    parser.add_argument('--solver', type=str, choices=[model.name for model in ModelOption],
-                       default='LOCAL', help='Model to use for solving problems')
-    parser.add_argument('--verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='GEMINI_FLASH', help='Model to use for first verifier')
-    parser.add_argument('--second-verifier', type=str, choices=[model.name for model in ModelOption],
-                       default='CODER', help='Model to use for second verifier')
-    parser.add_argument('--split', type=str, default='train',
-                       help='Dataset split to use (train/validation/test)')
-    parser.add_argument('--source', type=str, default='all',
-                       help='Filter problems by source (default: all)')
-    parser.add_argument('--max-concurrent', type=int, default=512,
-                       help='Maximum number of concurrent problems')
-    parser.add_argument('--max-attempts', type=int, default=200,
-                       help='Maximum attempts per problem')
-    parser.add_argument('--temperature', type=float, default=0.8,
-                       help='Temperature for model generation')
-    args = parser.parse_args()
-
-    if args.max_concurrent < 1:
+    config = BenchmarkConfig.from_args('Synthetic Model Benchmark')
+    
+    if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
 
     try:
         username = HfApi().whoami()["name"]
-        dataset = load_dataset(f"{username}/Numina", split=args.split)
+        dataset = load_dataset(f"{username}/Numina", split=config.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
 
-    if args.source.lower() != 'all':
-        dataset = dataset.filter(lambda x: x['source'] == args.source)
+    if config.source.lower() != 'all':
+        dataset = dataset.filter(lambda x: x['source'] == config.source)
     
     dataset = dataset.shuffle(seed=24)
     print(f"\nDataset size: {len(dataset)} examples")
@@ -188,9 +171,9 @@ async def main():
         print("Error: Dataset is empty!")
         return
 
-    solver_model = get_model(ModelOption[args.solver], temp=args.temperature)
-    verifier_model = get_model(ModelOption[args.verifier], temp=0)
-    second_verifier_model = get_model(ModelOption[args.second_verifier], temp=0)
+    solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
+    verifier_model = get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+    second_verifier_model = get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
 
     # Initialize directories and files
     os.makedirs('results', exist_ok=True)
@@ -218,14 +201,14 @@ async def main():
         return
 
     # Process examples with controlled concurrency
-    semaphore = asyncio.Semaphore(args.max_concurrent)
+    semaphore = asyncio.Semaphore(config.max_concurrent)
 
     async def process_with_semaphore(example, running_id):
         async with semaphore:
             return await process_example(
                 example, running_id, example['id'],
                 solver_model, verifier_model, second_verifier_model,
-                args.max_attempts
+                config.best_of
             )
 
     tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(dataset)]
@@ -313,11 +296,11 @@ async def main():
                             'attempts_used': len(r['verification_results'])
                         } for r in tracker.results],
                         'metadata': {
-                            'solver': args.solver,
-                            'verifier': args.verifier,
-                            'second_verifier': args.second_verifier,
-                            'temperature': args.temperature,
-                            'max_attempts': args.max_attempts,
+                            'solver': config.solver,
+                            'verifier': config.verifier,
+                            'second_verifier': config.second_verifier,
+                            'temperature': config.temperature,
+                            'max_attempts': config.best_of,
                             'examples_processed': len(tracker.results),
                             'success_rate': (sum(1 for r in tracker.results if r['solved'])/len(tracker.results)) * 100,
                             'statistics': {
