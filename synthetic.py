@@ -12,48 +12,7 @@ from utils.agents import FullSolutionAgent, AnswerVerifierAgent, SolutionVerifie
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def verify_synthetic_solution(
-    model_solution: Optional[str],
-    correct_solution: Optional[str],
-    problem: str,
-    verifier_model,
-    second_verifier_model
-) -> int:
-    """
-    Returns verification_level where:
-    0 - Failed format check
-    1 - Failed answer verification
-    2 - Failed first solution verification
-    3 - Failed second solution verification
-    4 - Passed all checks
-    """
-    
-    model_answer = extract_answer_from_solution(model_solution)
-    correct_answer = extract_answer_from_solution(correct_solution)
-    
-    if model_answer is None or correct_answer is None or model_solution is None:
-        return 0
-
-    try:
-        # Check answer equivalence using AnswerVerifierAgent
-        answer_verifier = AnswerVerifierAgent(verifier_model)
-        if not await answer_verifier.verify(problem, model_solution, correct_answer):
-            return 1
-
-        # Check solution completeness with first verifier
-        solution_verifier = SolutionVerifierAgent(verifier_model)
-        if not await solution_verifier.verify(problem, model_solution):
-            return 2
-            
-        # Only check second verifier if first one passed
-        second_solution_verifier = SolutionVerifierAgent(second_verifier_model)
-        if not await second_solution_verifier.verify(problem, model_solution):
-            return 3
-            
-        return 4
-
-    except Exception as e:
-        return 0
+from utils.verification import verify_solution_with_model
 
 def check_format(response: str, full_solution: str) -> bool:
     """Check if response contains required words and is sufficiently detailed"""
@@ -81,7 +40,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 current_solution = await solution_agent.generate(example["problem"], running_id, attempt)
                 
                 # Verify solution
-                level = await verify_synthetic_solution(
+                level, current_answer = await verify_solution_with_model(
                     current_solution,
                     example['solution'],
                     example['problem'],
