@@ -222,6 +222,85 @@ async def run_benchmark(
         print(f"Error loading dataset: {e}")
         return
 
+    if config.split_slice:
+        dataset_length = min(config.split_slice.stop, len(dataset))
+    else:
+        dataset_length = len(dataset)
+
+    progress_tracker = ProgressTracker(
+        total_examples=dataset_length,
+        best_of=config.best_of
+    )
+
+    example_data = []
+    for example in dataset:
+        processed = {
+            'id': example['id'],
+            'problem': example['problem'],
+            'solution': example['solution']
+        }
+        example_data.append(processed)
+
+    if not example_data:
+        print("No valid examples to process after initial filtering.")
+        return
+
+    print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
+
+    semaphore = asyncio.Semaphore(config.max_concurrent)
+
+    async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
+        async with semaphore:
+            result = await process_example_func(
+                example=example,
+                running_id=running_id,
+                example_id=example['id'],
+                solver_model=solver_model,
+                verifier_model=verifier_model,
+                second_verifier_model=second_verifier_model,
+                best_of=config.best_of,
+                config=config
+            )
+            if result:
+                progress_tracker.add_result(result)
+                progress_tracker.print_progress(config.solver, config.split)
+            return result
+
+    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+    
+    print(f"\nWill process {len(example_data)} examples")
+    
+    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
+    results = []
+    for coro in asyncio.as_completed(tasks):
+        result = await coro
+        if result:
+            results.append(result)
+        progress_bar.update(1)
+    progress_bar.close()
+    
+    progress_tracker.print_final_stats()
+    progress_tracker.save_results(config.solver, config.split)
+    """Generic benchmark runner that handles dataset loading and example processing"""
+    if config.max_concurrent < 1:
+        print("Error: Maximum concurrent problems must be at least 1")
+        return
+
+    try:
+        if config.dataset == 'original':
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
+        elif config.dataset == 'aime':
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
+        else:  # filtered
+            username = whoami()["name"]
+            dataset = load_dataset(f"{username}/Numina", split=config.split)
+            
+        if config.split_slice:
+            dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        return
+
     if config.source.lower() != 'all':
         dataset = dataset.filter(lambda x: x['source'] == config.source)
     
