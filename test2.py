@@ -136,7 +136,7 @@ async def main():
     """Main function for testing hybrid solution generation."""
     config = NumericConfig.from_args('Test hybrid solution generation')
     results = await run_benchmark(config, 
-                                lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, None, bo))
+                                lambda ex, rid, eid, sm, vm, bo: process_example(ex, rid, eid, sm, vm, bo))
     return results
 
 if __name__ == "__main__":
