@@ -146,25 +146,7 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        results = asyncio.run(main())
-        if results:
-            # Filter out None values and clean up data for JSON serialization
-            cleaned_results = [r for r in results if r is not None]
-            for result in cleaned_results:
-                # Convert any None values in lists to "null" strings
-                if 'model_answers' in result:
-                    result['model_answers'] = ["null" if x is None else x for x in result['model_answers']]
-                if 'model_responses' in result:
-                    result['model_responses'] = ["null" if x is None else x for x in result['model_responses']]
-
-            # Save results to JSON file with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = f"test1_results_{timestamp}.json"
-            with open(output_file, 'w') as f:
-                json.dump(cleaned_results, f, indent=2)
-            print(f"\nResults saved to {output_file}")
-        else:
-            print("\nNo results were generated")
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\nTest interrupted by user")
     except Exception as e:

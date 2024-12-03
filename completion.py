@@ -147,7 +147,6 @@ async def main():
                 best_of=best_of
             )
     )
-    return results
 
 if __name__ == "__main__":
     try:
