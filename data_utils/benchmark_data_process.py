@@ -81,45 +81,81 @@ def clean_json_string(text: str) -> str:
 
 def load_benchmark_file(filename: str, clean: bool = False, debug: bool = False) -> List[Dict]:
     """
-    Load benchmark results from JSON file
+    Load benchmark results from JSON file with robust error handling
     Args:
         filename: Path to JSON file
         clean: Whether to clean the JSON content before parsing
+        debug: Whether to print debug information
     """
     try:
+        # First try reading as regular JSON
         with open(filename, 'r', encoding='utf-8') as f:
             content = f.read()
-            
-        # Clean the JSON content if requested
-        if clean:
-            content = clean_json_string(content)
-            
+        
         try:
             data = json.loads(content)
-        except json.JSONDecodeError as e:
-            if debug:
-                print(f"JSON parsing error: {str(e)}")
-                with open(filename, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                if e.lineno <= len(lines):
-                    print(f"Error at line {e.lineno}:")
-                    print(lines[e.lineno - 1].rstrip())
-                    print(" " * (e.colno - 1) + "^")
-            print("Attempting cleanup...")
-            # Try cleaning even if not explicitly requested
-            content = clean_json_string(content)
-            data = json.loads(content)
-            
+        except json.JSONDecodeError:
+            if clean:
+                content = clean_json_string(content)
+                try:
+                    data = json.loads(content)
+                except:
+                    if debug:
+                        print("Failed to parse even after cleaning, trying line-by-line...")
+                    return load_line_by_line(filename, debug)
+            else:
+                return load_line_by_line(filename, debug)
+                
         # Handle both old format (with metadata) and new format (direct list)
         if isinstance(data, dict) and "results" in data:
             return data["results"]
-        return data
+        elif isinstance(data, list):
+            return data
+        else:
+            if debug:
+                print("Invalid data format, trying line-by-line...")
+            return load_line_by_line(filename, debug)
             
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSON parsing error: {str(e)}\n"
-                        f"Error location: line {e.lineno}, column {e.colno}")
     except Exception as e:
-        raise ValueError(f"Error loading benchmark file: {str(e)}")
+        if debug:
+            print(f"Error in initial load: {str(e)}")
+        return load_line_by_line(filename, debug)
+
+def load_line_by_line(filename: str, debug: bool = False) -> List[Dict]:
+    """Fallback loader that processes the file line by line"""
+    results = []
+    with open(filename, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line or line in '[]{}':  # Skip empty lines and standalone brackets
+                continue
+                
+            # Remove trailing commas
+            if line.endswith(','):
+                line = line[:-1]
+                
+            try:
+                # Try to parse as JSON object
+                entry = json.loads(line)
+                if isinstance(entry, dict):
+                    results.append(entry)
+            except:
+                try:
+                    # Try to extract JSON object from line
+                    start = line.find('{')
+                    end = line.rfind('}')
+                    if start >= 0 and end > start:
+                        entry = json.loads(line[start:end+1])
+                        if isinstance(entry, dict):
+                            results.append(entry)
+                except:
+                    if debug:
+                        print(f"Skipping invalid line {line_num}")
+                    continue
+    
+    if debug:
+        print(f"Loaded {len(results)} entries")
+    return results
 
 def calculate_success_rate(result: Dict) -> float:
     """Calculate success rate for a single result"""
@@ -132,28 +168,52 @@ def calculate_success_rate(result: Dict) -> float:
     return correct / total if total > 0 else 0.0
 
 def filter_examples(results: List[Dict], threshold: float, comparison: str = 'bigger') -> List[Dict]:
-    """Filter examples based on success rate threshold"""
+    """Filter examples based on success rate threshold with robust error handling"""
     if not 0 <= threshold <= 1:
         raise ValueError("Threshold must be between 0 and 1")
         
     filtered_results = []
+    skipped = 0
     
     for result in results:
-        success_rate = calculate_success_rate(result)
-        should_include = (success_rate > threshold if comparison == 'bigger' 
-                         else success_rate < threshold)
-        
-        if should_include:
-            filtered_results.append({
-                'id': result['id'],
-                'problem': result['problem'],
-                'correct_answer': result['correct_answer'],
-                'success_rate': success_rate,
-                'model_responses': result.get('model_responses', []),
-                'model_answers': result.get('model_answers', []),
-                'is_correct_list': result.get('is_correct_list', []),
-                'attempts': result.get('attempts', {})
-            })
+        try:
+            # Skip entries missing required fields
+            if not isinstance(result, dict):
+                skipped += 1
+                continue
+                
+            required_fields = ['id', 'problem', 'correct_answer']
+            if not all(field in result for field in required_fields):
+                skipped += 1
+                continue
+            
+            # Calculate success rate, defaulting to 0 if data is invalid
+            try:
+                success_rate = calculate_success_rate(result)
+            except:
+                success_rate = 0
+                
+            should_include = (success_rate > threshold if comparison == 'bigger' 
+                            else success_rate < threshold)
+            
+            if should_include:
+                filtered_results.append({
+                    'id': result['id'],
+                    'problem': result['problem'],
+                    'correct_answer': result['correct_answer'],
+                    'success_rate': success_rate,
+                    'model_responses': result.get('model_responses', []),
+                    'model_answers': result.get('model_answers', []),
+                    'is_correct_list': result.get('is_correct_list', []),
+                    'attempts': result.get('attempts', {})
+                })
+                
+        except Exception as e:
+            skipped += 1
+            continue
+            
+    if skipped > 0:
+        print(f"Warning: Skipped {skipped} invalid entries")
     
     return filtered_results
 
