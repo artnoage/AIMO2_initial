@@ -19,7 +19,19 @@ def main():
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n'}}{% endfor %}"
+    tokenizer.chat_template = """{{ bos_token }}
+{% for message in messages %}
+    {% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}
+        {{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}
+    {% endif %}
+    {% if message['role'] == 'user' %}
+        {{ '[INST]' + message['content'] + '[/INST]' }}
+    {% elif message['role'] == 'assistant' %}
+        {{ message['content'] + eos_token }}
+    {% else %}
+        {{ raise_exception('Only user and assistant roles are supported!') }}
+    {% endif %}
+{% endfor %}"""
     
     # Initialize model with quantization
     model = AutoModelForCausalLM.from_pretrained(
