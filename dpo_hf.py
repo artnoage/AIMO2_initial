@@ -78,7 +78,8 @@ def main():
         gradient_checkpointing=True,
         max_length=4096,
         max_prompt_length=2048,
-        output_dir=output_dir
+        output_dir=output_dir,
+        max_grad_norm=1.0  # Add gradient clipping
     )
 
     # Initialize DPO trainer
