@@ -3,10 +3,14 @@ import argparse
 from typing import List, Dict
 from pathlib import Path
 
-def recover_json_entries(file_path: str) -> List[Dict]:
+def recover_json_entries(file_path: str, debug: bool = False) -> List[Dict]:
     """
     Attempts to recover valid JSON entries from a corrupted file.
     Assumes the file contains one JSON object per line or an array of objects.
+    
+    Args:
+        file_path: Path to the JSON file
+        debug: If True, prints detailed error information
     """
     recovered = []
     
@@ -20,8 +24,15 @@ def recover_json_entries(file_path: str) -> List[Dict]:
         if isinstance(data, list):
             recovered.extend(data)
             return recovered
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        if debug:
+            print(f"Failed to parse as single JSON array: {str(e)}")
+            # Show the problematic line and position
+            lines = content.split('\n')
+            if e.lineno <= len(lines):
+                print(f"Error at line {e.lineno}:")
+                print(lines[e.lineno - 1])
+                print(" " * (e.colno - 1) + "^")
 
     # If that fails, try line-by-line parsing
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -57,11 +68,12 @@ def main():
     parser = argparse.ArgumentParser(description='Recover entries from corrupted JSON file')
     parser.add_argument('input_file', help='Path to corrupted JSON file')
     parser.add_argument('output_file', help='Path to save recovered entries')
+    parser.add_argument('--debug', action='store_true', help='Enable debug output')
     args = parser.parse_args()
 
     print(f"Attempting to recover entries from {args.input_file}")
     
-    recovered_entries = recover_json_entries(args.input_file)
+    recovered_entries = recover_json_entries(args.input_file, debug=args.debug)
     
     print(f"Successfully recovered {len(recovered_entries)} entries")
     

@@ -79,7 +79,7 @@ def clean_json_string(text: str) -> str:
     
     return result
 
-def load_benchmark_file(filename: str, clean: bool = False) -> List[Dict]:
+def load_benchmark_file(filename: str, clean: bool = False, debug: bool = False) -> List[Dict]:
     """
     Load benchmark results from JSON file
     Args:
@@ -97,7 +97,15 @@ def load_benchmark_file(filename: str, clean: bool = False) -> List[Dict]:
         try:
             data = json.loads(content)
         except json.JSONDecodeError as e:
-            print(f"JSON parsing error at position {e.pos}, attempting cleanup...")
+            if debug:
+                print(f"JSON parsing error: {str(e)}")
+                with open(filename, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                if e.lineno <= len(lines):
+                    print(f"Error at line {e.lineno}:")
+                    print(lines[e.lineno - 1].rstrip())
+                    print(" " * (e.colno - 1) + "^")
+            print("Attempting cleanup...")
             # Try cleaning even if not explicitly requested
             content = clean_json_string(content)
             data = json.loads(content)
@@ -172,6 +180,8 @@ def main():
     parser.add_argument('input_file', help='Input benchmark JSON file')
     parser.add_argument('--clean', action='store_true',
                       help='Clean JSON content before parsing (fixes formatting issues)')
+    parser.add_argument('--debug', action='store_true',
+                      help='Show detailed error information')
     parser.add_argument('--export-cleaned', action='store_true',
                       help='Export the cleaned JSON file (only meaningful with --clean)')
     
@@ -189,7 +199,7 @@ def main():
     
     try:
         # Load and validate data
-        data = load_benchmark_file(args.input_file, clean=args.clean or args.clean_only)
+        data = load_benchmark_file(args.input_file, clean=args.clean or args.clean_only, debug=args.debug)
         
         # If requested, export the cleaned data
         if args.clean and args.export_cleaned:
