@@ -14,7 +14,7 @@ def main():
         load_in_4bit=False)  # Using 4-bit quantization for inference
     
     # Optimize model for inference
-    model = FastLanguageModel.for_inference(model)
+    model=FastLanguageModel.for_inference(model)
     
     # Setup chat template
     tokenizer = get_chat_template(
@@ -47,16 +47,14 @@ def main():
         
         # Generate response
         messages = [{"role": "user", "content": question}]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+        prompt = tokenizer.apply_chat_template(messages, tokenize=True, return_tensors='pt').to(model.device)
         
         generated_ids = model.generate(
-            **tokenizer(prompt, return_tensors='pt').to(model.device),
+           prompt,
             max_new_tokens=512,
             do_sample=True,
             temperature=0.7,
-            top_p=0.95,
-            pad_token_id=tokenizer.pad_token_id,
-            eos_token_id=tokenizer.eos_token_id
+            top_p=0.95
         )
         
         response = tokenizer.batch_decode(generated_ids)[0]
