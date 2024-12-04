@@ -14,17 +14,21 @@ async def process_question(engine, question, i):
     start_time = time.time()
     
     # Generate response using vLLM
-    sampling_params = {
-        "max_tokens": 512,
-        "temperature": 0.7,
-        "top_p": 0.95
-    }
+    from vllm.sampling_params import SamplingParams
+    
+    sampling_params = SamplingParams(
+        max_tokens=512,
+        temperature=0.7,
+        top_p=0.95
+    )
     
     # Format prompt with chat template
     prompt = f"[INST] {question} [/INST]"
     
-    responses = await engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}")
-    response = responses[0].outputs[0].text
+    # Process the async generator
+    async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
+        generated_text = response.outputs[0].text
+        break  # We only need the first response
     
     # Calculate time taken
     end_time = time.time()
