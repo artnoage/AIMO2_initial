@@ -1,31 +1,30 @@
 import time
 import asyncio
-from unsloth import FastLanguageModel
-from unsloth.chat_templates import get_chat_template
+from vllm.engine.async_llm_engine import AsyncLLMEngine
+from vllm.engine.arg_utils import AsyncEngineArgs
 import os
 
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-async def process_question(model, tokenizer, question, i):
+async def process_question(engine, question, i):
     print(f"Question {i}: {question}")
     
     # Start timing
     start_time = time.time()
     
-    # Generate response
-    messages = [{"role": "user", "content": question}]
-    prompt = tokenizer.apply_chat_template(messages, tokenize=True, return_tensors='pt').to(model.device)
+    # Generate response using vLLM
+    sampling_params = {
+        "max_tokens": 512,
+        "temperature": 0.7,
+        "top_p": 0.95
+    }
     
-    generated_ids = model.generate(
-       prompt,
-        max_new_tokens=512,
-        do_sample=True,
-        temperature=0.7,
-        top_p=0.95
-    )
+    # Format prompt with chat template
+    prompt = f"[INST] {question} [/INST]"
     
-    response = tokenizer.batch_decode(generated_ids)[0]
+    responses = await engine.generate(prompt, sampling_params=sampling_params)
+    response = responses[0].outputs[0].text
     
     # Calculate time taken
     end_time = time.time()
@@ -37,20 +36,18 @@ async def process_question(model, tokenizer, question, i):
     return time_taken
 
 async def main():
-    # Load the model
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
-        max_seq_length=4096,
-        load_in_4bit=False)  # Using 4-bit quantization for inference
+    # Initialize vLLM engine
+    engine_args = AsyncEngineArgs(
+        model="artnoage/metastral",
+        max_model_len=4096,
+        tensor_parallel_size=1,  # Adjust based on number of GPUs
+        gpu_memory_utilization=0.90,
+        trust_remote_code=True
+    )
     
-    # Optimize model for inference
-    model=FastLanguageModel.for_inference(model)
-    
-    # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True)
+    print("Initializing vLLM engine...")
+    engine = AsyncLLMEngine.from_engine_args(engine_args)
+    print("Engine initialized!")
     
     # Sample questions
     questions = [
@@ -70,7 +67,7 @@ async def main():
     
     # Create tasks for all questions
     tasks = [
-        process_question(model, tokenizer, question, i)
+        process_question(engine, question, i)
         for i, question in enumerate(questions, 1)
     ]
     
