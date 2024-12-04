@@ -174,6 +174,18 @@ async def run_benchmark(
         print("Error: Maximum concurrent problems must be at least 1")
         return
 
+    # Load exclude list if provided
+    excluded_ids = set()
+    if config.exclude and os.path.exists(config.exclude):
+        try:
+            with open(config.exclude, 'r') as f:
+                exclude_data = json.load(f)
+                excluded_ids = {item['id'] for item in exclude_data if 'id' in item}
+            print(f"Loaded {len(excluded_ids)} problems to exclude")
+        except Exception as e:
+            print(f"Error loading exclude file: {e}")
+            return
+
     try:
         if config.dataset == 'original':
             dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
@@ -182,6 +194,11 @@ async def run_benchmark(
         else:  # filtered
             username = whoami()["name"]
             dataset = load_dataset(f"{username}/Numina", split=config.split)
+        
+        # Filter out excluded problems
+        if excluded_ids:
+            dataset = dataset.filter(lambda x: x['id'] not in excluded_ids)
+            print(f"Filtered dataset to exclude {len(excluded_ids)} problems")
             
         if config.split_slice:
             dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
