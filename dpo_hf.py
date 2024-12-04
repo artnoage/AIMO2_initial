@@ -19,19 +19,7 @@ def main():
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.chat_template = """{{ bos_token }}
-{% for message in messages %}
-    {% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}
-        {{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}
-    {% endif %}
-    {% if message['role'] == 'user' %}
-        {{ '[INST]' + message['content'] + '[/INST]' }}
-    {% elif message['role'] == 'assistant' %}
-        {{ message['content'] + eos_token }}
-    {% else %}
-        {{ raise_exception('Only user and assistant roles are supported!') }}
-    {% endif %}
-{% endfor %}"""
+
     
     # Initialize model with quantization
     model = AutoModelForCausalLM.from_pretrained(
@@ -61,15 +49,18 @@ def main():
         }
         
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Dataset already contains role information, apply template directly
-            formatted["prompt"].append(tokenizer.apply_chat_template(prompt, tokenize=False))
-            formatted["chosen"].append(tokenizer.apply_chat_template(chosen, tokenize=False))
-            formatted["rejected"].append(tokenizer.apply_chat_template(rejected, tokenize=False))
+            # Apply chat template to each message
+            formatted["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
+            formatted["chosen"].append(tokenizer.apply_chat_template([chosen], tokenize=False))
+            formatted["rejected"].append(tokenizer.apply_chat_template([rejected], tokenize=False))
             
         return formatted
 
     # Load and format dataset
     dataset = load_dataset("artnoage/dpo_full", split="train")
+    print(tokenizer.apply_chat_template([dataset[0]["prompt"]], tokenize=False))
+    print(tokenizer.apply_chat_template([dataset[0]["prompt"]+dataset[0]["chosen"]], tokenize=False))
+    exit()
     formatted_dataset = dataset.map(
         formatting_func,
         batched=True,
