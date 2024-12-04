@@ -4,7 +4,8 @@ import torch.cuda
 from trl import DPOTrainer, DPOConfig
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer)
+    AutoTokenizer,
+    Adafactor)
 from transformers import logging
 import torch
 from peft import LoraConfig, get_peft_model
@@ -72,9 +73,10 @@ def main():
         num_train_epochs=1,
         learning_rate=5e-6,
         logging_steps=1,
-        optim="adamw_torch",
+        optim="adafactor",
         seed=42,
         bf16=True,
+        lr_scheduler_type="constant",  # AdaFactor handles learning rate scaling internally
         gradient_checkpointing=True,
         max_length=4096,
         max_prompt_length=2048,
