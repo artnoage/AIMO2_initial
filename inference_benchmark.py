@@ -23,7 +23,7 @@ async def process_question(engine, question, i):
     # Format prompt with chat template
     prompt = f"[INST] {question} [/INST]"
     
-    responses = await engine.generate(prompt, sampling_params=sampling_params)
+    responses = await engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}")
     response = responses[0].outputs[0].text
     
     # Calculate time taken
