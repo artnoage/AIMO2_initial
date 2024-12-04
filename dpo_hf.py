@@ -49,10 +49,11 @@ def main():
         }
         
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
+            print(prompt,chosen,rejected)
             # Apply chat template to each message
-            formatted["prompt"].append(tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False))
-            formatted["chosen"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": chosen}], tokenize=False))
-            formatted["rejected"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": rejected}], tokenize=False))
+            formatted["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
+            formatted["chosen"].append(tokenizer.apply_chat_template([chosen], tokenize=False))
+            formatted["rejected"].append(tokenizer.apply_chat_template([rejected], tokenize=False))
             
         return formatted
 
@@ -63,7 +64,7 @@ def main():
         batched=True,
         desc="Applying chat template"
     )
-
+    exit()
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
