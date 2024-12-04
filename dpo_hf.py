@@ -24,9 +24,9 @@ def main():
     # Configure quantization
     bnb_config = BitsAndBytesConfig(
         load_in_8bit=True,
-        bnb_8bit_use_double_quant=True,
-        bnb_8bit_quant_type="nf8",
-        bnb_8bit_compute_dtype=torch.float16
+        bnb_8bit_use_double_quant=False,
+        bnb_8bit_quant_type="int8",
+        bnb_8bit_compute_dtype=torch.bfloat16
     )
 
     # Initialize model with 8-bit quantization
@@ -34,7 +34,7 @@ def main():
         model_name,
         quantization_config=bnb_config,
         device_map="auto",
-        torch_dtype=torch.float16
+        torch_dtype=torch.bfloat16
     )
 
     # Configure LoRA
@@ -42,8 +42,7 @@ def main():
         r=4,
         lora_alpha=4,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj",
-                       "lm_head", "embed_tokens"],
+                       "gate_proj", "up_proj", "down_proj"],
         lora_dropout=0,
         bias="none",
         task_type="CAUSAL_LM"
@@ -84,9 +83,11 @@ def main():
         num_train_epochs=1,
         learning_rate=4e-6,
         logging_steps=1,
-        optim="adamw_8bit",
+        optim="adamw_torch",
         seed=42,
-        fp16=True,
+        bf16=True,
+        max_length=4096,
+        max_prompt_length=2048,
         output_dir=output_dir
     )
 
@@ -95,10 +96,7 @@ def main():
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,
-        tokenizer=tokenizer,
-        beta=0.1,
-        max_length=1024,
-        max_prompt_length=512
+        tokenizer=tokenizer
     )
 
     # Train the model
