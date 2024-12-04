@@ -17,9 +17,10 @@ def main():
     # Load the base model and tokenizer
     model_name = "artnoage/metastral"
     
-    # Initialize tokenizer
+    # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.chat_template = tokenizer.default_chat_template  # Ensure chat template is loaded
     
     # Initialize model with quantization
     model = AutoModelForCausalLM.from_pretrained(
@@ -49,11 +50,10 @@ def main():
         }
         
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            print(prompt,chosen,rejected)
-            # Apply chat template to each message
-            formatted["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
-            formatted["chosen"].append(tokenizer.apply_chat_template([chosen], tokenize=False))
-            formatted["rejected"].append(tokenizer.apply_chat_template([rejected], tokenize=False))
+            # Format messages using the chat template with proper roles
+            formatted["prompt"].append(tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False))
+            formatted["chosen"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": chosen}], tokenize=False))
+            formatted["rejected"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": rejected}], tokenize=False))
             
         return formatted
 
@@ -64,7 +64,6 @@ def main():
         batched=True,
         desc="Applying chat template"
     )
-    exit()
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
