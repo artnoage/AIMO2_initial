@@ -23,28 +23,19 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     
-    # Configure quantization
-    bnb_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        bnb_8bit_use_double_quant=False,
-        bnb_8bit_quant_type="int8",
-        bnb_8bit_compute_dtype=torch.bfloat16
-    )
-
     # Initialize model with 8-bit quantization
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        quantization_config=bnb_config,
-        device_map="auto",
         torch_dtype=torch.bfloat16
     )
 
     # Configure LoRA
     peft_config = LoraConfig(
-        r=4,
-        lora_alpha=4,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj"],
+        r=32,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj",
+                      "lm_head", "embed_tokens",],
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
         task_type="CAUSAL_LM"
@@ -80,14 +71,15 @@ def main():
 
     # Training configuration
     training_args = DPOConfig(
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         gradient_accumulation_steps=64,
         num_train_epochs=1,
-        learning_rate=4e-6,
+        learning_rate=5e-6,
         logging_steps=1,
-        optim="adamw_torch",
+        optim="adamw_8bit",
         seed=42,
         bf16=True,
+        gradient_checkpointing=True,
         max_length=4096,
         max_prompt_length=2048,
         output_dir=output_dir,
