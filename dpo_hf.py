@@ -95,7 +95,7 @@ def main():
                 "stage3_prefetch_bucket_size": 5e7,
                 "stage3_param_persistence_threshold": 5e5
             },
-            "cuda_visible_devices": "0,1,2,3",  # Specify GPUs here
+            "cuda_visible_devices": "4,5,6,7",  # Using higher-numbered GPUs to leave 0-3 free
             "train_batch_size": 128,
             "gradient_accumulation_steps": 64,
             "gradient_clipping": 1.0,
