@@ -21,11 +21,20 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     
-    # Initialize model with quantization
+    # Configure quantization
+    bnb_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        bnb_8bit_use_double_quant=True,
+        bnb_8bit_quant_type="nf8",
+        bnb_8bit_compute_dtype=torch.float16
+    )
+
+    # Initialize model with 8-bit quantization
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float16,
-        device_map="cuda:0"
+        quantization_config=bnb_config,
+        device_map="auto",
+        torch_dtype=torch.float16
     )
 
     # Configure LoRA
