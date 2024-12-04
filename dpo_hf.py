@@ -50,10 +50,10 @@ def main():
         }
         
         for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Format messages using the chat template with proper roles
-            formatted["prompt"].append(tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False))
-            formatted["chosen"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": chosen}], tokenize=False))
-            formatted["rejected"].append(tokenizer.apply_chat_template([{"role": "assistant", "content": rejected}], tokenize=False))
+            # Dataset already contains role information, apply template directly
+            formatted["prompt"].append(tokenizer.apply_chat_template(prompt, tokenize=False))
+            formatted["chosen"].append(tokenizer.apply_chat_template(chosen, tokenize=False))
+            formatted["rejected"].append(tokenizer.apply_chat_template(rejected, tokenize=False))
             
         return formatted
 
