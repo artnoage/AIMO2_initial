@@ -81,10 +81,8 @@ async def main():
         
         # Add each question's results
         for q, o in zip(questions, outputs):
-            # Clean up response for markdown table
+            # Clean up response for markdown table, preserving full length
             clean_output = o.replace('\n', ' ').replace('|', '\\|')
-            if len(clean_output) > 100:
-                clean_output = clean_output[:97] + "..."
             f.write(f"| {q} | {clean_output} |\n")
 
 if __name__ == "__main__":
