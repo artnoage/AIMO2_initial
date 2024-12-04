@@ -62,7 +62,7 @@ async def main():
         tensor_parallel_size=1,  # Adjust based on number of GPUs
         gpu_memory_utilization=0.90,
         trust_remote_code=True,
-        devices=[4]  # Specify to use GPU 4
+        gpu_devices=[4]  # Specify to use GPU 4
     )
     
     print("Initializing engine...", end="", flush=True)
