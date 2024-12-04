@@ -70,30 +70,43 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     has_answer = extract_answer_from_solution(current_solution) is not None
                 
                     if has_answer:
-                        # Create and use appropriate verifier
-                        verifier = create_verifier(
-                            config.verification_type,
-                            verifier_model=verifier_model,
-                            second_verifier_model=second_verifier_model,
-                            tolerance=config.tolerance
-                        )
-                        score, total_steps, current_answer = await verifier.verify(
-                            current_solution,
-                            correct_answer,
-                            example["problem"]
-                        )
-                
-                        if score == total_steps:
-                            correct_count += 1
+                        try:
+                            # Create and use appropriate verifier
+                            verifier = create_verifier(
+                                config.verification_type,
+                                verifier_model=verifier_model,
+                                second_verifier_model=second_verifier_model,
+                                tolerance=config.tolerance
+                            )
+                            score, total_steps, current_answer = await verifier.verify(
+                                current_solution,
+                                correct_answer,
+                                example["problem"]
+                            )
                     
-                        solutions.append({
-                            'solution': current_solution,
-                            'answer': current_answer,
-                            'verification_score': score,
-                            'verification_steps': total_steps,
-                            'is_correct': score == total_steps,
-                            'steps_taken': steps_taken
-                        })
+                            if score == total_steps:
+                                correct_count += 1
+                        
+                            solutions.append({
+                                'solution': current_solution,
+                                'answer': current_answer,
+                                'verification_score': score,
+                                'verification_steps': total_steps,
+                                'is_correct': score == total_steps,
+                                'steps_taken': steps_taken,
+                                'total_steps': count_solution_steps(current_solution) or steps_taken
+                            })
+                        except Exception as e:
+                            print(f"Verification error in attempt {attempt + 1} for example {running_id}: {str(e)}")
+                            solutions.append({
+                                'solution': current_solution,
+                                'answer': extract_answer_from_solution(current_solution),
+                                'verification_score': 0,
+                                'verification_steps': 1,
+                                'is_correct': False,
+                                'steps_taken': steps_taken,
+                                'total_steps': count_solution_steps(current_solution) or steps_taken
+                            })
                         break
                 
                 if not has_answer:
@@ -102,7 +115,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         'solution': current_solution,
                         'answer': None,
                         'is_correct': False,
-                        'steps_taken': steps_taken
+                        'verification_score': 0,
+                        'verification_steps': 1,
+                        'steps_taken': steps_taken,
+                        'total_steps': steps_taken
                     })
                     
             except Exception as e:
