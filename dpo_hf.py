@@ -1,5 +1,7 @@
 from datasets import load_dataset
 from datetime import datetime
+import os
+import torch.distributed as dist
 from trl import DPOTrainer, DPOConfig
 from transformers import (
     AutoModelForCausalLM,
@@ -88,7 +90,10 @@ def main():
         bf16=True,
         max_length=4096,
         max_prompt_length=2048,
-        output_dir=output_dir
+        output_dir=output_dir,
+        ddp_find_unused_parameters=False,
+        local_rank=int(os.environ.get("LOCAL_RANK", -1)),
+        deepspeed=None,  # Let DPOTrainer handle DDP
     )
 
     # Initialize DPO trainer
