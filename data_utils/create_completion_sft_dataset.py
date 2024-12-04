@@ -5,7 +5,42 @@ import re
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 from transformers import AutoTokenizer
-from bench_utils.utils import filter_by_token_ranges
+
+
+def filter_by_token_ranges(examples: List[Dict], tokenizer, max_tokens: int = 4096) -> Tuple[List[Dict], Dict[str, int]]:
+    """
+    Filter examples by token count and track distribution.
+    
+    Args:
+        examples: List of conversation examples
+        tokenizer: The tokenizer to use for counting
+        max_tokens: Maximum allowed tokens per example
+        
+    Returns:
+        Tuple of (filtered_examples, token_ranges)
+    """
+    token_ranges = {
+        "0-1024": 0,
+        "1024-2048": 0,
+        "2048-4096": 0
+    }
+    
+    filtered_examples = []
+    for example in examples:
+        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
+                         for msg in example["conversations"])
+        if total_tokens <= 1024:
+            token_ranges["0-1024"] += 1
+            filtered_examples.append(example)
+        elif total_tokens <= 2048:
+            token_ranges["1024-2048"] += 1
+            filtered_examples.append(example)
+        elif total_tokens <= 4096:
+            token_ranges["2048-4096"] += 1
+            filtered_examples.append(example)
+            
+    return filtered_examples, token_ranges
+
 
 def load_augmented_data(filename: str) -> List[Dict]:
     """Load the augmented dataset file using UTF-8 encoding"""
