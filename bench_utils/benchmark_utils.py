@@ -34,39 +34,6 @@ def get_model(model: ModelOption, temp: float = 0.1):
             temperature=temp,
             api_key=openrouter_api_key)
 
-def filter_by_token_ranges(examples: List[Dict], tokenizer, max_tokens: int = 4096) -> Tuple[List[Dict], Dict[str, int]]:
-    """
-    Filter examples by token count and track distribution.
-    
-    Args:
-        examples: List of conversation examples
-        tokenizer: The tokenizer to use for counting
-        max_tokens: Maximum allowed tokens per example
-        
-    Returns:
-        Tuple of (filtered_examples, token_ranges)
-    """
-    token_ranges = {
-        "0-1024": 0,
-        "1024-2048": 0,
-        "2048-4096": 0
-    }
-    
-    filtered_examples = []
-    for example in examples:
-        total_tokens = sum(len(tokenizer.encode(msg["content"])) 
-                         for msg in example["conversations"])
-        if total_tokens <= 1024:
-            token_ranges["0-1024"] += 1
-            filtered_examples.append(example)
-        elif total_tokens <= 2048:
-            token_ranges["1024-2048"] += 1
-            filtered_examples.append(example)
-        elif total_tokens <= 4096:
-            token_ranges["2048-4096"] += 1
-            filtered_examples.append(example)
-            
-    return filtered_examples, token_ranges
 
 def async_retry(max_retries: int = 3, timeout: int = 300):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
