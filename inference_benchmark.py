@@ -77,12 +77,25 @@ async def main():
     # Run all tasks concurrently and collect times
     output = await asyncio.gather(*tasks)
     
+    # Calculate metrics
     total_time = sum(times)
     avg_time = total_time / len(questions)
     
-    print(f"Benchmark complete!")
-    print(f"Total time: {total_time:.2f} seconds")
-    print(f"Average time per question: {avg_time:.2f} seconds")
+    # Create results markdown
+    with open('benchmark_results.md', 'w') as f:
+        f.write(f"""# Benchmark Results
+
+## Performance Metrics
+
+| Metric | Value |
+|--------|--------|
+| Total Time | {total_time:.2f} seconds |
+| Average Time per Question | {avg_time:.2f} seconds |
+
+## Questions Processed
+
+Total questions processed: {len(questions)}
+""")
 
 if __name__ == "__main__":
     asyncio.run(main())
