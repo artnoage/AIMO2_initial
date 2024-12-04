@@ -6,9 +6,8 @@ from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from trl import DPOTrainer
-import os
 from transformers import logging
-from unsloth import is_bfloat16_supported
+
 
 
 
@@ -18,7 +17,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="mistralai/Mathstral-7B-v0.1",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -77,7 +76,7 @@ def main():
     print(f"Maximum weight value before training: {max_weight}")
     training_args = DPOConfig(
         per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 32,
+        gradient_accumulation_steps = 64,
         num_train_epochs = 1,
         learning_rate = 4e-6,
         logging_steps = 1,
