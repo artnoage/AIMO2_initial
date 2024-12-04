@@ -1,7 +1,9 @@
+import argparse
 from datasets import load_dataset
 from datetime import datetime
 import os
 import torch.distributed as dist
+import torch.cuda
 from trl import DPOTrainer, DPOConfig
 from transformers import (
     AutoModelForCausalLM,
@@ -14,7 +16,19 @@ from peft import LoraConfig, get_peft_model
 
 
 def main():
+    parser = argparse.ArgumentParser(description='DPO Training with GPU selection')
+    parser.add_argument('--gpu_ids', type=str, default='0',
+                      help='Comma-separated list of GPU IDs to use (e.g., "0,1,2,3")')
+    args = parser.parse_args()
+
+    # Set visible CUDA devices
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
+    
     logging.set_verbosity_info()
+    
+    # Print GPU information
+    gpu_count = torch.cuda.device_count()
+    print(f"Using {gpu_count} GPUs: {args.gpu_ids}")
 
     # Load the base model and tokenizer
     model_name = "artnoage/metastral"
