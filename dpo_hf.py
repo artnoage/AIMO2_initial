@@ -85,7 +85,25 @@ def main():
         output_dir=output_dir,
         ddp_find_unused_parameters=False,
         local_rank=int(os.environ.get("LOCAL_RANK", -1)),
-        deepspeed=None,  # Use our DeepSpeed config
+        deepspeed={
+            "zero_optimization": {
+                "stage": 3,
+                "overlap_comm": True,
+                "contiguous_gradients": True,
+                "reduce_bucket_size": 5e7,
+                "stage3_prefetch_bucket_size": 5e7,
+                "stage3_param_persistence_threshold": 5e5
+            },
+            "train_batch_size": 128,
+            "gradient_accumulation_steps": 64,
+            "gradient_clipping": 1.0,
+            "fp16": {
+                "enabled": False
+            },
+            "bf16": {
+                "enabled": True
+            }
+        },
     )
 
     # Initialize DPO trainer
