@@ -1,3 +1,4 @@
+import torch
 from datasets import load_dataset
 from datetime import datetime
 from trl import DPOTrainer, DPOConfig
@@ -71,7 +72,9 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
     
-    print("hey")
+    # Print maximum weight value before training
+    max_weight = max([torch.max(param).item() for param in model.parameters()])
+    print(f"Maximum weight value before training: {max_weight}")
     training_args = DPOConfig(
         per_device_train_batch_size = 2,
         gradient_accumulation_steps = 32,
