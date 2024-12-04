@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from unsloth.chat_templates import get_chat_template
 import os
 
-async def process_question(engine, question, i):
+async def process_question(engine, tokenizer, question, i):
     print(f"Question {i}: {question}")
     
     # Start timing
@@ -83,7 +83,7 @@ async def main():
     
     # Create tasks for all questions
     tasks = [
-        process_question(engine, question, i)
+        process_question(engine, tokenizer, question, i)
         for i, question in enumerate(questions, 1)
     ]
     
