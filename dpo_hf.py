@@ -71,7 +71,7 @@ def main():
 
     # Training configuration
     training_args = DPOConfig(
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=2,
         gradient_accumulation_steps=64,
         num_train_epochs=1,
         learning_rate=5e-6,
@@ -85,7 +85,7 @@ def main():
         output_dir=output_dir,
         ddp_find_unused_parameters=False,
         local_rank=int(os.environ.get("LOCAL_RANK", -1)),
-        deepspeed=None,  # Let DPOTrainer handle DDP
+        deepspeed=None,  # Use our DeepSpeed config
     )
 
     # Initialize DPO trainer
