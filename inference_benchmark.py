@@ -1,0 +1,75 @@
+import time
+from unsloth import FastLanguageModel
+from unsloth.chat_templates import get_chat_template
+import os
+
+# Set GPU device
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+
+def main():
+    # Load the model
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name="artnoage/metastral",
+        max_seq_length=4096,
+        load_in_4bit=True)  # Using 4-bit quantization for inference
+    
+    # Setup chat template
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="mistral",
+        map_eos_token=True)
+    
+    # Sample questions
+    questions = [
+        "What is the capital of France?",
+        "Explain quantum entanglement briefly.",
+        "Who wrote Romeo and Juliet?",
+        "What is photosynthesis?",
+        "How does a computer CPU work?",
+        "What causes the seasons on Earth?",
+        "Explain the theory of relativity.",
+        "What is the difference between DNA and RNA?",
+        "How do vaccines work?",
+        "What is machine learning?"
+    ]
+    
+    total_time = 0
+    print("\nStarting inference benchmark with 10 questions...\n")
+    
+    for i, question in enumerate(questions, 1):
+        print(f"Question {i}: {question}")
+        
+        # Start timing
+        start_time = time.time()
+        
+        # Generate response
+        messages = [{"role": "user", "content": question}]
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+        
+        generated_ids = model.generate(
+            **tokenizer(prompt, return_tensors='pt').to(model.device),
+            max_new_tokens=512,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.95,
+            pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id
+        )
+        
+        response = tokenizer.batch_decode(generated_ids)[0]
+        
+        # Calculate time taken
+        end_time = time.time()
+        time_taken = end_time - start_time
+        total_time += time_taken
+        
+        print(f"Response: {response}")
+        print(f"Time taken: {time_taken:.2f} seconds\n")
+    
+    avg_time = total_time / len(questions)
+    print(f"Benchmark complete!")
+    print(f"Total time: {total_time:.2f} seconds")
+    print(f"Average time per question: {avg_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()
