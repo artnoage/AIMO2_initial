@@ -27,9 +27,10 @@ async def process_question(engine, question, i):
     prompt = f"[INST] {question} [/INST]"
     
     # Process the async generator
+    final_output = None
     async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
-        generated_text = response.outputs[0].text
-        break  # We only need the first response
+        final_output = response.outputs[0].text
+    generated_text = final_output
     
     # Calculate time taken
     end_time = time.time()
