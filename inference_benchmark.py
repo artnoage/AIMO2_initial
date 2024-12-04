@@ -9,11 +9,6 @@ from unsloth.chat_templates import get_chat_template
 import os
 
 async def process_question(engine, tokenizer, question, i):
-    print(f"\nQ{i}: ", end="")
-    
-    # Start timing
-    start_time = time.time()
-    
     # Generate response using vLLM
 
     
@@ -26,26 +21,16 @@ async def process_question(engine, tokenizer, question, i):
     # Format messages in chat format
     messages = [{"role": "user", "content": question}]
     # Apply chat template
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+    prompt = tokenizer.apply_chat_template(messages, tokenize=True)
     
     # Process the async generator
-    final_output = None
     async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
-        final_output = response.outputs[0].text
-    generated_text = final_output
+        final_output = response
+    return final_output
     
-    # Calculate time taken
-    end_time = time.time()
-    time_taken = end_time - start_time
-    
-    print(f"Time: {time_taken:.2f}s")
-    
-    return time_taken
+
 
 async def main():
-    # Configure logging
-    logging.basicConfig(level=logging.WARNING)
-    transformers_logging.set_verbosity_error()
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained("artnoage/metastral")
@@ -61,9 +46,7 @@ async def main():
         max_model_len=4096,
         tensor_parallel_size=1,  # Adjust based on number of GPUs
         gpu_memory_utilization=0.90,
-        trust_remote_code=True,
-        gpu_devices=[4]  # Specify to use GPU 4
-    )
+        trust_remote_code=True)
     
     print("Initializing engine...", end="", flush=True)
     engine = AsyncLLMEngine.from_engine_args(engine_args)
@@ -92,7 +75,7 @@ async def main():
     ]
     
     # Run all tasks concurrently and collect times
-    times = await asyncio.gather(*tasks)
+    output = await asyncio.gather(*tasks)
     
     total_time = sum(times)
     avg_time = total_time / len(questions)
