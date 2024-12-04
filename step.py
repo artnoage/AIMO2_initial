@@ -3,7 +3,7 @@ import asyncio
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
-from bench_utils.benchmark_utils import *
+from bench_utils.benchmark_utils import get_model, extract_answer_from_solution, count_manual_steps
 from bench_utils.agents import *
 from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -94,7 +94,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                                 'verification_steps': total_steps,
                                 'is_correct': score == total_steps,
                                 'steps_taken': steps_taken,
-                                'total_steps': count_solution_steps(current_solution) or steps_taken
+                                'total_steps': count_manual_steps(current_solution) or steps_taken
                             })
                         except Exception as e:
                             print(f"Verification error in attempt {attempt + 1} for example {running_id}: {str(e)}")
@@ -105,7 +105,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                                 'verification_steps': 1,
                                 'is_correct': False,
                                 'steps_taken': steps_taken,
-                                'total_steps': count_solution_steps(current_solution) or steps_taken
+                                'total_steps': count_manual_steps(current_solution) or steps_taken
                             })
                         break
                 
