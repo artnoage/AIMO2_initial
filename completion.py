@@ -97,7 +97,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     'is_correct': False,
                     'verification_score': 0,
                     'verification_steps': 1,
-                    'steps_taken': 0
+                    'steps_taken': 0,
+                    'total_steps': 0
                 })
         
         # Print statistics
