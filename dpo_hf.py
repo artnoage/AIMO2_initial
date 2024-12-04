@@ -19,7 +19,6 @@ def main():
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token
     tokenizer.chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n'}}{% endfor %}"
     
     # Initialize model with quantization
