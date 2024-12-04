@@ -9,8 +9,6 @@ import os
 from transformers import logging
 from unsloth import is_bfloat16_supported
 
-# Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 
 
 def main():
@@ -19,7 +17,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241130_144413",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -37,7 +35,8 @@ def main():
         bias="none",     # Supports any, but = "none" is optimized
         use_gradient_checkpointing=True,  # True or "unsloth" for very long context
         random_state=3407,
-        use_rslora=False)
+        use_rslora=False,
+        loftq_config = None)
 
     # Setup chat template
     tokenizer = get_chat_template(
@@ -68,22 +67,23 @@ def main():
         batched=True,
         desc="Applying chat template"
     )
-    print(formatted_dataset[0])
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
     
-
+    print("hey")
     training_args = DPOConfig(
         per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 64,
+        gradient_accumulation_steps = 32,
         num_train_epochs = 1,
         learning_rate = 4e-6,
         logging_steps = 1,
-        optim = "adamw_8bit",
-        seed = 42,
-        fp16 = not is_bfloat16_supported(),
-        bf16 = is_bfloat16_supported(),
+        optim = "adamw_torch",
+        seed=42,
+        bf16=True,
+        weight_decay=0.01,
+        lr_scheduler_type = "linear",
+        warmup_ratio = 0.1,
         output_dir = output_dir)
     # Initialize DPO trainer
     
@@ -92,7 +92,6 @@ def main():
         args=training_args,
         train_dataset=formatted_dataset,
         tokenizer=tokenizer,
-        beta=0.1,
         max_length=4096,
         max_prompt_length=1024)
 
