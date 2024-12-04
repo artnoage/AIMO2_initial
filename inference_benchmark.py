@@ -34,7 +34,7 @@ async def process_question(engine, question, i):
     end_time = time.time()
     time_taken = end_time - start_time
     
-    print(f"Response: {response}")
+    print(f"Response: {generated_text}")
     print(f"Time taken: {time_taken:.2f} seconds\n")
     
     return time_taken
