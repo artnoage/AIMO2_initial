@@ -1,4 +1,3 @@
-import argparse
 from datasets import load_dataset
 from datetime import datetime
 import os
@@ -16,19 +15,7 @@ from peft import LoraConfig, get_peft_model
 
 
 def main():
-    parser = argparse.ArgumentParser(description='DPO Training with GPU selection')
-    parser.add_argument('--gpu_ids', type=str, default='0',
-                      help='Comma-separated list of GPU IDs to use (e.g., "0,1,2,3")')
-    args = parser.parse_args()
-
-    # Set visible CUDA devices
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_ids
-    
     logging.set_verbosity_info()
-    
-    # Print GPU information
-    gpu_count = torch.cuda.device_count()
-    print(f"Using {gpu_count} GPUs: {args.gpu_ids}")
 
     # Load the base model and tokenizer
     model_name = "artnoage/metastral"
@@ -108,6 +95,7 @@ def main():
                 "stage3_prefetch_bucket_size": 5e7,
                 "stage3_param_persistence_threshold": 5e5
             },
+            "cuda_visible_devices": "0,1,2,3",  # Specify GPUs here
             "train_batch_size": 128,
             "gradient_accumulation_steps": 64,
             "gradient_clipping": 1.0,
