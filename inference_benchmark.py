@@ -13,6 +13,9 @@ def main():
         max_seq_length=4096,
         load_in_4bit=False)  # Using 4-bit quantization for inference
     
+    # Optimize model for inference
+    model = FastLanguageModel.for_inference(model)
+    
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
