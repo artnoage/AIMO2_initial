@@ -2,10 +2,9 @@ import asyncio
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
-from transformers import AutoTokenizer, logging as transformers_logging
-import logging
+from transformers import AutoTokenizer
 from unsloth.chat_templates import get_chat_template
-import os
+
 
 async def process_question(engine, tokenizer, question, i):
     sampling_params = SamplingParams(
@@ -17,8 +16,8 @@ async def process_question(engine, tokenizer, question, i):
     # Format messages in chat format
     messages = [{"role": "user", "content": question}]
     # Apply chat template
-    prompt = tokenizer.apply_chat_template(messages, tokenize=True)
-    
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+    print(prompt)
     # Process the async generator
     async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
         final_output = response
@@ -42,6 +41,7 @@ async def main():
         max_model_len=4096,
         tensor_parallel_size=1,  # Adjust based on number of GPUs
         gpu_memory_utilization=0.90,
+        device="cuda:4",
         trust_remote_code=True)
     
     print("Initializing engine...", end="", flush=True)
