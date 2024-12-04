@@ -41,7 +41,7 @@ async def main():
         max_model_len=4096,
         tensor_parallel_size=1,  # Adjust based on number of GPUs
         gpu_memory_utilization=0.90,
-        device="cuda:4",
+        device="cuda:3",
         trust_remote_code=True)
     
     print("Initializing engine...", end="", flush=True)
