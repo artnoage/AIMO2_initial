@@ -3,12 +3,13 @@ import asyncio
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, logging as transformers_logging
+import logging
 from unsloth.chat_templates import get_chat_template
 import os
 
 async def process_question(engine, tokenizer, question, i):
-    print(f"Question {i}: {question}")
+    print(f"\nQ{i}: ", end="")
     
     # Start timing
     start_time = time.time()
@@ -37,12 +38,15 @@ async def process_question(engine, tokenizer, question, i):
     end_time = time.time()
     time_taken = end_time - start_time
     
-    print(f"Response: {generated_text}")
-    print(f"Time taken: {time_taken:.2f} seconds\n")
+    print(f"Time: {time_taken:.2f}s")
     
     return time_taken
 
 async def main():
+    # Configure logging
+    logging.basicConfig(level=logging.WARNING)
+    transformers_logging.set_verbosity_error()
+    
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained("artnoage/metastral")
     tokenizer = get_chat_template(
@@ -61,9 +65,9 @@ async def main():
         devices=[4]  # Specify to use GPU 4
     )
     
-    print("Initializing vLLM engine...")
+    print("Initializing engine...", end="", flush=True)
     engine = AsyncLLMEngine.from_engine_args(engine_args)
-    print("Engine initialized!")
+    print(" done")
     
     # Sample questions
     questions = [
