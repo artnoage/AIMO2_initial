@@ -2,6 +2,7 @@ import time
 import asyncio
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.sampling_params import SamplingParams
 import os
 
 # Set GPU device
@@ -14,7 +15,7 @@ async def process_question(engine, question, i):
     start_time = time.time()
     
     # Generate response using vLLM
-    from vllm.sampling_params import SamplingParams
+
     
     sampling_params = SamplingParams(
         max_tokens=512,
