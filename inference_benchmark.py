@@ -5,9 +5,6 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
 import os
 
-# Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use GPU 0, change this number to use a different GPU
-
 async def process_question(engine, question, i):
     print(f"Question {i}: {question}")
     
@@ -48,7 +45,8 @@ async def main():
         max_model_len=4096,
         tensor_parallel_size=1,  # Adjust based on number of GPUs
         gpu_memory_utilization=0.90,
-        trust_remote_code=True
+        trust_remote_code=True,
+        devices=[4]  # Specify to use GPU 4
     )
     
     print("Initializing vLLM engine...")
