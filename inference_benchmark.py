@@ -1,4 +1,5 @@
 import time
+import asyncio
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 import os
@@ -6,7 +7,36 @@ import os
 # Set GPU device
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-def main():
+async def process_question(model, tokenizer, question, i):
+    print(f"Question {i}: {question}")
+    
+    # Start timing
+    start_time = time.time()
+    
+    # Generate response
+    messages = [{"role": "user", "content": question}]
+    prompt = tokenizer.apply_chat_template(messages, tokenize=True, return_tensors='pt').to(model.device)
+    
+    generated_ids = model.generate(
+       prompt,
+        max_new_tokens=512,
+        do_sample=True,
+        temperature=0.7,
+        top_p=0.95
+    )
+    
+    response = tokenizer.batch_decode(generated_ids)[0]
+    
+    # Calculate time taken
+    end_time = time.time()
+    time_taken = end_time - start_time
+    
+    print(f"Response: {response}")
+    print(f"Time taken: {time_taken:.2f} seconds\n")
+    
+    return time_taken
+
+async def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
@@ -36,41 +66,23 @@ def main():
         "What is machine learning?"
     ]
     
-    total_time = 0
     print("\nStarting inference benchmark with 10 questions...\n")
     
-    for i, question in enumerate(questions, 1):
-        print(f"Question {i}: {question}")
-        
-        # Start timing
-        start_time = time.time()
-        
-        # Generate response
-        messages = [{"role": "user", "content": question}]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=True, return_tensors='pt').to(model.device)
-        
-        generated_ids = model.generate(
-           prompt,
-            max_new_tokens=512,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.95
-        )
-        
-        response = tokenizer.batch_decode(generated_ids)[0]
-        
-        # Calculate time taken
-        end_time = time.time()
-        time_taken = end_time - start_time
-        total_time += time_taken
-        
-        print(f"Response: {response}")
-        print(f"Time taken: {time_taken:.2f} seconds\n")
+    # Create tasks for all questions
+    tasks = [
+        process_question(model, tokenizer, question, i)
+        for i, question in enumerate(questions, 1)
+    ]
     
+    # Run all tasks concurrently and collect times
+    times = await asyncio.gather(*tasks)
+    
+    total_time = sum(times)
     avg_time = total_time / len(questions)
+    
     print(f"Benchmark complete!")
     print(f"Total time: {total_time:.2f} seconds")
     print(f"Average time per question: {avg_time:.2f} seconds")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
