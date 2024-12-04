@@ -9,9 +9,7 @@ from unsloth.chat_templates import get_chat_template
 import os
 
 async def process_question(engine, tokenizer, question, i):
-    # Generate response using vLLM
-
-    
+    start_time = time.time()
     sampling_params = SamplingParams(
         max_tokens=512,
         temperature=0.7,
@@ -26,7 +24,8 @@ async def process_question(engine, tokenizer, question, i):
     # Process the async generator
     async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
         final_output = response
-    return final_output
+    time_taken = time.time() - start_time
+    return final_output.outputs[0].text, time_taken
     
 
 
@@ -74,8 +73,11 @@ async def main():
         for i, question in enumerate(questions, 1)
     ]
     
-    # Run all tasks concurrently and collect times
-    output = await asyncio.gather(*tasks)
+    # Run all tasks concurrently and collect results
+    results = await asyncio.gather(*tasks)
+    
+    # Unzip the results
+    outputs, times = zip(*results)
     
     # Calculate metrics
     total_time = sum(times)
@@ -92,10 +94,19 @@ async def main():
 | Total Time | {total_time:.2f} seconds |
 | Average Time per Question | {avg_time:.2f} seconds |
 
-## Questions Processed
+## Detailed Results
 
-Total questions processed: {len(questions)}
+| Question | Time (s) | Response |
+|----------|----------|----------|
 """)
+        
+        # Add each question's results
+        for q, t, o in zip(questions, times, outputs):
+            # Clean up response for markdown table
+            clean_output = o.replace('\n', ' ').replace('|', '\\|')
+            if len(clean_output) > 100:
+                clean_output = clean_output[:97] + "..."
+            f.write(f"| {q} | {t:.2f} | {clean_output} |\n")
 
 if __name__ == "__main__":
     asyncio.run(main())
