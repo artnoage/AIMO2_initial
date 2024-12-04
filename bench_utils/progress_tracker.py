@@ -72,16 +72,6 @@ class ProgressTracker:
             from bench_utils.benchmark_config import BenchmarkConfig
             config = BenchmarkConfig.from_args('Get defaults')
             
-            # Create metadata
-            metadata = {
-                "timestamp": self.start_time.isoformat(),
-                "total_examples": self.total_examples,
-                "best_of": self.best_of,
-                "model": model_name if model_name else config.solver,
-                "split": split if split else config.split,
-                "results": self.results
-            }
-            
             # Use a fixed filename based on the start timestamp
             filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
             filepath = os.path.join("results", filename)
@@ -92,7 +82,7 @@ class ProgressTracker:
             print(f"\nSaving {len(self.results)} results to: {filepath}")
             
             with open(filepath, 'w') as f:
-                json.dump(metadata, f, indent=2)
+                json.dump(self.results, f, indent=2)
             print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
