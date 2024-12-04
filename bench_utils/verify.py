@@ -62,17 +62,30 @@ class AnswerVerifier(BaseVerifier):
         self.model = model
         
     async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[int, int, Optional[str]]:
-        model_answer = extract_answer_from_solution(solution)
-        if model_answer is None or solution is None:
-            return 0, 1, None
+        try:
+            model_answer = extract_answer_from_solution(solution)
+            if model_answer is None or solution is None:
+                return 0, 1, None
+                
+            prompt = [
+                HumanMessage(content=f"You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation.\n\nProblem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
+            ]
             
-        prompt = [
-            HumanMessage(content=f"You are a mathematical answer validator. Given a problem and two answers, respond with 'yes' if they are mathematically equivalent, or 'no' if they are different. Just one word, no explanation.\n\nProblem:\n{problem}\n\nAre these two answers equivalent?\nAnswer 1: {model_answer}\nAnswer 2: {correct_answer}")
-        ]
-        
-        response = await get_model_response(self.model, prompt)
-        is_correct = response.strip().lower() == 'yes'
-        return 1 if is_correct else 0, 1, model_answer
+            try:
+                response = await get_model_response(self.model, prompt)
+                response = response.strip().lower()
+                if response not in ['yes', 'no']:
+                    print(f"Warning: Unexpected verification response: {response}")
+                    return 0, 1, model_answer
+                is_correct = response == 'yes'
+                return 1 if is_correct else 0, 1, model_answer
+            except Exception as e:
+                print(f"Warning: Verification API error: {str(e)}")
+                return 0, 1, model_answer
+                
+        except Exception as e:
+            print(f"Warning: General verification error: {str(e)}")
+            return 0, 1, None
 
 class SolutionVerifier(BaseVerifier):
     def __init__(self, first_model, second_model):
