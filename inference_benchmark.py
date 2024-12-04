@@ -6,6 +6,7 @@ from vllm.sampling_params import SamplingParams
 import os
 
 # Set GPU device
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use GPU 0, change this number to use a different GPU
 
 async def process_question(engine, question, i):
     print(f"Question {i}: {question}")
