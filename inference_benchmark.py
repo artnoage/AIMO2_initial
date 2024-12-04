@@ -1,4 +1,3 @@
-import time
 import asyncio
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -9,7 +8,6 @@ from unsloth.chat_templates import get_chat_template
 import os
 
 async def process_question(engine, tokenizer, question, i):
-    start_time = time.time()
     sampling_params = SamplingParams(
         max_tokens=512,
         temperature=0.7,
@@ -24,8 +22,7 @@ async def process_question(engine, tokenizer, question, i):
     # Process the async generator
     async for response in engine.generate(prompt, sampling_params=sampling_params, request_id=f"request_{i}"):
         final_output = response
-    time_taken = time.time() - start_time
-    return final_output.outputs[0].text, time_taken
+    return final_output.outputs[0].text
     
 
 
@@ -74,39 +71,21 @@ async def main():
     ]
     
     # Run all tasks concurrently and collect results
-    results = await asyncio.gather(*tasks)
-    
-    # Unzip the results
-    outputs, times = zip(*results)
-    
-    # Calculate metrics
-    total_time = sum(times)
-    avg_time = total_time / len(questions)
+    outputs = await asyncio.gather(*tasks)
     
     # Create results markdown
     with open('benchmark_results.md', 'w') as f:
-        f.write(f"""# Benchmark Results
-
-## Performance Metrics
-
-| Metric | Value |
-|--------|--------|
-| Total Time | {total_time:.2f} seconds |
-| Average Time per Question | {avg_time:.2f} seconds |
-
-## Detailed Results
-
-| Question | Time (s) | Response |
-|----------|----------|----------|
-""")
+        f.write("""# Inference Results\n\n""")
+        f.write("| Question | Response |\n")
+        f.write("|----------|----------|\n")
         
         # Add each question's results
-        for q, t, o in zip(questions, times, outputs):
+        for q, o in zip(questions, outputs):
             # Clean up response for markdown table
             clean_output = o.replace('\n', ' ').replace('|', '\\|')
             if len(clean_output) > 100:
                 clean_output = clean_output[:97] + "..."
-            f.write(f"| {q} | {t:.2f} | {clean_output} |\n")
+            f.write(f"| {q} | {clean_output} |\n")
 
 if __name__ == "__main__":
     asyncio.run(main())
