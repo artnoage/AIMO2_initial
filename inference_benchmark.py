@@ -1,4 +1,5 @@
 import asyncio
+import torch
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
@@ -26,6 +27,15 @@ async def process_question(engine, tokenizer, question, i):
 
 
 async def main():
+    # Check CUDA availability
+    if torch.cuda.is_available():
+        device_count = torch.cuda.device_count()
+        print(f"\nFound {device_count} CUDA devices:")
+        for i in range(device_count):
+            print(f"CUDA:{i} - {torch.cuda.get_device_name(i)}")
+    else:
+        print("\nNo CUDA devices found!")
+        return
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained("artnoage/metastral")
