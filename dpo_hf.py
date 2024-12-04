@@ -60,6 +60,12 @@ def main():
     dataset = load_dataset("artnoage/dpo_full", split="train")
     print(tokenizer.apply_chat_template([dataset[0]["prompt"]], tokenize=False))
     print(tokenizer.apply_chat_template([dataset[0]["prompt"]+dataset[0]["chosen"]], tokenize=False))
+    
+    # Example of combining two dictionaries
+    dict1 = {"a": 1, "b": 2}
+    dict2 = {"c": 3, "d": 4}
+    combined_dict = {**dict1, **dict2}
+    print("Combined dictionary:", combined_dict)
     exit()
     formatted_dataset = dataset.map(
         formatting_func,
