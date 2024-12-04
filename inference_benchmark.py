@@ -3,6 +3,8 @@ import asyncio
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
+from transformers import AutoTokenizer
+from unsloth.chat_templates import get_chat_template
 import os
 
 async def process_question(engine, question, i):
@@ -20,8 +22,10 @@ async def process_question(engine, question, i):
         top_p=0.95
     )
     
-    # Format prompt with chat template
-    prompt = f"[INST] {question} [/INST]"
+    # Format messages in chat format
+    messages = [{"role": "user", "content": question}]
+    # Apply chat template
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False)
     
     # Process the async generator
     final_output = None
@@ -39,6 +43,14 @@ async def process_question(engine, question, i):
     return time_taken
 
 async def main():
+    # Initialize tokenizer with chat template
+    tokenizer = AutoTokenizer.from_pretrained("artnoage/metastral")
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="mistral",
+        map_eos_token=True
+    )
+
     # Initialize vLLM engine
     engine_args = AsyncEngineArgs(
         model="artnoage/metastral",
