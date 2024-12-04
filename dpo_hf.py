@@ -1,28 +1,23 @@
 from datasets import load_dataset
 from datetime import datetime
-import os
-import torch.distributed as dist
 import torch.cuda
 from trl import DPOTrainer, DPOConfig
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig
-)
+    AutoTokenizer)
 from transformers import logging
 import torch
 from peft import LoraConfig, get_peft_model
 
 
 def main():
-    logging.set_verbosity_info()
 
     # Load the base model and tokenizer
     model_name = "artnoage/metastral"
     
     # Initialize tokenizer with chat template
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.pad_token = "[control_748]"
     
     # Initialize model with 8-bit quantization
     model = AutoModelForCausalLM.from_pretrained(
@@ -42,10 +37,6 @@ def main():
         task_type="CAUSAL_LM"
     )
     model = get_peft_model(model, peft_config)
-    
-    # Move model to GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
 
     def formatting_func(examples):
         formatted = {
@@ -76,38 +67,18 @@ def main():
 
     # Training configuration
     training_args = DPOConfig(
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=1,
         gradient_accumulation_steps=64,
         num_train_epochs=1,
         learning_rate=5e-6,
         logging_steps=1,
-        optim="adamw_8bit",
+        optim="adamw_torch",
         seed=42,
         bf16=True,
         gradient_checkpointing=True,
         max_length=4096,
         max_prompt_length=2048,
-        output_dir=output_dir,
-        ddp_find_unused_parameters=False,
-        local_rank=int(os.environ.get("LOCAL_RANK", -1)),
-        deepspeed={
-            "zero_optimization": {
-                "stage": 3,
-                "overlap_comm": True,
-                "contiguous_gradients": True,
-                "reduce_bucket_size": 5e7,
-                "stage3_prefetch_bucket_size": 5e7,
-                "stage3_param_persistence_threshold": 5e5
-            },
-            "cuda_visible_devices": "4,5",  # Using higher-numbered GPUs to leave 0-3 free
-            "gradient_clipping": 1.0,
-            "fp16": {
-                "enabled": False
-            },
-            "bf16": {
-                "enabled": True
-            }
-        },
+        output_dir=output_dir
     )
 
     # Initialize DPO trainer
