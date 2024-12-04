@@ -4,14 +4,14 @@ from unsloth.chat_templates import get_chat_template
 import os
 
 # Set GPU device
-os.environ["CUDA_VISIBLE_DEVICES"] = "4"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="artnoage/metastral",
         max_seq_length=4096,
-        load_in_4bit=True)  # Using 4-bit quantization for inference
+        load_in_4bit=False)  # Using 4-bit quantization for inference
     
     # Setup chat template
     tokenizer = get_chat_template(
