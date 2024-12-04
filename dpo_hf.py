@@ -42,6 +42,10 @@ def main():
         task_type="CAUSAL_LM"
     )
     model = get_peft_model(model, peft_config)
+    
+    # Move model to GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
     def formatting_func(examples):
         formatted = {
