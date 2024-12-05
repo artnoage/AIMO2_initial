@@ -26,7 +26,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         correct_count = 0
         best_solution = None
         
-        for attempt in range(best_of):
+        for attempt in range(config.best_of):
             try:
                 current_solution = await solution_agent.generate(example["problem"])
                 
