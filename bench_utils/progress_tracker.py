@@ -87,11 +87,11 @@ class ProgressTracker:
                 above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) > avg_correct)
                 
                 stats_str += (
-                    f"Problems with ≥1 correct: {at_least_one}/{total_examples} "
-                    f"({at_least_one/total_examples*100:.1f}%) | "
-                    f"Avg correct per problem: {avg_correct:.2f} | "
-                    f"Problems above avg: {above_avg}/{total_examples} "
-                    f"({above_avg/total_examples*100:.1f}%)"
+                    f"\nInterim Benchmark Statistics:\n"
+                    f"- Problems with at least one correct solution: {at_least_one}/{total_examples} ({at_least_one/total_examples*100:.1f}%)\n"
+                    f"- Average correct solutions per problem: {avg_correct:.2f}\n"
+                    f"- Problems with above average correct solutions: {above_avg}/{total_examples} ({above_avg/total_examples*100:.1f}%)\n"
+                    f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
                 )
             
             # For data_creator.py style results
