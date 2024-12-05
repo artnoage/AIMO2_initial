@@ -98,7 +98,7 @@ class ProgressTracker:
             for point, count in sorted(bifurcation_counts.items()):
                 percentage = (count / total_examples) * 100
                 stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
-            stats += "-" * 80 + "\n"
+            stats_str += "-" * 80 + "\n"
             
             print(stats)
             self._save_progress_stats(stats)
@@ -175,7 +175,7 @@ class ProgressTracker:
             stats_str += "### Bifurcation Point Distribution\n\n"
         for point, count in sorted(bifurcation_counts.items()):
             percentage = (count / total) * 100
-            stats += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
+            stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
         
         stats += "\n### Timing Information\n\n"
         stats += f"- Total execution time: {total_duration}\n"
