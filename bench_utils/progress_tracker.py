@@ -56,9 +56,10 @@ class ProgressTracker:
             
             stats = f"\nAt {len(self.results)} examples:\n"
             stats += f"Last 100 examples statistics:\n"
-            stats += f"- Average chosen score: {avg_score_chosen:.2f}\n"
-            stats += f"- Average rejected score: {avg_score_rejected:.2f}\n"
+            stats += f"- Average chosen score: {avg_score_chosen:.2f}/20\n"
+            stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
             stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+            stats += f"- Completions per path: {config.completions}\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
@@ -124,10 +125,11 @@ class ProgressTracker:
         stats = "\n\n## Final Results\n\n"
         stats += f"### Dataset Statistics\n\n"
         stats += f"- Total examples processed: {total}\n"
-        stats += f"- Average chosen score: {avg_score_chosen:.2f}\n"
-        stats += f"- Average rejected score: {avg_score_rejected:.2f}\n"
+        stats += f"- Average chosen score: {avg_score_chosen:.2f}/20\n"
+        stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
         stats += f"- Average score difference: {avg_score_diff:.2f}\n"
-        stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n\n"
+        stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+        stats += f"- Completions per path: {config.completions}\n\n"
 
         stats += "### Bifurcation Point Distribution\n\n"
         for point, count in sorted(bifurcation_counts.items()):
