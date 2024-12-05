@@ -235,17 +235,13 @@ async def run_benchmark(
         semaphore = asyncio.Semaphore(config.max_concurrent)
 
         async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
-        async with semaphore:
-            result = await process_example_func(
-                example=example,
-                running_id=running_id,
-                example_id=example['id'],
-                solver_model=solver_model,
-                verifier_model=verifier_model,
-                second_verifier_model=second_verifier_model,
-                best_of=config.best_of,
-                config=config
-            )
+            async with semaphore:
+                result = await process_example_func(
+                    example=example,
+                    running_id=running_id,
+                    example_id=example['id'],
+                    config=config
+                )
             if result:
                 progress_tracker.add_result(result)
                 progress_tracker.print_progress(config.solver, config.split)
