@@ -47,12 +47,18 @@ class ProgressTracker:
     def print_progress(self, model_name: str = None, split: str = None) -> None:
         if len(self.results) % 100 == 0 and self.results:
             last_hundred = self.results[-100:]
-            batch_error_rate = self.calculate_error_rate(last_hundred)
-            cumulative_error_rate = self.calculate_error_rate(self.results)
+            
+            # Calculate statistics for ORPO data
+            total_examples = len(last_hundred)
+            avg_score_chosen = sum(r.get('score_chosen', 0) for r in last_hundred) / total_examples
+            avg_score_rejected = sum(r.get('score_rejected', 0) for r in last_hundred) / total_examples
+            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
             
             stats = f"\nAt {len(self.results)} examples:\n"
-            stats += f"Batch Success Rate (last 100): {1 - batch_error_rate:.4f}\n"
-            stats += f"Cumulative Success Rate: {1 - cumulative_error_rate:.4f}\n"
+            stats += f"Last 100 examples statistics:\n"
+            stats += f"- Average chosen score: {avg_score_chosen:.2f}\n"
+            stats += f"- Average rejected score: {avg_score_rejected:.2f}\n"
+            stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
@@ -97,35 +103,38 @@ class ProgressTracker:
 
         total = len(self.results)
         
-        # Calculate success metrics
-        any_correct = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
-        majority_correct = sum(1 for r in self.results 
-                             if sum(r.get('is_correct_list', [])) > self.best_of // 2)
+        # Calculate ORPO-specific metrics
+        avg_score_chosen = sum(r.get('score_chosen', 0) for r in self.results) / total
+        avg_score_rejected = sum(r.get('score_rejected', 0) for r in self.results) / total
+        avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
         
-        # Calculate per-attempt success rates
-        total_attempts = sum(len(r.get('is_correct_list', [])) for r in self.results)
-        successful_attempts = sum(sum(r.get('is_correct_list', [])) for r in self.results)
+        # Calculate score distributions
+        score_diff = [r.get('score_chosen', 0) - r.get('score_rejected', 0) for r in self.results]
+        avg_score_diff = sum(score_diff) / total
         
-        # Calculate percentages
-        any_accuracy = (any_correct / total) * 100 if total > 0 else 0
-        majority_accuracy = (majority_correct / total) * 100 if total > 0 else 0
-        attempt_accuracy = (successful_attempts / total_attempts) * 100 if total_attempts > 0 else 0
+        # Count bifurcation points
+        bifurcation_counts = {}
+        for r in self.results:
+            point = r.get('bifurcation_point', 0)
+            bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
 
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
         stats = "\n\n## Final Results\n\n"
+        stats += f"### Dataset Statistics\n\n"
         stats += f"- Total examples processed: {total}\n"
-        stats += f"- Any-Correct Accuracy: {any_correct}/{total} = {any_accuracy:.2f}%\n"
-        stats += f"- Majority-Correct Accuracy: {majority_correct}/{total} = {majority_accuracy:.2f}%\n"
-        stats += f"- Per-Attempt Accuracy: {successful_attempts}/{total_attempts} = {attempt_accuracy:.2f}%\n\n"
+        stats += f"- Average chosen score: {avg_score_chosen:.2f}\n"
+        stats += f"- Average rejected score: {avg_score_rejected:.2f}\n"
+        stats += f"- Average score difference: {avg_score_diff:.2f}\n"
+        stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n\n"
 
-        stats += f"### Best-of-{self.best_of} Statistics\n\n"
-        stats += f"- Problems with at least one correct solution: {any_correct}/{total} = {any_accuracy:.2f}%\n"
-        stats += f"- Problems with majority correct solutions: {majority_correct}/{total} = {majority_accuracy:.2f}%\n"
-        stats += f"- Total successful attempts: {successful_attempts}/{total_attempts} = {attempt_accuracy:.2f}%\n\n"
-
-        stats += "### Timing Information\n\n"
+        stats += "### Bifurcation Point Distribution\n\n"
+        for point, count in sorted(bifurcation_counts.items()):
+            percentage = (count / total) * 100
+            stats += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
+        
+        stats += "\n### Timing Information\n\n"
         stats += f"- Total execution time: {total_duration}\n"
         stats += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
 
