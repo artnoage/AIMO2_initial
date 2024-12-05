@@ -150,8 +150,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     )
                     if score == total_steps:
                         score_1 += 1
-                    elif score == 0:
-                        logs['completion_logs'].append(f"Analysis 1 verification failed: {error_msg}")
                 except Exception as e:
                     logs['completion_logs'].append(f"Error in completion for analysis 1: {str(e)}")
                     error_msg = str(e)
