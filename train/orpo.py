@@ -48,17 +48,13 @@ def main():
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False, add_generation_prompt=True)
-        # Format responses with their scores
-        example["responses"] = [
-            {
-                "response": tokenizer.apply_chat_template([r["response"]], tokenize=False),
-                "score": r["score"]
-            }
-            for r in example["responses"]
-        ]
-        # Strip prefix from responses
-        for resp in example["responses"]:
-            resp["response"] = _strip_prefix(resp["response"], "<s>")
+        example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
+        example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
+        example["chosen"] = _strip_prefix(example["chosen"], "<s>")
+        example["rejected"] = _strip_prefix(example["rejected"], "<s>")
+        # Ensure scores are present
+        if "score_chosen" not in example or "score_rejected" not in example:
+            raise ValueError("Dataset must include score_chosen and score_rejected fields")
         return example
 
     # Load and format dataset
@@ -102,7 +98,9 @@ def main():
         train_dataset=formatted_dataset,
         tokenizer=tokenizer,
         max_length=4096,
-        max_prompt_length=1024
+        max_prompt_length=1024,
+        score_chosen=formatted_dataset["score_chosen"],
+        score_rejected=formatted_dataset["score_rejected"]
     )
 
     # Train the model
