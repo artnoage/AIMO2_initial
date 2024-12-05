@@ -51,6 +51,7 @@ class BenchmarkConfig:
     
     # Output settings
     produce_statistics: bool = True
+    stats_update_freq: int = 100  # How often to update statistics (number of examples)
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -103,6 +104,8 @@ class BenchmarkConfig:
         # Output settings
         parser.add_argument('--produce-statistics', action='store_true', default=True,
                           help='Generate detailed statistics file (default: True)')
+        parser.add_argument('--stats-update-freq', type=int, default=100,
+                          help='How often to update statistics (number of examples)')
                           
         args = parser.parse_args()
         return cls(**vars(args))
