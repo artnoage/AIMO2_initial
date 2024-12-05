@@ -18,12 +18,9 @@ class ProgressTracker:
     """
     total_examples: int
     best_of: int
+    config: Any
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
-    
-    def __post_init__(self):
-        from bench_utils.benchmark_config import BenchmarkConfig
-        self.config = BenchmarkConfig.from_args('Get defaults')
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
