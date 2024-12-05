@@ -4,6 +4,7 @@ import random
 from typing import List, Dict, Tuple, Optional
 import sys
 from transformers import AutoTokenizer
+from .prompts import ANALYSIS_SYSTEM_PROMPT
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file."""
@@ -20,18 +21,6 @@ def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int
     orpo_entries = []
     successful_pairs = 0
     
-    system_prompt = """You are a mathematical analysis expert. Your role is to analyze problems and outline solution approaches without solving them.
-
-Before solving this problem step-by-step, provide a thorough analysis that:
-1. Categorizes the problem type
-2. Lists the specific theorems and techniques that will be useful
-3. Outlines the general approach to solving it
-
-Important guidelines:
-- Start with '**Problem Analysis and Approach**:'
-- Be specific about which theorems/techniques apply
-- Explain why these approaches are suitable
-- Do NOT provide the actual solution steps"""
 
     for entry in data:
         # Only process entries with valid fields and token lengths
@@ -48,7 +37,7 @@ Important guidelines:
             score_rejected = min(entry['score_1'], entry['score_2']) / 10.0
 
             orpo_entries.append({
-                "prompt": {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
+                "prompt": {"role": "user", "content": ANALYSIS_SYSTEM_PROMPT + "\n\n" + entry['problem']},
                 "chosen": {"role": "assistant", "content": chosen},
                 "rejected": {"role": "assistant", "content": rejected},
                 "score_chosen": score_chosen,
