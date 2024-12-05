@@ -45,24 +45,46 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             path_2 = analysis_2
         else:
             # Common analysis and n-2 steps, then bifurcate
-            common_analysis = await analysis_agent.generate(example["problem"])
+            # Capture prompts during common path generation
+            prompts = []
+            
+            # Get analysis with prompt
+            analysis_prompt, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+            prompts.append(("analysis", analysis_prompt))
             current_solution = common_analysis
             
             # Add n-2 common steps
-            for _ in range(n-2):
-                next_step = await step_agent.generate(example["problem"], current_solution)
+            for step_num in range(n-2):
+                step_prompt, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                prompts.append((f"step_{step_num+1}", step_prompt))
                 current_solution += next_step
                 # Check if we already have an answer
                 if extract_answer_from_solution(current_solution) is not None:
                     print(f"Found answer during common path generation for example {running_id}, skipping")
                     return None
             
-            # Generate two different next steps
-            step_1 = await step_agent.generate(example["problem"], current_solution)
-            step_2 = await step_agent.generate(example["problem"], current_solution)
+            # Generate two different next steps with prompts
+            branch_prompt_1, step_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            branch_prompt_2, step_2 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            
+            # Add branching prompts
+            prompts.append(("branch_1", branch_prompt_1))
+            prompts.append(("branch_2", branch_prompt_2))
             
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
+            
+            # Add prompts to return dictionary
+            return_dict = {
+                'id': example_id,
+                'problem': example['problem'],
+                'path_1': path_1,
+                'path_2': path_2,
+                'bifurcation_point': n,
+                'score_1': score_1,
+                'score_2': score_2,
+                'prompts': prompts
+            }
 
             # Check if either path already has a solution
             answer_1 = extract_answer_from_solution(path_1)
@@ -129,7 +151,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'path_2': path_2,
             'bifurcation_point': n,
             'score_1': score_1,
-            'score_2': score_2
+            'score_2': score_2,
+            'prompts': []  # Initialize empty prompts list
         }
         
     except Exception as e:
