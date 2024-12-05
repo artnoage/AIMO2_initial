@@ -139,14 +139,14 @@ class ProgressTracker:
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
-        stats = "\n\n## Final Results\n\n"
-        stats += f"### Dataset Statistics\n\n"
-        stats += f"- Total examples processed: {total}\n"
-        stats += f"- Average chosen score: {avg_score_chosen:.2f}/20\n"
-        stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
-        stats += f"- Average score difference: {avg_score_diff:.2f}\n"
-        stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-        stats += f"- Completions per path: {self.config.completions}\n\n"
+        stats_str = "\n\n## Final Results\n\n"
+        stats_str += f"### Dataset Statistics\n\n"
+        stats_str += f"- Total examples processed: {total}\n"
+        stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+        stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
+        stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
+        stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+        stats_str += f"- Completions per path: {self.config.completions}\n\n"
 
         stats += "### Bifurcation Point Distribution\n\n"
         for point, count in sorted(bifurcation_counts.items()):
@@ -157,5 +157,5 @@ class ProgressTracker:
         stats += f"- Total execution time: {total_duration}\n"
         stats += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
 
-        print(stats)
-        self._save_progress_stats(stats)
+        print(stats_str)
+        self._save_progress_stats(stats_str)
