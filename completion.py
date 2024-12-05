@@ -34,9 +34,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         # Initialize agents
-        analysis_agent = AnalysisAgent(solver_model)
-        step_agent = NextStepAgent(solver_model)
-        completion_agent = CompletionAgent(solver_model)
+        solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        analysis_agent = AnalysisAgent(solver)
+        step_agent = NextStepAgent(solver)
+        completion_agent = CompletionAgent(solver)
         
         solutions = []
         correct_count = 0
@@ -61,6 +62,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     complete_solution  = current_solution+ await completion_agent.generate(example["problem"], current_solution)
 
                 # Create and use appropriate verifier
+                verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+                second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
                 verifier = create_verifier(
                     config.verification_type,
                     verifier_model=verifier_model,
