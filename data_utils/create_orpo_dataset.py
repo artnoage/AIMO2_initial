@@ -27,7 +27,7 @@ def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int
         if all(k in entry for k in ['problem', 'analysis_1', 'analysis_2', 'score_1', 'score_2']) and \
            check_token_length(entry['analysis_1'], tokenizer) and \
            check_token_length(entry['analysis_2'], tokenizer) and \
-           entry['score_1'] != entry['score_2']:
+           entry['score_1'] != entry['score_2']:  # This condition already exists and handles your request
             
             # Always use higher score as chosen
             is_first_better = entry['score_1'] > entry['score_2']
