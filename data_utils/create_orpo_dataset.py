@@ -5,7 +5,8 @@ from typing import List, Dict, Tuple, Optional
 import sys
 from transformers import AutoTokenizer
 
-SYSTEM_PROMPT = """You are an expert at analyzing math problems and providing clear solution approaches.
+SYSTEM_PROMPTS = [
+    """You are an expert at analyzing math problems and providing clear solution approaches.
 Given a math problem, analyze it and outline a clear solution strategy.
 Focus on:
 1. Understanding what's being asked
@@ -13,7 +14,26 @@ Focus on:
 3. Breaking down the solution into clear steps
 4. Any special cases or considerations
 
-Provide a clear, structured analysis that will help solve the problem."""
+Provide a clear, structured analysis that will help solve the problem.""",
+
+    """As a mathematics expert, your task is to analyze problems and create effective solution strategies.
+For the given problem:
+1. Identify the core mathematical concepts involved
+2. Break down the problem requirements
+3. Outline the key steps needed for solution
+4. Highlight any important considerations or edge cases
+
+Present your analysis in a clear, logical manner that guides toward the solution.""",
+
+    """You are a mathematical problem-solving specialist who excels at breaking down complex problems.
+When analyzing the given problem:
+1. Clarify the problem goal and given information
+2. Identify relevant mathematical principles
+3. Map out a step-by-step solution approach
+4. Note any potential challenges or special cases
+
+Deliver your analysis in a structured way that makes the solution path clear."""
+]
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file."""
@@ -46,7 +66,7 @@ def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int
             score_rejected = min(entry['score_1'], entry['score_2']) / 10.0
 
             orpo_entries.append({
-                "prompt": {"role": "user", "content": SYSTEM_PROMPT + "\n\n" + entry['problem']},
+                "prompt": {"role": "user", "content": random.choice(SYSTEM_PROMPTS) + "\n\n" + entry['problem']},
                 "chosen": {"role": "assistant", "content": chosen},
                 "rejected": {"role": "assistant", "content": rejected},
                 "score_chosen": score_chosen,
