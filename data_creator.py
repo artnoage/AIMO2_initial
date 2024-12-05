@@ -130,9 +130,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 f"- Need completion: {'Yes' if do_completion_2 else 'No'}"
             ])
         
-        logs['completion_logs'].append("\nProcessing completions:")
         if do_completion_1:
-            logs['completion_logs'].append("\nStarting Analysis 1 completions:")
             # Process completions for first analysis
             for _ in range(config.completions):
                 try:
@@ -155,7 +153,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     error_msg = str(e)
 
         if do_completion_2:
-            logs['completion_logs'].append("\nStarting Analysis 2 completions:")
             # Process completions for second analysis
             for _ in range(config.completions):
                 try:
@@ -173,8 +170,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     )
                     if score == total_steps:
                         score_2 += 1
-                    elif score == 0:
-                        logs['completion_logs'].append(f"Analysis 2 verification failed: {error_msg}")
                 except Exception as e:
                     logs['completion_logs'].append(f"Error in completion for analysis 2: {str(e)}")
                     error_msg = str(e)
