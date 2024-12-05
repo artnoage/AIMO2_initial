@@ -213,7 +213,8 @@ async def run_benchmark(
 
     progress_tracker = ProgressTracker(
         total_examples=dataset_length,
-        best_of=config.best_of
+        best_of=config.best_of,
+        config=config
     )
 
     example_data = []
@@ -230,6 +231,7 @@ async def run_benchmark(
         return
 
     print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
+    try:
 
     semaphore = asyncio.Semaphore(config.max_concurrent)
 
@@ -263,5 +265,6 @@ async def run_benchmark(
         progress_bar.update(1)
     progress_bar.close()
     
-    progress_tracker.print_final_stats()
-    progress_tracker.save_results(config.solver, config.split)
+    finally:
+        progress_tracker.print_final_stats()
+        progress_tracker.save_results(config.solver, config.split)
