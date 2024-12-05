@@ -49,6 +49,9 @@ class BenchmarkConfig:
     verifier_temp: float = 0
     tolerance: float = 1e-6
     
+    # Output settings
+    produce_statistics: bool = True
+    
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
         parser = ArgumentParser(description=description)
@@ -96,6 +99,10 @@ class BenchmarkConfig:
                           help='Type of verification to use')
         parser.add_argument('--tolerance', type=float, default=1e-6,
                           help='Tolerance for numeric answer comparison (only used with --numeric)')
+        
+        # Output settings
+        parser.add_argument('--produce-statistics', action='store_true', default=True,
+                          help='Generate detailed statistics file (default: True)')
                           
         args = parser.parse_args()
         return cls(**vars(args))

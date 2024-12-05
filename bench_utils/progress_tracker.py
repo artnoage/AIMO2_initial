@@ -27,6 +27,9 @@ class ProgressTracker:
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
+        if not self.config.produce_statistics:
+            return
+            
         os.makedirs("results", exist_ok=True)
         stats_file = os.path.join("results", f"progress_stats_{self.start_time.strftime('%Y%m%d_%H%M%S')}.log")
         with open(stats_file, 'a') as f:
