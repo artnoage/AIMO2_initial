@@ -41,13 +41,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         prompts = []
         
         if n == 1:
-            # Generate bifurcation prompt at analysis level
-            bifurcation_prompt, _ = await analysis_agent.generate(example["problem"], return_prompt=True)
+            # Get two different analyses with prompts
+            bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
             prompts.append(("bifurcation", bifurcation_prompt))
-            
-            # Get two different analyses using the same prompt
-            path_1 = await analysis_agent.generate(example["problem"])
-            path_2 = await analysis_agent.generate(example["problem"])
+            _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
             
             # Check if either path already has a solution
             answer_1 = extract_answer_from_solution(path_1)
