@@ -26,18 +26,11 @@ class ProgressTracker:
         self.config = BenchmarkConfig.from_args('Get defaults')
     
     def _save_progress_stats(self, stats: str) -> None:
-        """Save progress statistics to a markdown file"""
+        """Save progress statistics to a log file"""
         os.makedirs("results", exist_ok=True)
-        stats_file = os.path.join("results", f"progress_stats_{self.start_time.strftime('%Y%m%d_%H%M%S')}.md")
-        
-        # Open in append mode, which will create the file if it doesn't exist
+        stats_file = os.path.join("results", f"progress_stats_{self.start_time.strftime('%Y%m%d_%H%M%S')}.log")
         with open(stats_file, 'a') as f:
-            # If file is empty, write the header
-            if f.tell() == 0:
-                f.write(f"# Benchmark Progress Statistics\n\n")
-                f.write(f"Started at: {self.start_time.isoformat()}\n\n")
-            # Append new stats
-            f.write(stats)
+            f.write(f"{datetime.now().isoformat()}: {stats}\n")
 
     def add_result(self, result: Dict) -> None:
         if result:
@@ -79,26 +72,14 @@ class ProgressTracker:
                 point = r.get('bifurcation_point', 0)
                 bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
             
-            stats_str = f"\nAt {len(self.results)} examples:\n"
-            stats_str += f"Last 100 examples statistics:\n"
-            
-            # Only show stats that exist in the data
+            stats_str = f"N={len(self.results)} "
             if 'avg_chosen' in stats:
-                stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+                stats_str += f"chosen={stats['avg_chosen']:.2f} "
             if 'avg_rejected' in stats:
-                stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
-            if 'avg_diff' in stats:
-                stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
-            
-            # Only show bifurcation stats if the field exists
+                stats_str += f"rejected={stats['avg_rejected']:.2f} "
             if self._has_field(last_hundred, 'bifurcation_point'):
                 avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
-                stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-                stats_str += "\nBifurcation distribution:\n"
-            for point, count in sorted(bifurcation_counts.items()):
-                percentage = (count / total_examples) * 100
-                stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
-            stats_str += "-" * 80 + "\n"
+                stats_str += f"bifurc={avg_bifurcation:.2f}"
             
             print(stats)
             self._save_progress_stats(stats)
@@ -155,31 +136,15 @@ class ProgressTracker:
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
-        stats_str = "\n\n## Final Results\n\n"
-        stats_str += f"### Dataset Statistics\n\n"
-        stats_str += f"- Total examples processed: {total}\n"
-        
-        # Only show stats that exist in the data
+        stats_str = f"FINAL: N={total} "
         if 'avg_chosen' in stats:
-            stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+            stats_str += f"chosen={stats['avg_chosen']:.2f} "
         if 'avg_rejected' in stats:
-            stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
-        if 'avg_diff' in stats:
-            stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
-            
-        # Only show bifurcation stats if the field exists
+            stats_str += f"rejected={stats['avg_rejected']:.2f} "
         if self._has_field(self.results, 'bifurcation_point'):
             avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
-            stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-            stats_str += f"- Completions per path: {self.config.completions}\n\n"
-            stats_str += "### Bifurcation Point Distribution\n\n"
-        for point, count in sorted(bifurcation_counts.items()):
-            percentage = (count / total) * 100
-            stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
-        
-        stats_str += "\n### Timing Information\n\n"
-        stats_str += f"- Total execution time: {total_duration}\n"
-        stats_str += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
+            stats_str += f"bifurc={avg_bifurcation:.2f} "
+        stats_str += f"time={total_duration.total_seconds():.1f}s"
 
         print(stats_str)
         self._save_progress_stats(stats_str)
