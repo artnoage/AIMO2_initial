@@ -169,11 +169,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
         return {
             'id': example_id,
-            'messages': [
-                {'content': bifurcation_prompt, 'role': 'user'},
-                {'content': chosen_response, 'role': 'assistant'},
-                {'content': rejected_response, 'role': 'assistant'}
-            ],
+            "prompt": {'content': bifurcation_prompt, 'role': 'user'},
+            "chosen": {'content': chosen_response, 'role': 'assistant'},
+            "rejected": {'content': rejected_response, 'role': 'assistant'},
             'score_chosen': score_chosen,
             'score_rejected': score_rejected,
             'bifurcation_point': n
