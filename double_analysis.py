@@ -139,15 +139,32 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print(f"Analysis 2 score: {score_2}/10")
         print("-" * 80)
         
+        # Skip if scores are equal
+        if score_1 == score_2:
+            print(f"Skipping example {running_id} - equal scores: {score_1}")
+            return None
+            
+        # Determine which path had better score
+        if score_1 > score_2:
+            chosen_response = path_1
+            rejected_response = path_2
+            score_chosen = score_1
+            score_rejected = score_2
+        else:
+            chosen_response = path_2
+            rejected_response = path_1
+            score_chosen = score_2
+            score_rejected = score_1
+            
         return {
             'id': example_id,
-            'problem': example['problem'],
-            'path_1': path_1,
-            'path_2': path_2,
+            'prompt': bifurcation_prompt,
+            'chosen': chosen_response,
+            'rejected': rejected_response,
+            'score_chosen': score_chosen,
+            'score_rejected': score_rejected,
             'bifurcation_point': n,
-            'score_1': score_1,
-            'score_2': score_2,
-            'prompts': prompts if 'prompts' in locals() else []  # Include prompts if they exist
+            'role': 'user'
         }
         
     except Exception as e:
