@@ -111,15 +111,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         second_verifier_model=second_verifier_model,
                         tolerance=config.tolerance
                     )
-                    score, total_steps, _ = await verifier.verify(
+                    score, total_steps, error_msg = await verifier.verify(
                         complete_solution,
                         correct_answer,
                         example["problem"]
                     )
                     if score == total_steps:
                         score_1 += 1
+                    elif score == 0:
+                        print(f"Analysis 1 verification failed: {error_msg}")
                 except Exception as e:
                     print(f"Error in completion for analysis 1: {str(e)}")
+                    error_msg = str(e)
 
         if do_completion_2:
             # Process completions for second analysis
@@ -132,15 +135,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                         second_verifier_model=second_verifier_model,
                         tolerance=config.tolerance
                     )
-                    score, total_steps, _ = await verifier.verify(
+                    score, total_steps, error_msg = await verifier.verify(
                         complete_solution,
                         correct_answer,
                         example["problem"]
                     )
                     if score == total_steps:
                         score_2 += 1
+                    elif score == 0:
+                        print(f"Analysis 2 verification failed: {error_msg}")
                 except Exception as e:
                     print(f"Error in completion for analysis 2: {str(e)}")
+                    error_msg = str(e)
 
         # Print statistics
         print(f"\nExample {running_id + 1}:")
