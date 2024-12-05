@@ -10,7 +10,7 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig) -> Optional[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     logs = {
         'validation_logs': [],
         'completion_logs': [],
@@ -247,10 +247,7 @@ async def main():
     
     await run_benchmark(
         config=config,
-        process_example_func=process_example,
-        solver_model=solver_model,
-        verifier_model=verifier_model,
-        second_verifier_model=second_verifier_model
+        process_example_func=process_example
     )
     
     if progress_tracker:
