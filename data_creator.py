@@ -110,7 +110,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         # Process completions based on completion flags
         if do_completion_1:
             # Process completions for first analysis
-            for _ in range(20):
+            for _ in range(config.completions):
                 try:
                     complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
                     verifier = create_verifier(
@@ -131,7 +131,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         if do_completion_2:
             # Process completions for second analysis
-            for _ in range(10):
+            for _ in range(config.completions // 2):
                 try:
                     complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
                     verifier = create_verifier(
