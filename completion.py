@@ -139,16 +139,10 @@ async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     
-    global progress_tracker
-    
     await run_benchmark(
         config=config,
         process_example_func=process_example
     )
-    
-    if progress_tracker:
-        progress_tracker.print_final_stats()
-        progress_tracker.save_results(config.solver, config.split)
 
 if __name__ == "__main__":
     progress_tracker = None  # Will be initialized in run_benchmark
