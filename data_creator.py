@@ -64,6 +64,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             score_2 = 0
             do_completion_1 = valid_analysis_1
             do_completion_2 = valid_analysis_2
+
+            print(f"\nPath 1 analysis validation (n=1):")
+            print(f"- Valid analysis: {'Yes' if valid_analysis_1 else 'No'}")
+            print(f"- Initial score: {score_1}")
+            print(f"- Will attempt completion: {'Yes' if do_completion_1 else 'No'}")
+            
+            print(f"\nPath 2 analysis validation (n=1):")
+            print(f"- Valid analysis: {'Yes' if valid_analysis_2 else 'No'}")
+            print(f"- Initial score: {score_2}")
+            print(f"- Will attempt completion: {'Yes' if do_completion_2 else 'No'}")
         else:
             # Common analysis and n-2 steps, then bifurcate
             # Get analysis without prompt
