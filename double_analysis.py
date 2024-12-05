@@ -74,18 +74,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
             
-            # Add prompts to return dictionary
-            return_dict = {
-                'id': example_id,
-                'problem': example['problem'],
-                'path_1': path_1,
-                'path_2': path_2,
-                'bifurcation_point': n,
-                'score_1': score_1,
-                'score_2': score_2,
-                'prompts': prompts
-            }
-
             # Check if either path already has a solution
             answer_1 = extract_answer_from_solution(path_1)
             answer_2 = extract_answer_from_solution(path_2)
@@ -152,7 +140,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             'bifurcation_point': n,
             'score_1': score_1,
             'score_2': score_2,
-            'prompts': []  # Initialize empty prompts list
+            'prompts': prompts if 'prompts' in locals() else []  # Include prompts if they exist
         }
         
     except Exception as e:
