@@ -164,10 +164,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 
 async def run_benchmark(
     config: BenchmarkConfig,
-    process_example_func: Callable,
-    solver_model=None,
-    verifier_model=None,
-    second_verifier_model=None
+    process_example_func: Callable
 ) -> None:
     """Generic benchmark runner that handles dataset loading and example processing"""
     if config.max_concurrent < 1:
