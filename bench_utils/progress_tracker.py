@@ -72,17 +72,28 @@ class ProgressTracker:
                 point = r.get('bifurcation_point', 0)
                 bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
             
+            # Build statistics string
             stats_str = f"N={len(self.results)} "
+            
+            # For benchmark.py style results
+            if self._has_field(last_batch, 'is_correct_list'):
+                correct_solutions = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
+                stats_str += f"correct={correct_solutions}/{total_examples} "
+                stats_str += f"rate={correct_solutions/total_examples*100:.1f}% "
+            
+            # For data_creator.py style results
             if 'avg_chosen' in stats:
                 stats_str += f"chosen={stats['avg_chosen']:.2f} "
             if 'avg_rejected' in stats:
                 stats_str += f"rejected={stats['avg_rejected']:.2f} "
+            if 'avg_diff' in stats:
+                stats_str += f"diff={stats['avg_diff']:.2f} "
             if self._has_field(last_batch, 'bifurcation_point'):
                 avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
                 stats_str += f"bifurc={avg_bifurcation:.2f}"
             
-            print(stats)
-            self._save_progress_stats(stats)
+            print(stats_str)
+            self._save_progress_stats(stats_str)
             
             # Automatically save results every 100 examples
             if model_name and split:
@@ -137,13 +148,24 @@ class ProgressTracker:
         total_duration = end_time - self.start_time
 
         stats_str = f"FINAL: N={total} "
+        
+        # For benchmark.py style results
+        if self._has_field(self.results, 'is_correct_list'):
+            correct_solutions = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
+            stats_str += f"correct={correct_solutions}/{total} "
+            stats_str += f"rate={correct_solutions/total*100:.1f}% "
+        
+        # For data_creator.py style results
         if 'avg_chosen' in stats:
             stats_str += f"chosen={stats['avg_chosen']:.2f} "
         if 'avg_rejected' in stats:
             stats_str += f"rejected={stats['avg_rejected']:.2f} "
+        if 'avg_diff' in stats:
+            stats_str += f"diff={stats['avg_diff']:.2f} "
         if self._has_field(self.results, 'bifurcation_point'):
             avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
             stats_str += f"bifurc={avg_bifurcation:.2f} "
+            
         stats_str += f"time={total_duration.total_seconds():.1f}s"
 
         print(stats_str)
