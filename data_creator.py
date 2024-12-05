@@ -203,9 +203,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print("\nFINAL SUMMARY:")
         print("\n".join(logs['summary_logs']))
         
-        # Skip if scores are equal
-        if score_1 == score_2:
-            print(f"Skipping example {running_id} - equal scores: {score_1}")
+        # Skip if scores are very close
+        if abs(score_1 - score_2) < 0.1:
+            print(f"Skipping example {running_id} - scores too close: {score_1} vs {score_2}")
             return None
             
         # Determine which path had better score
