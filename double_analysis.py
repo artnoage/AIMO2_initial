@@ -52,6 +52,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             for _ in range(n-2):
                 next_step = await step_agent.generate(example["problem"], current_solution)
                 current_solution += next_step
+                # Check if we already have an answer
+                if extract_answer_from_solution(current_solution) is not None:
+                    print(f"Found answer during common path generation for example {running_id}, skipping")
+                    return None
             
             # Generate two different next steps
             step_1 = await step_agent.generate(example["problem"], current_solution)
