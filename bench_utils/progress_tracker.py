@@ -177,9 +177,9 @@ class ProgressTracker:
             percentage = (count / total) * 100
             stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
         
-        stats += "\n### Timing Information\n\n"
-        stats += f"- Total execution time: {total_duration}\n"
-        stats += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
+        stats_str += "\n### Timing Information\n\n"
+        stats_str += f"- Total execution time: {total_duration}\n"
+        stats_str += f"- Average time per example: {total_duration.total_seconds() / total:.2f} seconds\n"
 
         print(stats_str)
         self._save_progress_stats(stats_str)
