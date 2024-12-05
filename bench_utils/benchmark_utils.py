@@ -232,10 +232,9 @@ async def run_benchmark(
 
     print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
     try:
+        semaphore = asyncio.Semaphore(config.max_concurrent)
 
-    semaphore = asyncio.Semaphore(config.max_concurrent)
-
-    async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
+        async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
         async with semaphore:
             result = await process_example_func(
                 example=example,
