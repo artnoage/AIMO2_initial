@@ -124,7 +124,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         if do_completion_2:
             # Process completions for second analysis
-            for _ in range(config.completions // 2):
+            for _ in range(config.completions):
                 try:
                     complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
                     verifier = create_verifier(
