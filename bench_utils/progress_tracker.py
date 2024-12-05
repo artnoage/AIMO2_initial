@@ -43,18 +43,26 @@ class ProgressTracker:
         if result:
             self.results.append(result)
     
+    def _has_field(self, results: List[Dict], field: str) -> bool:
+        """Check if field exists in any result"""
+        return any(field in r for r in results)
+
     def calculate_score_stats(self, results: List[Dict]) -> Dict:
         if not results:
-            return {'avg_chosen': 0.0, 'avg_rejected': 0.0, 'avg_diff': 0.0}
+            return {}
+        
+        stats = {}
         total = len(results)
-        avg_chosen = sum(r.get('score_chosen', 0) for r in results) / total
-        avg_rejected = sum(r.get('score_rejected', 0) for r in results) / total
-        avg_diff = sum(r.get('score_chosen', 0) - r.get('score_rejected', 0) for r in results) / total
-        return {
-            'avg_chosen': avg_chosen,
-            'avg_rejected': avg_rejected,
-            'avg_diff': avg_diff
-        }
+        
+        # Only calculate stats if fields exist
+        if self._has_field(results, 'score_chosen'):
+            stats['avg_chosen'] = sum(r.get('score_chosen', 0) for r in results) / total
+        if self._has_field(results, 'score_rejected'):
+            stats['avg_rejected'] = sum(r.get('score_rejected', 0) for r in results) / total
+        if 'avg_chosen' in stats and 'avg_rejected' in stats:
+            stats['avg_diff'] = stats['avg_chosen'] - stats['avg_rejected']
+            
+        return stats
 
     def print_progress(self, model_name: str = None, split: str = None) -> None:
         if len(self.results) % 100 == 0 and self.results:
@@ -73,12 +81,20 @@ class ProgressTracker:
             
             stats_str = f"\nAt {len(self.results)} examples:\n"
             stats_str += f"Last 100 examples statistics:\n"
-            stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
-            stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
-            stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
-            stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-            stats_str += f"- Completions per path: {self.config.completions}\n"
-            stats_str += "\nBifurcation distribution:\n"
+            
+            # Only show stats that exist in the data
+            if 'avg_chosen' in stats:
+                stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+            if 'avg_rejected' in stats:
+                stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
+            if 'avg_diff' in stats:
+                stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
+            
+            # Only show bifurcation stats if the field exists
+            if self._has_field(last_hundred, 'bifurcation_point'):
+                avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
+                stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+                stats_str += "\nBifurcation distribution:\n"
             for point, count in sorted(bifurcation_counts.items()):
                 percentage = (count / total_examples) * 100
                 stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
@@ -142,13 +158,21 @@ class ProgressTracker:
         stats_str = "\n\n## Final Results\n\n"
         stats_str += f"### Dataset Statistics\n\n"
         stats_str += f"- Total examples processed: {total}\n"
-        stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
-        stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
-        stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
-        stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-        stats_str += f"- Completions per path: {self.config.completions}\n\n"
-
-        stats += "### Bifurcation Point Distribution\n\n"
+        
+        # Only show stats that exist in the data
+        if 'avg_chosen' in stats:
+            stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+        if 'avg_rejected' in stats:
+            stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
+        if 'avg_diff' in stats:
+            stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
+            
+        # Only show bifurcation stats if the field exists
+        if self._has_field(self.results, 'bifurcation_point'):
+            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
+            stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+            stats_str += f"- Completions per path: {self.config.completions}\n\n"
+            stats_str += "### Bifurcation Point Distribution\n\n"
         for point, count in sorted(bifurcation_counts.items()):
             percentage = (count / total) * 100
             stats += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
