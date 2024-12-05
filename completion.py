@@ -21,9 +21,6 @@ def count_solution_steps(solution: str) -> int:
     ]
     return max(step_numbers) if step_numbers else 0
 
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-load_dotenv()
-
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach: analysis + initial_steps + completion"""
     try:
