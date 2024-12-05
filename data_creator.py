@@ -54,13 +54,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             prompts.append(("bifurcation", bifurcation_prompt))
             _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
             
-            # Check if either path already has a solution
-            answer_1 = extract_answer_from_solution(path_1)
-            answer_2 = extract_answer_from_solution(path_2)
+            # Validate analysis responses
+            valid_analysis_1 = (
+                path_1.startswith("**Problem Analysis and Approach**") and
+                "Step" not in path_1
+            )
+            valid_analysis_2 = (
+                path_2.startswith("**Problem Analysis and Approach**") and
+                "Step" not in path_2
+            )
             
-            # Initialize scores
-            score_1 = 20 if answer_1 is not None else 0
-            score_2 = 20 if answer_2 is not None else 0
+            # For n=1, scores start at 0 and we'll do completions if analysis is valid
+            score_1 = 0
+            score_2 = 0
+            do_completion_1 = valid_analysis_1
+            do_completion_2 = valid_analysis_2
         else:
             # Common analysis and n-2 steps, then bifurcate
             # Get analysis with prompt
@@ -89,16 +97,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
             
-            # Check if either path already has a solution
+            # Check if paths have solutions and validate step responses
             answer_1 = extract_answer_from_solution(path_1)
             answer_2 = extract_answer_from_solution(path_2)
-
-            # Initialize scores
+            
+            # Initialize scores and completion flags
             score_1 = 20 if answer_1 is not None else 0
             score_2 = 20 if answer_2 is not None else 0
+            do_completion_1 = answer_1 is None
+            do_completion_2 = answer_2 is None
         
-        # Only process completions if we don't already have a solution
-        if score_1 == 0:
+        # Process completions based on completion flags
+        if do_completion_1:
             # Process completions for first analysis
             for _ in range(20):
                 try:
@@ -119,7 +129,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 except Exception as e:
                     print(f"Error in completion for analysis 1: {str(e)}")
 
-        if score_2 == 0:
+        if do_completion_2:
             # Process completions for second analysis
             for _ in range(10):
                 try:
