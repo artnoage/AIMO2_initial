@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage
 from bench_utils.benchmark_utils import get_model_response
 
@@ -32,7 +32,7 @@ class AnalysisAgent:
         self.model = model
         self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
-    async def generate(self, problem: str) -> str:
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate analysis for a given problem"""
         prompt = [
             HumanMessage(content=(
@@ -51,7 +51,8 @@ class AnalysisAgent:
                 "Please provide the analysis:"
             ))
         ]
-        return await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt)
+        return (prompt[0].content, response) if return_prompt else response
 
 class NextStepAgent:
     """Agent that provides the next step in a solution"""
@@ -59,7 +60,7 @@ class NextStepAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, current_solution: str = "") -> str:
+    async def generate(self, problem: str, current_solution: str = "", return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate the next solution step"""
         input_text = (
             "You are a mathematical solution expert focused on providing clear, detailed solution steps.\n\n"
@@ -80,7 +81,8 @@ class NextStepAgent:
             input_text += "\nStart the solution with Step 1:"
             
         prompt = [HumanMessage(content=input_text)]
-        return await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt)
+        return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
     """Agent that completes partial solutions"""
@@ -88,7 +90,7 @@ class CompletionAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, partial_solution: str) -> str:
+    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Complete a partial solution"""
         prompt = [
             HumanMessage(content=(
@@ -106,7 +108,8 @@ class CompletionAgent:
                 "Please complete the remaining steps following the same format:"
             ))
         ]
-        return await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt)
+        return (prompt[0].content, response) if return_prompt else response
 
 
 class AnalysisPlusStepAgent:
@@ -115,7 +118,7 @@ class AnalysisPlusStepAgent:
     def __init__(self, model, numeric: bool = False):
         self.model = model
         
-    async def generate(self, problem: str) -> str:
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate analysis and first step for a given problem"""
         prompt = [
             HumanMessage(content=(
@@ -134,7 +137,8 @@ class AnalysisPlusStepAgent:
                 "Please provide both the analysis and first step now:"
             ))
         ]
-        return await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt)
+        return (prompt[0].content, response) if return_prompt else response
 
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
@@ -143,7 +147,7 @@ class FullSolutionAgent:
         self.model = model
         self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
-    async def generate(self, problem: str) -> str:
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
         prompt = [
             HumanMessage(content=( f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
@@ -160,4 +164,5 @@ class FullSolutionAgent:
                 "   - End with final answer in \\boxed{}\n\n"
                 "Please solve the problem completely:"))
         ]
-        return await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt)
+        return (prompt[0].content, response) if return_prompt else response
