@@ -93,7 +93,7 @@ class ProgressTracker:
 
     def save_results(self, model_name: str = None, split: str = None) -> None:
         """Save results to a JSON file"""
-        if not self.results:
+        if not self.results or not self.config.produce_statistics:
             return
             
         try:
