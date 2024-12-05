@@ -45,13 +45,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         print(f"Selected n={n} for bifurcation")
         
-        # Initialize prompts list for all cases
-        prompts = []
-        
         if n == 1:
             # Get two different analyses with prompts
             bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-            prompts.append(("bifurcation", bifurcation_prompt))
             _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
             
             # Validate analysis responses
@@ -71,15 +67,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             do_completion_2 = valid_analysis_2
         else:
             # Common analysis and n-2 steps, then bifurcate
-            # Get analysis with prompt
-            analysis_prompt, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
-            prompts.append(("analysis", analysis_prompt))
+            # Get analysis without prompt
+            _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
             current_solution = common_analysis
             
             # Add n-2 common steps
-            for step_num in range(n-2):
-                step_prompt, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                prompts.append((f"step_{step_num+1}", step_prompt))
+            for _ in range(n-2):
+                _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 current_solution += next_step
                 # Check if we already have an answer
                 if extract_answer_from_solution(current_solution) is not None:
@@ -88,7 +82,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
             # Generate bifurcation prompt
             bifurcation_prompt, _ = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-            prompts.append(("bifurcation", bifurcation_prompt))
             
             # Get two different responses using step agent
             step_1 = await step_agent.generate(example["problem"], current_solution)
