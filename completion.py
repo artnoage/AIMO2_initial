@@ -42,7 +42,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         solutions = []
         correct_count = 0
         
-        for attempt in range(best_of):
+        for attempt in range(config.best_of):
             try:
                 # Start with analysis
                 current_solution = await analysis_agent.generate(example["problem"])
