@@ -142,8 +142,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Model answers: {[s['answer'] for s in solutions]}")
         print(f"Steps taken: {[s.get('steps_taken', 0) for s in solutions]}")
         print(f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}")
-        print(f"Correct solutions: {correct_count}/{best_of}")
-        print(f"Success rate: {(correct_count/best_of)*100:.1f}%")
+        print(f"Correct solutions: {correct_count}/{config.best_of}")
+        print(f"Success rate: {(correct_count/config.best_of)*100:.1f}%")
         print("-" * 80)
         
         return {
