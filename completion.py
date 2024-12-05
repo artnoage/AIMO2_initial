@@ -23,6 +23,12 @@ def count_solution_steps(solution: str) -> int:
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach: analysis + initial_steps + completion"""
+    logs = {
+        'validation_logs': [],
+        'completion_logs': [],
+        'step_logs': [],
+        'summary_logs': []
+    }
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -101,17 +107,43 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'total_steps': 0
                 })
         
-        # Print statistics
-        print(f"\nExample {running_id + 1}:")
-        print(f"Problem: {example['problem'][:200]}...")
-        print(f"Correct answer: {correct_answer}")
-        print(f"Model answers: {[s['answer'] for s in solutions]}")
-        print(f"Steps taken: {[s.get('steps_taken', 0) for s in solutions]}")
-        print(f"Total steps: {[s.get('total_steps', 0) for s in solutions]}")
-        print(f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}")
-        print(f"Correct solutions: {correct_count}/{config.best_of}")
-        print(f"Success rate: {(correct_count/config.best_of)*100:.1f}%")
-        print("-" * 80)
+        # Collect summary information
+        logs['summary_logs'].extend([
+            f"\nExample {running_id + 1}:",
+            f"Problem: {example['problem'][:200]}...",
+            f"Correct answer: {correct_answer}",
+            f"Model answers: {[s['answer'] for s in solutions]}",
+            f"Steps taken: {[s.get('steps_taken', 0) for s in solutions]}",
+            f"Total steps: {[s.get('total_steps', 0) for s in solutions]}",
+            f"Correct/incorrect: {[1 if s['is_correct'] else 0 for s in solutions]}",
+            f"Correct solutions: {correct_count}/{config.best_of}",
+            f"Success rate: {(correct_count/config.best_of)*100:.1f}%",
+            "-" * 80
+        ])
+
+        # Print all logs in organized sections
+        print("\n" + "="*50)
+        print(f"COMPLETE LOG FOR EXAMPLE {running_id + 1}")
+        print("="*50)
+        
+        # Print validation logs
+        if logs['validation_logs']:
+            print("\nVALIDATION DETAILS:")
+            print("\n".join(logs['validation_logs']))
+            
+        # Print completion logs
+        if logs['completion_logs']:
+            print("\nCOMPLETION PROCESS DETAILS:")
+            print("\n".join(logs['completion_logs']))
+            
+        # Print step logs
+        if logs['step_logs']:
+            print("\nSTEP PROCESS DETAILS:")
+            print("\n".join(logs['step_logs']))
+            
+        # Print summary
+        print("\nFINAL SUMMARY:")
+        print("\n".join(logs['summary_logs']))
         
         return {
             'id': example_id,
