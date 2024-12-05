@@ -43,7 +43,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                 break
             n += 1
 
-        print(f"Selected n={n} for bifurcation")
         
         if n == 1:
             # Get two different analyses with prompts
