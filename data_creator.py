@@ -11,7 +11,13 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig) -> Optional[Dict]:
-    completion_logs = []  # Store completion-related messages
+    logs = {
+        'validation_logs': [],
+        'completion_logs': [],
+        'path1_logs': [],
+        'path2_logs': [],
+        'summary_logs': []
+    }
     """Process a single example using double analysis approach with multiple completions per analysis"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -66,15 +72,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             do_completion_1 = valid_analysis_1
             do_completion_2 = valid_analysis_2
 
-            print(f"\nPath 1 analysis validation (n=1):")
-            print(f"- Valid analysis: {'Yes' if valid_analysis_1 else 'No'}")
-            print(f"- Initial score: {score_1}")
-            print(f"- Will attempt completion: {'Yes' if do_completion_1 else 'No'}")
-            
-            print(f"\nPath 2 analysis validation (n=1):")
-            print(f"- Valid analysis: {'Yes' if valid_analysis_2 else 'No'}")
-            print(f"- Initial score: {score_2}")
-            print(f"- Will attempt completion: {'Yes' if do_completion_2 else 'No'}")
+            logs['validation_logs'].extend([
+                "\nPath 1 analysis validation (n=1):",
+                f"- Valid analysis: {'Yes' if valid_analysis_1 else 'No'}",
+                f"- Initial score: {score_1}",
+                f"- Will attempt completion: {'Yes' if do_completion_1 else 'No'}",
+                "\nPath 2 analysis validation (n=1):",
+                f"- Valid analysis: {'Yes' if valid_analysis_2 else 'No'}",
+                f"- Initial score: {score_2}",
+                f"- Will attempt completion: {'Yes' if do_completion_2 else 'No'}"
+            ])
         else:
             # Common analysis and n-2 steps, then bifurcate
             # Get analysis without prompt
@@ -110,20 +117,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             do_completion_1 = answer_1 is None
             do_completion_2 = answer_2 is None
 
-            print(f"\nPath 1 initial check:")
-            print(f"- Found answer: {'Yes' if answer_1 else 'No'}")
-            print(f"- Initial score: {score_1}")
-            print(f"- Need completion: {'Yes' if do_completion_1 else 'No'}")
-            
-            print(f"\nPath 2 initial check:")
-            print(f"- Found answer: {'Yes' if answer_2 else 'No'}")
-            print(f"- Initial score: {score_2}")
-            print(f"- Need completion: {'Yes' if do_completion_2 else 'No'}")
+            logs['validation_logs'].extend([
+                "\nPath 1 initial check:",
+                f"- Found answer: {'Yes' if answer_1 else 'No'}",
+                f"- Initial score: {score_1}",
+                f"- Need completion: {'Yes' if do_completion_1 else 'No'}",
+                "\nPath 2 initial check:",
+                f"- Found answer: {'Yes' if answer_2 else 'No'}",
+                f"- Initial score: {score_2}",
+                f"- Need completion: {'Yes' if do_completion_2 else 'No'}"
+            ])
         
-        # Process completions based on completion flags
-        print("\nProcessing completions:")
+        logs['completion_logs'].append("\nProcessing completions:")
         if do_completion_1:
-            print("\nStarting Analysis 1 completions:")
+            logs['completion_logs'].append("\nStarting Analysis 1 completions:")
             # Process completions for first analysis
             for _ in range(config.completions):
                 try:
@@ -142,13 +149,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     if score == total_steps:
                         score_1 += 1
                     elif score == 0:
-                        completion_logs.append(f"Analysis 1 verification failed: {error_msg}")
+                        logs['completion_logs'].append(f"Analysis 1 verification failed: {error_msg}")
                 except Exception as e:
-                    completion_logs.append(f"Error in completion for analysis 1: {str(e)}")
+                    logs['completion_logs'].append(f"Error in completion for analysis 1: {str(e)}")
                     error_msg = str(e)
 
         if do_completion_2:
-            print("\nStarting Analysis 2 completions:")
+            logs['completion_logs'].append("\nStarting Analysis 2 completions:")
             # Process completions for second analysis
             for _ in range(config.completions):
                 try:
@@ -167,24 +174,39 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     if score == total_steps:
                         score_2 += 1
                     elif score == 0:
-                        completion_logs.append(f"Analysis 2 verification failed: {error_msg}")
+                        logs['completion_logs'].append(f"Analysis 2 verification failed: {error_msg}")
                 except Exception as e:
-                    completion_logs.append(f"Error in completion for analysis 2: {str(e)}")
+                    logs['completion_logs'].append(f"Error in completion for analysis 2: {str(e)}")
                     error_msg = str(e)
 
-        # Print statistics
-        # Print completion logs if any exist
-        if completion_logs:
-            print("\nCompletion Process Details:")
-            for log in completion_logs:
-                print(f"- {log}")
-                
-        print(f"\nExample {running_id + 1} Summary:")
-        print(f"Problem: {example['problem'][:200]}...")
-        print(f"Bifurcation point: Step {n}")
-        print(f"Analysis 1 final score: {score_1}/10")
-        print(f"Analysis 2 final score: {score_2}/10")
-        print("-" * 80)
+        # Collect summary information
+        logs['summary_logs'].extend([
+            f"\nExample {running_id + 1} Summary:",
+            f"Problem: {example['problem'][:200]}...",
+            f"Bifurcation point: Step {n}",
+            f"Analysis 1 final score: {score_1}/10",
+            f"Analysis 2 final score: {score_2}/10",
+            "-" * 80
+        ])
+
+        # Print all logs in organized sections
+        print("\n" + "="*50)
+        print(f"COMPLETE LOG FOR EXAMPLE {running_id + 1}")
+        print("="*50)
+        
+        # Print validation logs
+        if logs['validation_logs']:
+            print("\nVALIDATION DETAILS:")
+            print("\n".join(logs['validation_logs']))
+            
+        # Print completion logs
+        if logs['completion_logs']:
+            print("\nCOMPLETION PROCESS DETAILS:")
+            print("\n".join(logs['completion_logs']))
+            
+        # Print summary
+        print("\nFINAL SUMMARY:")
+        print("\n".join(logs['summary_logs']))
         
         # Skip if scores are equal
         if score_1 == score_2:
