@@ -98,9 +98,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             score_2 = 20 if answer_2 is not None else 0
             do_completion_1 = answer_1 is None
             do_completion_2 = answer_2 is None
+
+            print(f"\nPath 1 initial check:")
+            print(f"- Found answer: {'Yes' if answer_1 else 'No'}")
+            print(f"- Initial score: {score_1}")
+            print(f"- Need completion: {'Yes' if do_completion_1 else 'No'}")
+            
+            print(f"\nPath 2 initial check:")
+            print(f"- Found answer: {'Yes' if answer_2 else 'No'}")
+            print(f"- Initial score: {score_2}")
+            print(f"- Need completion: {'Yes' if do_completion_2 else 'No'}")
         
         # Process completions based on completion flags
+        print("\nProcessing completions:")
         if do_completion_1:
+            print("\nStarting Analysis 1 completions:")
             # Process completions for first analysis
             for _ in range(config.completions):
                 try:
@@ -125,6 +137,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     error_msg = str(e)
 
         if do_completion_2:
+            print("\nStarting Analysis 2 completions:")
             # Process completions for second analysis
             for _ in range(config.completions):
                 try:
@@ -149,10 +162,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     error_msg = str(e)
 
         # Print statistics
-        print(f"\nExample {running_id + 1}:")
+        print(f"\nExample {running_id + 1} Summary:")
         print(f"Problem: {example['problem'][:200]}...")
-        print(f"Analysis 1 score: {score_1}/10")
-        print(f"Analysis 2 score: {score_2}/10")
+        print(f"Bifurcation point: Step {n}")
+        print(f"Analysis 1 final score: {score_1}/10")
+        print(f"Analysis 2 final score: {score_2}/10")
         print("-" * 80)
         
         # Skip if scores are equal
