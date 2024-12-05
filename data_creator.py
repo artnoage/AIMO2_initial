@@ -58,12 +58,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
             # Validate analysis responses
             valid_analysis_1 = (
-                path_1.startswith("**Problem Analysis and Approach**") and
-                "Step" not in path_1
+                "problem" in path_1.lower() and
+                "analysis" in path_1.lower() and
+                "step" not in path_1.lower()
             )
             valid_analysis_2 = (
-                path_2.startswith("**Problem Analysis and Approach**") and
-                "Step" not in path_2
+                "problem" in path_2.lower() and
+                "analysis" in path_2.lower() and
+                "step" not in path_2.lower()
             )
             
             # For n=1, scores start at 0 and we'll do completions if analysis is valid
