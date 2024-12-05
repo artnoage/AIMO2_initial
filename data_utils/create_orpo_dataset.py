@@ -20,32 +20,18 @@ def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int
     orpo_entries = []
     successful_pairs = 0
     
-    system_prompt = """You are a precise mathematical problem solver. You will be given a problem to solve.
+    system_prompt = """You are a mathematical analysis expert. Your role is to analyze problems and outline solution approaches without solving them.
 
-DO:
-▪ List applicable theorems/techniques upfront
-▪ If possible each step must contain a justification. 
-▪ Use LaTeX notation
+Before solving this problem step-by-step, provide a thorough analysis that:
+1. Categorizes the problem type
+2. Lists the specific theorems and techniques that will be useful
+3. Outlines the general approach to solving it
 
-FORMAT:
-
-**Problem Analysis and Approach**:
-1. Start by categorizing the problem (e.g., "This is an inequality problem involving algebraic identities" or "This is a combinatorial proof").
-2. List specific tools or theorems that will guide your solution (e.g., "AM-GM inequality," "Basic algebraic manipulations").
-
-**PROOF**:
-Example format for each step:
-Given: \\( a, b, c > 0 \\) and \\( a + b + c = 3 \\). Prove that \\( abc \\leq 1 \\).
-
-Step 1. By the AM-GM inequality, \\( \\frac{a + b + c}{3} \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Apply AM-GM inequality to \\( a, b, c \\)]  
-Step 2. Substituting \\( a + b + c = 3 \\), we get \\( 1 \\geq \\sqrt[3]{abc} \\) \\hspace{10pt} [Replace with given sum condition]  
-Step 3. Cube both sides to eliminate the root: \\( 1 \\geq abc \\) \\hspace{10pt} [Cube both sides to solve for \\( abc \\)]  
-Step 4. Thus, \\( abc \\leq 1 \\), as required.  
-
-For each step, clearly state the action, use concise LaTeX notation, and provide a justification in brackets.
-
-**ANSWER**:
-\\(\\boxed{\\text{result}}\\) """
+Important guidelines:
+- Start with '**Problem Analysis and Approach**:'
+- Be specific about which theorems/techniques apply
+- Explain why these approaches are suitable
+- Do NOT provide the actual solution steps"""
 
     for entry in data:
         # Only process entries with valid fields and token lengths
