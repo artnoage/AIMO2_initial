@@ -11,6 +11,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 async def process_example(example: Dict, running_id: int, example_id: int, solver_model, verifier_model, second_verifier_model, best_of: int, config: BenchmarkConfig) -> Optional[Dict]:
+    completion_logs = []  # Store completion-related messages
     """Process a single example using double analysis approach with multiple completions per analysis"""
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -141,9 +142,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     if score == total_steps:
                         score_1 += 1
                     elif score == 0:
-                        print(f"Analysis 1 verification failed: {error_msg}")
+                        completion_logs.append(f"Analysis 1 verification failed: {error_msg}")
                 except Exception as e:
-                    print(f"Error in completion for analysis 1: {str(e)}")
+                    completion_logs.append(f"Error in completion for analysis 1: {str(e)}")
                     error_msg = str(e)
 
         if do_completion_2:
@@ -166,12 +167,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     if score == total_steps:
                         score_2 += 1
                     elif score == 0:
-                        print(f"Analysis 2 verification failed: {error_msg}")
+                        completion_logs.append(f"Analysis 2 verification failed: {error_msg}")
                 except Exception as e:
-                    print(f"Error in completion for analysis 2: {str(e)}")
+                    completion_logs.append(f"Error in completion for analysis 2: {str(e)}")
                     error_msg = str(e)
 
         # Print statistics
+        # Print completion logs if any exist
+        if completion_logs:
+            print("\nCompletion Process Details:")
+            for log in completion_logs:
+                print(f"- {log}")
+                
         print(f"\nExample {running_id + 1} Summary:")
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Bifurcation point: Step {n}")
