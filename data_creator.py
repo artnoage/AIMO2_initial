@@ -204,7 +204,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         print("\n".join(logs['summary_logs']))
         
         # Skip if scores are very close
-        if abs(score_1 - score_2) < 0.1:
+        if abs(score_1 - score_2) < 0.11:
             print(f"Skipping example {running_id} - scores too close: {score_1} vs {score_2}")
             return None
             
