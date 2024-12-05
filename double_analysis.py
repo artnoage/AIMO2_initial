@@ -1,6 +1,8 @@
 import os
 import asyncio
-from typing import Optional, Dict
+import random
+import math
+from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
@@ -23,20 +25,49 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
 
         # Initialize agents
         analysis_agent = AnalysisAgent(solver_model)
+        step_agent = NextStepAgent(solver_model)
         completion_agent = CompletionAgent(solver_model)
+
+        # Generate random n with probability 2^(-n)
+        r = random.random()
+        n = 1
+        while r < 0.5 and n < 10:
+            r = random.random()
+            n += 1
+
+        print(f"Selected n={n} for bifurcation")
         
-        # Generate two different analyses
-        analysis_1 = await analysis_agent.generate(example["problem"])
-        analysis_2 = await analysis_agent.generate(example["problem"])
+        if n == 1:
+            # Original behavior: two separate analyses
+            analysis_1 = await analysis_agent.generate(example["problem"])
+            analysis_2 = await analysis_agent.generate(example["problem"])
+            path_1 = analysis_1
+            path_2 = analysis_2
+        else:
+            # Common analysis and n-2 steps, then bifurcate
+            common_analysis = await analysis_agent.generate(example["problem"])
+            current_solution = common_analysis
+            
+            # Add n-2 common steps
+            for _ in range(n-2):
+                next_step = await step_agent.generate(example["problem"], current_solution)
+                current_solution += next_step
+            
+            # Generate two different next steps
+            step_1 = await step_agent.generate(example["problem"], current_solution)
+            step_2 = await step_agent.generate(example["problem"], current_solution)
+            
+            path_1 = current_solution + step_1
+            path_2 = current_solution + step_2
         
-        # Track scores for each analysis
+        # Track scores for each path
         score_1 = 0
         score_2 = 0
         
         # Process completions for first analysis
         for _ in range(20):
             try:
-                complete_solution = analysis_1 + await completion_agent.generate(example["problem"], analysis_1)
+                complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
                 verifier = create_verifier(
                     config.verification_type,
                     verifier_model=verifier_model,
@@ -56,7 +87,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         # Process completions for second analysis
         for _ in range(10):
             try:
-                complete_solution = analysis_2 + await completion_agent.generate(example["problem"], analysis_2)
+                complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
                 verifier = create_verifier(
                     config.verification_type,
                     verifier_model=verifier_model,
@@ -83,8 +114,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
         return {
             'id': example_id,
             'problem': example['problem'],
-            'analysis_1': analysis_1,
-            'analysis_2': analysis_2,
+            'path_1': path_1,
+            'path_2': path_2,
+            'bifurcation_point': n,
             'score_1': score_1,
             'score_2': score_2
         }
