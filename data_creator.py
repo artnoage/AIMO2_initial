@@ -184,8 +184,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             f"\nExample {running_id + 1} Summary:",
             f"Problem: {example['problem'][:200]}...",
             f"Bifurcation point: Step {n}",
-            f"Analysis 1 final score: {score_1}/10",
-            f"Analysis 2 final score: {score_2}/10",
+            f"Analysis 1 final score: {score_1/config.completions}/10",
+            f"Analysis 2 final score: {score_2/config.completions}/10",
             "-" * 80
         ])
 
