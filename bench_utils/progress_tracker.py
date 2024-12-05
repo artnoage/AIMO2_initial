@@ -95,15 +95,25 @@ class ProgressTracker:
                 )
             
             # For data_creator.py style results
-            if 'avg_chosen' in stats:
-                stats_str += f"chosen={stats['avg_chosen']:.2f} "
-            if 'avg_rejected' in stats:
-                stats_str += f"rejected={stats['avg_rejected']:.2f} "
-            if 'avg_diff' in stats:
-                stats_str += f"diff={stats['avg_diff']:.2f} "
-            if self._has_field(last_batch, 'bifurcation_point'):
-                avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
-                stats_str += f"bifurc={avg_bifurcation:.2f}"
+            if any(key in stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
+                stats_str += (
+                    f"\nInterim Data Creation Statistics:\n"
+                    f"- Average score for chosen solutions: {stats.get('avg_chosen', 0):.2f}\n"
+                    f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
+                    f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
+                )
+                if self._has_field(last_batch, 'bifurcation_point'):
+                    avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
+                    bifurcation_counts = {}
+                    for r in last_batch:
+                        point = r.get('bifurcation_point', 0)
+                        bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                    
+                    stats_str += (
+                        f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
+                    )
+                stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
             print(stats_str)
             self._save_progress_stats(stats_str)
@@ -182,17 +192,25 @@ class ProgressTracker:
             )
         
         # For data_creator.py style results
-        if 'avg_chosen' in stats:
-            stats_str += f"chosen={stats['avg_chosen']:.2f} "
-        if 'avg_rejected' in stats:
-            stats_str += f"rejected={stats['avg_rejected']:.2f} "
-        if 'avg_diff' in stats:
-            stats_str += f"diff={stats['avg_diff']:.2f} "
-        if self._has_field(self.results, 'bifurcation_point'):
-            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
-            stats_str += f"bifurc={avg_bifurcation:.2f} "
-            
-        stats_str += f"time={total_duration.total_seconds():.1f}s"
+        if any(key in stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
+            stats_str += (
+                f"\nFinal Data Creation Statistics:\n"
+                f"- Average score for chosen solutions: {stats.get('avg_chosen', 0):.2f}\n"
+                f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
+                f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
+            )
+            if self._has_field(self.results, 'bifurcation_point'):
+                avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
+                bifurcation_counts = {}
+                for r in self.results:
+                    point = r.get('bifurcation_point', 0)
+                    bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                
+                stats_str += (
+                    f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+                    f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
+                )
+            stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
 
         print(stats_str)
         self._save_progress_stats(stats_str)
