@@ -63,13 +63,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
                     print(f"Found answer during common path generation for example {running_id}, skipping")
                     return None
             
-            # Generate two different next steps with prompts
-            branch_prompt_1, step_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-            branch_prompt_2, step_2 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            # Generate bifurcation prompt
+            bifurcation_prompt, _ = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            prompts.append(("bifurcation", bifurcation_prompt))
             
-            # Add branching prompts
-            prompts.append(("branch_1", branch_prompt_1))
-            prompts.append(("branch_2", branch_prompt_2))
+            # Get two different responses using the same prompt
+            step_1 = await get_model_response(solver_model, [HumanMessage(content=bifurcation_prompt)])
+            step_2 = await get_model_response(solver_model, [HumanMessage(content=bifurcation_prompt)])
             
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
