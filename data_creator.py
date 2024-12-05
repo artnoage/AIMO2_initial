@@ -30,9 +30,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         # Initialize agents
-        analysis_agent = AnalysisAgent(solver_model)
-        step_agent = NextStepAgent(solver_model)
-        completion_agent = CompletionAgent(solver_model)
+        solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        analysis_agent = AnalysisAgent(solver)
+        step_agent = NextStepAgent(solver)
+        completion_agent = CompletionAgent(solver)
 
         # Generate random n with probability proportional to 3^(-n)
         # Calculate normalization constant (sum of 3^(-n) for n=1 to 10)
@@ -135,6 +136,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for _ in range(config.completions):
                 try:
                     complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
+                    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+                    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
                     verifier = create_verifier(
                         config.verification_type,
                         verifier_model=verifier_model,
