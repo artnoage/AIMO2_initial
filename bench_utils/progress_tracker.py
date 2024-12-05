@@ -43,28 +43,45 @@ class ProgressTracker:
         if result:
             self.results.append(result)
     
-    def calculate_error_rate(self, results: List[Dict]) -> float:
+    def calculate_score_stats(self, results: List[Dict]) -> Dict:
         if not results:
-            return 0.0
-        correct_count = sum(1 for r in results if any(r.get('is_correct_list', [])))
-        return 1.0 - (correct_count / len(results))
+            return {'avg_chosen': 0.0, 'avg_rejected': 0.0, 'avg_diff': 0.0}
+        total = len(results)
+        avg_chosen = sum(r.get('score_chosen', 0) for r in results) / total
+        avg_rejected = sum(r.get('score_rejected', 0) for r in results) / total
+        avg_diff = sum(r.get('score_chosen', 0) - r.get('score_rejected', 0) for r in results) / total
+        return {
+            'avg_chosen': avg_chosen,
+            'avg_rejected': avg_rejected,
+            'avg_diff': avg_diff
+        }
 
     def print_progress(self, model_name: str = None, split: str = None) -> None:
         if len(self.results) % 100 == 0 and self.results:
             last_hundred = self.results[-100:]
             
-            # Calculate statistics for ORPO data
+            # Calculate statistics
             total_examples = len(last_hundred)
-            avg_score_chosen = sum(r.get('score_chosen', 0) for r in last_hundred) / total_examples
-            avg_score_rejected = sum(r.get('score_rejected', 0) for r in last_hundred) / total_examples
+            stats = self.calculate_score_stats(last_hundred)
             avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
             
-            stats = f"\nAt {len(self.results)} examples:\n"
-            stats += f"Last 100 examples statistics:\n"
-            stats += f"- Average chosen score: {avg_score_chosen:.2f}/20\n"
-            stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
-            stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-            stats += f"- Completions per path: {self.config.completions}\n"
+            # Count bifurcation points
+            bifurcation_counts = {}
+            for r in last_hundred:
+                point = r.get('bifurcation_point', 0)
+                bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+            
+            stats_str = f"\nAt {len(self.results)} examples:\n"
+            stats_str += f"Last 100 examples statistics:\n"
+            stats_str += f"- Average chosen score: {stats['avg_chosen']:.2f}/20\n"
+            stats_str += f"- Average rejected score: {stats['avg_rejected']:.2f}/20\n"
+            stats_str += f"- Average score difference: {stats['avg_diff']:.2f}\n"
+            stats_str += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
+            stats_str += f"- Completions per path: {self.config.completions}\n"
+            stats_str += "\nBifurcation distribution:\n"
+            for point, count in sorted(bifurcation_counts.items()):
+                percentage = (count / total_examples) * 100
+                stats_str += f"- Point {point}: {count} examples ({percentage:.1f}%)\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
@@ -109,14 +126,9 @@ class ProgressTracker:
 
         total = len(self.results)
         
-        # Calculate ORPO-specific metrics
-        avg_score_chosen = sum(r.get('score_chosen', 0) for r in self.results) / total
-        avg_score_rejected = sum(r.get('score_rejected', 0) for r in self.results) / total
+        # Calculate statistics
+        stats = self.calculate_score_stats(self.results)
         avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
-        
-        # Calculate score distributions
-        score_diff = [r.get('score_chosen', 0) - r.get('score_rejected', 0) for r in self.results]
-        avg_score_diff = sum(score_diff) / total
         
         # Count bifurcation points
         bifurcation_counts = {}
