@@ -138,11 +138,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
-    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
-    
-    # Initialize models
-    solver_model = get_model(ModelOption[config.solver], temp=config.temperature)
     
     global progress_tracker
     
