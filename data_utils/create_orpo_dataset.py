@@ -4,7 +4,16 @@ import random
 from typing import List, Dict, Tuple, Optional
 import sys
 from transformers import AutoTokenizer
-from .prompts import ANALYSIS_SYSTEM_PROMPT
+
+SYSTEM_PROMPT = """You are an expert at analyzing math problems and providing clear solution approaches.
+Given a math problem, analyze it and outline a clear solution strategy.
+Focus on:
+1. Understanding what's being asked
+2. Key concepts and formulas needed
+3. Breaking down the solution into clear steps
+4. Any special cases or considerations
+
+Provide a clear, structured analysis that will help solve the problem."""
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file."""
@@ -37,7 +46,7 @@ def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int
             score_rejected = min(entry['score_1'], entry['score_2']) / 10.0
 
             orpo_entries.append({
-                "prompt": {"role": "user", "content": ANALYSIS_SYSTEM_PROMPT + "\n\n" + entry['problem']},
+                "prompt": {"role": "user", "content": SYSTEM_PROMPT + "\n\n" + entry['problem']},
                 "chosen": {"role": "assistant", "content": chosen},
                 "rejected": {"role": "assistant", "content": rejected},
                 "score_chosen": score_chosen,
