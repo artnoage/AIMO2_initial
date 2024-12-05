@@ -14,11 +14,16 @@ class ProgressTracker:
         best_of: Number of attempts per example
         results: List of processed results
         start_time: Timestamp when tracking started
+        config: BenchmarkConfig instance for accessing settings
     """
     total_examples: int
     best_of: int
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
+    
+    def __post_init__(self):
+        from bench_utils.benchmark_config import BenchmarkConfig
+        self.config = BenchmarkConfig.from_args('Get defaults')
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a markdown file"""
@@ -59,7 +64,7 @@ class ProgressTracker:
             stats += f"- Average chosen score: {avg_score_chosen:.2f}/20\n"
             stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
             stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-            stats += f"- Completions per path: {config.completions}\n"
+            stats += f"- Completions per path: {self.config.completions}\n"
             stats += "-" * 80 + "\n"
             
             print(stats)
@@ -129,7 +134,7 @@ class ProgressTracker:
         stats += f"- Average rejected score: {avg_score_rejected:.2f}/20\n"
         stats += f"- Average score difference: {avg_score_diff:.2f}\n"
         stats += f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-        stats += f"- Completions per path: {config.completions}\n\n"
+        stats += f"- Completions per path: {self.config.completions}\n\n"
 
         stats += "### Bifurcation Point Distribution\n\n"
         for point, count in sorted(bifurcation_counts.items()):
