@@ -77,9 +77,22 @@ class ProgressTracker:
             
             # For benchmark.py style results
             if self._has_field(last_batch, 'is_correct_list'):
-                correct_solutions = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
-                stats_str += f"correct={correct_solutions}/{total_examples} "
-                stats_str += f"rate={correct_solutions/total_examples*100:.1f}% "
+                # Count problems with at least one correct solution
+                at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
+                
+                # Calculate average correct solutions per problem
+                avg_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch) / total_examples
+                
+                # Count problems with above average correct solutions
+                above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) > avg_correct)
+                
+                stats_str += (
+                    f"Problems with ≥1 correct: {at_least_one}/{total_examples} "
+                    f"({at_least_one/total_examples*100:.1f}%) | "
+                    f"Avg correct per problem: {avg_correct:.2f} | "
+                    f"Problems above avg: {above_avg}/{total_examples} "
+                    f"({above_avg/total_examples*100:.1f}%)"
+                )
             
             # For data_creator.py style results
             if 'avg_chosen' in stats:
@@ -151,9 +164,22 @@ class ProgressTracker:
         
         # For benchmark.py style results
         if self._has_field(self.results, 'is_correct_list'):
-            correct_solutions = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
-            stats_str += f"correct={correct_solutions}/{total} "
-            stats_str += f"rate={correct_solutions/total*100:.1f}% "
+            # Count problems with at least one correct solution
+            at_least_one = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
+            
+            # Calculate average correct solutions per problem
+            avg_correct = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total
+            
+            # Count problems with above average correct solutions
+            above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) > avg_correct)
+            
+            stats_str += (
+                f"\nBenchmark Statistics:\n"
+                f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
+                f"- Average correct solutions per problem: {avg_correct:.2f}\n"
+                f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
+                f"- Total runtime: {total_duration.total_seconds():.1f}s"
+            )
         
         # For data_creator.py style results
         if 'avg_chosen' in stats:
