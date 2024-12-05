@@ -7,23 +7,18 @@ from transformers import AutoTokenizer
 
 def load_json_file(filename: str) -> List[Dict]:
     """Load and parse a JSON file."""
-    try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading {filename}: {str(e)}")
-        sys.exit(1)
+    with open(filename, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def check_token_length(text: str, tokenizer) -> bool:
     """Check if text has at most 3000 tokens"""
     return len(tokenizer.encode(text)) <= 3000
 
 def process_file(input_file: str, output_file: str, tokenizer) -> Tuple[int, int]:
-    """
-    Process double analysis output file and create ORPO dataset.
-    Returns: (total_entries, successful_pairs)
-    """
+    """Process double analysis output file and create ORPO dataset."""
     data = load_json_file(input_file)
+    orpo_entries = []
+    successful_pairs = 0
     
     system_prompt = """You are a precise mathematical problem solver. You will be given a problem to solve.
 
@@ -52,34 +47,19 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
 **ANSWER**:
 \\(\\boxed{\\text{result}}\\) """
 
-    orpo_entries = []
-    successful_pairs = 0
-    
     for entry in data:
-        try:
-            # Skip entries without required fields
-            if not all(k in entry for k in ['problem', 'analysis_1', 'analysis_2', 'score_1', 'score_2']):
-                continue
-                
-            # Skip if either analysis is too long
-            if not (check_token_length(entry['analysis_1'], tokenizer) and 
-                   check_token_length(entry['analysis_2'], tokenizer)):
-                continue
-
-            # Determine chosen and rejected based on scores
-            if entry['score_1'] > entry['score_2']:
-                chosen = entry['analysis_1']
-                rejected = entry['analysis_2']
-                score_chosen = entry['score_1'] / 10.0  # Normalize to 0-1 range
-                score_rejected = entry['score_2'] / 10.0
-            elif entry['score_2'] > entry['score_1']:
-                chosen = entry['analysis_2']
-                rejected = entry['analysis_1']
-                score_chosen = entry['score_2'] / 10.0
-                score_rejected = entry['score_1'] / 10.0
-            else:
-                # Skip if scores are equal
-                continue
+        # Only process entries with valid fields and token lengths
+        if all(k in entry for k in ['problem', 'analysis_1', 'analysis_2', 'score_1', 'score_2']) and \
+           check_token_length(entry['analysis_1'], tokenizer) and \
+           check_token_length(entry['analysis_2'], tokenizer) and \
+           entry['score_1'] != entry['score_2']:
+            
+            # Always use higher score as chosen
+            is_first_better = entry['score_1'] > entry['score_2']
+            chosen = entry['analysis_1'] if is_first_better else entry['analysis_2']
+            rejected = entry['analysis_2'] if is_first_better else entry['analysis_1']
+            score_chosen = max(entry['score_1'], entry['score_2']) / 10.0
+            score_rejected = min(entry['score_1'], entry['score_2']) / 10.0
 
             orpo_entries.append({
                 "prompt": {"role": "user", "content": system_prompt + "\n\n" + entry['problem']},
@@ -89,10 +69,6 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
                 "score_rejected": score_rejected
             })
             successful_pairs += 1
-                
-        except Exception as e:
-            print(f"Error processing entry: {str(e)}")
-            continue
     
     # Save ORPO entries to output file
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -101,12 +77,7 @@ For each step, clearly state the action, use concise LaTeX notation, and provide
     return len(data), successful_pairs
 
 def main():
-    # Initialize tokenizer
-    try:
-        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
-    except Exception as e:
-        print(f"Error initializing tokenizer: {str(e)}")
-        sys.exit(1)
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
 
     parser = argparse.ArgumentParser(description='Create ORPO dataset from double analysis output')
     parser.add_argument('-i', '--input', required=True,
