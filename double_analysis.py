@@ -63,50 +63,57 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
+
+            # Check if either path already has a solution
+            answer_1 = extract_answer_from_solution(path_1)
+            answer_2 = extract_answer_from_solution(path_2)
+
+            # Initialize scores
+            score_1 = 20 if answer_1 is not None else 0
+            score_2 = 20 if answer_2 is not None else 0
         
-        # Track scores for each path
-        score_1 = 0
-        score_2 = 0
-        
-        # Process completions for first analysis
-        for _ in range(20):
-            try:
-                complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                verifier = create_verifier(
-                    config.verification_type,
-                    verifier_model=verifier_model,
-                    second_verifier_model=second_verifier_model,
-                    tolerance=config.tolerance
-                )
-                score, total_steps, _ = await verifier.verify(
-                    complete_solution,
-                    correct_answer,
-                    example["problem"]
-                )
-                if score == total_steps:
-                    score_1 += 1
-            except Exception as e:
-                print(f"Error in completion for analysis 1: {str(e)}")
-                
-        # Process completions for second analysis
-        for _ in range(10):
-            try:
-                complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
-                verifier = create_verifier(
-                    config.verification_type,
-                    verifier_model=verifier_model,
-                    second_verifier_model=second_verifier_model,
-                    tolerance=config.tolerance
-                )
-                score, total_steps, _ = await verifier.verify(
-                    complete_solution,
-                    correct_answer,
-                    example["problem"]
-                )
-                if score == total_steps:
-                    score_2 += 1
-            except Exception as e:
-                print(f"Error in completion for analysis 2: {str(e)}")
+        # Only process completions if we don't already have a solution
+        if score_1 == 0:
+            # Process completions for first analysis
+            for _ in range(20):
+                try:
+                    complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
+                    verifier = create_verifier(
+                        config.verification_type,
+                        verifier_model=verifier_model,
+                        second_verifier_model=second_verifier_model,
+                        tolerance=config.tolerance
+                    )
+                    score, total_steps, _ = await verifier.verify(
+                        complete_solution,
+                        correct_answer,
+                        example["problem"]
+                    )
+                    if score == total_steps:
+                        score_1 += 1
+                except Exception as e:
+                    print(f"Error in completion for analysis 1: {str(e)}")
+
+        if score_2 == 0:
+            # Process completions for second analysis
+            for _ in range(10):
+                try:
+                    complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
+                    verifier = create_verifier(
+                        config.verification_type,
+                        verifier_model=verifier_model,
+                        second_verifier_model=second_verifier_model,
+                        tolerance=config.tolerance
+                    )
+                    score, total_steps, _ = await verifier.verify(
+                        complete_solution,
+                        correct_answer,
+                        example["problem"]
+                    )
+                    if score == total_steps:
+                        score_2 += 1
+                except Exception as e:
+                    print(f"Error in completion for analysis 2: {str(e)}")
 
         # Print statistics
         print(f"\nExample {running_id + 1}:")
