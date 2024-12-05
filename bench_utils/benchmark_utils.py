@@ -247,18 +247,18 @@ async def run_benchmark(
                 progress_tracker.print_progress(config.solver, config.split)
             return result
 
-    tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
-    
-    print(f"\nWill process {len(example_data)} examples")
-    
-    progress_bar = tqdm(total=len(example_data), desc="Processing examples")
-    results = []
-    for coro in asyncio.as_completed(tasks):
-        result = await coro
-        if result:
-            results.append(result)
-        progress_bar.update(1)
-    progress_bar.close()
+        tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+        
+        print(f"\nWill process {len(example_data)} examples")
+        
+        progress_bar = tqdm(total=len(example_data), desc="Processing examples")
+        results = []
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            if result:
+                results.append(result)
+            progress_bar.update(1)
+        progress_bar.close()
     
     finally:
         progress_tracker.print_final_stats()
