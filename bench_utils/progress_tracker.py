@@ -61,17 +61,17 @@ class ProgressTracker:
         return stats
 
     def print_progress(self, model_name: str = None, split: str = None) -> None:
-        if len(self.results) % 100 == 0 and self.results:
-            last_hundred = self.results[-100:]
+        if len(self.results) % self.config.stats_update_freq == 0 and self.results:
+            last_batch = self.results[-self.config.stats_update_freq:]
             
             # Calculate statistics
-            total_examples = len(last_hundred)
-            stats = self.calculate_score_stats(last_hundred)
-            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
+            total_examples = len(last_batch)
+            stats = self.calculate_score_stats(last_batch)
+            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
             
             # Count bifurcation points
             bifurcation_counts = {}
-            for r in last_hundred:
+            for r in last_batch:
                 point = r.get('bifurcation_point', 0)
                 bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
             
@@ -80,8 +80,8 @@ class ProgressTracker:
                 stats_str += f"chosen={stats['avg_chosen']:.2f} "
             if 'avg_rejected' in stats:
                 stats_str += f"rejected={stats['avg_rejected']:.2f} "
-            if self._has_field(last_hundred, 'bifurcation_point'):
-                avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_hundred) / total_examples
+            if self._has_field(last_batch, 'bifurcation_point'):
+                avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
                 stats_str += f"bifurc={avg_bifurcation:.2f}"
             
             print(stats)
