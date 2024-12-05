@@ -240,26 +240,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 async def main():
     """Main function for benchmarking mathematical problem solving with double analysis."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using double analysis')
-    global progress_tracker
-    
     await run_benchmark(
         config=config,
         process_example_func=process_example
     )
-    
-    if progress_tracker:
-        progress_tracker.print_final_stats()
-        progress_tracker.save_results(config.solver, config.split)
 
 if __name__ == "__main__":
-    progress_tracker = None  # Will be initialized in run_benchmark
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nBenchmark interrupted by user")
-        if progress_tracker:
-            progress_tracker.print_final_stats()
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")
-        if progress_tracker:
-            progress_tracker.print_final_stats()
