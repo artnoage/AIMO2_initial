@@ -169,13 +169,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             
         return {
             'id': example_id,
-            'prompt': bifurcation_prompt,
-            'chosen': chosen_response,
-            'rejected': rejected_response,
+            'messages': [
+                {'content': bifurcation_prompt, 'role': 'user'},
+                {'content': chosen_response, 'role': 'assistant'},
+                {'content': rejected_response, 'role': 'assistant'}
+            ],
             'score_chosen': score_chosen,
             'score_rejected': score_rejected,
-            'bifurcation_point': n,
-            'role': 'user'
+            'bifurcation_point': n
         }
         
     except Exception as e:
