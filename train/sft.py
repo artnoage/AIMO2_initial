@@ -38,7 +38,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241129_162819",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
         

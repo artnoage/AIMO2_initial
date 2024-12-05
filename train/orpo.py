@@ -2,9 +2,9 @@ import torch
 from datasets import load_dataset
 from datetime import datetime
 from trl import ORPOTrainer, ORPOConfig
-from unsloth import FastLanguageModel, PatchORPOTrainer
+from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
-PatchORPOTrainer()
+PatchDPOTrainer()
 from trl import ORPOTrainer
 from transformers import logging
 import re

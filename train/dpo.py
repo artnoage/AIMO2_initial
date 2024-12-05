@@ -7,9 +7,11 @@ from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from trl import DPOTrainer
 from transformers import logging
+import re
 
-
-
+def _strip_prefix(s, pattern):
+    # Use re.escape to escape any special characters in the pattern
+    return re.sub(f"^{re.escape(pattern)}", "", s)
 
 def main():
     logging.set_verbosity_info()
@@ -17,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -43,34 +45,30 @@ def main():
         tokenizer,
         chat_template="mistral",
         map_eos_token=True)
+    dataset = load_dataset("artnoage/dpo_full", split="train")
 
 
-    def formatting_func(examples):
-        formatted = {
-            "prompt": [],
-            "chosen": [],
-            "rejected": []
-        }
-        
-        for prompt, chosen, rejected in zip(examples["prompt"], examples["chosen"], examples["rejected"]):
-            # Apply chat template to each message
-            formatted["prompt"].append(tokenizer.apply_chat_template([prompt], tokenize=False))
-            formatted["chosen"].append(tokenizer.apply_chat_template([chosen], tokenize=False))
-            formatted["rejected"].append(tokenizer.apply_chat_template([rejected], tokenize=False))
-            
-        return formatted
+    def formatting_func(example):
+        example["prompt"]=tokenizer.apply_chat_template([example["prompt"]],tokenize=False, add_generation_prompt=True)
+        example["chosen"]=tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
+        example["rejected"]=tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
+        example["chosen"] = _strip_prefix(example["chosen"], "<s>")
+        example["rejected"] = _strip_prefix(example["rejected"], "<s>")    
+        return example
 
     # Load and format dataset
-    dataset = load_dataset("artnoage/dpo_full", split="train")
+    
     formatted_dataset = dataset.map(
         formatting_func,
-        batched=True,
         desc="Applying chat template"
     )
+    print(formatted_dataset[0]["prompt"])
+    print(formatted_dataset[0]["chosen"])
+    print(formatted_dataset[0]["rejected"])
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
-    
+
     # Print maximum weight value before training
     max_weight = max([torch.max(param).item() for param in model.parameters()])
     print(f"Maximum weight value before training: {max_weight}")
@@ -78,9 +76,9 @@ def main():
         per_device_train_batch_size = 2,
         gradient_accumulation_steps = 64,
         num_train_epochs = 1,
-        learning_rate = 4e-6,
+        learning_rate = 6e-6,
         logging_steps = 1,
-        optim = "adamw_torch",
+        optim = "adamw_8bit",
         seed=42,
         bf16=True,
         weight_decay=0.01,
