@@ -69,9 +69,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, solve
             bifurcation_prompt, _ = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
             prompts.append(("bifurcation", bifurcation_prompt))
             
-            # Get two different responses using the same prompt
-            step_1 = await get_model_response(solver_model, [HumanMessage(content=bifurcation_prompt)])
-            step_2 = await get_model_response(solver_model, [HumanMessage(content=bifurcation_prompt)])
+            # Get two different responses using step agent
+            step_1 = await step_agent.generate(example["problem"], current_solution)
+            step_2 = await step_agent.generate(example["problem"], current_solution)
             
             path_1 = current_solution + step_1
             path_2 = current_solution + step_2
