@@ -69,8 +69,10 @@ class ProgressTracker:
             # Count bifurcation points
             bifurcation_counts = {}
             for r in last_batch:
-                point = r.get('bifurcation_point', 0)
-                bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                if 'bifurcation_point' in r:
+                    point = r['bifurcation_point']
+                    if isinstance(point, (int, float)):
+                        bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
             
             # Build statistics string
             stats_str = f"N={len(self.results)} "
@@ -170,8 +172,10 @@ class ProgressTracker:
         # Count bifurcation points
         bifurcation_counts = {}
         for r in self.results:
-            point = r.get('bifurcation_point', 0)
-            bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+            if 'bifurcation_point' in r:
+                point = r['bifurcation_point']
+                if isinstance(point, (int, float)):
+                    bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
 
         end_time = datetime.now()
         total_duration = end_time - self.start_time
