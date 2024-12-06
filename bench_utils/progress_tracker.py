@@ -69,7 +69,7 @@ class ProgressTracker:
             # Count bifurcation points
             bifurcation_counts = {}
             for r in last_batch:
-                if 'bifurcation_point' in r:
+                if r and isinstance(r, dict) and 'bifurcation_point' in r:
                     point = r['bifurcation_point']
                     if isinstance(point, (int, float)):
                         bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
@@ -219,8 +219,10 @@ class ProgressTracker:
                 avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
                 bifurcation_counts = {}
                 for r in self.results:
-                    point = r.get('bifurcation_point', 0)
-                    bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                    if r and isinstance(r, dict) and 'bifurcation_point' in r:
+                        point = r['bifurcation_point']
+                        if isinstance(point, (int, float)):
+                            bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
                 
                 stats_str += (
                     f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
