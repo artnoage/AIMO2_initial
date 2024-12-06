@@ -87,10 +87,10 @@ class ProgressTracker:
                 print(f"\nDebug - Interim Statistics:")
                 print(f"Number of problems in batch: {total_examples}")
                 print(f"Average correct solutions: {avg_correct}")
-                print("Correct solutions per problem:", [sum(r.get('is_correct_list', [])) for r in last_batch])
+                print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in last_batch])
                 
-                # Count problems with above average correct solutions
-                above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) > avg_correct)
+                # Count problems with success rate above 50%
+                above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
                 
                 stats_str += (
                     f"\nInterim Benchmark Statistics:\n"
@@ -190,10 +190,10 @@ class ProgressTracker:
             print(f"\nDebug - Final Statistics:")
             print(f"Total number of problems: {total}")
             print(f"Average correct solutions: {avg_correct}")
-            print("Correct solutions per problem:", [sum(r.get('is_correct_list', [])) for r in self.results])
+            print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in self.results])
             
-            # Count problems with above average correct solutions
-            above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) > avg_correct)
+            # Count problems with success rate above 50%
+            above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
             
             stats_str += (
                 f"\nBenchmark Statistics:\n"
