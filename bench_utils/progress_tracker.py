@@ -66,14 +66,6 @@ class ProgressTracker:
             stats = self.calculate_score_stats(last_batch)
             avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
             
-            # Count bifurcation points
-            bifurcation_counts = {}
-            for r in last_batch:
-                if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                    point = r['bifurcation_point']
-                    if isinstance(point, (int, float)):
-                        bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-            
             # Build statistics string
             stats_str = f"N={len(self.results)} "
             
@@ -111,15 +103,23 @@ class ProgressTracker:
                     f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
                 )
                 if self._has_field(last_batch, 'bifurcation_point'):
-                    avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
+                    # Count bifurcation points
                     bifurcation_counts = {}
-                    for r in last_batch:
-                        point = r.get('bifurcation_point', 0)
-                        bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                    valid_points = 0
+                    total_bifurcation = 0
                     
+                    for r in last_batch:
+                        if r and isinstance(r, dict) and 'bifurcation_point' in r:
+                            point = r['bifurcation_point']
+                            if isinstance(point, (int, float)):
+                                bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                                total_bifurcation += point
+                                valid_points += 1
+                    
+                    avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
                     stats_str += (
                         f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items() if isinstance(bifurcation_counts, dict) else {}.items()))}\n"
+                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
                     )
                 stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
@@ -167,15 +167,22 @@ class ProgressTracker:
         
         # Calculate statistics
         stats = self.calculate_score_stats(self.results)
-        avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in self.results) / total
         
-        # Count bifurcation points
+        # Initialize bifurcation tracking
         bifurcation_counts = {}
+        valid_points = 0
+        total_bifurcation = 0
+        
+        # Count valid bifurcation points
         for r in self.results:
-            if 'bifurcation_point' in r:
+            if r and isinstance(r, dict) and 'bifurcation_point' in r:
                 point = r['bifurcation_point']
                 if isinstance(point, (int, float)):
                     bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
+                    total_bifurcation += point
+                    valid_points += 1
+        
+        avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
 
         end_time = datetime.now()
         total_duration = end_time - self.start_time
