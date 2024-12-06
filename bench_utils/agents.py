@@ -51,7 +51,7 @@ class AnalysisAgent:
                 "Please provide the analysis:"
             ))
         ]
-        response = await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
 class NextStepAgent:
@@ -81,7 +81,7 @@ class NextStepAgent:
             input_text += "\nStart the solution with Step 1:"
             
         prompt = [HumanMessage(content=input_text)]
-        response = await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
@@ -108,7 +108,7 @@ class CompletionAgent:
                 "Please complete the remaining steps following the same format:"
             ))
         ]
-        response = await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -137,7 +137,7 @@ class AnalysisPlusStepAgent:
                 "Please provide both the analysis and first step now:"
             ))
         ]
-        response = await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
 class FullSolutionAgent:

@@ -45,7 +45,7 @@ def main():
         tokenizer,
         chat_template="mistral",
         map_eos_token=True)
-    dataset = load_dataset("artnoage/dpo_full", split="train")
+    dataset = load_dataset("artnoage/orpo", split="train")
 
 
     def formatting_func(example):
@@ -73,15 +73,17 @@ def main():
     max_weight = max([torch.max(param).item() for param in model.parameters()])
     print(f"Maximum weight value before training: {max_weight}")
     training_args = DPOConfig(
+         max_length=4096,
+        max_prompt_length=1024,
         per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 64,
-        num_train_epochs = 1,
-        learning_rate = 6e-6,
+        gradient_accumulation_steps = 32,
+        num_train_epochs = 2,
+        learning_rate = 8e-6,
         logging_steps = 1,
-        optim = "adamw_8bit",
+        optim = "adamw_torch",
         seed=42,
         bf16=True,
-        weight_decay=0.01,
+        weight_decay=0.1,
         lr_scheduler_type = "linear",
         warmup_ratio = 0.1,
         output_dir = output_dir)
@@ -92,8 +94,7 @@ def main():
         args=training_args,
         train_dataset=formatted_dataset,
         tokenizer=tokenizer,
-        max_length=4096,
-        max_prompt_length=1024)
+       )
 
     # Train the model
     trainer.train()

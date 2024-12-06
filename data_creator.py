@@ -31,6 +31,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Initialize agents
         solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
+        second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
         analysis_agent = AnalysisAgent(solver)
         step_agent = NextStepAgent(solver)
         completion_agent = CompletionAgent(solver)
@@ -68,7 +70,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 "analysis" in path_2.lower() and
                 "step" not in path_2.lower()
             )
-            
+            response_1=path_1
+            response_2=path_2
             # For n=1, scores start at 0 and we'll do completions if analysis is valid
             score_1 = 0
             score_2 = 0
@@ -101,22 +104,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     return None
             
             # Generate bifurcation prompt
-            bifurcation_prompt, _ = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
             
             # Get two different responses using step agent
-            step_1 = await step_agent.generate(example["problem"], current_solution)
-            step_2 = await step_agent.generate(example["problem"], current_solution)
+            response_2 = await step_agent.generate(example["problem"], current_solution)
             
-            path_1 = current_solution + step_1
-            path_2 = current_solution + step_2
+            path_1 = current_solution + response_1
+            path_2 = current_solution + response_2
             
             # Check if paths have solutions and validate step responses
             answer_1 = extract_answer_from_solution(path_1)
             answer_2 = extract_answer_from_solution(path_2)
             
             # Initialize scores and completion flags
-            score_1 = 20 if answer_1 is not None else 0
-            score_2 = 20 if answer_2 is not None else 0
+            score_1 = config.completions if answer_1 is not None else 0
+            score_2 = config.completions if answer_2 is not None else 0
             do_completion_1 = answer_1 is None
             do_completion_2 = answer_2 is None
 
@@ -136,8 +138,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for _ in range(config.completions):
                 try:
                     complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                    verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-                    second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
                     verifier = create_verifier(
                         config.verification_type,
                         verifier_model=verifier_model,
@@ -176,14 +176,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 except Exception as e:
                     logs['completion_logs'].append(f"Error in completion for analysis 2: {str(e)}")
                     error_msg = str(e)
-
+        score_1=score_1/config.completions
+        score_2=score_2/config.completions
+        
+        
         # Collect summary information
         logs['summary_logs'].extend([
             f"\nExample {running_id + 1} Summary:",
             f"Problem: {example['problem'][:200]}...",
             f"Bifurcation point: Step {n}",
-            f"Path 1 final score: {score_1/config.completions}",
-            f"Path 2 final score: {score_2/config.completions}",
+            f"Path 1 final score: {score_1}",
+            f"Path 2 final score: {score_2}",
             "-" * 80
         ])
 
@@ -207,19 +210,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print("\n".join(logs['summary_logs']))
         
         # Skip if scores are very close
-        if abs(score_1 - score_2) < 0.11:
-            print(f"Skipping example {running_id} - scores too close: {score_1} vs {score_2}")
+        if score_1==0 and score_2==0:
+            print(f"Skipping example {running_id+1} - No successful solution")
+            return None 
+        if  abs(score_1 - score_2)/max(score_1,score_2) < 0.2:
+            print(f"Skipping example {running_id+1} - scores too close: {score_1} vs {score_2}")
             return None
             
         # Determine which path had better score
         if score_1 > score_2:
-            chosen_response = path_1
-            rejected_response = path_2
+            chosen_response = response_1
+            rejected_response = response_2
             score_chosen = score_1
             score_rejected = score_2
         else:
-            chosen_response = path_2
-            rejected_response = path_1
+            chosen_response = response_2
+            rejected_response = response_1
             score_chosen = score_2
             score_rejected = score_1
             
