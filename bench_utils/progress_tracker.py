@@ -117,7 +117,7 @@ class ProgressTracker:
                     
                     stats_str += (
                         f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts))}\n"
+                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
                     )
                 stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
