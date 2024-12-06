@@ -44,7 +44,7 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    dataset = load_dataset("artnoage/orpo_full", split="train")
+    dataset = load_dataset("artnoage/orpo", split="train")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False, add_generation_prompt=True)
@@ -67,40 +67,34 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/orpo_{timestamp}"
 
-    # Print maximum weight value before training
-    max_weight = max([torch.max(param).item() for param in model.parameters()])
-    print(f"Maximum weight value before training: {max_weight}")
+    print(formatted_dataset[0]["prompt"])
+    print(formatted_dataset[0]["chosen"])
+    print(formatted_dataset[0]["rejected"])
 
     # ORPO specific training arguments
     training_args = ORPOConfig(
+        max_length=4096,
+        max_prompt_length=1024,
         per_device_train_batch_size=2,
-        gradient_accumulation_steps=64,
-        num_train_epochs=1,
-        learning_rate=6e-6,
+        gradient_accumulation_steps=32,
+        num_train_epochs=2,
+        learning_rate=8e-6,
         logging_steps=1,
-        optim="adamw_8bit",
+        optim="adamw_torch",
         seed=42,
         bf16=True,
-        weight_decay=0.01,
+        weight_decay=0.1,
         lr_scheduler_type="linear",
         warmup_ratio=0.1,
         output_dir=output_dir,
-        # ORPO specific parameters
-        beta=0.1,  # Controls the strength of the ORPO regularization
-        desirable_score=1.0,  # Target score for responses
-        undesirable_score=0.0  # Minimum acceptable score
-    )
+        beta=0.1)
 
     # Initialize ORPO trainer
     trainer = ORPOTrainer(
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,
-        tokenizer=tokenizer,
-        max_length=4096,
-        max_prompt_length=1024,
-        score_chosen=formatted_dataset["score_chosen"],
-        score_rejected=formatted_dataset["score_rejected"]
+        tokenizer=tokenizer
     )
 
     # Train the model

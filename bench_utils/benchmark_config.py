@@ -44,7 +44,7 @@ class BenchmarkConfig:
     
     # Verification settings
     verification_type: str = 'numeric'  # 'numeric', 'answer', or 'solution'
-    verifier: str = 'GEMINI_FLASH'
+    verifier: str = 'CODER'
     second_verifier: str = 'CODER'
     verifier_temp: float = 0
     tolerance: float = 1e-6
@@ -82,7 +82,7 @@ class BenchmarkConfig:
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--initial-steps', type=int, default=1,
                           help='Number of initial steps before completion (default: 1)')
-        parser.add_argument('--completions', type=int, default=20,
+        parser.add_argument('--completions', type=int, default=15,
                           help='Number of completions to try per path (default: 20)')
                           
         # Verification arguments
@@ -91,7 +91,7 @@ class BenchmarkConfig:
                           default='GEMINI_FLASH', help='Model to use for verification')
         parser.add_argument('--second-verifier', type=str,
                           choices=[model.name for model in ModelOption],
-                          default='CODER', help='Second model to use for verification')
+                          default='NEMOTRON', help='Second model to use for verification')
         parser.add_argument('--verifier-temp', type=float, default=0,
                           help='Temperature for verifier models')
         parser.add_argument('--verification-type', type=str,
