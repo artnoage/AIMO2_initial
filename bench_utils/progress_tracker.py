@@ -83,6 +83,12 @@ class ProgressTracker:
                 # Calculate average correct solutions per problem
                 avg_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch) / total_examples
                 
+                # Debug prints
+                print(f"\nDebug - Interim Statistics:")
+                print(f"Number of problems in batch: {total_examples}")
+                print(f"Average correct solutions: {avg_correct}")
+                print("Correct solutions per problem:", [sum(r.get('is_correct_list', [])) for r in last_batch])
+                
                 # Count problems with above average correct solutions
                 above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) > avg_correct)
                 
@@ -179,6 +185,12 @@ class ProgressTracker:
             
             # Calculate average correct solutions per problem
             avg_correct = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total
+            
+            # Debug prints
+            print(f"\nDebug - Final Statistics:")
+            print(f"Total number of problems: {total}")
+            print(f"Average correct solutions: {avg_correct}")
+            print("Correct solutions per problem:", [sum(r.get('is_correct_list', [])) for r in self.results])
             
             # Count problems with above average correct solutions
             above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) > avg_correct)
