@@ -243,7 +243,7 @@ async def run_benchmark(
                 )
             if result:
                 progress_tracker.add_result(result)
-                progress_tracker.print_progress(config.solver, config.split)
+                progress_tracker.print_progress()
             return result
 
         tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
