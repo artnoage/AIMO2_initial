@@ -71,7 +71,7 @@ def main():
             raise ValueError(f"Model weights not found at {checkpoint_path}/adapter_model.safetensors")
     
     # Load the LoRA weights
-    model.load_adapter(checkpoint_path, "default")
+    model.load_adapter(checkpoint_path)
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
