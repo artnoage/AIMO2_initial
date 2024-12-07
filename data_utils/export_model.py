@@ -1,32 +1,24 @@
 import os
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, logging
-from peft import PeftModel
+from transformers import logging
+from unsloth import FastLanguageModel
 import argparse
 
 def setup_model(model_path="artnoage/metastral"):
     """Initialize the base model with LoRA configuration"""
     try:
         # First try loading from local path
-        model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.float32,
-            trust_remote_code=True
-        )
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_path,
-            trust_remote_code=True
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=model_path,
+            max_seq_length=4096,
+            load_in_4bit=False
         )
     except Exception as e:
         print(f"Could not load from local path, trying HuggingFace Hub: {e}")
-        model = AutoModelForCausalLM.from_pretrained(
-            "artnoage/metastral",
-            torch_dtype=torch.float32,
-            trust_remote_code=True
-        )
-        tokenizer = AutoTokenizer.from_pretrained(
-            "artnoage/metastral",
-            trust_remote_code=True
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name="artnoage/metastral",
+            max_seq_length=4096,
+            load_in_4bit=False
         )
     
     return model, tokenizer
@@ -78,24 +70,17 @@ def main():
         if not os.path.exists(os.path.join(checkpoint_path, 'adapter_model.safetensors')):
             raise ValueError(f"Model weights not found at {checkpoint_path}/adapter_model.safetensors")
     
-    # Load the base model as a PeftModel
-    model = PeftModel.from_pretrained(model, checkpoint_path, torch_dtype=torch.float32)
-    
-    # Merge LoRA weights with base model
-    model = model.merge_and_unload()
-    
-    # Convert to float32
-    model = model.to(torch.float32)
+    # Load the LoRA weights
+    model.load_adapter(checkpoint_path, "default")
     
     # Create output directory if it doesn't exist
     os.makedirs(args.output_dir, exist_ok=True)
     
     # Use the timestamp from training directory for output
     output_dir = os.path.join(args.output_dir, os.path.basename(checkpoint_dir))
-        
-    # Save the merged model and tokenizer
-    model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
+    
+    # Save the merged model using unsloth's method
+    model.save_pretrained_merged(output_dir, tokenizer, save_method="merged_16bit")
     
     print(f"Model and tokenizer successfully exported to {output_dir}")
 
