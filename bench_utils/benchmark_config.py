@@ -52,6 +52,8 @@ class BenchmarkConfig:
     # Output settings
     produce_statistics: bool = True
     stats_update_freq: int = 100  # How often to update statistics (number of examples)
+    create_dataset: bool = False  # Whether to create a HuggingFace dataset
+    upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -106,6 +108,10 @@ class BenchmarkConfig:
                           help='Generate detailed statistics file (default: True)')
         parser.add_argument('--stats-update-freq', type=int, default=100,
                           help='How often to update statistics (number of examples)')
+        parser.add_argument('--create-dataset', action='store_true',
+                          help='Create a HuggingFace dataset from results')
+        parser.add_argument('--upload-dataset', action='store_true',
+                          help='Upload the created dataset to HuggingFace Hub')
                           
         args = parser.parse_args()
         return cls(**vars(args))

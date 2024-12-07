@@ -3,6 +3,7 @@ import json
 from typing import List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
+from datasets import Dataset
 
 @dataclass
 class ProgressTracker:
@@ -183,12 +184,32 @@ class ProgressTracker:
         except Exception as e:
             print(f"Error saving results: {str(e)}")
 
+    def create_hf_dataset(self) -> None:
+        """Create a HuggingFace dataset from the results"""
+        if not self.results or not self.config.create_dataset:
+            return
+            
+        # Create timestamp-based directory
+        timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
+        dataset_dir = os.path.join("local_datasets", timestamp)
+        os.makedirs(dataset_dir, exist_ok=True)
+        
+        # Convert results to HuggingFace dataset
+        dataset = Dataset.from_list(self.results)
+        
+        # Save locally in Arrow format
+        dataset.save_to_disk(dataset_dir)
+        print(f"\nDataset saved to: {dataset_dir}")
+
     def print_final_stats(self) -> None:
         if not self.results:
             msg = "\nNo examples were successfully processed."
             print(msg)
             self._save_progress_stats(msg + "\n")
             return
+            
+        # Create dataset if requested
+        self.create_hf_dataset()
 
         total = len(self.results)
         
