@@ -1,3 +1,4 @@
+import os
 import torch
 from datasets import load_dataset
 from datetime import datetime
@@ -99,6 +100,15 @@ def main():
 
     # Train the model
     trainer.train()
+
+    # Save the merged model
+    models_dir = "models"
+    os.makedirs(models_dir, exist_ok=True)
+    output_dir = os.path.join(models_dir, timestamp)
+    
+    # Save the merged model using unsloth's method
+    model.save_pretrained_merged(output_dir, tokenizer, save_method="merged_16bit")
+    print(f"Merged model saved to {output_dir}")
 
 if __name__ == "__main__":
     main()
