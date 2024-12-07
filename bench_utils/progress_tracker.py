@@ -21,6 +21,7 @@ class ProgressTracker:
     config: Any
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
+    accumulated_stats: Dict = field(default_factory=dict)
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
@@ -61,13 +62,16 @@ class ProgressTracker:
         if len(self.results) % self.config.stats_update_freq == 0 and self.results:
             last_batch = self.results[-self.config.stats_update_freq:]
             
-            # Calculate statistics
+            # Calculate batch statistics
             total_examples = len(last_batch)
-            stats = self.calculate_score_stats(last_batch)
-            avg_bifurcation = sum(r.get('bifurcation_point', 0) for r in last_batch) / total_examples
+            batch_stats = self.calculate_score_stats(last_batch)
+            
+            # Calculate accumulated statistics
+            accumulated_stats = self.calculate_score_stats(self.results)
             
             # Build statistics string
             stats_str = f"N={len(self.results)} "
+            stats_str += "\nBatch Statistics (last {total_examples}):\n"
             
             # For benchmark.py style results
             if self._has_field(last_batch, 'is_correct_list'):
@@ -86,21 +90,44 @@ class ProgressTracker:
                 # Count problems with success rate above 50%
                 above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
                 
+                # Batch statistics
                 stats_str += (
-                    f"\nInterim Benchmark Statistics:\n"
+                    f"\nBatch Statistics (last {total_examples}):\n"
                     f"- Problems with at least one correct solution: {at_least_one}/{total_examples} ({at_least_one/total_examples*100:.1f}%)\n"
                     f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                     f"- Problems with above average correct solutions: {above_avg}/{total_examples} ({above_avg/total_examples*100:.1f}%)\n"
+                )
+
+                # Accumulated statistics
+                total_acc = len(self.results)
+                at_least_one_acc = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
+                avg_correct_acc = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total_acc
+                above_avg_acc = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
+                
+                stats_str += (
+                    f"\nAccumulated Statistics (N={total_acc}):\n"
+                    f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} ({at_least_one_acc/total_acc*100:.1f}%)\n"
+                    f"- Average correct solutions per problem: {avg_correct_acc:.2f}\n"
+                    f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} ({above_avg_acc/total_acc*100:.1f}%)\n"
                     f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
                 )
             
             # For data_creator.py style results
-            if any(key in stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
+            if any(key in batch_stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
+                # Batch statistics
                 stats_str += (
-                    f"\nInterim Data Creation Statistics:\n"
-                    f"- Average score for chosen solutions: {stats.get('avg_chosen', 0):.2f}\n"
-                    f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
-                    f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
+                    f"\nBatch Statistics (last {total_examples}):\n"
+                    f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
+                    f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
+                    f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
+                )
+                
+                # Accumulated statistics
+                stats_str += (
+                    f"\nAccumulated Statistics (N={len(self.results)}):\n"
+                    f"- Average score for chosen solutions: {accumulated_stats.get('avg_chosen', 0):.2f}\n"
+                    f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
+                    f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
                 )
                 if self._has_field(last_batch, 'bifurcation_point'):
                     # Count bifurcation points
