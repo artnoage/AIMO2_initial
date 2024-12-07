@@ -10,14 +10,12 @@ def setup_model(model_path="artnoage/metastral"):
         # First try loading from local path
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name=model_path,
-            max_seq_length=4096,
             load_in_4bit=False
         )
     except Exception as e:
         print(f"Could not load from local path, trying HuggingFace Hub: {e}")
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name="artnoage/metastral",
-            max_seq_length=4096,
             load_in_4bit=False
         )
     
