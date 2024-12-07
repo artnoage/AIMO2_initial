@@ -76,13 +76,13 @@ class BenchmarkConfig:
                           help='JSON file containing IDs to exclude from processing')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=256,
+        parser.add_argument('--max-concurrent', type=int, default=128,
                           help='Maximum number of concurrent problems (default: 256)')
         parser.add_argument('--best-of', type=int, default=5,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--initial-steps', type=int, default=1,
                           help='Number of initial steps before completion (default: 1)')
-        parser.add_argument('--completions', type=int, default=15,
+        parser.add_argument('--completions', type=int, default=20,
                           help='Number of completions to try per path (default: 20)')
                           
         # Verification arguments
