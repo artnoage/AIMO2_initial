@@ -154,19 +154,14 @@ class ProgressTracker:
             self._save_progress_stats(stats_str)
             
             # Automatically save results every 100 examples
-            if model_name and split:
-                self.save_results(model_name, split)
+            self.save_results()
 
-    def save_results(self, model_name: str = None, split: str = None) -> None:
+    def save_results(self) -> None:
         """Save results to a JSON file"""
         if not self.results or not self.config.produce_statistics:
             return
             
         try:
-            # Get model and split from config if not provided
-            from bench_utils.benchmark_config import BenchmarkConfig
-            config = BenchmarkConfig.from_args('Get defaults')
-            
             # Use a fixed filename based on the start timestamp
             filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
             filepath = os.path.join("results", filename)
