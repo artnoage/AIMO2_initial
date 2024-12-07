@@ -164,5 +164,5 @@ class FullSolutionAgent:
                 "   - End with final answer in \\boxed{}\n\n"
                 "Please solve the problem completely:"))
         ]
-        response = await get_model_response(self.model, prompt)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response

@@ -18,7 +18,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241206_112933",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -44,7 +44,7 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    dataset = load_dataset("artnoage/orpo", split="train")
+    dataset = load_dataset("artnoage/orpo2", split="train")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False, add_generation_prompt=True)
@@ -65,7 +65,7 @@ def main():
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/orpo_{timestamp}"
+    output_dir = f"train_results/{timestamp}"
 
     print(formatted_dataset[0]["prompt"])
     print(formatted_dataset[0]["chosen"])
@@ -78,7 +78,7 @@ def main():
         per_device_train_batch_size=2,
         gradient_accumulation_steps=32,
         num_train_epochs=2,
-        learning_rate=8e-6,
+        learning_rate=4e-6,
         logging_steps=1,
         optim="adamw_torch",
         seed=42,

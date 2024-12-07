@@ -9,6 +9,7 @@ augmented_datasets/
 __pycache__
 model_1iteration
 backups/
+backup/
 *.json
 local_dataset
 cache

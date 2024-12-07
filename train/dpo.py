@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241206_112933",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -45,7 +45,7 @@ def main():
         tokenizer,
         chat_template="mistral",
         map_eos_token=True)
-    dataset = load_dataset("artnoage/orpo", split="train")
+    dataset = load_dataset(path="artnoage/orpo2", split="train")
 
 
     def formatting_func(example):
@@ -78,7 +78,7 @@ def main():
         per_device_train_batch_size = 2,
         gradient_accumulation_steps = 32,
         num_train_epochs = 2,
-        learning_rate = 8e-6,
+        learning_rate = 4e-6,
         logging_steps = 1,
         optim = "adamw_torch",
         seed=42,
