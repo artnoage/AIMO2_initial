@@ -213,7 +213,6 @@ async def run_benchmark(
 
     progress_tracker = ProgressTracker(
         total_examples=dataset_length,
-        best_of=config.best_of,
         config=config
     )
 

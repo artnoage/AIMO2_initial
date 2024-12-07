@@ -18,7 +18,6 @@ class ProgressTracker:
         config: BenchmarkConfig instance for accessing settings
     """
     total_examples: int
-    best_of: int
     config: Any
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
