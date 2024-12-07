@@ -58,7 +58,7 @@ class ProgressTracker:
             
         return stats
 
-    def print_progress(self, model_name: str = None, split: str = None) -> None:
+    def print_progress(self) -> None:
         if len(self.results) % self.config.stats_update_freq == 0 and self.results:
             last_batch = self.results[-self.config.stats_update_freq:]
             
