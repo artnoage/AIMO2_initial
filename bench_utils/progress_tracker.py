@@ -156,7 +156,7 @@ class ProgressTracker:
             # Automatically save results every 100 examples
             self.save_results()
 
-    def save_results(self) -> None:
+    def save_results(self, solver: str = None, split: str = None) -> None:
         """Save results to a JSON file"""
         if not self.results or not self.config.produce_statistics:
             return
