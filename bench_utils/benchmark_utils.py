@@ -97,7 +97,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=10, timeout=120)
+@async_retry(max_retries=5, timeout=120)
 async def get_model_response(solver_model, prompt,max_tokens=None) -> str:
     """Get response from model with retry logic"""
     if max_tokens==None:
@@ -261,4 +261,4 @@ async def run_benchmark(
     
     finally:
         progress_tracker.print_final_stats()
-        progress_tracker.save_results(config.solver, config.split)
+        progress_tracker.save_results()
