@@ -103,7 +103,7 @@ async def get_model_response(solver_model, prompt,max_tokens=None) -> str:
     if max_tokens==None:
         response = await solver_model.ainvoke(prompt)
     else:
-        response = await solver_model.ainvoke(prompt,max_tokens)
+        response = await solver_model.ainvoke(prompt,max_tokens=max_tokens)
     return response.content
 
 def count_manual_steps(solution: str) -> int:
