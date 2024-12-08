@@ -18,7 +18,8 @@ def convert_to_hf_dataset(data):
     dataset = Dataset.from_list(data)
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    save_path = f"local_dataset_{timestamp}"
+    save_path = os.path.join("local_dataset", timestamp)
+    os.makedirs(save_path, exist_ok=True)
     dataset.save_to_disk(save_path)
     return dataset
 
@@ -84,7 +85,7 @@ def main():
         data = load_json_dataset(args.path)
         dataset = convert_to_hf_dataset(data)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        print(f"Dataset saved locally in Arrow format at 'local_dataset_{timestamp}'")
+        print(f"Dataset saved locally in Arrow format at 'local_dataset/{timestamp}'")
         
         if not args.only_data:
             if not args.repo_name:
