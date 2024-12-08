@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -15,8 +16,10 @@ def load_json_dataset(json_path):
 def convert_to_hf_dataset(data):
     """Convert the data to a HuggingFace Dataset."""
     dataset = Dataset.from_list(data)
-    # Save locally in Arrow format
-    dataset.save_to_disk("local_dataset")
+    # Save locally in Arrow format with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    save_path = f"local_dataset_{timestamp}"
+    dataset.save_to_disk(save_path)
     return dataset
 
 def upload_dataset_to_hub(dataset, repo_name):
@@ -80,7 +83,8 @@ def main():
         # Handle dataset
         data = load_json_dataset(args.path)
         dataset = convert_to_hf_dataset(data)
-        print(f"Dataset saved locally in Arrow format at 'local_dataset'")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        print(f"Dataset saved locally in Arrow format at 'local_dataset_{timestamp}'")
         
         if not args.only_data:
             if not args.repo_name:
