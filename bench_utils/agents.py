@@ -18,11 +18,11 @@ problems and provide precise numeric solutions.
 
 Guidelines:
 1. Read the problem carefully
-2. Show your work clearly with numbered steps
-3. Use LaTeX notation for mathematical expressions
-4. Explain your reasoning in [brackets]
-5. End with a final numeric answer in \boxed{}
-6. Ensure your answer is a precise number
+2. Start with an analysis of the problem.
+3. Produce a full solution with numbered steps.
+4. Use LaTeX notation for mathematical expressions.
+5. Explain your reasoning in [brackets].
+6. End with a final numeric answer in \boxed{}.
 """
 
 class AnalysisAgent:
@@ -51,7 +51,7 @@ class AnalysisAgent:
                 "Please provide the analysis:"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
 
 class NextStepAgent:
@@ -81,7 +81,7 @@ class NextStepAgent:
             input_text += "\nStart the solution with Step 1:"
             
         prompt = [HumanMessage(content=input_text)]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
@@ -108,7 +108,7 @@ class CompletionAgent:
                 "Please complete the remaining steps following the same format:"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -137,7 +137,7 @@ class AnalysisPlusStepAgent:
                 "Please provide both the analysis and first step now:"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
 
 class FullSolutionAgent:
@@ -164,5 +164,5 @@ class FullSolutionAgent:
                 "   - End with final answer in \\boxed{}\n\n"
                 "Please solve the problem completely:"))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response

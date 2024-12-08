@@ -1,6 +1,6 @@
 import os
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from datetime import datetime
 from trl import ORPOTrainer, ORPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241207_160232",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -45,8 +45,8 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    dataset = load_dataset("artnoage/orpo", split="train")
-
+    #dataset = load_dataset("local_dataset/20241208_111257", split="train")
+    dataset = load_from_disk("local_dataset/20241208_111257")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -76,7 +76,7 @@ def main():
         per_device_train_batch_size=2,
         gradient_accumulation_steps=16,
         num_train_epochs=2,
-        learning_rate=5e-6,
+        learning_rate=4e-6,
         logging_steps=1,
         optim="adamw_torch",
         seed=42,
