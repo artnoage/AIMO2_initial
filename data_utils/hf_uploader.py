@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from datasets import Dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from huggingface_hub import  login
 import json
 import argparse
@@ -40,8 +41,23 @@ def upload_model_to_hub(model_path, repo_name):
     
     print(f"Loading model and tokenizer from {model_path}...")
     try:
-        # Load model and tokenizer using standard paths
-        model = AutoModelForCausalLM.from_pretrained(model_path)
+        # Load config to check dtype
+        config = AutoConfig.from_pretrained(model_path)
+        
+        # Determine dtype from config or default to float16
+        dtype = torch.float16
+        if hasattr(config, 'torch_dtype'):
+            if config.torch_dtype == 'float32':
+                dtype = torch.float32
+            elif config.torch_dtype == 'bfloat16':
+                dtype = torch.bfloat16
+        
+        # Load model and tokenizer using standard paths, preserving dtype
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=dtype,
+            low_cpu_mem_usage=True
+        )
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         
         # Test tokenizer
