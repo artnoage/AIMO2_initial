@@ -35,6 +35,7 @@ class BenchmarkConfig:
     split_slice: slice = None
     source: str = 'all'
     exclude: str = None
+    seed: int = 42  # Seed for dataset operations
     
     # Execution settings
     max_concurrent: int = 256
@@ -76,6 +77,8 @@ class BenchmarkConfig:
                           help='Filter problems by source (default: all)')
         parser.add_argument('--exclude', type=str,
                           help='JSON file containing IDs to exclude from processing')
+        parser.add_argument('--seed', type=int, default=42,
+                          help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
         parser.add_argument('--max-concurrent', type=int, default=128,
