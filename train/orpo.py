@@ -74,7 +74,7 @@ def main():
         max_length=4096,
         max_prompt_length=2048,
         per_device_train_batch_size=2,
-        gradient_accumulation_steps=16,
+        gradient_accumulation_steps=8,
         num_train_epochs=2,
         learning_rate=4e-6,
         logging_steps=1,
@@ -82,8 +82,7 @@ def main():
         seed=42,
         bf16=True,
         weight_decay=0.1,
-        lr_scheduler_type="linear",
-        warmup_ratio=0.1,
+        lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.1)
 
