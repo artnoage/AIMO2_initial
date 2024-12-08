@@ -74,29 +74,23 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_output_dir = f"train_results/{timestamp}"
     
-    # Calculate total steps for both phases
+    # Training configuration with constant learning rate
     batch_size = 2
     grad_accum = 32
-    effective_batch_size = batch_size * grad_accum
-    steps_per_epoch_phase1 = len(first_dataset) // effective_batch_size
-    steps_per_epoch_phase2 = len(second_dataset) // effective_batch_size
-    total_steps = steps_per_epoch_phase1 + steps_per_epoch_phase2
-
-    # Training configuration with steps-based scheduling
     base_training_args = {
         "max_length": 4096,
         "max_prompt_length": 2048,
         "per_device_train_batch_size": batch_size,
         "gradient_accumulation_steps": grad_accum,
-        "max_steps": total_steps,  # Use steps instead of epochs
-        "learning_rate": 6e-6,
+        "num_train_epochs": 1,
+        "learning_rate": 5e-6,  # Slightly lower constant learning rate
         "logging_steps": 1,
         "optim": "adamw_torch",
         "seed": 42,
         "bf16": True,
         "weight_decay": 0.1,
-        "lr_scheduler_type": "linear",
-        "warmup_steps": total_steps // 10,  # 10% warmup of total steps
+        "lr_scheduler_type": "cosine",  # Cosine with very long period
+        "warmup_ratio": 0.01,  # Minimal warmup
         "beta": 0.1
     }
 
