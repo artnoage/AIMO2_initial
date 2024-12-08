@@ -125,14 +125,22 @@ def main():
     # Continue training from where phase 1 left off
     trainer_phase2.train(resume_from_checkpoint=True)
 
-    # Save the final merged model
+    # Save both merged model and LoRA weights
     models_dir = "models"
+    loras_dir = "loras"
     os.makedirs(models_dir, exist_ok=True)
-    final_output_dir = os.path.join(models_dir, timestamp)
+    os.makedirs(loras_dir, exist_ok=True)
     
-    # Save the merged model using unsloth's method
-    model.save_pretrained_merged(final_output_dir, tokenizer, save_method="merged_16bit")
-    print(f"Final merged model saved to {final_output_dir}")
+    model_output_dir = os.path.join(models_dir, timestamp)
+    lora_output_dir = os.path.join(loras_dir, timestamp)
+    
+    # Save the merged model
+    model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+    print(f"Final merged model saved to {model_output_dir}")
+    
+    # Save the LoRA weights
+    model.save_pretrained_merged(lora_output_dir, tokenizer, save_method="lora")
+    print(f"LoRA weights saved to {lora_output_dir}")
 
 if __name__ == "__main__":
     main()
