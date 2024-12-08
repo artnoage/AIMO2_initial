@@ -1,6 +1,6 @@
 import os
 import torch
-from datasets import load_dataset, Dataset
+from datasets import load_from_disk, Dataset
 from datetime import datetime
 from trl import ORPOTrainer, ORPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
@@ -44,8 +44,8 @@ def main():
         chat_template="mistral",
         map_eos_token=True)
     
-    # Load dataset - adjust path as needed
-    dataset = load_dataset(path="local_dataset/20241208_111257", split="train")
+    # Load dataset from disk
+    dataset = load_from_disk("local_dataset/20241208_111257")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
