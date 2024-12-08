@@ -70,11 +70,7 @@ def main():
     first_dataset = Dataset.from_dict(formatted_dataset[:split_point])
     second_dataset = Dataset.from_dict(formatted_dataset[split_point:])
 
-    # Create timestamped output directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base_output_dir = f"train_results/{timestamp}"
-    
-    # Training configuration with no schedule
+    # Training configuration
     batch_size = 2
     grad_accum = 16
     base_training_args = {
@@ -95,9 +91,10 @@ def main():
 
     # Phase 1: Train on first dataset
     print("Starting Phase 1 training...")
-    phase1_output_dir = os.path.join(base_output_dir, "phase1")
+    timestamp_phase1 = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir_phase1 = f"train_results/{timestamp_phase1}"
     training_args_phase1 = ORPOConfig(
-        output_dir=phase1_output_dir,
+        output_dir=output_dir_phase1,
         **base_training_args
     )
 
@@ -107,33 +104,33 @@ def main():
         train_dataset=first_dataset,
         tokenizer=tokenizer
     )
-    trainer_phase1.train(resume_from_checkpoint=None)
+    trainer_phase1.train()
 
-    # Phase 2: Train on second dataset, continuing from phase 1's progress
+    # Phase 2: Train on second dataset
     print("Starting Phase 2 training...")
-    phase2_output_dir = os.path.join(base_output_dir, "phase2")
+    timestamp_phase2 = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir_phase2 = f"train_results/{timestamp_phase2}"
     training_args_phase2 = ORPOConfig(
-        output_dir=phase2_output_dir,
+        output_dir=output_dir_phase2,
         **base_training_args
     )
 
     trainer_phase2 = ORPOTrainer(
-        model=model,  # Continue with the same model
+        model=model,
         args=training_args_phase2,
         train_dataset=second_dataset,
         tokenizer=tokenizer
     )
-    # Continue training from where phase 1 left off
-    trainer_phase2.train(resume_from_checkpoint=True)
+    trainer_phase2.train()
 
-    # Save both merged model and LoRA weights
+    # Save both merged model and LoRA weights using phase 2 timestamp
     models_dir = "models"
     loras_dir = "loras"
     os.makedirs(models_dir, exist_ok=True)
     os.makedirs(loras_dir, exist_ok=True)
     
-    model_output_dir = os.path.join(models_dir, timestamp)
-    lora_output_dir = os.path.join(loras_dir, timestamp)
+    model_output_dir = os.path.join(models_dir, timestamp_phase2)
+    lora_output_dir = os.path.join(loras_dir, timestamp_phase2)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
