@@ -83,7 +83,7 @@ def main():
         "num_train_epochs": 2,
         "logging_steps": 1,
         "optim": "adafactor",
-        "learning_rate": 5e-6,
+        "learning_rate": 4e-6,
         "lr_scheduler_type": "constant",
         "seed": 42,
         "bf16": True,
