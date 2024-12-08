@@ -64,13 +64,16 @@ def main():
         desc="Applying chat template"
     )
 
-    # Split dataset into four parts for sequential training
+    # Split dataset into two parts and duplicate each to create four datasets
     dataset_size = len(formatted_dataset)
-    chunk_size = dataset_size // 4
-    mini_datasets = [
+    chunk_size = dataset_size // 2
+    # Create two datasets first
+    base_datasets = [
         Dataset.from_dict(formatted_dataset[i:i+chunk_size])
         for i in range(0, dataset_size, chunk_size)
     ]
+    # Duplicate each dataset to create four total datasets
+    mini_datasets = base_datasets + base_datasets
 
     # Training configuration
     batch_size = 2
@@ -91,11 +94,10 @@ def main():
         "weight_decay": 0.1
     }
 
-    # Train on each mini dataset twice
+    # Train on each mini dataset sequentially
     timestamp = None  # Will store the final timestamp
-    for iteration in range(2):  # Repeat twice
-        for idx, mini_dataset in enumerate(mini_datasets):
-            print(f"Starting training iteration {iteration+1}, chunk {idx+1}/4...")
+    for idx, mini_dataset in enumerate(mini_datasets):
+        print(f"Starting training on chunk {idx+1}/4 (Dataset {(idx % 2) + 1}, Pass {(idx // 2) + 1})...")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_dir = f"train_results/{timestamp}"
             
