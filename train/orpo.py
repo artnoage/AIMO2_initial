@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241207_160232",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("local_dataset/20241208_111257")
+    dataset = load_from_disk("local_datasets/20241208_134210")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
