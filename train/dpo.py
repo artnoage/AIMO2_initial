@@ -20,7 +20,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241206_112933",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -46,11 +46,11 @@ def main():
         tokenizer,
         chat_template="mistral",
         map_eos_token=True)
-    dataset = load_dataset(path="artnoage/orpo2", split="train")
+    dataset = load_dataset(path="artnoage/orpo", split="train")
 
 
     def formatting_func(example):
-        example["prompt"]=tokenizer.apply_chat_template([example["prompt"]],tokenize=False, add_generation_prompt=True)
+        example["prompt"]=tokenizer.apply_chat_template([example["prompt"]],tokenize=False)
         example["chosen"]=tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
         example["rejected"]=tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
         example["chosen"] = _strip_prefix(example["chosen"], "<s>")
@@ -75,11 +75,11 @@ def main():
     print(f"Maximum weight value before training: {max_weight}")
     training_args = DPOConfig(
          max_length=4096,
-        max_prompt_length=1024,
+        max_prompt_length=2048,
         per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 32,
+        gradient_accumulation_steps = 16,
         num_train_epochs = 2,
-        learning_rate = 4e-6,
+        learning_rate = 7e-6,
         logging_steps = 1,
         optim = "adamw_torch",
         seed=42,
