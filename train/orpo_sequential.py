@@ -64,11 +64,13 @@ def main():
         desc="Applying chat template"
     )
 
-    # Split dataset into two parts for sequential training
+    # Split dataset into four parts for sequential training
     dataset_size = len(formatted_dataset)
-    split_point = dataset_size // 2
-    first_dataset = Dataset.from_dict(formatted_dataset[:split_point])
-    second_dataset = Dataset.from_dict(formatted_dataset[split_point:])
+    chunk_size = dataset_size // 4
+    mini_datasets = [
+        Dataset.from_dict(formatted_dataset[i:i+chunk_size])
+        for i in range(0, dataset_size, chunk_size)
+    ]
 
     # Training configuration
     batch_size = 2
@@ -89,41 +91,27 @@ def main():
         "weight_decay": 0.1
     }
 
-    # Phase 1: Train on first dataset
-    print("Starting Phase 1 training...")
-    timestamp_phase1 = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir_phase1 = f"train_results/{timestamp_phase1}"
-    training_args_phase1 = ORPOConfig(
-        output_dir=output_dir_phase1,
-        **base_training_args
-    )
+    # Train on each mini dataset twice
+    for iteration in range(2):  # Repeat twice
+        for idx, mini_dataset in enumerate(mini_datasets):
+            print(f"Starting training iteration {iteration+1}, chunk {idx+1}/4...")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_dir = f"train_results/{timestamp}"
+            
+            training_args = ORPOConfig(
+                output_dir=output_dir,
+                **base_training_args
+            )
 
-    trainer_phase1 = ORPOTrainer(
-        model=model,
-        args=training_args_phase1,
-        train_dataset=first_dataset,
-        tokenizer=tokenizer
-    )
-    trainer_phase1.train()
+            trainer = ORPOTrainer(
+                model=model,
+                args=training_args,
+                train_dataset=mini_dataset,
+                tokenizer=tokenizer
+            )
+            trainer.train()
 
-    # Phase 2: Train on second dataset
-    print("Starting Phase 2 training...")
-    timestamp_phase2 = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir_phase2 = f"train_results/{timestamp_phase2}"
-    training_args_phase2 = ORPOConfig(
-        output_dir=output_dir_phase2,
-        **base_training_args
-    )
-
-    trainer_phase2 = ORPOTrainer(
-        model=model,
-        args=training_args_phase2,
-        train_dataset=second_dataset,
-        tokenizer=tokenizer
-    )
-    trainer_phase2.train()
-
-    # Save both merged model and LoRA weights using phase 2 timestamp
+    # Save merged model and LoRA weights using final timestamp
     models_dir = "models"
     loras_dir = "loras"
     os.makedirs(models_dir, exist_ok=True)
