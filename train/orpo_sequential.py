@@ -83,13 +83,15 @@ def main():
         "per_device_train_batch_size": batch_size,
         "gradient_accumulation_steps": grad_accum,
         "num_train_epochs": 2,
-        "learning_rate": 4e-6,
         "logging_steps": 1,
-        "optim": "adamw_torch",
+        "optim": "adafactor",
         "seed": 42,
         "bf16": True,
-        "weight_decay": 0.1,
-        "beta": 0.1
+        "beta": 0.1,
+        "adafactor": True,
+        "scale_parameter": True,
+        "relative_step": True,
+        "warmup_init": True
     }
 
     # Phase 1: Train on first dataset
