@@ -195,14 +195,17 @@ async def run_benchmark(
             username = whoami()["name"]
             dataset = load_dataset(f"{username}/Numina", split=config.split)
             
-        # Shuffle dataset with seed if specified
-        if config.seed is not None:
-            dataset = dataset.shuffle(seed=config.seed)
-        
+        # First sort by ID to ensure consistent ordering
+        dataset = dataset.sort('id')
+            
         # Filter out excluded problems
         if excluded_ids:
             dataset = dataset.filter(lambda x: x['id'] not in excluded_ids)
             print(f"Filtered dataset to exclude {len(excluded_ids)} problems")
+            
+        # Shuffle dataset with seed if specified
+        if config.seed is not None:
+            dataset = dataset.shuffle(seed=config.seed)
             
         if config.split_slice:
             dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
