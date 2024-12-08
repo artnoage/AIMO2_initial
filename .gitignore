@@ -19,3 +19,4 @@ train_results/
 models/
 _unsloth_sentencepiece_temp
 loras/
+local_datasets/
