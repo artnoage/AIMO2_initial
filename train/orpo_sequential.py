@@ -74,13 +74,21 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_output_dir = f"train_results/{timestamp}"
     
-    # Training configuration for both phases
+    # Calculate total steps for both phases
+    batch_size = 2
+    grad_accum = 32
+    effective_batch_size = batch_size * grad_accum
+    steps_per_epoch_phase1 = len(first_dataset) // effective_batch_size
+    steps_per_epoch_phase2 = len(second_dataset) // effective_batch_size
+    total_steps = steps_per_epoch_phase1 + steps_per_epoch_phase2
+
+    # Training configuration with steps-based scheduling
     base_training_args = {
         "max_length": 4096,
         "max_prompt_length": 2048,
-        "per_device_train_batch_size": 2,
-        "gradient_accumulation_steps": 32,
-        "num_train_epochs": 1,  # Reduced epochs since we're training twice
+        "per_device_train_batch_size": batch_size,
+        "gradient_accumulation_steps": grad_accum,
+        "max_steps": total_steps,  # Use steps instead of epochs
         "learning_rate": 6e-6,
         "logging_steps": 1,
         "optim": "adamw_torch",
@@ -88,7 +96,7 @@ def main():
         "bf16": True,
         "weight_decay": 0.1,
         "lr_scheduler_type": "linear",
-        "warmup_ratio": 0.1,
+        "warmup_steps": total_steps // 10,  # 10% warmup of total steps
         "beta": 0.1
     }
 
@@ -106,9 +114,9 @@ def main():
         train_dataset=first_dataset,
         tokenizer=tokenizer
     )
-    trainer_phase1.train()
+    trainer_phase1.train(resume_from_checkpoint=None)
 
-    # Phase 2: Train on second dataset
+    # Phase 2: Train on second dataset, continuing from phase 1's progress
     print("Starting Phase 2 training...")
     phase2_output_dir = os.path.join(base_output_dir, "phase2")
     training_args_phase2 = ORPOConfig(
@@ -122,7 +130,8 @@ def main():
         train_dataset=second_dataset,
         tokenizer=tokenizer
     )
-    trainer_phase2.train()
+    # Continue training from where phase 1 left off
+    trainer_phase2.train(resume_from_checkpoint=True)
 
     # Save the final merged model
     models_dir = "models"
