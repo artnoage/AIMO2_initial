@@ -188,12 +188,16 @@ async def run_benchmark(
 
     try:
         if config.dataset == 'original':
-            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split, seed=config.seed)
+            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
         elif config.dataset == 'aime':
-            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split, seed=config.seed)
+            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
         else:  # filtered
             username = whoami()["name"]
-            dataset = load_dataset(f"{username}/Numina", split=config.split, seed=config.seed)
+            dataset = load_dataset(f"{username}/Numina", split=config.split)
+            
+        # Shuffle dataset with seed if specified
+        if config.seed is not None:
+            dataset = dataset.shuffle(seed=config.seed)
         
         # Filter out excluded problems
         if excluded_ids:
