@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241206_112933",
+        model_name="artnoage/metastral",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -45,10 +45,10 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    dataset = load_dataset("artnoage/orpo2", split="train")
+    dataset = load_dataset("artnoage/orpo", split="train")
 
     def formatting_func(example):
-        example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False, add_generation_prompt=True)
+        example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
         example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
         example["chosen"] = _strip_prefix(example["chosen"], "<s>")
@@ -68,18 +68,15 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{timestamp}"
 
-    print(formatted_dataset[0]["prompt"])
-    print(formatted_dataset[0]["chosen"])
-    print(formatted_dataset[0]["rejected"])
 
     # ORPO specific training arguments
     training_args = ORPOConfig(
         max_length=4096,
-        max_prompt_length=1024,
+        max_prompt_length=2048,
         per_device_train_batch_size=2,
-        gradient_accumulation_steps=32,
+        gradient_accumulation_steps=16,
         num_train_epochs=2,
-        learning_rate=4e-6,
+        learning_rate=5e-6,
         logging_steps=1,
         optim="adamw_torch",
         seed=42,
