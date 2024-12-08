@@ -45,7 +45,7 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    dataset = load_dataset("local_dataset/20241208_111257", split="train")
+    dataset = load_dataset(path="local_dataset/20241208_111257", split="train")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
