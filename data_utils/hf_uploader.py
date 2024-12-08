@@ -70,17 +70,23 @@ def main():
                       help='Type of content to upload (dataset or model)')
     parser.add_argument('--path', required=True,
                       help='Path to the dataset JSON file or model directory')
-    parser.add_argument('--repo_name', required=True,
+    parser.add_argument('--repo_name', required=False,
                       help='Name for the HuggingFace repository (format: username/repo-name)')
+    parser.add_argument('--only-data', action='store_true',
+                      help='Only create local dataset without uploading to hub')
     args = parser.parse_args()
     
     if args.type == 'dataset':
-        # Handle dataset upload
+        # Handle dataset
         data = load_json_dataset(args.path)
         dataset = convert_to_hf_dataset(data)
-        upload_dataset_to_hub(dataset, args.repo_name)
         print(f"Dataset saved locally in Arrow format at 'local_dataset'")
-        print(f"Dataset successfully uploaded to {args.repo_name}")
+        
+        if not args.only_data:
+            if not args.repo_name:
+                raise ValueError("--repo_name is required when not using --only-data")
+            upload_dataset_to_hub(dataset, args.repo_name)
+            print(f"Dataset successfully uploaded to {args.repo_name}")
     
     else:  # model
         # Handle model upload
