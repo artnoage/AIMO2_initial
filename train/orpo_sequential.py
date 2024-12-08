@@ -74,7 +74,7 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_output_dir = f"train_results/{timestamp}"
     
-    # Training configuration with constant learning rate
+    # Training configuration with no schedule
     batch_size = 2
     grad_accum = 32
     base_training_args = {
@@ -83,14 +83,12 @@ def main():
         "per_device_train_batch_size": batch_size,
         "gradient_accumulation_steps": grad_accum,
         "num_train_epochs": 1,
-        "learning_rate": 5e-6,  # Slightly lower constant learning rate
+        "learning_rate": 5e-6,
         "logging_steps": 1,
         "optim": "adamw_torch",
         "seed": 42,
         "bf16": True,
         "weight_decay": 0.1,
-        "lr_scheduler_type": "cosine",  # Cosine with very long period
-        "warmup_ratio": 0.01,  # Minimal warmup
         "beta": 0.1
     }
 
