@@ -77,13 +77,13 @@ def main():
 
     # Training configuration
     batch_size = 2
-    grad_accum = 16
+    grad_accum = 8
     base_training_args = {
         "max_length": 4096,
         "max_prompt_length": 2048,
         "per_device_train_batch_size": batch_size,
         "gradient_accumulation_steps": grad_accum,
-        "num_train_epochs": 2,
+        "num_train_epochs": 1,
         "logging_steps": 1,
         "optim": "adafactor",
         "learning_rate": 4e-6,
