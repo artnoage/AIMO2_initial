@@ -92,6 +92,7 @@ def main():
     }
 
     # Train on each mini dataset twice
+    timestamp = None  # Will store the final timestamp
     for iteration in range(2):  # Repeat twice
         for idx, mini_dataset in enumerate(mini_datasets):
             print(f"Starting training iteration {iteration+1}, chunk {idx+1}/4...")
@@ -117,8 +118,8 @@ def main():
     os.makedirs(models_dir, exist_ok=True)
     os.makedirs(loras_dir, exist_ok=True)
     
-    model_output_dir = os.path.join(models_dir, timestamp_phase2)
-    lora_output_dir = os.path.join(loras_dir, timestamp_phase2)
+    model_output_dir = os.path.join(models_dir, timestamp)
+    lora_output_dir = os.path.join(loras_dir, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
