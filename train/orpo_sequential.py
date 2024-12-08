@@ -77,9 +77,9 @@ def main():
     # Training configuration for both phases
     base_training_args = {
         "max_length": 4096,
-        "max_prompt_length": 1024,
+        "max_prompt_length": 2048,
         "per_device_train_batch_size": 2,
-        "gradient_accumulation_steps": 16,
+        "gradient_accumulation_steps": 32,
         "num_train_epochs": 1,  # Reduced epochs since we're training twice
         "learning_rate": 6e-6,
         "logging_steps": 1,
