@@ -88,10 +88,7 @@ def main():
         "seed": 42,
         "bf16": True,
         "beta": 0.1,
-        "adafactor": True,
-        "scale_parameter": True,
-        "relative_step": True,
-        "warmup_init": True
+        "weight_decay": 0.1
     }
 
     # Phase 1: Train on first dataset
