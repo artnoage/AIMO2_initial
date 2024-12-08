@@ -98,21 +98,21 @@ def main():
     timestamp = None  # Will store the final timestamp
     for idx, mini_dataset in enumerate(mini_datasets):
         print(f"Starting training on chunk {idx+1}/4 (Dataset {(idx % 2) + 1}, Pass {(idx // 2) + 1})...")
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = f"train_results/{timestamp}"
-            
-            training_args = ORPOConfig(
-                output_dir=output_dir,
-                **base_training_args
-            )
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = f"train_results/{timestamp}"
+        
+        training_args = ORPOConfig(
+            output_dir=output_dir,
+            **base_training_args
+        )
 
-            trainer = ORPOTrainer(
-                model=model,
-                args=training_args,
-                train_dataset=mini_dataset,
-                tokenizer=tokenizer
-            )
-            trainer.train()
+        trainer = ORPOTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=mini_dataset,
+            tokenizer=tokenizer
+        )
+        trainer.train()
 
     # Save merged model and LoRA weights using final timestamp
     models_dir = "models"
