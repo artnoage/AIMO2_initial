@@ -69,27 +69,17 @@ def is_numeric_answer(answer: str) -> bool:
         
     # Clean the answer string
     clean_answer = answer.strip()
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
+    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    clean_answer = clean_answer.replace('\\,', '')
     
     try:
-        # First try direct sympy parsing in case it's already in a good format
-        try:
-            expr = sympy.sympify(clean_answer)
-            float(expr.evalf())
-            return True
-        except (sympy.SympifyError, TypeError, ValueError):
-            pass
-            
-        # If direct parsing fails, try latex2sympy
-        try:
-            latex_expr = latex2sympy(clean_answer)
-            expr = sympy.sympify(latex_expr)
-            float(expr.evalf())
-            return True
-        except Exception:
-            # latex2sympy failed - this likely means it's not a numeric expression
-            return False
-            
+        latex_expr = latex2sympy(clean_answer)
+        expr = sympy.sympify(latex_expr)
+        float(expr.evalf())
+        return True
     except Exception:
+        # latex2sympy failed - this likely means it's not a numeric expression
         return False
 
 def contains_non_latin(text: str) -> bool:
