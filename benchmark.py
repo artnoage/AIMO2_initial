@@ -21,7 +21,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
-        solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        solver = get_model(ModelOption[config.solver], temp=config.temperature, lora_dir=config.lora_dir)
         solution_agent = FullSolutionAgent(solver)
         solutions = []
         correct_count = 0
@@ -32,8 +32,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 current_solution = await solution_agent.generate(example["problem"])
                 
                 # Create and use appropriate verifier
-                verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-                second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
+                verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp, lora_dir=config.lora_dir)
+                second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp, lora_dir=config.lora_dir)
                 verifier = create_verifier(
                     config.verification_type,
                     verifier_model=verifier_model,
