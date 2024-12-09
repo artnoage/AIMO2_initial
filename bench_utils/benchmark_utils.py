@@ -102,13 +102,9 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
         # Convert to sympy expression and evaluate
         expr = sympy.sympify(latex_expr)
         result = float(expr.evalf())
-        if debug:
-            error_msg = f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}"
-        return result, error_msg
+        return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
     except (sympy.SympifyError, TypeError, ValueError) as e:
-        if debug:
-            error_msg = f"Sympy error: {str(e)} on input: {clean_answer}"
-        return None, error_msg
+        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None)
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
