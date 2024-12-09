@@ -32,32 +32,25 @@ class NumericVerifier(BaseVerifier):
             return 0, 1, None
             
 
-        # Try to convert both answers to float with debug info
+        # Extract and convert both answers to numeric values
         numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
+        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
+
+        # Handle cases where either answer couldn't be parsed
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
-            
-        # First try to convert the correct answer
-        correct_answer_num, correct_error = extract_numeric_answer(correct_answer, debug=True)
-        if correct_answer_num is not None:
-            try:
-                correct_float = float(correct_answer.strip())
-            except (ValueError, TypeError, AttributeError) as e:
-                # If correct answer isn't numeric, return the raw answer string and mark as wrong
-                return 0, 1, f"{model_answer} (Error: Correct answer parse failed - {str(e)})"
-        else:
-            correct_float = correct_answer_num
+        if correct_numeric is None:
+            return 0, 1, f"{model_answer} (Error: Correct answer parse failed - {correct_error})"
 
-        # Then try to convert the numeric answer
-        if not isinstance(numeric_answer, (int, float)):
-            # If model answer isn't numeric, return it as string and mark as wrong
-            return 0, 1, f"{model_answer} (Error: Not a number - {model_error})"
-
-        # Only compare if both are valid numbers
-        is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
+        # Compare the numeric values
+        is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
+        
+        # Add debug info to displayed answer if incorrect
+        display_answer = model_answer
         if not is_correct and model_error:
-            model_answer = f"{model_answer} (Debug: {model_error})"
-        return 1 if is_correct else 0, 1, model_answer + "and the numeric" +numeric_answer
+            display_answer = f"{model_answer} (Debug: {model_error})"
+            
+        return 1 if is_correct else 0, 1, display_answer
                 
  
 
