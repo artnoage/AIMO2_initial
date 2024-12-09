@@ -69,7 +69,7 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
         return wrapper
     return decorator
 
-def extract_numeric_answer(solution: str) -> Optional[float]:
+def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
     """
     Extract numeric answer from a solution string.
     Looks for a number inside a LaTeX boxed environment.
@@ -94,10 +94,17 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     # Remove \\, and replace double backslashes with single ones
     clean_answer_no_text = clean_answer_no_text.replace('\\\\,', '')
     clean_answer_no_text = clean_answer_no_text.replace('\\\\', '\\')
+    error_msg = None
     try:
         expr = sympy.sympify(clean_answer_no_text)
-        return float(expr.evalf())
-    except (sympy.SympifyError, TypeError, ValueError):
+        result = float(expr.evalf())
+        if debug:
+            error_msg = f"Sympy success: {clean_answer_no_text} -> {expr} -> {result}"
+        return result, error_msg
+    except (sympy.SympifyError, TypeError, ValueError) as e:
+        if debug:
+            error_msg = f"Sympy error: {str(e)} on input: {clean_answer_no_text}"
+        
         # If sympy fails, fall back to original parsing method
         clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
         clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
@@ -109,10 +116,18 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
             # Handle fractions like "1/2"
             if '/' in clean_answer:
                 num, denom = clean_answer.split('/')
-                return float(num.strip()) / float(denom.strip())
-            return float(clean_answer)
-        except (ValueError, ZeroDivisionError):
-            return None
+                result = float(num.strip()) / float(denom.strip())
+                if debug:
+                    error_msg += f"\nDirect parsing success: {clean_answer} -> {result}"
+                return result, error_msg
+            result = float(clean_answer)
+            if debug:
+                error_msg += f"\nDirect parsing success: {clean_answer} -> {result}"
+            return result, error_msg
+        except (ValueError, ZeroDivisionError) as e:
+            if debug:
+                error_msg += f"\nDirect parsing error: {str(e)} on input: {clean_answer}"
+            return None, error_msg
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""

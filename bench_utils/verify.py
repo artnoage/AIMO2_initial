@@ -32,25 +32,31 @@ class NumericVerifier(BaseVerifier):
             return 0, 1, None
             
         try:
-            # Try to convert both answers to float
-            numeric_answer = extract_numeric_answer(solution)
+            # Try to convert both answers to float with debug info
+            numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
             if numeric_answer is None:
-                return 0, 1, model_answer
+                return 0, 1, f"{model_answer} (Error: {model_error})"
                 
             # First try to convert the correct answer
-            try:
-                correct_float = float(correct_answer.strip())
-            except (ValueError, TypeError, AttributeError):
-                # If correct answer isn't numeric, return the raw answer string and mark as wrong
-                return 0, 1, model_answer
+            correct_answer_num, correct_error = extract_numeric_answer(correct_answer, debug=True)
+            if correct_answer_num is None:
+                try:
+                    correct_float = float(correct_answer.strip())
+                except (ValueError, TypeError, AttributeError) as e:
+                    # If correct answer isn't numeric, return the raw answer string and mark as wrong
+                    return 0, 1, f"{model_answer} (Error: Correct answer parse failed - {str(e)})"
+            else:
+                correct_float = correct_answer_num
 
             # Then try to convert the numeric answer
             if not isinstance(numeric_answer, (int, float)):
                 # If model answer isn't numeric, return it as string and mark as wrong
-                return 0, 1, model_answer
+                return 0, 1, f"{model_answer} (Error: Not a number - {model_error})"
 
             # Only compare if both are valid numbers
             is_correct = abs(float(numeric_answer) - correct_float) <= self.tolerance
+            if not is_correct and model_error:
+                model_answer = f"{model_answer} (Debug: {model_error})"
             return 1 if is_correct else 0, 1, model_answer
                 
         except Exception as e:
