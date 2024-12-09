@@ -62,12 +62,24 @@ def contains_http(text: str) -> bool:
 
 def is_numeric_answer(answer: str) -> bool:
     """Check if the answer represents a number (integer or decimal)"""
-    # Remove LaTeX formatting
-    clean_answer = answer.replace('\\boxed{', '').replace('}', '').strip()
+    # Clean the answer string
+    clean_answer = answer.strip()
+    if not clean_answer:
+        return False
+        
+    # Remove any LaTeX formatting that might interfere with number parsing
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
+    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
+    clean_answer = clean_answer.replace('\\', '')
+    clean_answer = clean_answer.strip()
+    
     try:
-        float(clean_answer)
-        return True
-    except ValueError:
+        # Handle fractions like "1/2"
+        if '/' in clean_answer:
+            num, denom = clean_answer.split('/')
+            return float(num.strip()) / float(denom.strip()) is not None
+        return float(clean_answer) is not None
+    except (ValueError, ZeroDivisionError):
         return False
 
 def contains_non_latin(text: str) -> bool:
