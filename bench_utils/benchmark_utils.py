@@ -91,6 +91,8 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         
     # Remove \text{...} content and try sympy first
     clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    # Replace double backslashes with single ones
+    clean_answer_no_text = clean_answer_no_text.replace('\\\\', '\\')
     try:
         expr = sympy.sympify(clean_answer_no_text)
         return float(expr.evalf())
@@ -98,7 +100,8 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         # If sympy fails, fall back to original parsing method
         clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
         clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-        clean_answer = clean_answer.replace('\\', '')
+        clean_answer = clean_answer.replace('\\\\', '\\')  # Replace double backslashes first
+        clean_answer = clean_answer.replace('\\', '')  # Then remove remaining backslashes
         
         try:
             # Handle fractions like "1/2"
