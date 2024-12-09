@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from argparse import ArgumentParser
 from enum import Enum
+from typing import Optional, Dict
+import json
 
 class ModelOption(Enum):
     """Enum class representing different model options for chat completion.
