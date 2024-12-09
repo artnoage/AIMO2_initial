@@ -2,9 +2,11 @@ import re
 import os
 import asyncio
 import json
+import signal
 from glob import glob
 import sympy
 from functools import wraps
+from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from pathlib import Path
@@ -16,6 +18,19 @@ from bench_utils.benchmark_config import BenchmarkConfig, ModelOption
 from bench_utils.progress_tracker import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
+
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
 
 def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] = None):
     """
@@ -87,12 +102,15 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
-        # Parse LaTeX to sympy-compatible format
-        latex_expr = latex2sympy(clean_answer)
-        # Convert to sympy expression and evaluate
-        expr = sympy.sympify(latex_expr)
-        result = float(expr.evalf())
-        return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
+        with time_limit(10):  # 10 second timeout
+            # Parse LaTeX to sympy-compatible format
+            latex_expr = latex2sympy(clean_answer)
+            # Convert to sympy expression and evaluate
+            expr = sympy.sympify(latex_expr)
+            result = float(expr.evalf())
+            return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
+    except TimeoutException:
+        return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
     except (sympy.SympifyError, TypeError, ValueError) as e:
         return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None)
 
