@@ -77,25 +77,15 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     Returns float if found, None otherwise.
     """
     if not answer:
-        return None, "No answer provided" if debug else None
+        return None, "No answer provided" if debug else (None, None)
         
     # Clean the answer string
     clean_answer = answer.strip()
-    print("clean 1",clean_answer)
-    if not clean_answer:
-        return None, "Empty answer after cleaning" if debug else None
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
-    # Clean LaTeX commands and try sympy first
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    # Normalize backslashes - convert double to single
-    #clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
-    # Remove LaTeX spacing commands
     clean_answer = clean_answer.replace('\\,', '')
-    print("clean 2",clean_answer)
-    for char in clean_answer:
-        print(f"'{char}'")
-    print(repr(clean_answer))
-    error_msg = None
+    if not clean_answer:
+        return None, "Empty answer after cleaning" if debug else (None, None)
     try:
         # Parse LaTeX to sympy-compatible format
         latex_expr = latex2sympy(clean_answer)
