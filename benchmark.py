@@ -142,11 +142,17 @@ async def main():
                 print(f"Warning: Failed to load latest LoRA adapter: {e}")
                 print("Continuing benchmark without LoRA adapter...")
     
-    if config.lora_dict:
-        for lora_name, lora_path in config.lora_dict.items():
-            try:
-                print(f"Loading LoRA adapter {lora_name} from: {lora_path}")
-                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+    if config.lora_dir:
+        lora_dir = Path(config.lora_dir)
+        if not lora_dir.exists():
+            print(f"Warning: LoRA directory {lora_dir} does not exist")
+        else:
+            for lora_path in lora_dir.glob('*'):
+                if lora_path.is_dir():
+                    try:
+                        lora_name = lora_path.name
+                        print(f"Loading LoRA adapter {lora_name} from: {lora_path}")
+                        await load_lora_adapter(lora_name, str(lora_path.absolute()))
             except Exception as e:
                 print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
     
