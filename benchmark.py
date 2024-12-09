@@ -114,7 +114,10 @@ async def load_lora_adapter(lora_name: str, lora_path: str):
             response_text = await response.text()
             print(f"Server response: {response_text}")
             if response.status != 200:
-                raise Exception(f"Failed to load LoRA adapter: {response_text}")
+                if "already been loaded" in response_text:
+                    print("LoRA adapter already loaded, continuing...")
+                else:
+                    raise Exception(f"Failed to load LoRA adapter: {response_text}")
 
 def get_latest_lora_path():
     """Get the path of the most recent lora folder"""
