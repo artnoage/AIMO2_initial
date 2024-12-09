@@ -95,6 +95,8 @@ def main():
                        help='Only keep problems where the answer is a number')
     parser.add_argument('--exclude', type=str,
                        help='JSON file containing problems to exclude')
+    parser.add_argument('--keep-multiple-choice', action='store_false', default=True,
+                       help='Keep multiple choice problems (default: exclude them)')
     args = parser.parse_args()
 
     # Suppress warnings
@@ -127,6 +129,13 @@ def main():
     if excluded_problems:
         dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
         print(f"After excluding problems: {len(dataset)}")
+
+    # Filter out multiple choice problems unless explicitly kept
+    if args.keep_multiple_choice:
+        original_size = len(dataset)
+        dataset = dataset.filter(lambda x: not is_multiple_choice(x['problem']))
+        removed_count = original_size - len(dataset)
+        print(f"Removed {removed_count} multiple choice problems")
 
     # Initialize detailed statistics
     stats = {
