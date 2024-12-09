@@ -153,8 +153,8 @@ async def main():
                         lora_name = lora_path.name
                         print(f"Loading LoRA adapter {lora_name} from: {lora_path}")
                         await load_lora_adapter(lora_name, str(lora_path.absolute()))
-            except Exception as e:
-                print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
+                    except Exception as e:
+                        print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
     
     await run_benchmark(
         config=config,
