@@ -56,6 +56,10 @@ class BenchmarkConfig:
     create_dataset: bool = False  # Whether to create a HuggingFace dataset
     upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
     
+    # LoRA settings
+    upload_lora: bool = False  # Whether to use latest LoRA adapter
+    lora_dict: Optional[Dict[str, str]] = None  # Dictionary of LoRA name to path mappings
+    
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
         parser = ArgumentParser(description=description)
@@ -115,6 +119,12 @@ class BenchmarkConfig:
                           help='Create a HuggingFace dataset from results')
         parser.add_argument('--upload-dataset', action='store_true',
                           help='Upload the created dataset to HuggingFace Hub')
+        
+        # LoRA arguments
+        parser.add_argument('--upload-lora', action='store_true',
+                          help='Use latest LoRA adapter from loras directory')
+        parser.add_argument('--lora-dict', type=json.loads,
+                          help='JSON dictionary of LoRA name to path mappings')
                           
         args = parser.parse_args()
         return cls(**vars(args))

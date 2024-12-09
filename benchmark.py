@@ -130,16 +130,25 @@ async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     
-    # Get latest lora path
-    lora_path = get_latest_lora_path()
-    if lora_path:
-        try:
-            print(f"Using LoRA adapter from: {lora_path}")
-            lora_name = Path(lora_path).name
-            await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
-        except Exception as e:
-            print(f"Warning: Failed to load LoRA adapter: {e}")
-            print("Continuing benchmark without LoRA adapter...")
+    # Handle LoRA loading based on config
+    if config.upload_lora:
+        lora_path = get_latest_lora_path()
+        if lora_path:
+            try:
+                print(f"Using latest LoRA adapter from: {lora_path}")
+                lora_name = Path(lora_path).name
+                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+            except Exception as e:
+                print(f"Warning: Failed to load latest LoRA adapter: {e}")
+                print("Continuing benchmark without LoRA adapter...")
+    
+    if config.lora_dict:
+        for lora_name, lora_path in config.lora_dict.items():
+            try:
+                print(f"Loading LoRA adapter {lora_name} from: {lora_path}")
+                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+            except Exception as e:
+                print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
     
     await run_benchmark(
         config=config,
