@@ -21,15 +21,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
-        model_path = None
+        model_name = None
         if config.lora_dir:
-            model_path = config.lora_dir
+            model_name = Path(config.lora_dir).name
         elif config.upload_lora:
             latest_lora = get_latest_lora_path()
             if latest_lora:
-                model_path = latest_lora
+                model_name = Path(latest_lora).name
                 
-        solver = get_model(ModelOption[config.solver], temp=config.temperature, model_path=model_path)
+        solver = get_model(ModelOption[config.solver], temp=config.temperature, model_name=model_name)
         solution_agent = FullSolutionAgent(solver)
         solutions = []
         correct_count = 0
@@ -41,9 +41,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Create and use appropriate verifier
                 verifier_model = None if config.verification_type == 'numeric' else get_model(
-                    ModelOption[config.verifier], temp=config.verifier_temp, model_path=model_path)
+                    ModelOption[config.verifier], temp=config.verifier_temp, model_name=model_name)
                 second_verifier_model = None if config.verification_type != 'solution' else get_model(
-                    ModelOption[config.second_verifier], temp=config.verifier_temp, model_path=model_path)
+                    ModelOption[config.second_verifier], temp=config.verifier_temp, model_name=model_name)
                 verifier = create_verifier(
                     config.verification_type,
                     verifier_model=verifier_model,
