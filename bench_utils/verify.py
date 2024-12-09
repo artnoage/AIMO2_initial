@@ -30,12 +30,12 @@ class NumericVerifier(BaseVerifier):
         model_answer = extract_answer_from_solution(solution)
         if model_answer is None:
             return 0, 1, None
-            
 
+        
         # Extract and convert both answers to numeric values
         numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
         correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
-
+        print("fuck", numeric_answer)
         # Handle cases where either answer couldn't be parsed
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
@@ -44,7 +44,7 @@ class NumericVerifier(BaseVerifier):
 
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
-        
+        print(numeric_answer,correct_numeric, is_correct)
         # Add debug info to displayed answer if incorrect
         display_answer = model_answer
         if not is_correct and model_error:
