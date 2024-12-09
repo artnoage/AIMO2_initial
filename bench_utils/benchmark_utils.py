@@ -94,25 +94,19 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         expr = sympy.sympify(clean_answer)
         return float(expr.evalf())
     except (sympy.SympifyError, TypeError, ValueError):
-        # If raw sympy fails, clean LaTeX and try again
+        # If sympy fails, fall back to original parsing method
         clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
         clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
         clean_answer = clean_answer.replace('\\', '')
         
         try:
-            # Try sympy again with cleaned answer
-            expr = sympy.sympify(clean_answer)
-            return float(expr.evalf())
-        except (sympy.SympifyError, TypeError, ValueError):
-            # If sympy still fails, try direct float conversion
-            try:
-                # Handle fractions like "1/2"
-                if '/' in clean_answer:
-                    num, denom = clean_answer.split('/')
-                    return float(num.strip()) / float(denom.strip())
-                return float(clean_answer)
-            except (ValueError, ZeroDivisionError):
-                return None
+            # Handle fractions like "1/2"
+            if '/' in clean_answer:
+                num, denom = clean_answer.split('/')
+                return float(num.strip()) / float(denom.strip())
+            return float(clean_answer)
+        except (ValueError, ZeroDivisionError):
+            return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
