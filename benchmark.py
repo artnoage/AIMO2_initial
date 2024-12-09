@@ -2,6 +2,8 @@ import os
 import asyncio
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
+from glob import glob
+from pathlib import Path
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
@@ -98,9 +100,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Error processing example {str(running_id)}: {e}")
         return None
 
+def get_latest_lora_path():
+    """Get the path of the most recent lora folder"""
+    lora_folders = glob('loras/*/')
+    if not lora_folders:
+        return None
+    return max(lora_folders, key=os.path.getctime)
+
 async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
+    
+    # Get latest lora path
+    lora_path = get_latest_lora_path()
+    if lora_path:
+        print(f"Using LoRA adapter from: {lora_path}")
+        os.environ["VLLM_ALLOW_RUNTIME_LORA_UPDATING"] = "True"
+        solver = get_model(ModelOption[config.solver], temp=config.temperature, enable_lora=True)
+        
+        # Load the LoRA adapter
+        lora_name = Path(lora_path).name
+        solver.load_lora_adapter(lora_name, lora_path)
     
     await run_benchmark(
         config=config,
