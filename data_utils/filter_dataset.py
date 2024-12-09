@@ -4,6 +4,8 @@ import argparse
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
 import re 
+import sympy
+from latex2sympy2 import latex2sympy
 from typing import Optional
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
@@ -61,25 +63,18 @@ def contains_http(text: str) -> bool:
     return 'http' in text.lower()
 
 def is_numeric_answer(answer: str) -> bool:
-    """Check if the answer represents a number (integer or decimal)"""
-    # Clean the answer string
-    clean_answer = answer.strip()
-    if not clean_answer:
+    """Check if the answer represents a number using sympy parsing"""
+    if not answer or not answer.strip():
         return False
         
-    # Remove any LaTeX formatting that might interfere with number parsing
-    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
-    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-    clean_answer = clean_answer.replace('\\', '')
-    clean_answer = clean_answer.strip()
-    
     try:
-        # Handle fractions like "1/2"
-        if '/' in clean_answer:
-            num, denom = clean_answer.split('/')
-            return float(num.strip()) / float(denom.strip()) is not None
-        return float(clean_answer) is not None
-    except (ValueError, ZeroDivisionError):
+        # Parse LaTeX to sympy-compatible format
+        latex_expr = latex2sympy(answer)
+        # Convert to sympy expression and evaluate
+        expr = sympy.sympify(latex_expr)
+        float(expr.evalf())  # Test if it can be converted to float
+        return True
+    except (sympy.SympifyError, TypeError, ValueError):
         return False
 
 def contains_non_latin(text: str) -> bool:
