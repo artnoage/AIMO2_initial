@@ -36,7 +36,6 @@ class NumericVerifier(BaseVerifier):
         numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
-
         # Convert correct answer directly to float
         try:
             correct_numeric = float(correct_answer.strip())
@@ -45,13 +44,11 @@ class NumericVerifier(BaseVerifier):
 
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
-        print(numeric_answer,correct_numeric, is_correct)
         # Add debug info to displayed answer if incorrect
-        display_answer = model_answer
-        if not is_correct and model_error:
-            display_answer = f"{model_answer} (Debug: {model_error})"
+       
+        display_answer = f"{model_answer} (Debug: {model_error})"
             
-        return 1 if is_correct else 0, 1, display_answer
+        return 1 if is_correct else 0, 1, display_answer 
                 
  
 
