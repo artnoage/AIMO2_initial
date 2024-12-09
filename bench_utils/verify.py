@@ -32,15 +32,16 @@ class NumericVerifier(BaseVerifier):
             return 0, 1, None
 
         
-        # Extract and convert both answers to numeric values
+        # Extract and convert model answer
         numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
-        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
-        print("fuck", numeric_answer)
-        # Handle cases where either answer couldn't be parsed
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
-        if correct_numeric is None:
-            return 0, 1, f"{model_answer} (Error: Correct answer parse failed - {correct_error})"
+
+        # Convert correct answer directly to float
+        try:
+            correct_numeric = float(correct_answer.strip())
+        except (ValueError, TypeError) as e:
+            return 0, 1, f"{model_answer} (Error: Correct answer not numeric - {str(e)})"
 
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
