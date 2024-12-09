@@ -221,16 +221,21 @@ async def run_benchmark(
     if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
-
+    print("hello")
     # Handle LoRA loading based on config
+    print(config.lora_dir)
     if config.lora_dir:
         # If specific directory provided, use that
         lora_dir = Path(config.lora_dir)
+        print(lora_dir.exists())
         if not lora_dir.exists():
             print(f"Warning: LoRA directory {lora_dir} does not exist")
         else:
             for lora_path in lora_dir.glob('*'):
+                print(lora_path)
+                print(lora_path.is_dir())
                 if lora_path.is_dir():
+                   
                     try:
                         lora_name = lora_path.name
                         print(f"Loading LoRA adapter {lora_name} from: {lora_path}")
