@@ -35,17 +35,18 @@ class NumericVerifier(BaseVerifier):
         # Extract and convert model answer
         numeric_answer, model_error = extract_numeric_answer(model_answer, debug=True)
         if numeric_answer is None:
-            return 0, 1, f"{model_answer} (Error: {model_error})"
+            return 0, 1, model_answer if model_error is None else f"{model_answer} (Error: {model_error})"
+            
         # Extract and convert correct answer
         correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
         if correct_numeric is None:
-            return 0, 1, f"{model_answer} (Error: Correct answer not parseable - {correct_error})"
+            return 0, 1, model_answer if correct_error is None else f"{model_answer} (Error: Correct answer not parseable - {correct_error})"
 
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
         
-        # Include both parsing details in debug info
-        display_answer = f"{model_answer} (Model: {model_error}, Correct: {correct_error})"
+        # Return just the model answer if no debug info, otherwise include parsing details
+        display_answer = model_answer if model_error is None else f"{model_answer} (Model: {model_error}, Correct: {correct_error})"
             
         return 1 if is_correct else 0, 1, display_answer
                 
