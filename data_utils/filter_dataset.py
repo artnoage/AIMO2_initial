@@ -81,6 +81,12 @@ def contains_non_latin(text: str) -> bool:
             return True
     return False
 
+def is_multiple_choice(problem: str) -> bool:
+    """Check if the problem contains multiple choice indicators (A,B,C,D)"""
+    # Look for patterns like "(A)", "A)", "A.", etc followed by another option
+    pattern = r'(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*'
+    return bool(re.search(pattern, problem))
+
 def main():
     # Initialize Hugging Face API
     api = HfApi()
