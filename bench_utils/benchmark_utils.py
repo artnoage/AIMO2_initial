@@ -15,21 +15,21 @@ from bench_utils.benchmark_config import BenchmarkConfig, ModelOption
 from bench_utils.progress_tracker import *
 T = TypeVar('T')
 
-def get_model(model: ModelOption, temp: float = 0.1, model_path: Optional[str] = None):
+def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] = None):
     """
     Initialize the ChatOpenAI model based on the selected ModelOption.
-    For LOCAL models, it connects to a local endpoint and uses provided path if any.
+    For LOCAL models, it connects to a local endpoint and uses provided model name if any.
     For other models, it uses the OpenRouter API.
     
     Args:
         model: The model option to use
         temp: Temperature for generation
-        model_path: Optional path to use instead of model.value
+        model_name: Optional model name to use instead of model.value
     """
     if model == ModelOption.LOCAL:
-        path = model_path if model_path else model.value
+        name = model_name if model_name else model.value
         return ChatOpenAI(
-            model=path,
+            model=name,
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1")
