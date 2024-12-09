@@ -90,13 +90,16 @@ def is_numeric_answer(answer: str) -> bool:
     clean_answer = clean_answer.replace('\\,', '')
     
     try:
-        with time_limit(5):  # 5 second timeout
+        with time_limit(10):  # 10 second timeout
             latex_expr = latex2sympy(clean_answer)
             expr = sympy.sympify(latex_expr)
             float(expr.evalf())
             return True
-    except (Exception, TimeoutException):
-        # Either parsing failed or timed out
+    except TimeoutException:
+        # Processing took too long
+        return False
+    except Exception:
+        # Parsing failed
         return False
 
 def contains_non_latin(text: str) -> bool:
