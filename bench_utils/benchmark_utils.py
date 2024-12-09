@@ -234,7 +234,6 @@ async def run_benchmark(
     if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
-    print("hello")
     # Handle LoRA loading based on config
     if config.lora_dir:
         # If specific directory provided, use that
