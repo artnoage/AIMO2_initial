@@ -59,7 +59,7 @@ class BenchmarkConfig:
     upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
     
     # LoRA settings
-    upload_lora: bool = False  # Whether to use latest LoRA adapter
+    upload_lora: bool = False  # Whether to use latest LoRA adapter (default: False) 
     lora_dict: Optional[Dict[str, str]] = None  # Dictionary of LoRA name to path mappings
     
     @classmethod
@@ -123,8 +123,8 @@ class BenchmarkConfig:
                           help='Upload the created dataset to HuggingFace Hub')
         
         # LoRA arguments
-        parser.add_argument('--upload-lora', action='store_true',
-                          help='Use latest LoRA adapter from loras directory')
+        parser.add_argument('--upload-lora', action='store_true', default=False,
+                          help='Use latest LoRA adapter from loras directory (default: False)')
         parser.add_argument('--lora-dict', type=json.loads,
                           help='JSON dictionary of LoRA name to path mappings')
                           
