@@ -60,7 +60,7 @@ class BenchmarkConfig:
     
     # LoRA settings
     upload_lora: bool = False  # Whether to use latest LoRA adapter (default: False) 
-    lora_dict: Optional[Dict[str, str]] = None  # Dictionary of LoRA name to path mappings
+    lora_dir: Optional[str] = None  # Directory containing LoRA adapters to load
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -125,8 +125,8 @@ class BenchmarkConfig:
         # LoRA arguments
         parser.add_argument('--upload-lora', action='store_true', default=False,
                           help='Use latest LoRA adapter from loras directory (default: False)')
-        parser.add_argument('--lora-dict', type=json.loads,
-                          help='JSON dictionary of LoRA name to path mappings')
+        parser.add_argument('--lora-dir', type=str,
+                          help='Directory containing LoRA adapters to load')
                           
         args = parser.parse_args()
         return cls(**vars(args))
