@@ -67,14 +67,29 @@ def is_numeric_answer(answer: str) -> bool:
     if not answer or not answer.strip():
         return False
         
+    # Clean the answer string
+    clean_answer = answer.strip()
+    
     try:
-        # Parse LaTeX to sympy-compatible format
-        latex_expr = latex2sympy(answer)
-        # Convert to sympy expression and evaluate
-        expr = sympy.sympify(latex_expr)
-        float(expr.evalf())  # Test if it can be converted to float
-        return True
-    except (sympy.SympifyError, TypeError, ValueError):
+        # First try direct sympy parsing in case it's already in a good format
+        try:
+            expr = sympy.sympify(clean_answer)
+            float(expr.evalf())
+            return True
+        except (sympy.SympifyError, TypeError, ValueError):
+            pass
+            
+        # If direct parsing fails, try latex2sympy
+        try:
+            latex_expr = latex2sympy(clean_answer)
+            expr = sympy.sympify(latex_expr)
+            float(expr.evalf())
+            return True
+        except Exception:
+            # latex2sympy failed - this likely means it's not a numeric expression
+            return False
+            
+    except Exception:
         return False
 
 def contains_non_latin(text: str) -> bool:
