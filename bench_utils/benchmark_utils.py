@@ -89,26 +89,30 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     if not clean_answer:
         return None
         
-    # Remove any LaTeX formatting that might interfere with parsing
-    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
-    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-    clean_answer = clean_answer.replace('\\', '')
-    
-    # First try using sympy
+    # First try sympy with the raw answer
     try:
-        # Convert the string to a sympy expression and evaluate
         expr = sympy.sympify(clean_answer)
         return float(expr.evalf())
     except (sympy.SympifyError, TypeError, ValueError):
-        # If sympy fails, try direct float conversion
+        # If raw sympy fails, clean LaTeX and try again
+        clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
+        clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
+        clean_answer = clean_answer.replace('\\', '')
+        
         try:
-            # Handle fractions like "1/2"
-            if '/' in clean_answer:
-                num, denom = clean_answer.split('/')
-                return float(num.strip()) / float(denom.strip())
-            return float(clean_answer)
-        except (ValueError, ZeroDivisionError):
-            return None
+            # Try sympy again with cleaned answer
+            expr = sympy.sympify(clean_answer)
+            return float(expr.evalf())
+        except (sympy.SympifyError, TypeError, ValueError):
+            # If sympy still fails, try direct float conversion
+            try:
+                # Handle fractions like "1/2"
+                if '/' in clean_answer:
+                    num, denom = clean_answer.split('/')
+                    return float(num.strip()) / float(denom.strip())
+                return float(clean_answer)
+            except (ValueError, ZeroDivisionError):
+                return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
