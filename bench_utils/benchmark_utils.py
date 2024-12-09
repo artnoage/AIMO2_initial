@@ -210,18 +210,8 @@ async def run_benchmark(
         return
 
     # Handle LoRA loading based on config
-    if config.upload_lora:
-        lora_path = get_latest_lora_path()
-        if lora_path:
-            try:
-                print(f"Using latest LoRA adapter from: {lora_path}")
-                lora_name = Path(lora_path).name
-                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
-            except Exception as e:
-                print(f"Warning: Failed to load latest LoRA adapter: {e}")
-                print("Continuing benchmark without LoRA adapter...")
-    
     if config.lora_dir:
+        # If specific directory provided, use that
         lora_dir = Path(config.lora_dir)
         if not lora_dir.exists():
             print(f"Warning: LoRA directory {lora_dir} does not exist")
@@ -234,6 +224,17 @@ async def run_benchmark(
                         await load_lora_adapter(lora_name, str(lora_path.absolute()))
                     except Exception as e:
                         print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
+    elif config.upload_lora:
+        # Only try latest if no specific directory provided
+        lora_path = get_latest_lora_path()
+        if lora_path:
+            try:
+                print(f"Using latest LoRA adapter from: {lora_path}")
+                lora_name = Path(lora_path).name
+                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+            except Exception as e:
+                print(f"Warning: Failed to load latest LoRA adapter: {e}")
+                print("Continuing benchmark without LoRA adapter...")
 
     # Load exclude list if provided
     excluded_problems = set()
