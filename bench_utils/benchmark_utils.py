@@ -96,12 +96,15 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     print(repr(clean_answer))
     error_msg = None
     try:
-        expr = sympy.sympify(clean_answer)
+        # Parse LaTeX to sympy-compatible format
+        latex_expr = sympy.parsing.latex.parse_latex(clean_answer)
+        # Convert to sympy expression and evaluate
+        expr = sympy.sympify(latex_expr)
         result = float(expr.evalf())
         if debug:
-            error_msg = f"Sympy success: {clean_answer} -> {expr} -> {result}"
+            error_msg = f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}"
         return result, error_msg
-    except (sympy.SympifyError, TypeError, ValueError) as e:
+    except (sympy.SympifyError, TypeError, ValueError, sympy.parsing.latex.LaTeXParsingError) as e:
         if debug:
             error_msg = f"Sympy error: {str(e)} on input: {clean_answer}"
         
