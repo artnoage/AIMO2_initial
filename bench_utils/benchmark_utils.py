@@ -248,6 +248,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 
 
+
 async def run_benchmark(
     config: BenchmarkConfig,
     process_example_func: Callable
