@@ -1,5 +1,6 @@
 import os
 import asyncio
+import aiohttp
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from glob import glob
@@ -100,6 +101,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Error processing example {str(running_id)}: {e}")
         return None
 
+async def load_lora_adapter(lora_name: str, lora_path: str):
+    """Send request to load LoRA adapter to local LLM server"""
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:8000/v1/load_lora_adapter",
+            json={
+                "lora_name": lora_name,
+                "lora_path": lora_path
+            }
+        ) as response:
+            if response.status != 200:
+                raise Exception(f"Failed to load LoRA adapter: {await response.text()}")
+
 def get_latest_lora_path():
     """Get the path of the most recent lora folder"""
     lora_folders = glob('loras/*/')
@@ -115,12 +129,8 @@ async def main():
     lora_path = get_latest_lora_path()
     if lora_path:
         print(f"Using LoRA adapter from: {lora_path}")
-        os.environ["VLLM_ALLOW_RUNTIME_LORA_UPDATING"] = "True"
-        solver = get_model(ModelOption[config.solver], temp=config.temperature, enable_lora=True)
-        
-        # Load the LoRA adapter
         lora_name = Path(lora_path).name
-        solver.load_lora_adapter(lora_name, lora_path)
+        await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
     
     await run_benchmark(
         config=config,
