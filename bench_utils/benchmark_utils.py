@@ -138,21 +138,34 @@ def is_multiple_choice(problem: str) -> bool:
 
 async def load_lora_adapter(lora_name: str, lora_path: str):
     """Send request to load LoRA adapter to local LLM server"""
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "http://localhost:8000/v1/load_lora_adapter",
-            json={
-                "lora_name": lora_name,
-                "lora_path": lora_path
-            }
-        ) as response:
-            response_text = await response.text()
-            print(f"Server response: {response_text}")
-            if response.status != 200:
-                if "already been loaded" in response_text:
-                    print("LoRA adapter already loaded, continuing...")
+    print(f"\nAttempting to load LoRA adapter:")
+    print(f"Name: {lora_name}")
+    print(f"Path: {lora_path}")
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            print("Sending request to server...")
+            async with session.post(
+                "http://localhost:8000/v1/load_lora_adapter",
+                json={
+                    "lora_name": lora_name,
+                    "lora_path": lora_path
+                }
+            ) as response:
+                response_text = await response.text()
+                print(f"Server response status: {response.status}")
+                print(f"Server response text: {response_text}")
+                
+                if response.status != 200:
+                    if "already been loaded" in response_text:
+                        print("LoRA adapter already loaded, continuing...")
+                    else:
+                        raise Exception(f"Failed to load LoRA adapter: {response_text}")
                 else:
-                    raise Exception(f"Failed to load LoRA adapter: {response_text}")
+                    print("LoRA adapter loaded successfully")
+    except Exception as e:
+        print(f"Error during LoRA loading: {str(e)}")
+        raise
 
 def get_latest_lora_path():
     """Get the path of the most recent lora folder"""
