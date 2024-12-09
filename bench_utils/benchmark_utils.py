@@ -97,6 +97,9 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
     # Remove LaTeX spacing commands
     clean_answer = clean_answer.replace('\\,', '')
     print("clean 2",clean_answer)
+    for char in clean_answer:
+        print(f"'{char}'")
+    print(repr(clean_answer))
     error_msg = None
     try:
         expr = sympy.sympify(clean_answer)
