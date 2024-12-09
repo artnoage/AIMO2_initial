@@ -276,11 +276,6 @@ async def run_benchmark(
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')
-
-        # Filter out multiple choice problems if configured
-        if hasattr(config, 'exclude_multiple_choice') and config.exclude_multiple_choice:
-            dataset = dataset.filter(lambda x: not is_multiple_choice(x['problem']))
-            print(f"Filtered out multiple choice problems")
             
         # Filter out excluded problems
         if excluded_problems:
