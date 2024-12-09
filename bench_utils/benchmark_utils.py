@@ -77,17 +77,17 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
     Returns float if found, None otherwise.
     """
     if not solution:
-        return None
+        return None, "No solution provided" if debug else None
     
     # First extract the raw boxed content
     raw_answer = extract_answer_from_solution(solution)
     if raw_answer is None:
-        return None
+        return None, "No boxed answer found" if debug else None
         
     # Clean the answer string
     clean_answer = raw_answer.strip()
     if not clean_answer:
-        return None
+        return None, "Empty answer after cleaning" if debug else None
         
     # Remove \text{...} content and try sympy first
     clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
