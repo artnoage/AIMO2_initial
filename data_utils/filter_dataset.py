@@ -1,12 +1,28 @@
 import os
 import json
 import argparse
+import signal
+from contextlib import contextmanager
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
 import re 
 import sympy
 from latex2sympy2 import latex2sympy
 from typing import Optional
+from tqdm import tqdm
+
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
@@ -74,12 +90,13 @@ def is_numeric_answer(answer: str) -> bool:
     clean_answer = clean_answer.replace('\\,', '')
     
     try:
-        latex_expr = latex2sympy(clean_answer)
-        expr = sympy.sympify(latex_expr)
-        float(expr.evalf())
-        return True
-    except Exception:
-        # latex2sympy failed - this likely means it's not a numeric expression
+        with time_limit(5):  # 5 second timeout
+            latex_expr = latex2sympy(clean_answer)
+            expr = sympy.sympify(latex_expr)
+            float(expr.evalf())
+            return True
+    except (Exception, TimeoutException):
+        # Either parsing failed or timed out
         return False
 
 def contains_non_latin(text: str) -> bool:
@@ -218,11 +235,19 @@ def main():
             
         return True
 
-    # Apply filters and update statistics
-    filtered_dataset = dataset.filter(has_valid_answer)
+    # Apply filters with progress bar
+    filtered_examples = []
+    for example in tqdm(dataset, desc="Filtering dataset"):
+        if has_valid_answer(example):
+            filtered_examples.append(example)
+    
+    filtered_dataset = Dataset.from_dict({
+        k: [example[k] for example in filtered_examples]
+        for k in dataset.features
+    })
     
     # Calculate detailed statistics
-    stats['final'] = len(filtered_dataset)
+    stats['final'] = len(filtered_examples)
     stats['removed_invalid'] = len(dataset) - len(filtered_dataset)
     
     # Print detailed statistics
