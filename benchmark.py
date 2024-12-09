@@ -133,9 +133,13 @@ async def main():
     # Get latest lora path
     lora_path = get_latest_lora_path()
     if lora_path:
-        print(f"Using LoRA adapter from: {lora_path}")
-        lora_name = Path(lora_path).name
-        await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+        try:
+            print(f"Using LoRA adapter from: {lora_path}")
+            lora_name = Path(lora_path).name
+            await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
+        except Exception as e:
+            print(f"Warning: Failed to load LoRA adapter: {e}")
+            print("Continuing benchmark without LoRA adapter...")
     
     await run_benchmark(
         config=config,
