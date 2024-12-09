@@ -91,7 +91,8 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         
     # Remove \text{...} content and try sympy first
     clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    # Replace double backslashes with single ones
+    # Remove \\, and replace double backslashes with single ones
+    clean_answer_no_text = clean_answer_no_text.replace('\\\\,', '')
     clean_answer_no_text = clean_answer_no_text.replace('\\\\', '\\')
     try:
         expr = sympy.sympify(clean_answer_no_text)
@@ -100,7 +101,8 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         # If sympy fails, fall back to original parsing method
         clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
         clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-        clean_answer = clean_answer.replace('\\\\', '\\')  # Replace double backslashes first
+        clean_answer = clean_answer.replace('\\\\,', '')  # Remove \\, first
+        clean_answer = clean_answer.replace('\\\\', '\\')  # Replace double backslashes next
         clean_answer = clean_answer.replace('\\', '')  # Then remove remaining backslashes
         
         try:
