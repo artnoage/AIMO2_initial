@@ -15,29 +15,21 @@ from bench_utils.benchmark_config import BenchmarkConfig, ModelOption
 from bench_utils.progress_tracker import *
 T = TypeVar('T')
 
-def get_model(model: ModelOption, temp: float = 0.1, lora_dir: Optional[str] = None, use_latest_lora: bool = False):
+def get_model(model: ModelOption, temp: float = 0.1, model_path: Optional[str] = None):
     """
     Initialize the ChatOpenAI model based on the selected ModelOption.
-    For LOCAL models, it connects to a local endpoint and uses LoRA path if provided.
+    For LOCAL models, it connects to a local endpoint and uses provided path if any.
     For other models, it uses the OpenRouter API.
     
     Args:
         model: The model option to use
         temp: Temperature for generation
-        lora_dir: Specific LoRA directory to use
-        use_latest_lora: Whether to use latest LoRA when no specific dir provided
+        model_path: Optional path to use instead of model.value
     """
     if model == ModelOption.LOCAL:
-        if lora_dir:
-            model_path = lora_dir
-        elif use_latest_lora:
-            latest_lora = get_latest_lora_path()
-            model_path = latest_lora if latest_lora else model.value
-        else:
-            model_path = model.value
-            
+        path = model_path if model_path else model.value
         return ChatOpenAI(
-            model=model_path,
+            model=path,
             temperature=temp,
             api_key="EMPTY",
             base_url="http://localhost:8000/v1")
