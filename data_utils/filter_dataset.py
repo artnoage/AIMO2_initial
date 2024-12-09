@@ -93,6 +93,8 @@ def main():
                        help='HuggingFace repository name')
     parser.add_argument('--only-numbers', action='store_true',
                        help='Only keep problems where the answer is a number')
+    parser.add_argument('--exclude', type=str,
+                       help='JSON file containing problems to exclude')
     args = parser.parse_args()
 
     # Suppress warnings
@@ -108,6 +110,23 @@ def main():
         return
 
     print(f"\nOriginal dataset size: {len(dataset)}")
+
+    # Load exclude list if provided
+    excluded_problems = set()
+    if args.exclude and os.path.exists(args.exclude):
+        try:
+            with open(args.exclude, 'r') as f:
+                exclude_data = json.load(f)
+                excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
+            print(f"Loaded {len(excluded_problems)} problems to exclude")
+        except Exception as e:
+            print(f"Error loading exclude file: {e}")
+            return
+
+    # Filter out excluded problems
+    if excluded_problems:
+        dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+        print(f"After excluding problems: {len(dataset)}")
 
     # Initialize detailed statistics
     stats = {
