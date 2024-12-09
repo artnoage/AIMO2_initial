@@ -175,13 +175,13 @@ async def run_benchmark(
         return
 
     # Load exclude list if provided
-    excluded_ids = set()
+    excluded_problems = set()
     if config.exclude and os.path.exists(config.exclude):
         try:
             with open(config.exclude, 'r') as f:
                 exclude_data = json.load(f)
-                excluded_ids = {item['id'] for item in exclude_data if 'id' in item}
-            print(f"Loaded {len(excluded_ids)} problems to exclude")
+                excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
+            print(f"Loaded {len(excluded_problems)} problems to exclude")
         except Exception as e:
             print(f"Error loading exclude file: {e}")
             return
@@ -199,9 +199,9 @@ async def run_benchmark(
         dataset = dataset.sort('id')
             
         # Filter out excluded problems
-        if excluded_ids:
-            dataset = dataset.filter(lambda x: x['id'] not in excluded_ids)
-            print(f"Filtered dataset to exclude {len(excluded_ids)} problems")
+        if excluded_problems:
+            dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+            print(f"Filtered dataset to exclude {len(excluded_problems)} problems")
             
         # Shuffle dataset with seed if specified
         if config.seed is not None:
