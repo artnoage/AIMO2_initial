@@ -89,9 +89,10 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     if not clean_answer:
         return None
         
-    # First try sympy with the raw answer
+    # Remove \text{...} content and try sympy first
+    clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
     try:
-        expr = sympy.sympify(clean_answer)
+        expr = sympy.sympify(clean_answer_no_text)
         return float(expr.evalf())
     except (sympy.SympifyError, TypeError, ValueError):
         # If sympy fails, fall back to original parsing method
