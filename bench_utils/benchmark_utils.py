@@ -86,32 +86,33 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
         
     # Clean the answer string
     clean_answer = raw_answer.strip()
+    print("clean 1",clean_answer)
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else None
-        
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
     # Clean LaTeX commands and try sympy first
-    clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
     # Normalize multiple backslashes to single ones
-    clean_answer_no_text = re.sub(r'\\{2,}', r'\\', clean_answer_no_text)
+    clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
     # Remove LaTeX spacing commands
-    clean_answer_no_text = clean_answer_no_text.replace('\\,', '')
+    clean_answer = clean_answer.replace('\\,', '')
+    print("clean 2",clean_answer)
     error_msg = None
     try:
-        expr = sympy.sympify(clean_answer_no_text)
+        expr = sympy.sympify(clean_answer)
         result = float(expr.evalf())
         if debug:
-            error_msg = f"Sympy success: {clean_answer_no_text} -> {expr} -> {result}"
+            error_msg = f"Sympy success: {clean_answer} -> {expr} -> {result}"
         return result, error_msg
     except (sympy.SympifyError, TypeError, ValueError) as e:
         if debug:
-            error_msg = f"Sympy error: {str(e)} on input: {clean_answer_no_text}"
+            error_msg = f"Sympy error: {str(e)} on input: {clean_answer}"
         
         # If sympy fails, fall back to original parsing method
         clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
         clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-        clean_answer = clean_answer.replace('\\\\,', '')  # Remove \\, first
-        clean_answer = clean_answer.replace('\\\\', '\\')  # Replace double backslashes next
-        clean_answer = clean_answer.replace('\\', '')  # Then remove remaining backslashes
+        clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
+        clean_answer = clean_answer.replace('\\,', '')
         
         try:
             # Handle fractions like "1/2"
