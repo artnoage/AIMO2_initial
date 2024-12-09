@@ -33,7 +33,7 @@ class NumericVerifier(BaseVerifier):
 
         
         # Extract and convert model answer
-        numeric_answer, model_error = extract_numeric_answer(solution, debug=True)
+        numeric_answer, model_error = extract_numeric_answer(model_answer, debug=True)
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
         # Convert correct answer directly to float

@@ -69,23 +69,17 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
         return wrapper
     return decorator
 
-def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
+def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
     """
-    Extract numeric answer from a solution string.
-    Looks for a number inside a LaTeX boxed environment.
+    Extract numeric value from a LaTeX answer string.
     First tries to evaluate using sympy, then falls back to direct float conversion.
     Returns float if found, None otherwise.
     """
-    if not solution:
-        return None, "No solution provided" if debug else None
-    
-    # First extract the raw boxed content
-    raw_answer = extract_answer_from_solution(solution)
-    if raw_answer is None:
-        return None, "No boxed answer found" if debug else None
+    if not answer:
+        return None, "No answer provided" if debug else None
         
     # Clean the answer string
-    clean_answer = raw_answer.strip()
+    clean_answer = answer.strip()
     print("clean 1",clean_answer)
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else None
