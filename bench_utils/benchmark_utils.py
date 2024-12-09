@@ -93,6 +93,7 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
     clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
     # Remove \\, and replace double backslashes with single ones
     clean_answer_no_text = clean_answer_no_text.replace('\\\\,', '')
+    clean_answer_no_text = clean_answer_no_text.replace('\\\\\\', '')
     clean_answer_no_text = clean_answer_no_text.replace('\\\\', '\\')
     error_msg = None
     try:
