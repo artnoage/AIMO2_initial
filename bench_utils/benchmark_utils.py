@@ -3,6 +3,7 @@ import os
 import asyncio
 import json
 from glob import glob
+import sympy
 from functools import wraps
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
@@ -72,6 +73,7 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     """
     Extract numeric answer from a solution string.
     Looks for a number inside a LaTeX boxed environment.
+    First tries to evaluate using sympy, then falls back to direct float conversion.
     Returns float if found, None otherwise.
     """
     if not solution:
@@ -87,19 +89,26 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
     if not clean_answer:
         return None
         
-    # Remove any LaTeX formatting that might interfere with number parsing
+    # Remove any LaTeX formatting that might interfere with parsing
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
     clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
     clean_answer = clean_answer.replace('\\', '')
     
+    # First try using sympy
     try:
-        # Handle fractions like "1/2"
-        if '/' in clean_answer:
-            num, denom = clean_answer.split('/')
-            return float(num.strip()) / float(denom.strip())
-        return float(clean_answer)
-    except (ValueError, ZeroDivisionError) as e:
-        return None
+        # Convert the string to a sympy expression and evaluate
+        expr = sympy.sympify(clean_answer)
+        return float(expr.evalf())
+    except (sympy.SympifyError, TypeError, ValueError):
+        # If sympy fails, try direct float conversion
+        try:
+            # Handle fractions like "1/2"
+            if '/' in clean_answer:
+                num, denom = clean_answer.split('/')
+                return float(num.strip()) / float(denom.strip())
+            return float(clean_answer)
+        except (ValueError, ZeroDivisionError):
+            return None
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
