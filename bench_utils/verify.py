@@ -36,19 +36,18 @@ class NumericVerifier(BaseVerifier):
         numeric_answer, model_error = extract_numeric_answer(model_answer, debug=True)
         if numeric_answer is None:
             return 0, 1, f"{model_answer} (Error: {model_error})"
-        # Convert correct answer directly to float
-        try:
-            correct_numeric = float(correct_answer.strip())
-        except (ValueError, TypeError) as e:
-            return 0, 1, f"{model_answer} (Error: Correct answer not numeric - {str(e)})"
+        # Extract and convert correct answer
+        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
+        if correct_numeric is None:
+            return 0, 1, f"{model_answer} (Error: Correct answer not parseable - {correct_error})"
 
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
-        # Add debug info to displayed answer if incorrect
-       
-        display_answer = f"{model_answer} (Debug: {model_error})"
+        
+        # Include both parsing details in debug info
+        display_answer = f"{model_answer} (Model: {model_error}, Correct: {correct_error})"
             
-        return 1 if is_correct else 0, 1, display_answer 
+        return 1 if is_correct else 0, 1, display_answer
                 
  
 
