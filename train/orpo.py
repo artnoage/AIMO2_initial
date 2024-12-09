@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("local_datasets/20241208_134210")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241208_165400")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -78,7 +78,7 @@ def main():
         num_train_epochs=2,
         learning_rate=4e-6,
         logging_steps=1,
-        optim="adamw_torch",
+        optim = "adafactor",
         seed=42,
         bf16=True,
         weight_decay=0.1,

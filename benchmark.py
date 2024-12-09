@@ -1,10 +1,7 @@
 import os
 import asyncio
-import aiohttp
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
-from glob import glob
-from pathlib import Path
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
