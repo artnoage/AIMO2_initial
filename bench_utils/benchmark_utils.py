@@ -15,6 +15,7 @@ from huggingface_hub import HfApi, whoami
 from bench_utils.benchmark_config import BenchmarkConfig, ModelOption
 from bench_utils.progress_tracker import *
 T = TypeVar('T')
+from latex2sympy2 import latex2sympy
 
 def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] = None):
     """
@@ -87,7 +88,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     # Clean LaTeX commands and try sympy first
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
     # Normalize backslashes - convert double to single
-    clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
+    #clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
     # Remove LaTeX spacing commands
     clean_answer = clean_answer.replace('\\,', '')
     print("clean 2",clean_answer)
@@ -97,14 +98,14 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     error_msg = None
     try:
         # Parse LaTeX to sympy-compatible format
-        latex_expr = sympy.parsing.latex.parse_latex(clean_answer)
+        latex_expr = latex2sympy(clean_answer)
         # Convert to sympy expression and evaluate
         expr = sympy.sympify(latex_expr)
         result = float(expr.evalf())
         if debug:
             error_msg = f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}"
         return result, error_msg
-    except (sympy.SympifyError, TypeError, ValueError, sympy.parsing.latex.LaTeXParsingError) as e:
+    except (sympy.SympifyError, TypeError, ValueError) as e:
         if debug:
             error_msg = f"Sympy error: {str(e)} on input: {clean_answer}"
         
