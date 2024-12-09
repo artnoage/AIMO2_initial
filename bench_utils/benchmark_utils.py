@@ -108,29 +108,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     except (sympy.SympifyError, TypeError, ValueError) as e:
         if debug:
             error_msg = f"Sympy error: {str(e)} on input: {clean_answer}"
-        
-        # If sympy fails, fall back to original parsing method
-        clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
-        clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
-        clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
-        clean_answer = clean_answer.replace('\\,', '')
-        
-        try:
-            # Handle fractions like "1/2"
-            if '/' in clean_answer:
-                num, denom = clean_answer.split('/')
-                result = float(num.strip()) / float(denom.strip())
-                if debug:
-                    error_msg += f"\nDirect parsing success: {clean_answer} -> {result}"
-                return result, error_msg
-            result = float(clean_answer)
-            if debug:
-                error_msg += f"\nDirect parsing success: {clean_answer} -> {result}"
-            return result, error_msg
-        except (ValueError, ZeroDivisionError) as e:
-            if debug:
-                error_msg += f"\nDirect parsing error: {str(e)} on input: {clean_answer}"
-            return None, error_msg
+        return None, error_msg
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
