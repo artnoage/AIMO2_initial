@@ -126,6 +126,12 @@ def count_manual_steps(solution: str) -> int:
     
     return max(1, total_steps)  # Return at least 1 step
 
+def is_multiple_choice(problem: str) -> bool:
+    """Check if the problem contains multiple choice indicators (A,B,C,D)"""
+    # Look for patterns like "(A)", "A)", "A.", etc followed by another option
+    pattern = r'(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*'
+    return bool(re.search(pattern, problem))
+
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
@@ -197,6 +203,11 @@ async def run_benchmark(
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')
+
+        # Filter out multiple choice problems if configured
+        if hasattr(config, 'exclude_multiple_choice') and config.exclude_multiple_choice:
+            dataset = dataset.filter(lambda x: not is_multiple_choice(x['problem']))
+            print(f"Filtered out multiple choice problems")
             
         # Filter out excluded problems
         if excluded_problems:
