@@ -45,7 +45,7 @@ def main():
         map_eos_token=True)
     
     # Load dataset from disk
-    dataset = load_from_disk("local_datasets/20241208_134210")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241208_165400")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
