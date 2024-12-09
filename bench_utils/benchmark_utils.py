@@ -79,7 +79,8 @@ def extract_numeric_answer(solution: str) -> Optional[float]:
         return None
         
     # Remove any LaTeX formatting that might interfere with number parsing
-    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first
+    clean_answer = re.sub(r'\\[a-zA-Z]+{([^}]*)}', r'\1', clean_answer)  # Remove other LaTeX commands
     clean_answer = clean_answer.replace('\\', '')
     
     try:
