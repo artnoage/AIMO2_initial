@@ -92,14 +92,11 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
     # Clean LaTeX commands and try sympy first
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    # Convert to raw string to handle backslashes literally
-    #clean_answer = repr(clean_answer)[1:-1]  # Remove quotes from repr
-    # Now normalize backslashes
-    #clean_answer = re.sub(r'\\+', '', clean_answer)
+    # Normalize backslashes - convert double to single
+    clean_answer = re.sub(r'\\{2,}', r'\\', clean_answer)
     # Remove LaTeX spacing commands
-    clean_answer = clean_answer.replace('\\\\', '\\')
+    clean_answer = clean_answer.replace('\\,', '')
     print("clean 2",clean_answer)
-    print("repr:", repr(clean_answer))
     error_msg = None
     try:
         expr = sympy.sympify(clean_answer)
