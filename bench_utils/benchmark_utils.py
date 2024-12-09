@@ -91,11 +91,10 @@ def extract_numeric_answer(solution: str, debug: bool = False) -> Tuple[Optional
         
     # Clean LaTeX commands and try sympy first
     clean_answer_no_text = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    # Handle LaTeX math commands
-    clean_answer_no_text = re.sub(r'\\times', '*', clean_answer_no_text)
-    clean_answer_no_text = re.sub(r'\\sqrt{([^}]*)}', r'sqrt(\1)', clean_answer_no_text)
-    # Remove all remaining backslashes and LaTeX spacing
-    clean_answer_no_text = re.sub(r'\\+,?\s*', '', clean_answer_no_text)
+    # Normalize multiple backslashes to single ones
+    clean_answer_no_text = re.sub(r'\\{2,}', r'\\', clean_answer_no_text)
+    # Remove LaTeX spacing commands
+    clean_answer_no_text = clean_answer_no_text.replace('\\,', '')
     error_msg = None
     try:
         expr = sympy.sympify(clean_answer_no_text)
