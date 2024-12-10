@@ -66,13 +66,21 @@ def main():
     # Split dataset into two parts and duplicate each to create four datasets
     dataset_size = len(formatted_dataset)
     chunk_size = dataset_size // 2
+    print(f"\nTotal dataset size: {dataset_size}")
+    print(f"Chunk size: {chunk_size}")
+    
     # Create two datasets first
     base_datasets = [
         Dataset.from_dict(formatted_dataset[i:i+chunk_size])
         for i in range(0, dataset_size, chunk_size)
     ]
+    print(f"Number of base datasets: {len(base_datasets)}")
+    print(f"Size of each base dataset: {[len(ds) for ds in base_datasets]}")
+    
     # Duplicate each dataset to create four total datasets
     mini_datasets = base_datasets + base_datasets
+    print(f"Total number of mini datasets: {len(mini_datasets)}")
+    print(f"Size of each mini dataset: {[len(ds) for ds in mini_datasets]}\n")
 
     # Training configuration
     batch_size = 2
@@ -96,7 +104,12 @@ def main():
     # Train on each mini dataset sequentially
     timestamp = None  # Will store the final timestamp
     for idx, mini_dataset in enumerate(mini_datasets):
-        print(f"Starting training on chunk {idx+1}/4 (Dataset {(idx % 2) + 1}, Pass {(idx // 2) + 1})...")
+        dataset_num = (idx % 2) + 1
+        pass_num = (idx // 2) + 1
+        print(f"\nStarting training on chunk {idx+1}/{len(mini_datasets)}")
+        print(f"Dataset {dataset_num}, Pass {pass_num}")
+        print(f"Current chunk size: {len(mini_dataset)}")
+        print(f"idx: {idx}, idx % 2: {idx % 2}, idx // 2: {idx // 2}")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = f"train_results/{timestamp}"
         
