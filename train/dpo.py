@@ -1,6 +1,6 @@
 import os
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from datetime import datetime
 from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
@@ -46,8 +46,8 @@ def main():
         tokenizer,
         chat_template="mistral",
         map_eos_token=True)
-    dataset = load_dataset(path="artnoage/orpo", split="train")
-
+    #dataset = load_dataset(path="artnoage/orpo", split="train")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241210_102138")
 
     def formatting_func(example):
         example["prompt"]=tokenizer.apply_chat_template([example["prompt"]],tokenize=False)
@@ -79,13 +79,13 @@ def main():
         per_device_train_batch_size = 2,
         gradient_accumulation_steps = 16,
         num_train_epochs = 2,
-        learning_rate = 7e-6,
+        learning_rate = 4e-6,
         logging_steps = 1,
         optim = "adamw_torch",
         seed=42,
         bf16=True,
         weight_decay=0.1,
-        lr_scheduler_type = "linear",
+        lr_scheduler_type = "constant",
         warmup_ratio = 0.1,
         output_dir = output_dir)
     # Initialize DPO trainer

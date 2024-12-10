@@ -45,7 +45,7 @@ def main():
         map_eos_token=True)
     
     # Load dataset from disk
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241208_165400")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241210_102138")
 
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
@@ -77,7 +77,7 @@ def main():
 
     # Training configuration
     batch_size = 2
-    grad_accum = 8
+    grad_accum = 16
     base_training_args = {
         "max_length": 4096,
         "max_prompt_length": 2048,
