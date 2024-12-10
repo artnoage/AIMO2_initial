@@ -36,13 +36,22 @@ class CustomChat:
         self.temperature = temperature
         self.api_key = api_key
 
-    async def ainvoke(self, prompt: str, **kwargs: Any) -> Any:
+    async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         
+        # Handle different prompt types
+        if hasattr(prompt, 'content'):  # LangChain message object
+            prompt_text = prompt.content
+        elif isinstance(prompt, list):  # List of messages
+            # Take the last message's content if it's a list
+            prompt_text = prompt[-1].content if prompt else ""
+        else:  # String or other
+            prompt_text = str(prompt)
+            
         payload = {
             "model": self.model,
-            "prompt": prompt,
+            "prompt": prompt_text,
             "temperature": self.temperature,
             "stream": False
         }
