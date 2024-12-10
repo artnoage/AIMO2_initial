@@ -63,17 +63,16 @@ def main():
         desc="Applying chat template"
     )
 
-    # Split dataset into two parts and duplicate each to create four datasets
+    # Split dataset into two equal parts and duplicate each to create four datasets
     dataset_size = len(formatted_dataset)
     chunk_size = dataset_size // 2
     print(f"\nTotal dataset size: {dataset_size}")
     print(f"Chunk size: {chunk_size}")
     
-    # Create two datasets first
-    base_datasets = [
-        Dataset.from_dict(formatted_dataset[i:i+chunk_size])
-        for i in range(0, dataset_size, chunk_size)
-    ]
+    # Create exactly two datasets, handling any remainder
+    first_chunk = Dataset.from_dict(formatted_dataset[:chunk_size])
+    second_chunk = Dataset.from_dict(formatted_dataset[chunk_size:])
+    base_datasets = [first_chunk, second_chunk]
     print(f"Number of base datasets: {len(base_datasets)}")
     print(f"Size of each base dataset: {[len(ds) for ds in base_datasets]}")
     
