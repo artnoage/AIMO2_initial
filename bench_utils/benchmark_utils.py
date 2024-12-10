@@ -9,7 +9,7 @@ from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from pathlib import Path
 from tqdm import tqdm
 from datasets import load_dataset
