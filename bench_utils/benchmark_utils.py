@@ -9,6 +9,7 @@ from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
+from langchain.chat_models import ChatOpenAI
 from pathlib import Path
 from tqdm import tqdm
 from datasets import load_dataset
@@ -93,11 +94,11 @@ def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] =
         if not openrouter_api_key:
             raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
         
-        return CustomChat(
+        return ChatOpenAI(
             model=name,
             temperature=temp,
-            api_key=openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1")
+            openai_api_key=openrouter_api_key,
+            openai_api_base="https://openrouter.ai/api/v1")
 
 
 def async_retry(max_retries: int = 3, timeout: int = 300):
