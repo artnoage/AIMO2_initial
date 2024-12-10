@@ -172,6 +172,15 @@ def main():
             print(f"Dataset successfully uploaded to {args.repo_name}")
     
     else:  # model
+        # Check for incorrect usage of dataset flags
+        if args.only_data:
+            print("Warning: --only-data flag is ignored for model uploads")
+        if args.upload_only:
+            print("Warning: --upload-only flag is ignored for model uploads")
+            
+        if not args.repo_name:
+            raise ValueError("--repo_name is required for model uploads")
+            
         # Handle model upload
         upload_model_to_hub(args.path, args.repo_name)
         print(f"Model successfully uploaded to {args.repo_name}")
