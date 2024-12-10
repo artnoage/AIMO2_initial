@@ -10,10 +10,6 @@ from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from pathlib import Path
-from langchain_openai import ChatOpenAI
-from langchain.chat_models.base import BaseChatModel
-from langchain.schema import BaseMessage, ChatResult, AIMessage
-from langchain.callbacks.manager import CallbackManagerForLLMRun
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi, whoami
@@ -24,43 +20,25 @@ from latex2sympy2 import latex2sympy
 
 class TimeoutException(Exception): pass
 
-class CustomChatOpenAI(BaseChatModel):
-    """Custom chat model that makes direct requests to local server"""
-    
-    base_url: str
-    model: str
-    temperature: float
-    api_key: str  # Not used but kept for compatibility
+class CustomChat:
+    """Simple chat model that makes direct requests to server"""
     
     def __init__(
         self,
         base_url: str = "http://localhost:8000/v1",
         model: str = "default",
         temperature: float = 0.1,
-        api_key: str = "EMPTY",
-        **kwargs
+        api_key: str = "EMPTY"
     ):
-        super().__init__(**kwargs)
         self.base_url = base_url
         self.model = model
         self.temperature = temperature
         self.api_key = api_key
 
-    async def _acall(
-        self,
-        messages: list[BaseMessage],
-        stop: Optional[list[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs: Any,
-    ) -> ChatResult:
-        """Async call to chat completion endpoint"""
-        
-        # Extract the last message content as our prompt
-        prompt = messages[-1].content
-        
+    async def ainvoke(self, prompt: str, **kwargs: Any) -> Any:
+        """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         
-        # Prepare the request payload
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -79,19 +57,7 @@ class CustomChatOpenAI(BaseChatModel):
                     raise ValueError(f"Error from API: {await response.text()}")
                 
                 result = await response.json()
-                
-                # Extract the generated text from the response
-                generated_text = result.get("choices", [{}])[0].get("text", "")
-                
-                # Create AIMessage and ChatResult
-                message = AIMessage(content=generated_text)
-                chat_result = ChatResult(generations=[message])
-                
-                return chat_result
-
-    @property
-    def _llm_type(self) -> str:
-        return "custom_chat"
+                return type('Response', (), {'content': result.get("choices", [{}])[0].get("text", "")})()
 
 @contextmanager
 def time_limit(seconds):
@@ -115,9 +81,9 @@ def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] =
         temp: Temperature for generation
         model_name: Optional model name to use instead of model.value
     """
+    name = model_name if model_name else model.value
     if model == ModelOption.LOCAL:
-        name = model_name if model_name else model.value
-        return CustomChatOpenAI(
+        return CustomChat(
             model=name,
             temperature=temp,
             api_key="EMPTY",
@@ -127,10 +93,11 @@ def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] =
         if not openrouter_api_key:
             raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
         
-        return ChatOpenAI(
-            model=model.value,
+        return CustomChat(
+            model=name,
             temperature=temp,
-            api_key=openrouter_api_key)
+            api_key=openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1")
 
 
 def async_retry(max_retries: int = 3, timeout: int = 300):
