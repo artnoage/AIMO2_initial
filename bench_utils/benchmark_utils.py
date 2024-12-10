@@ -40,11 +40,9 @@ class CustomChat:
         """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         
-        messages = [{"role": "user", "content": prompt}]
-        
         payload = {
             "model": self.model,
-            "messages": messages,
+            "prompt": prompt,
             "temperature": self.temperature,
             "stream": False
         }
@@ -53,7 +51,7 @@ class CustomChat:
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.base_url}/chat/completions",
+                f"{self.base_url}/completions",
                 json=payload,
                 headers={
                     "Content-Type": "application/json",
@@ -65,7 +63,7 @@ class CustomChat:
                 
                 result = await response.json()
                 return type('Response', (), {
-                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    'content': result.get("choices", [{}])[0].get("text", "")
                 })()
 
 @contextmanager
