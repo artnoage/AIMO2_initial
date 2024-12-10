@@ -11,6 +11,9 @@ import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from pathlib import Path
 from langchain_openai import ChatOpenAI
+from langchain.chat_models.base import BaseChatModel
+from langchain.schema import BaseMessage, ChatResult, AIMessage
+from langchain.callbacks.manager import CallbackManagerForLLMRun
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi, whoami
@@ -20,6 +23,75 @@ T = TypeVar('T')
 from latex2sympy2 import latex2sympy
 
 class TimeoutException(Exception): pass
+
+class CustomChatOpenAI(BaseChatModel):
+    """Custom chat model that makes direct requests to local server"""
+    
+    base_url: str
+    model: str
+    temperature: float
+    api_key: str  # Not used but kept for compatibility
+    
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000/v1",
+        model: str = "default",
+        temperature: float = 0.1,
+        api_key: str = "EMPTY",
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.base_url = base_url
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+
+    async def _acall(
+        self,
+        messages: list[BaseMessage],
+        stop: Optional[list[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        """Async call to chat completion endpoint"""
+        
+        # Extract the last message content as our prompt
+        prompt = messages[-1].content
+        
+        max_tokens = kwargs.get("max_tokens", None)
+        
+        # Prepare the request payload
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "temperature": self.temperature
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/completions",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                if response.status != 200:
+                    raise ValueError(f"Error from API: {await response.text()}")
+                
+                result = await response.json()
+                
+                # Extract the generated text from the response
+                generated_text = result.get("choices", [{}])[0].get("text", "")
+                
+                # Create AIMessage and ChatResult
+                message = AIMessage(content=generated_text)
+                chat_result = ChatResult(generations=[message])
+                
+                return chat_result
+
+    @property
+    def _llm_type(self) -> str:
+        return "custom_chat"
 
 @contextmanager
 def time_limit(seconds):
@@ -45,7 +117,7 @@ def get_model(model: ModelOption, temp: float = 0.1, model_name: Optional[str] =
     """
     if model == ModelOption.LOCAL:
         name = model_name if model_name else model.value
-        return ChatOpenAI(
+        return CustomChatOpenAI(
             model=name,
             temperature=temp,
             api_key="EMPTY",
