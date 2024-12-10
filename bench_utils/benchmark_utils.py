@@ -58,11 +58,6 @@ class CustomChat:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
-        print(f"\nCustomChat Debug:")
-        print(f"URL: {self.base_url}/completions")
-        print(f"Model: {self.model}")
-        print(f"Payload: {payload}")
-
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(
@@ -73,10 +68,7 @@ class CustomChat:
                         "Authorization": f"Bearer {self.api_key}"
                     }
                 ) as response:
-                    print(f"Response status: {response.status}")
-                    response_text = await response.text()
-                    print(f"Response text: {response_text}")
-                    
+                    response_text = await response.text() 
                     if response.status != 200:
                         raise ValueError(f"Error from API: {response_text}")
                     
