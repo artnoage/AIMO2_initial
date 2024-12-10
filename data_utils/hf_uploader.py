@@ -10,11 +10,28 @@ from huggingface_hub import  login
 import json
 import argparse
 
-def load_json_dataset(json_path):
+def detect_dataset_type(path: Path) -> str:
+    """Detect if path points to a JSON file or Arrow dataset directory."""
+    if path.is_file() and path.suffix.lower() == '.json':
+        return 'json'
+    elif path.is_dir() and any(f.name == 'dataset_info.json' for f in path.glob('*')):
+        return 'arrow'
+    else:
+        raise ValueError(
+            f"Invalid dataset path: {path}\n"
+            "Path must be either:\n"
+            "- A .json file containing dataset\n"
+            "- A directory containing an Arrow dataset"
+        )
+
+def load_json_dataset(json_path: Path):
     """Load JSON dataset and convert it to a format suitable for HuggingFace."""
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return data
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    except json.JSONDecodeError:
+        raise ValueError(f"Invalid JSON file: {json_path}")
 
 def convert_to_hf_dataset(data):
     """Convert the data to a HuggingFace Dataset."""
@@ -122,6 +139,14 @@ def main():
             raise FileNotFoundError(f"Path does not exist: {args.path}")
 
         try:
+            # Detect and validate dataset type
+            dataset_type = detect_dataset_type(args.path)
+            
+            if args.upload_only and dataset_type != 'arrow':
+                raise ValueError("--upload-only requires an Arrow dataset directory")
+            elif not args.upload_only and dataset_type != 'json':
+                raise ValueError("JSON file required when not using --upload-only")
+
             # Handle dataset
             if args.upload_only:
                 # Load existing Arrow dataset
