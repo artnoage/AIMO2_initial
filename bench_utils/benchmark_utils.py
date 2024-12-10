@@ -49,22 +49,35 @@ class CustomChat:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
+        print(f"\nCustomChat Debug:")
+        print(f"URL: {self.base_url}/completions")
+        print(f"Model: {self.model}")
+        print(f"Payload: {payload}")
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/completions",
-                json=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                }
-            ) as response:
-                if response.status != 200:
-                    raise ValueError(f"Error from API: {await response.text()}")
-                
-                result = await response.json()
-                return type('Response', (), {
-                    'content': result.get("choices", [{}])[0].get("text", "")
-                })()
+            try:
+                async with session.post(
+                    f"{self.base_url}/completions",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                ) as response:
+                    print(f"Response status: {response.status}")
+                    response_text = await response.text()
+                    print(f"Response text: {response_text}")
+                    
+                    if response.status != 200:
+                        raise ValueError(f"Error from API: {response_text}")
+                    
+                    result = await response.json()
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("text", "")
+                    })()
+            except Exception as e:
+                print(f"Exception in CustomChat.ainvoke: {str(e)}")
+                raise
 
 @contextmanager
 def time_limit(seconds):
