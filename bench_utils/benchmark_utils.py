@@ -42,12 +42,12 @@ class CustomChat:
         
         # Handle different prompt types
         if hasattr(prompt, 'content'):  # LangChain message object
-            prompt_text = prompt.content
+            prompt_text = f"[INST]{prompt.content}[/INST]"
         elif isinstance(prompt, list):  # List of messages
             # Take the last message's content if it's a list
-            prompt_text = prompt[-1].content if prompt else ""
+            prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
         else:  # String or other
-            prompt_text = str(prompt)
+            prompt_text = f"[INST]{str(prompt)}[/INST]"
             
         payload = {
             "model": self.model,
