@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-from datasets import Dataset
+from datasets import Dataset, load_from_disk
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from huggingface_hub import  login
@@ -94,16 +94,24 @@ def main():
                       help='Name for the HuggingFace repository (format: username/repo-name)')
     parser.add_argument('--only-data', action='store_true',
                       help='Only create local dataset without uploading to hub')
+    parser.add_argument('--upload-only', action='store_true',
+                      help='Upload an existing Arrow dataset from disk')
     args = parser.parse_args()
     
     if args.type == 'dataset':
         # Handle dataset
-        data = load_json_dataset(args.path)
-        dataset = convert_to_hf_dataset(data)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        print(f"Dataset saved locally in Arrow format at 'local_datasets/{timestamp}'")
-        
-        if not args.only_data:
+        if args.upload_only:
+            # Load existing Arrow dataset
+            dataset = load_from_disk(args.path)
+            print(f"Loaded Arrow dataset from {args.path}")
+        else:
+            # Process JSON to Arrow dataset
+            data = load_json_dataset(args.path)
+            dataset = convert_to_hf_dataset(data)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            print(f"Dataset saved locally in Arrow format at 'local_datasets/{timestamp}'")
+            
+        if not args.only_data or args.upload_only:
             if not args.repo_name:
                 raise ValueError("--repo_name is required when not using --only-data")
             upload_dataset_to_hub(dataset, args.repo_name)
