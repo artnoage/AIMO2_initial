@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241208_165400")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241210_102138")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -74,7 +74,7 @@ def main():
         max_length=4096,
         max_prompt_length=2048,
         per_device_train_batch_size=2,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=16,
         num_train_epochs=2,
         learning_rate=4e-6,
         logging_steps=1,

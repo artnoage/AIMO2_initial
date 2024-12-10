@@ -33,12 +33,12 @@ class NumericVerifier(BaseVerifier):
 
         
         # Extract and convert model answer
-        numeric_answer, model_error = extract_numeric_answer(model_answer, debug=True)
+        numeric_answer, model_error = extract_numeric_answer(model_answer, debug=False)
         if numeric_answer is None:
             return 0, 1, model_answer if model_error is None else f"{model_answer} (Error: {model_error})"
             
         # Extract and convert correct answer
-        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=True)
+        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=False)
         if correct_numeric is None:
             return 0, 1, model_answer if correct_error is None else f"{model_answer} (Error: Correct answer not parseable - {correct_error})"
 

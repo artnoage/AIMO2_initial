@@ -2,8 +2,8 @@
 from dataclasses import dataclass
 from argparse import ArgumentParser
 from enum import Enum
-from typing import Optional, Dict
-import json
+from typing import Optional
+
 
 class ModelOption(Enum):
     """Enum class representing different model options for chat completion.
@@ -20,7 +20,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20241209_095538"
+    LOCAL ="artnoage/metastral"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
@@ -87,8 +87,8 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=256,
-                          help='Maximum number of concurrent problems (default: 256)')
+        parser.add_argument('--max-concurrent', type=int, default=128,
+                          help='Maximum number of concurrent problems (default: 128)')
         parser.add_argument('--best-of', type=int, default=5,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--initial-steps', type=int, default=1,
