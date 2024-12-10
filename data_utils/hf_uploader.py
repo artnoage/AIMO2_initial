@@ -2,7 +2,9 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from datasets import Dataset, load_from_disk
+from tqdm import tqdm
 import torch
+from pathlib import Path
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from huggingface_hub import  login
 import json
@@ -24,13 +26,29 @@ def convert_to_hf_dataset(data):
     dataset.save_to_disk(save_path)
     return dataset
 
+def validate_repo_name(repo_name: str) -> bool:
+    """Validate repository name format (username/repo-name)."""
+    if not repo_name or '/' not in repo_name:
+        return False
+    username, repo = repo_name.split('/')
+    return bool(username and repo)
+
 def upload_dataset_to_hub(dataset, repo_name):
     """Upload the dataset to HuggingFace Hub."""
     token = os.environ.get('HF_TOKEN')
     if not token:
         raise ValueError("HF_TOKEN environment variable not set")
+    
+    if not validate_repo_name(repo_name):
+        raise ValueError("Repository name must be in format 'username/repo-name'")
+        
     login(token)
-    dataset.push_to_hub(repo_name)
+    print(f"Uploading dataset to {repo_name}...")
+    with tqdm(total=100, desc="Uploading") as pbar:
+        dataset.push_to_hub(
+            repo_name,
+            callbacks=[lambda x: pbar.update(x.percentage)]
+        )
 
 def upload_model_to_hub(model_path, repo_name):
     """Upload a model to HuggingFace Hub."""
@@ -88,7 +106,7 @@ def main():
     parser = argparse.ArgumentParser(description='Upload datasets or models to HuggingFace Hub')
     parser.add_argument('--type', choices=['dataset', 'model'], required=True,
                       help='Type of content to upload (dataset or model)')
-    parser.add_argument('--path', required=True,
+    parser.add_argument('--path', required=True, type=Path,
                       help='Path to the dataset JSON file or model directory')
     parser.add_argument('--repo_name', required=False,
                       help='Name for the HuggingFace repository (format: username/repo-name)')
@@ -99,17 +117,28 @@ def main():
     args = parser.parse_args()
     
     if args.type == 'dataset':
-        # Handle dataset
-        if args.upload_only:
-            # Load existing Arrow dataset
-            dataset = load_from_disk(args.path)
-            print(f"Loaded Arrow dataset from {args.path}")
-        else:
-            # Process JSON to Arrow dataset
-            data = load_json_dataset(args.path)
-            dataset = convert_to_hf_dataset(data)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            print(f"Dataset saved locally in Arrow format at 'local_datasets/{timestamp}'")
+        # Validate path exists
+        if not args.path.exists():
+            raise FileNotFoundError(f"Path does not exist: {args.path}")
+
+        try:
+            # Handle dataset
+            if args.upload_only:
+                # Load existing Arrow dataset
+                print(f"Loading Arrow dataset from {args.path}...")
+                dataset = load_from_disk(str(args.path))
+                print("Dataset loaded successfully")
+            else:
+                # Process JSON to Arrow dataset
+                print(f"Loading JSON dataset from {args.path}...")
+                data = load_json_dataset(args.path)
+                print("Converting to HuggingFace dataset format...")
+                dataset = convert_to_hf_dataset(data)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                print(f"Dataset saved locally in Arrow format at 'local_datasets/{timestamp}'")
+        except Exception as e:
+            print(f"Error processing dataset: {str(e)}")
+            raise
             
         if not args.only_data or args.upload_only:
             if not args.repo_name:
