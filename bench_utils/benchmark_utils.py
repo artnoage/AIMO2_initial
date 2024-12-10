@@ -40,25 +40,33 @@ class CustomChat:
         """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         
+        messages = [{"role": "user", "content": prompt}]
+        
         payload = {
             "model": self.model,
-            "prompt": prompt,
-            "temperature": self.temperature
+            "messages": messages,
+            "temperature": self.temperature,
+            "stream": False
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.base_url}/completions",
+                f"{self.base_url}/chat/completions",
                 json=payload,
-                headers={"Content-Type": "application/json"}
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"
+                }
             ) as response:
                 if response.status != 200:
                     raise ValueError(f"Error from API: {await response.text()}")
                 
                 result = await response.json()
-                return type('Response', (), {'content': result.get("choices", [{}])[0].get("text", "")})()
+                return type('Response', (), {
+                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                })()
 
 @contextmanager
 def time_limit(seconds):
