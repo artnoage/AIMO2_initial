@@ -31,7 +31,7 @@ def setup_model(model_path: str):
 
 def generate_solution(model, tokenizer, problem: str, max_length: int = 4096):
     """Generate a solution for a given problem."""
-    prompt = f"[INST]Solve this step by step and provide the final answer in a \\boxed{{}}:\n\n{problem}[/INST]"
+    prompt = f"[INST]Analyze and solve this step by step and provide the final answer in a \\boxed{{}}:\n\n{problem}[/INST]"
     
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     
