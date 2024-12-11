@@ -18,8 +18,8 @@ def setup_model(model_path: str):
     print(f"Loading model from {model_path}")
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        torch_dtype=torch.float16,
-        device_map="auto"
+        torch_dtype=torch.bfloat16,
+        device_map="cuda:1"
     )
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     
@@ -27,7 +27,18 @@ def setup_model(model_path: str):
 
 def generate_solution(model, tokenizer, problem: str, temperature: float = 0.0, max_length: int = 4096):
     """Generate a solution for a given problem."""
-    prompt = f"[INST]Analyze and solve this step by step and provide the final answer in a \\boxed{{}}:\n\n{problem}[/INST]"
+    prompt = f"""[INST]Here is a mathematical problem to solve:\n\n{problem}\n\n
+                Please provide a complete solution following these guidelines:\n
+                1. Start with '**Problem Analysis and Approach**:' section explaining:\n
+                   - Problem type and key concepts involved\n
+                   - Relevant theorems and techniques\n
+                   - Overall solution strategy\n\n
+                2. Then provide a detailed step-by-step solution:\n
+                   - Number each step clearly (Step 1, Step 2, etc.)\n
+                   - Show all work and intermediate calculations\n
+                   - Use LaTeX notation for mathematical expressions\n
+                   - Provide justification in [brackets] for key steps\n
+                   - End with final answer in \\boxed{{}}\n\n [/INST]"""
     
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
     
