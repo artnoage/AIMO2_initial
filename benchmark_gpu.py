@@ -59,13 +59,19 @@ def process_example(model, tokenizer, example, attempt: int, temperature: float)
     try:
         solution = generate_solution(model, tokenizer, example['problem'], temperature)
         
-        # Print full model response on first attempt
+        # Print full model response and extraction details on first attempt
         if attempt == 0:
             print(f"\nFull response for example {example['id']}:")
             print("=" * 80)
             print(solution)
             print("=" * 80)
-        
+            print("\nAnswer extraction debug:")
+            print(f"Looking for \\boxed{{...}} in solution text")
+            # Find all occurrences of \boxed
+            import re
+            boxed_matches = list(re.finditer(r'\\boxed\{', solution))
+            print(f"Found {len(boxed_matches)} \\boxed occurrences at positions: {[m.start() for m in boxed_matches]}")
+            
         # Extract and compare answers
         model_answer = extract_answer_from_solution(solution)
         correct_answer = extract_answer_from_solution(example['solution'])
