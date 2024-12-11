@@ -64,8 +64,8 @@ def process_example(model, tokenizer, example, attempt: int, temperature: float)
         correct_answer = extract_answer_from_solution(example['solution'])
         
         # Convert to numeric values
-        model_numeric, _ = extract_numeric_answer(model_answer)
-        correct_numeric, _ = extract_numeric_answer(correct_answer)
+        model_numeric, model_debug = extract_numeric_answer(model_answer, debug=True)
+        correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
         
         # Check correctness
         is_correct = is_answer_correct(model_numeric, correct_numeric, 0.001)
@@ -74,6 +74,10 @@ def process_example(model, tokenizer, example, attempt: int, temperature: float)
             print(f"✓ Example {example['id']} correct on attempt {attempt + 1}")
         elif attempt == 0:  # Only print failures on first attempt
             print(f"✗ Example {example['id']} incorrect")
+            print(f"  Model boxed: {model_answer}")
+            print(f"  Model numeric: {model_numeric} ({model_debug})")
+            print(f"  Correct boxed: {correct_answer}") 
+            print(f"  Correct numeric: {correct_numeric} ({correct_debug})")
             
         return is_correct
         
