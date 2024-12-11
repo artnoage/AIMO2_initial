@@ -29,7 +29,7 @@ def setup_model(model_path: str):
     
     return model, tokenizer
 
-def generate_solution(model, tokenizer, problem: str, max_length: int = 4096):
+def generate_solution(model, tokenizer, problem: str, temperature: float = 0.0, max_length: int = 4096):
     """Generate a solution for a given problem."""
     prompt = f"[INST]Analyze and solve this step by step and provide the final answer in a \\boxed{{}}:\n\n{problem}[/INST]"
     
@@ -40,17 +40,17 @@ def generate_solution(model, tokenizer, problem: str, max_length: int = 4096):
             **inputs,
             max_length=max_length,
             num_return_sequences=1,
-            temperature=0.1,
+            temperature=temperature,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id
         )
     
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-def process_example(model, tokenizer, example, attempt: int) -> bool:
+def process_example(model, tokenizer, example, attempt: int, temperature: float) -> bool:
     """Process a single example and return if the answer was correct."""
     try:
-        solution = generate_solution(model, tokenizer, example['problem'])
+        solution = generate_solution(model, tokenizer, example['problem'], temperature)
         
         # Extract and compare answers
         model_answer = extract_answer_from_solution(solution)
@@ -92,6 +92,7 @@ def main():
     parser.add_argument('--model_path', type=str, required=True, help='Path to local model')
     parser.add_argument('--best_of', type=int, default=3, help='Number of attempts per problem')
     parser.add_argument('--split', type=str, default='train', help='Dataset split to use')
+    parser.add_argument('--temperature', type=float, default=0.0, help='Temperature for generation (default: 0.0)')
     args = parser.parse_args()
     
     # Load model and tokenizer
@@ -107,7 +108,7 @@ def main():
     # Process each example
     for example in tqdm(dataset, desc="Processing examples"):
         for attempt in range(args.best_of):
-            if process_example(model, tokenizer, example, attempt):
+            if process_example(model, tokenizer, example, attempt, args.temperature):
                 correct_count += 1
                 break
     
