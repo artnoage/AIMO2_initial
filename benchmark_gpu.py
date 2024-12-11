@@ -101,7 +101,7 @@ def print_final_stats(correct_count: int, total: int, args: argparse.Namespace):
 def main():
     parser = argparse.ArgumentParser(description='Run GPU-accelerated benchmark with multiple attempts per problem')
     parser.add_argument('--model_path', type=str, required=True, help='Path to local model')
-    parser.add_argument('--best_of', type=int, default=3, help='Number of attempts per problem')
+    parser.add_argument('--best_of', type=int, default=1, help='Number of attempts per problem')
     parser.add_argument('--split', type=str, default='train', help='Dataset split to use')
     parser.add_argument('--temperature', type=float, default=0.0, help='Temperature for generation (default: 0.0)')
     args = parser.parse_args()
