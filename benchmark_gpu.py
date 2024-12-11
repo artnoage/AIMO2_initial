@@ -52,7 +52,12 @@ def generate_solution(model, tokenizer, problem: str, temperature: float = 0.0, 
             pad_token_id=tokenizer.eos_token_id
         )
     
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # Extract only the model's response after [/INST]
+    response_parts = full_response.split("[/INST]")
+    if len(response_parts) > 1:
+        return response_parts[1].strip()
+    return full_response  # Fallback to full response if no [/INST] found
 
 def process_example(model, tokenizer, example, attempt: int, temperature: float) -> bool:
     """Process a single example and return if the answer was correct."""
