@@ -8,12 +8,8 @@ from pathlib import Path
 import re
 from tqdm import tqdm
 import numpy as np
+from bench_utils.benchmark_utils import extract_numeric_answer, extract_answer_from_solution, is_answer_correct
 
-def extract_answer_from_solution(solution: str) -> str:
-    """Extract the first boxed answer from the solution."""
-    pattern = re.compile(r'\\boxed\{([^}]+)\}')
-    match = pattern.search(solution)
-    return match.group(1) if match else None
 
 def setup_model(model_path: str):
     """Load model and tokenizer, setting up for GPU inference."""
@@ -57,8 +53,16 @@ def process_example(model, tokenizer, example, attempt: int):
         # Generate solution
         solution = generate_solution(model, tokenizer, example['problem'])
         
-        # Extract answer
-        model_answer = extract_answer_from_solution(solution)
+        # Extract answers
+        model_answer_latex = extract_answer_from_solution(solution)
+        correct_answer_latex = extract_answer_from_solution(example['solution'])
+        
+        # Convert to numeric values
+        model_numeric, model_error = extract_numeric_answer(model_answer_latex, debug=True)
+        correct_numeric, _ = extract_numeric_answer(correct_answer_latex)
+        
+        # Check correctness (using 0.001 tolerance)
+        is_correct = is_answer_correct(model_numeric, correct_numeric, 0.001)
         
         # Calculate metrics
         solution_length = len(solution.split())
@@ -68,8 +72,12 @@ def process_example(model, tokenizer, example, attempt: int):
             'id': example['id'],
             'problem': example['problem'],
             'solution': solution,
-            'model_answer': model_answer,
+            'model_answer_latex': model_answer_latex,
+            'model_answer_numeric': model_numeric,
             'correct_solution': example['solution'],
+            'correct_answer_numeric': correct_numeric,
+            'is_correct': is_correct,
+            'parse_error': model_error if not model_numeric else None,
             'metrics': {
                 'solution_length': solution_length,
                 'step_count': step_count,
@@ -92,18 +100,29 @@ def save_results(results: list, args: argparse.Namespace):
     # Calculate aggregate statistics
     solution_lengths = []
     step_counts = []
+    correct_count = 0
+    parse_errors = 0
     
     for result in results:
         if result and 'metrics' in result:
             solution_lengths.append(result['metrics']['solution_length'])
             step_counts.append(result['metrics']['step_count'])
+            if result.get('is_correct'):
+                correct_count += 1
+            if result.get('parse_error'):
+                parse_errors += 1
     
+    total = len(results)
     stats = {
         'avg_solution_length': np.mean(solution_lengths),
         'std_solution_length': np.std(solution_lengths),
         'avg_step_count': np.mean(step_counts),
         'std_step_count': np.std(step_counts),
-        'total_examples': len(results),
+        'accuracy': correct_count / total if total > 0 else 0,
+        'parse_error_rate': parse_errors / total if total > 0 else 0,
+        'total_examples': total,
+        'correct_count': correct_count,
+        'parse_errors': parse_errors,
         'args': vars(args)
     }
     
