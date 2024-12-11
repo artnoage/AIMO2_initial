@@ -47,8 +47,8 @@ def generate_solution(model, tokenizer, problem: str, temperature: float = 0.0, 
             **inputs,
             max_length=max_length,
             num_return_sequences=1,
-            temperature=temperature,
             do_sample=temperature > 0.0,
+            **({'temperature': temperature} if temperature > 0.0 else {}),
             pad_token_id=tokenizer.eos_token_id
         )
     
