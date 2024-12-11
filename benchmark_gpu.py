@@ -33,7 +33,7 @@ def setup_model(model_path: str):
     
     return model, tokenizer
 
-def generate_solution(model, tokenizer, problem: str, max_length: int = 2048):
+def generate_solution(model, tokenizer, problem: str, max_length: int = 4096):
     """Generate a solution for a given problem."""
     prompt = f"[INST]Solve this step by step and provide the final answer in a \\boxed{{}}:\n\n{problem}[/INST]"
     
