@@ -2,10 +2,6 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
 import argparse
-import json
-from datetime import datetime
-from pathlib import Path
-import re
 from tqdm import tqdm
 import numpy as np
 from bench_utils.benchmark_utils import extract_numeric_answer, extract_answer_from_solution, is_answer_correct
@@ -99,7 +95,7 @@ def main():
     model, tokenizer = setup_model(args.model_path)
     
     # Load dataset
-    dataset = load_dataset("AI-MO/Numina", split=args.split)
+    dataset = load_dataset("artnoage/Numina", split=args.split)
     print(f"\nLoaded {len(dataset)} examples from dataset")
     
     correct_count = 0
