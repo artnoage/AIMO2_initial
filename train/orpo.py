@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="artnoage/metastral",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241211_180540",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241210_102138")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241211_203516")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -57,7 +57,6 @@ def main():
         if "score_chosen" not in example or "score_rejected" not in example:
             raise ValueError("Dataset must include score_chosen and score_rejected fields")
         return example
-
     # Load and format dataset
     formatted_dataset = dataset.map(
         formatting_func,
@@ -104,15 +103,11 @@ def main():
     os.makedirs(loras_dir, exist_ok=True)
     
     model_output_dir = os.path.join(models_dir, timestamp)
-    lora_output_dir = os.path.join(loras_dir, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
     print(f"Merged model saved to {model_output_dir}")
     
-    # Save the LoRA weights
-    model.save_pretrained_merged(lora_output_dir, tokenizer, save_method="lora")
-    print(f"LoRA weights saved to {lora_output_dir}")
 
 if __name__ == "__main__":
     main()
