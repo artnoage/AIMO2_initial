@@ -1,6 +1,6 @@
 import os
 import torch
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from trl import ORPOTrainer, ORPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
@@ -62,6 +62,12 @@ def main():
         formatting_func,
         desc="Applying chat template"
     )
+    
+    # Create a shuffled copy with seed 42
+    shuffled_dataset = formatted_dataset.shuffle(seed=42)
+    
+    # Concatenate original and shuffled datasets
+    formatted_dataset = concatenate_datasets([formatted_dataset, shuffled_dataset])
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -74,7 +80,7 @@ def main():
         max_prompt_length=2048,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=16,
-        num_train_epochs=2,
+        num_train_epochs=1,
         learning_rate=4e-6,
         logging_steps=1,
         optim = "adafactor",
