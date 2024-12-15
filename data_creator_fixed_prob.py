@@ -74,15 +74,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             max_retries = 2
             retry_count = 0
+            
+            def validate_response(resp: str) -> bool:
+                if "[/INST]" in resp:
+                    return False
+                step_count = resp.lower().count("step")
+                return step_count <= 1
+            
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
-            while response_2 == response_1 and retry_count < max_retries:
-                print(f"Responses match, retrying... (attempt {retry_count + 1})")
+            while (response_2 == response_1 or not validate_response(response_2)) and retry_count < max_retries:
+                print(f"Response invalid or matches, retrying... (attempt {retry_count + 1})")
                 response_2 = await step_agent.generate(example["problem"], current_solution)
                 retry_count += 1
                 
-            if response_2 == response_1:
-                print(f"Responses still match after {max_retries} retries, skipping example {running_id}")
+            if response_2 == response_1 or not validate_response(response_1) or not validate_response(response_2):
+                print(f"Responses invalid or still match after {max_retries} retries, skipping example {running_id}")
                 return None
                 
             path_1 = current_solution + response_1
