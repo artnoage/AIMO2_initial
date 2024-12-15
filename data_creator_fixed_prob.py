@@ -53,7 +53,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             n = 4
 
         if n == 1:
-            # Get two different analyses with validation
+            # Get two different first steps after the common analysis
             max_retries = 2
             retry_count = 0
             
@@ -61,36 +61,34 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if "[/INST]" in resp:
                     return False
                 step_count = resp.lower().count("step")
-                if step_count > 1:
-                    return False
-                # Additional analysis-specific validation
-                return (
-                    "problem" in resp.lower() and
-                    "analysis" in resp.lower()
-                )
+                return step_count <= 1
             
-            # Use the common analysis as first path
-            bifurcation_prompt, response_1 = _, common_analysis
-            
+            # Get first step with validation
+            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], common_analysis, return_prompt=True)
+            while not validate_response(response_1) and retry_count < max_retries:
+                logs['path1_logs'].append(f"Step 1 invalid, retrying... (attempt {retry_count + 1})")
+                _, response_1 = await step_agent.generate(example["problem"], common_analysis, return_prompt=True)
+                retry_count += 1
+                
             if not validate_response(response_1):
-                logs['path1_logs'].append(f"Common analysis invalid, skipping example {running_id}")
+                logs['path1_logs'].append(f"Step 1 still invalid after {max_retries} retries, skipping example {running_id}")
                 return None
                 
-            # Get second analysis with validation
+            # Get second step with validation
             retry_count = 0
-            _, response_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
+            response_2 = await step_agent.generate(example["problem"], common_analysis)
             
             while (response_2 == response_1 or not validate_response(response_2)) and retry_count < max_retries:
-                logs['path2_logs'].append(f"Analysis 2 invalid or matches, retrying... (attempt {retry_count + 1})")
-                _, response_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                logs['path2_logs'].append(f"Step 2 invalid or matches, retrying... (attempt {retry_count + 1})")
+                response_2 = await step_agent.generate(example["problem"], common_analysis)
                 retry_count += 1
                 
             if response_2 == response_1 or not validate_response(response_2):
-                logs['path2_logs'].append(f"Analysis 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
+                logs['path2_logs'].append(f"Step 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
                 return None
                 
-            path_1 = response_1
-            path_2 = response_2
+            path_1 = common_analysis + response_1
+            path_2 = common_analysis + response_2
         else:
             # Add n-1 common steps
             for _ in range(n-1):
