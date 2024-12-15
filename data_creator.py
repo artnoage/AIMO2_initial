@@ -104,8 +104,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     return None
             
             # Generate bifurcation prompt
-            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-            
             # Get two different responses using step agent
             max_retries = 2
             retry_count = 0
@@ -116,15 +114,28 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 step_count = resp.lower().count("step")
                 return step_count <= 1
             
+            # Get first response with validation
+            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            while not validate_response(response_1) and retry_count < max_retries:
+                print(f"Response 1 invalid, retrying... (attempt {retry_count + 1})")
+                _, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                retry_count += 1
+                
+            if not validate_response(response_1):
+                print(f"Response 1 still invalid after {max_retries} retries, skipping example {running_id}")
+                return None
+                
+            # Get second response with validation
+            retry_count = 0
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
             while (response_2 == response_1 or not validate_response(response_2)) and retry_count < max_retries:
-                print(f"Response invalid or matches, retrying... (attempt {retry_count + 1})")
+                print(f"Response 2 invalid or matches, retrying... (attempt {retry_count + 1})")
                 response_2 = await step_agent.generate(example["problem"], current_solution)
                 retry_count += 1
                 
-            if response_2 == response_1 or not validate_response(response_1) or not validate_response(response_2):
-                print(f"Responses invalid or still match after {max_retries} retries, skipping example {running_id}")
+            if response_2 == response_1 or not validate_response(response_2):
+                print(f"Response 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
                 return None
                 
             path_1 = current_solution + response_1
