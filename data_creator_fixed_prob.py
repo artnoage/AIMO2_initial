@@ -71,8 +71,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Generate two different paths at bifurcation point
             bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+            
+            max_retries = 2
+            retry_count = 0
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
+            while response_2 == response_1 and retry_count < max_retries:
+                print(f"Responses match, retrying... (attempt {retry_count + 1})")
+                response_2 = await step_agent.generate(example["problem"], current_solution)
+                retry_count += 1
+                
+            if response_2 == response_1:
+                print(f"Responses still match after {max_retries} retries, skipping example {running_id}")
+                return None
+                
             path_1 = current_solution + response_1
             path_2 = current_solution + response_2
 
