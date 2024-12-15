@@ -55,28 +55,52 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         
         if n == 1:
-            # Get two different analyses with prompts
+            # Get two different analyses with validation
+            max_retries = 2
+            retry_count = 0
+            
+            def validate_response(resp: str) -> bool:
+                if "[/INST]" in resp:
+                    return False
+                step_count = resp.lower().count("step")
+                if step_count > 1:
+                    return False
+                # Additional analysis-specific validation
+                return (
+                    "problem" in resp.lower() and
+                    "analysis" in resp.lower()
+                )
+            
+            # Get first analysis with validation
             bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
+            while not validate_response(path_1) and retry_count < max_retries:
+                print(f"Analysis 1 invalid, retrying... (attempt {retry_count + 1})")
+                _, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                retry_count += 1
+                
+            if not validate_response(path_1):
+                print(f"Analysis 1 still invalid after {max_retries} retries, skipping example {running_id}")
+                return None
+                
+            # Get second analysis with validation
+            retry_count = 0
             _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
             
-            # Validate analysis responses
-            valid_analysis_1 = (
-                "problem" in path_1.lower() and
-                "analysis" in path_1.lower() and
-                "step" not in path_1.lower()
-            )
-            valid_analysis_2 = (
-                "problem" in path_2.lower() and
-                "analysis" in path_2.lower() and
-                "step" not in path_2.lower()
-            )
-            response_1=path_1
-            response_2=path_2
-            # For n=1, scores start at 0 and we'll do completions if analysis is valid
+            while (path_2 == path_1 or not validate_response(path_2)) and retry_count < max_retries:
+                print(f"Analysis 2 invalid or matches, retrying... (attempt {retry_count + 1})")
+                _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                retry_count += 1
+                
+            if path_2 == path_1 or not validate_response(path_2):
+                print(f"Analysis 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
+                return None
+                
+            response_1 = path_1
+            response_2 = path_2
             score_1 = 0
             score_2 = 0
-            do_completion_1 = valid_analysis_1
-            do_completion_2 = valid_analysis_2
+            do_completion_1 = True
+            do_completion_2 = True
 
             logs['validation_logs'].extend([
                 "\nPath 1 analysis validation (n=1):",
