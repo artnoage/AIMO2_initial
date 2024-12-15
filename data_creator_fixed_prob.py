@@ -37,11 +37,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         step_agent = NextStepAgent(solver)
         completion_agent = CompletionAgent(solver)
 
-        # Get initial analysis
-        bifurcation_prompt, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+        # Get initial analysis without prompt
+        _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
         current_solution = common_analysis
 
-        # Determine bifurcation point based on fixed probabilities
+        # Determine bifurcation point based on fixed probabilities 
         r = random.random()
         if r < 0.4:  # 40% chance to bifurcate before first step
             n = 1
@@ -54,7 +54,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         if n == 1:
             # Bifurcate immediately after analysis
-            response_1 = await step_agent.generate(example["problem"], current_solution)
+            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
             path_1 = current_solution + response_1
@@ -70,7 +70,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     return None
             
             # Generate two different paths at bifurcation point
-            response_1 = await step_agent.generate(example["problem"], current_solution)
+            bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
             path_1 = current_solution + response_1
