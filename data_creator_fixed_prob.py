@@ -35,10 +35,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs['validation_logs'].append(f"Warning: Could not extract answer from solution for example {running_id}")
             return None
 
-        # Initialize agents
+        # Initialize agents and verifier
         solver = get_model(ModelOption[config.solver], temp=config.temperature)
         verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
         second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
+        verifier = create_verifier(
+            config.verification_type,
+            verifier_model=verifier_model,
+            second_verifier_model=second_verifier_model,
+            tolerance=config.tolerance
+        )
+        
         analysis_agent = AnalysisAgent(solver)
         step_agent = NextStepAgent(solver)
         completion_agent = CompletionAgent(solver)
@@ -130,15 +137,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             path_1 = current_solution + response_1
             path_2 = current_solution + response_2
 
-        # Check if paths have solutions
+        # Check if paths have valid solutions
         answer_1 = extract_answer_from_solution(path_1)
         answer_2 = extract_answer_from_solution(path_2)
         
-        # Initialize scores and completion flags
-        score_1 = config.completions if answer_1 is not None else 0
-        score_2 = config.completions if answer_2 is not None else 0
-        do_completion_1 = answer_1 is None
-        do_completion_2 = answer_2 is None
+        # Validate answers and set scores
+        score_1 = 0
+        score_2 = 0
+        if answer_1 is not None:
+            score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
+            score_1 = config.completions if score == total_steps else 0
+            
+        if answer_2 is not None:
+            score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
+            score_2 = config.completions if score == total_steps else 0
+            
+        do_completion_1 = score_1 == 0
+        do_completion_2 = score_2 == 0
 
         logs['validation_logs'].extend([
             "\nPath 1 initial check:",
@@ -156,12 +171,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for _ in range(config.completions):
                 try:
                     complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                    verifier = create_verifier(
-                        config.verification_type,
-                        verifier_model=verifier_model,
-                        second_verifier_model=second_verifier_model,
-                        tolerance=config.tolerance
-                    )
                     score, total_steps, error_msg = await verifier.verify(
                         complete_solution,
                         correct_answer,
@@ -178,12 +187,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for _ in range(config.completions):
                 try:
                     complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
-                    verifier = create_verifier(
-                        config.verification_type,
-                        verifier_model=verifier_model,
-                        second_verifier_model=second_verifier_model,
-                        tolerance=config.tolerance
-                    )
                     score, total_steps, error_msg = await verifier.verify(
                         complete_solution,
                         correct_answer,
