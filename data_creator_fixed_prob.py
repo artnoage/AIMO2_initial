@@ -69,15 +69,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     "analysis" in resp.lower()
                 )
             
-            # Get first analysis with validation
-            bifurcation_prompt, response_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-            while not validate_response(response_1) and retry_count < max_retries:
-                logs['path1_logs'].append(f"Analysis 1 invalid, retrying... (attempt {retry_count + 1})")
-                _, response_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                retry_count += 1
-                
+            # Use the common analysis as first path
+            bifurcation_prompt, response_1 = _, common_analysis
+            
             if not validate_response(response_1):
-                logs['path1_logs'].append(f"Analysis 1 still invalid after {max_retries} retries, skipping example {running_id}")
+                logs['path1_logs'].append(f"Common analysis invalid, skipping example {running_id}")
                 return None
                 
             # Get second analysis with validation
