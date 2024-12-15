@@ -104,11 +104,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
             logs['validation_logs'].extend([
                 "\nPath 1 analysis validation (n=1):",
-                f"- Valid analysis: {'Yes' if valid_analysis_1 else 'No'}",
+                f"- Valid analysis: {'Yes' if validate_response(path_1) else 'No'}",
                 f"- Initial score: {score_1}",
                 f"- Will attempt completion: {'Yes' if do_completion_1 else 'No'}",
                 "\nPath 2 analysis validation (n=1):",
-                f"- Valid analysis: {'Yes' if valid_analysis_2 else 'No'}",
+                f"- Valid analysis: {'Yes' if validate_response(path_2) else 'No'}",
                 f"- Initial score: {score_2}",
                 f"- Will attempt completion: {'Yes' if do_completion_2 else 'No'}"
             ])
