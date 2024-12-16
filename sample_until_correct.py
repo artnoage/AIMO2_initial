@@ -96,14 +96,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Could not find both correct and wrong solutions for example {running_id}")
             return None
 
-        # Calculate scores and normalize them
-        chosen_score = 1/correct_attempt  # Higher score for finding correct answer quickly
-        rejected_score = -wrong_attempt/config.best_of  # More negative for taking more attempts
-        
-        # Normalize scores to sum to 1
-        total = abs(chosen_score) + abs(rejected_score)
-        chosen_score = chosen_score / total
-        rejected_score = rejected_score / total
+        # Calculate scores for ORPO training
+        # Correct solution scoring
+        chosen_score = 1.0  # Base score for being correct
+        chosen_score *= (1 - (correct_attempt-1)/(2*config.best_of))  # Penalty for attempts needed
+        if correct_attempt == 1:
+            chosen_score *= 1.2  # Bonus for getting it first try
+            
+        # Wrong solution scoring
+        wrong_solution_info = next(s for s in solutions if s['solution'] == wrong_solution)
+        rejected_score = -1.0  # Base score for being wrong
+        # Add penalty based on verification score
+        if wrong_solution_info['verification_score'] > 0:
+            # Less penalty if partially correct
+            rejected_score *= (1 + (1 - wrong_solution_info['verification_score']/wrong_solution_info['verification_steps'])/2)
+        else:
+            # Extra penalty for completely wrong/invalid solutions
+            rejected_score *= 1.5
+            
+        # Ensure scores are in reasonable range
+        chosen_score = max(-1.0, min(1.0, chosen_score))
+        rejected_score = max(-1.0, min(1.0, rejected_score))
         
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
