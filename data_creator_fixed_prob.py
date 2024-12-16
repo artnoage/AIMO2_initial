@@ -10,13 +10,28 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-def validate_response(resp: str) -> bool:
+def validate_analysis(resp: str) -> bool:
+    """Validate an analysis response"""
     if "[/INST]" in resp:
         return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
     if word_count < 20:
         return False
+    # Analysis should mention problem and analysis
+    if "problem" not in resp.lower() or "analysis" not in resp.lower():
+        return False
+    return True
+
+def validate_step(resp: str) -> bool:
+    """Validate a solution step"""
+    if "[/INST]" in resp:
+        return False
+    # Check if response has less than 20 words
+    word_count = len(resp.split())
+    if word_count < 20:
+        return False
+    # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
     return step_count <= 1
 
@@ -76,7 +91,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Get first step with validation
             bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], common_analysis, return_prompt=True)
-            while not validate_response(response_1) and retry_count < max_retries:
+            while not validate_step(response_1) and retry_count < max_retries:
                 logs['path1_logs'].append(f"Step 1 invalid, retrying... (attempt {retry_count + 1})")
                 _, response_1 = await step_agent.generate(example["problem"], common_analysis, return_prompt=True)
                 retry_count += 1
@@ -89,12 +104,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             retry_count = 0
             response_2 = await step_agent.generate(example["problem"], common_analysis)
             
-            while (response_2 == response_1 or not validate_response(response_2)) and retry_count < max_retries:
+            while (response_2 == response_1 or not validate_step(response_2)) and retry_count < max_retries:
                 logs['path2_logs'].append(f"Step 2 invalid or matches, retrying... (attempt {retry_count + 1})")
                 response_2 = await step_agent.generate(example["problem"], common_analysis)
                 retry_count += 1
                 
-            if response_2 == response_1 or not validate_response(response_2):
+            if response_2 == response_1 or not validate_step(response_2):
                 logs['path2_logs'].append(f"Step 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
                 return None
                 
