@@ -161,8 +161,7 @@ class FullSolutionAgent:
                 "   - Show all work and intermediate calculations\n"
                 "   - Use LaTeX notation for mathematical expressions\n"
                 "   - Provide justification in [brackets] for key steps\n"
-                "   - End with final answer in \\boxed{}\n\n"
-                "Please solve the problem completely:"))
+                "   - End with final answer in \\boxed{}\n\n "))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response

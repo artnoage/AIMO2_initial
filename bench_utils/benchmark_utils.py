@@ -28,7 +28,7 @@ class CustomChat:
         self,
         base_url: str = "http://localhost:8000/v1",
         model: str = "default",
-        temperature: float = 0.1,
+        temperature: float = 0,
         api_key: str = "EMPTY"
     ):
         self.base_url = base_url
@@ -180,7 +180,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=5, timeout=180)
+@async_retry(max_retries=3, timeout=120)
 async def get_model_response(solver_model, prompt,max_tokens=None) -> str:
     """Get response from model with retry logic"""
     if max_tokens==None:
