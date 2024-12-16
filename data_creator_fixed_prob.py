@@ -16,7 +16,7 @@ def validate_analysis(resp: str) -> bool:
         return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 20:
+    if word_count < 15:
         return False
     # Analysis should mention problem and analysis
     if "problem" not in resp.lower() or "analysis" not in resp.lower():
@@ -75,18 +75,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Determine bifurcation point based on fixed probabilities 
         r = random.random()
-        if r < 0.4:  # 40% chance to bifurcate before first step
+        if r < 0.6:  # 40% chance to bifurcate before first step
             n = 1
-        elif r < 0.7:  # 30% chance to bifurcate before second step
+        elif r < 0.9:  # 30% chance to bifurcate before second step
             n = 2
-        elif r < 0.9:  # 20% chance to bifurcate before third step
+        elif r < 0.95:  # 20% chance to bifurcate before third step
             n = 3
         else:  # 10% chance to bifurcate before fourth step
             n = 4
 
         if n == 1:
             # Get two different first steps after the common analysis
-            max_retries = 2
+            max_retries = 4
             retry_count = 0
             
             # Get first step with validation
@@ -96,7 +96,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 _, response_1 = await step_agent.generate(example["problem"], common_analysis, return_prompt=True)
                 retry_count += 1
                 
-            if not validate_response(response_1):
+            if not validate_step(response_1):
                 logs['path1_logs'].append(f"Step 1 still invalid after {max_retries} retries, skipping example {running_id}")
                 return None
                 
@@ -120,7 +120,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for step_num in range(n-1):
                 retry_count = 0
                 valid_step = False
-                while not valid_step and retry_count < 2:
+                while not valid_step and retry_count < 4:
                     next_step = await step_agent.generate(example["problem"], current_solution)
                     # Validate step
                     word_count = len(next_step.split())
@@ -146,12 +146,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Get first response with validation
             bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-            while not validate_response(response_1) and retry_count < max_retries:
+            while not validate_step(response_1) and retry_count < max_retries:
                 logs['path1_logs'].append(f"Response 1 invalid, retrying... (attempt {retry_count + 1})")
                 _, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 retry_count += 1
                 
-            if not validate_response(response_1):
+            if not validate_step(response_1):
                 logs['path1_logs'].append(f"Response 1 still invalid after {max_retries} retries, skipping example {running_id}")
                 return None
                 
@@ -159,12 +159,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             retry_count = 0
             response_2 = await step_agent.generate(example["problem"], current_solution)
             
-            while (response_2 == response_1 or not validate_response(response_2)) and retry_count < max_retries:
+            while (response_2 == response_1 or not validate_step(response_2)) and retry_count < max_retries:
                 logs['path2_logs'].append(f"Response 2 invalid or matches, retrying... (attempt {retry_count + 1})")
                 response_2 = await step_agent.generate(example["problem"], current_solution)
                 retry_count += 1
                 
-            if response_2 == response_1 or not validate_response(response_2):
+            if response_2 == response_1 or not validate_step(response_2):
                 logs['path2_logs'].append(f"Response 2 invalid or matches after {max_retries} retries, skipping example {running_id}")
                 return None
                 
@@ -268,7 +268,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         if score_1 == 0 and score_2 == 0:
             logs['summary_logs'].append(f"Skipping example {running_id+1} - No successful solution")
             return None 
-        if abs(score_1 - score_2)/max(score_1,score_2) < 0.4:
+        if abs(score_1 - score_2)/max(score_1,score_2) < 0.31:
             logs['summary_logs'].append(f"Skipping example {running_id+1} - scores too close: {score_1} vs {score_2}")
             return None
             
