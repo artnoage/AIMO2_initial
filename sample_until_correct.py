@@ -96,27 +96,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Could not find both correct and wrong solutions for example {running_id}")
             return None
 
-        # Calculate scores for ORPO training
+        # Calculate scores for ORPO training (range [0,1])
         # Correct solution scoring
-        chosen_score = 1.0  # Base score for being correct
-        chosen_score *= (1 - (correct_attempt-1)/(2*config.best_of))  # Penalty for attempts needed
+        chosen_score = 1.0  # Start at max score
+        # Penalty for number of attempts needed (lose up to 0.4)
+        attempt_penalty = 0.4 * (correct_attempt-1)/config.best_of
+        chosen_score -= attempt_penalty
+        
+        # Bonus for first try (up to 0.1)
         if correct_attempt == 1:
-            chosen_score *= 1.2  # Bonus for getting it first try
+            chosen_score = min(1.0, chosen_score + 0.1)
             
         # Wrong solution scoring
         wrong_solution_info = next(s for s in solutions if s['solution'] == wrong_solution)
-        rejected_score = -1.0  # Base score for being wrong
-        # Add penalty based on verification score
+        # Base score for wrong solution
         if wrong_solution_info['verification_score'] > 0:
-            # Less penalty if partially correct
-            rejected_score *= (1 + (1 - wrong_solution_info['verification_score']/wrong_solution_info['verification_steps'])/2)
+            # Partially correct solutions get score based on verification
+            rejected_score = 0.4 * (wrong_solution_info['verification_score']/wrong_solution_info['verification_steps'])
         else:
-            # Extra penalty for completely wrong/invalid solutions
-            rejected_score *= 1.5
+            # Completely wrong solutions get minimum score
+            rejected_score = 0.1
             
-        # Ensure scores are in reasonable range
-        chosen_score = max(-1.0, min(1.0, chosen_score))
-        rejected_score = max(-1.0, min(1.0, rejected_score))
+        # Ensure scores are in [0,1] range
+        chosen_score = max(0.0, min(1.0, chosen_score))
+        rejected_score = max(0.0, min(1.0, rejected_score))
         
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
