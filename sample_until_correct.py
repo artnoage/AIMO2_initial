@@ -81,8 +81,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'is_correct': False
                 })
 
-        # Calculate score as 1/attempts if found correct, 0 if not
-        final_score = 1/attempts if found_correct else 0
+        # Calculate score:
+        # - For correct: 1/attempts (higher score for finding correct answer quickly)
+        # - For wrong: -attempts/max_attempts (more negative the more attempts were used)
+        final_score = 1/attempts if found_correct else -attempts/config.best_of
         
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
