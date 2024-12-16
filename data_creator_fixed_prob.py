@@ -13,6 +13,10 @@ load_dotenv()
 def validate_response(resp: str) -> bool:
     if "[/INST]" in resp:
         return False
+    # Check if response has less than 20 words
+    word_count = len(resp.split())
+    if word_count < 20:
+        return False
     step_count = resp.lower().count("step")
     return step_count <= 1
 
@@ -97,10 +101,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             path_1 = common_analysis + response_1
             path_2 = common_analysis + response_2
         else:
-            # Add n-1 common steps
-            for _ in range(n-1):
-                next_step = await step_agent.generate(example["problem"], current_solution)
-                current_solution += next_step
+            # Add n-1 common steps with validation
+            for step_num in range(n-1):
+                retry_count = 0
+                valid_step = False
+                while not valid_step and retry_count < 2:
+                    next_step = await step_agent.generate(example["problem"], current_solution)
+                    # Validate step
+                    word_count = len(next_step.split())
+                    if word_count >= 20 and "[/INST]" not in next_step and next_step.lower().count("step") <= 1:
+                        valid_step = True
+                        current_solution += next_step
+                    else:
+                        retry_count += 1
+                        logs['validation_logs'].append(f"Step {step_num + 1} invalid, retrying... (attempt {retry_count})")
+                
+                if not valid_step:
+                    logs['validation_logs'].append(f"Step {step_num + 1} still invalid after 2 retries, skipping example {running_id}")
+                    return None
+                    
                 # Check if we already have an answer
                 if extract_answer_from_solution(current_solution) is not None:
                     logs['validation_logs'].append(f"Found answer during common path generation for example {running_id}, skipping")
