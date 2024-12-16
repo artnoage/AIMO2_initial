@@ -47,9 +47,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         )
         
         found_correct = False
-        attempts = 0
+        found_wrong = False
+        correct_attempt = 0
+        wrong_attempt = 0
+        correct_solution = None
+        wrong_solution = None
         
-        while not found_correct and attempts < config.best_of:
+        attempts = 0
+        while (not found_correct or not found_wrong) and attempts < config.best_of:
             attempts += 1
             try:
                 current_solution = await solution_agent.generate(example["problem"])
@@ -68,8 +73,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'is_correct': is_correct
                 })
                 
-                if is_correct:
+                if is_correct and not found_correct:
                     found_correct = True
+                    correct_attempt = attempts
+                    correct_solution = current_solution
+                elif not is_correct and not found_wrong:
+                    found_wrong = True
+                    wrong_attempt = attempts
+                    wrong_solution = current_solution
                     
             except Exception as e:
                 print(f"Error in attempt {attempts} for example {str(running_id)}: {str(e)}")
@@ -81,28 +92,41 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'is_correct': False
                 })
 
-        # Calculate score:
-        # - For correct: 1/attempts (higher score for finding correct answer quickly)
-        # - For wrong: -attempts/max_attempts (more negative the more attempts were used)
-        final_score = 1/attempts if found_correct else -attempts/config.best_of
+        if not found_correct or not found_wrong:
+            print(f"Could not find both correct and wrong solutions for example {running_id}")
+            return None
+
+        # Calculate scores and normalize them
+        chosen_score = 1/correct_attempt  # Higher score for finding correct answer quickly
+        rejected_score = -wrong_attempt/config.best_of  # More negative for taking more attempts
+        
+        # Normalize scores to sum to 1
+        total = abs(chosen_score) + abs(rejected_score)
+        chosen_score = chosen_score / total
+        rejected_score = rejected_score / total
         
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
         print(f"Problem: {example['problem'][:200]}...")
         print(f"Correct answer: {correct_answer}")
-        print(f"Found correct solution: {found_correct}")
-        print(f"Number of attempts: {attempts}")
-        print(f"Score (1/attempts): {final_score:.3f}")
+        print(f"Found both solutions: Yes")
+        print(f"Correct solution found on attempt: {correct_attempt}")
+        print(f"Wrong solution found on attempt: {wrong_attempt}")
+        print(f"Total attempts: {attempts}")
+        print(f"Chosen score: {chosen_score:.3f}")
+        print(f"Rejected score: {rejected_score:.3f}")
         print("-" * 80)
         
         return {
             'id': example_id,
-            'problem': example['problem'],
-            'correct_solution': example['solution'],
-            'correct_answer': correct_answer,
-            'found_correct': found_correct,
-            'attempts': attempts,
-            'score': final_score,
+            'prompt': {'content': example['problem'], 'role': 'user'},
+            'chosen': {'content': correct_solution, 'role': 'assistant'},
+            'rejected': {'content': wrong_solution, 'role': 'assistant'},
+            'score_chosen': chosen_score,
+            'score_rejected': rejected_score,
+            'attempts_chosen': correct_attempt,
+            'attempts_rejected': wrong_attempt,
+            'total_attempts': attempts,
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
