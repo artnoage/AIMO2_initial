@@ -1,0 +1,130 @@
+import os
+import asyncio
+from typing import Optional, Dict, Tuple
+from dotenv import load_dotenv
+from bench_utils.benchmark_config import *
+from bench_utils.benchmark_utils import *
+from bench_utils.agents import *
+from bench_utils.verify import *
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
+
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
+    """Process a single example, sampling until correct answer found or max attempts reached"""
+    try:
+        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+            print(f"Error processing example {str(running_id)}: Invalid example format")
+            return None
+            
+        correct_answer = extract_answer_from_solution(example['solution'])
+        if correct_answer is None:
+            print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
+            return None
+
+        model_name = None
+        if config.lora_dir:
+            model_name = Path(config.lora_dir).name
+        elif config.upload_lora:
+            latest_lora = get_latest_lora_path()
+            if latest_lora:
+                model_name = Path(latest_lora).name
+                
+        solver = get_model(ModelOption[config.solver], temp=config.temperature, model_name=model_name)
+        solution_agent = FullSolutionAgent(solver)
+        solutions = []
+        
+        # Create verifier once
+        verifier_model = None if config.verification_type == 'numeric' else get_model(
+            ModelOption[config.verifier], temp=config.verifier_temp, model_name=model_name)
+        second_verifier_model = None if config.verification_type != 'solution' else get_model(
+            ModelOption[config.second_verifier], temp=config.verifier_temp, model_name=model_name)
+        verifier = create_verifier(
+            config.verification_type,
+            verifier_model=verifier_model,
+            second_verifier_model=second_verifier_model,
+            tolerance=config.tolerance
+        )
+        
+        found_correct = False
+        attempts = 0
+        
+        while not found_correct and attempts < config.best_of:
+            attempts += 1
+            try:
+                current_solution = await solution_agent.generate(example["problem"])
+                score, total_steps, current_answer = await verifier.verify(
+                    current_solution,
+                    correct_answer,
+                    example["problem"]
+                )
+                
+                is_correct = score == total_steps
+                solutions.append({
+                    'solution': current_solution,
+                    'answer': current_answer,
+                    'verification_score': score,
+                    'verification_steps': total_steps,
+                    'is_correct': is_correct
+                })
+                
+                if is_correct:
+                    found_correct = True
+                    
+            except Exception as e:
+                print(f"Error in attempt {attempts} for example {str(running_id)}: {str(e)}")
+                solutions.append({
+                    'solution': "Error occurred",
+                    'answer': None, 
+                    'verification_score': 0,
+                    'verification_steps': 1,
+                    'is_correct': False
+                })
+
+        # Calculate score as 1/attempts if found correct, 0 if not
+        final_score = 1/attempts if found_correct else 0
+        
+        # Print statistics
+        print(f"\nExample {str(running_id + 1)}:")
+        print(f"Problem: {example['problem'][:200]}...")
+        print(f"Correct answer: {correct_answer}")
+        print(f"Found correct solution: {found_correct}")
+        print(f"Number of attempts: {attempts}")
+        print(f"Score (1/attempts): {final_score:.3f}")
+        print("-" * 80)
+        
+        return {
+            'id': example_id,
+            'problem': example['problem'],
+            'correct_solution': example['solution'],
+            'correct_answer': correct_answer,
+            'found_correct': found_correct,
+            'attempts': attempts,
+            'score': final_score,
+            'model_solutions': [s['solution'] for s in solutions],
+            'model_answers': [s['answer'] for s in solutions],
+            'is_correct_list': [s['is_correct'] for s in solutions],
+            'verification_scores': [s['verification_score'] for s in solutions],
+            'verification_steps': [s['verification_steps'] for s in solutions]
+        }
+        
+    except Exception as e:
+        print(f"Error processing example {str(running_id)}: {e}")
+        return None
+
+async def main():
+    """Main function for sampling until correct solution found."""
+    config = BenchmarkConfig.from_args('Sample solutions until correct answer found')
+    
+    await run_benchmark(
+        config=config,
+        process_example_func=process_example
+    )
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
