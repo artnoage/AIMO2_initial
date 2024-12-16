@@ -122,10 +122,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
             current_solution = common_analysis
             
-            # Add n-2 common steps
-            for _ in range(n-2):
-                _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                current_solution += next_step
+            # Add n-2 common steps with validation
+            for step_num in range(n-2):
+                retry_count = 0
+                valid_step = False
+                while not valid_step and retry_count < 2:
+                    _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                    # Validate step
+                    word_count = len(next_step.split())
+                    if word_count >= 20 and "[/INST]" not in next_step and next_step.lower().count("step") <= 1:
+                        valid_step = True
+                        current_solution += next_step
+                    else:
+                        retry_count += 1
+                        print(f"Step {step_num + 1} invalid, retrying... (attempt {retry_count})")
+                
+                if not valid_step:
+                    print(f"Step {step_num + 1} still invalid after 2 retries, skipping example {running_id}")
+                    return None
+                    
                 # Check if we already have an answer
                 if extract_answer_from_solution(current_solution) is not None:
                     print(f"Found answer during common path generation for example {running_id}, skipping")
