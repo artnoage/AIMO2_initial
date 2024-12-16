@@ -10,6 +10,16 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def validate_response(resp: str) -> bool:
+    if "[/INST]" in resp:
+        return False
+    # Check if response has less than 20 words
+    word_count = len(resp.split())
+    if word_count < 20:
+        return False
+    step_count = resp.lower().count("step")
+    return step_count <= 1
+
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     logs = {
         'validation_logs': [],
@@ -58,22 +68,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Get two different analyses with validation
             max_retries = 2
             retry_count = 0
-            
-            def validate_response(resp: str) -> bool:
-                if "[/INST]" in resp:
-                    return False
-                # Check if response has less than 20 words
-                word_count = len(resp.split())
-                if word_count < 20:
-                    return False
-                step_count = resp.lower().count("step")
-                if step_count > 1:
-                    return False
-                # Additional analysis-specific validation
-                return (
-                    "problem" in resp.lower() and
-                    "analysis" in resp.lower()
-                )
             
             # Get first analysis with validation
             bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
@@ -150,16 +144,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Get two different responses using step agent
             max_retries = 2
             retry_count = 0
-            
-            def validate_response(resp: str) -> bool:
-                if "[/INST]" in resp:
-                    return False
-                # Check if response has less than 20 words
-                word_count = len(resp.split())
-                if word_count < 20:
-                    return False
-                step_count = resp.lower().count("step")
-                return step_count <= 1
             
             # Get first response with validation
             bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
