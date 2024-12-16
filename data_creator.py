@@ -62,6 +62,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             def validate_response(resp: str) -> bool:
                 if "[/INST]" in resp:
                     return False
+                # Check if response has less than 20 words
+                word_count = len(resp.split())
+                if word_count < 20:
+                    return False
                 step_count = resp.lower().count("step")
                 if step_count > 1:
                     return False
@@ -134,6 +138,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             def validate_response(resp: str) -> bool:
                 if "[/INST]" in resp:
+                    return False
+                # Check if response has less than 20 words
+                word_count = len(resp.split())
+                if word_count < 20:
                     return False
                 step_count = resp.lower().count("step")
                 return step_count <= 1
