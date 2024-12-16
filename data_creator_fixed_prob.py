@@ -234,7 +234,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         if score_1 == 0 and score_2 == 0:
             logs['summary_logs'].append(f"Skipping example {running_id+1} - No successful solution")
             return None 
-        if abs(score_1 - score_2)/max(score_1,score_2) < 0.3:
+        if abs(score_1 - score_2)/max(score_1,score_2) < 0.4:
             logs['summary_logs'].append(f"Skipping example {running_id+1} - scores too close: {score_1} vs {score_2}")
             return None
             
