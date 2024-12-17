@@ -323,6 +323,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
     start_time = time.perf_counter()
+    total_solution_attempts = 0  # Initialize counter
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -644,7 +645,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'quality_metrics': {
                 'chosen': analyze_solution_quality(path1),
                 'rejected': analyze_solution_quality(path2)
-            }
+            },
+            'total_solution_attempts': total_solution_attempts
         }
         logs.append(f"\n⏱️ Processing Time: {processing_time:.2f}s")
         return result
