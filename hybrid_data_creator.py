@@ -150,7 +150,6 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     """Process example using full solution approach"""
     logs = []
     solution_agent = FullSolutionAgent(solver) 
-    solutions = []
     bifurcation_prompt = None
     found_correct = False
     found_wrong = False
@@ -174,14 +173,6 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             )
             
             is_correct = score == total_steps
-            solutions.append({
-                'solution': current_solution,
-                'answer': current_answer,
-                'verification_score': score,
-                'verification_steps': total_steps,
-                'is_correct': is_correct
-            })
-            
             if is_correct and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
@@ -211,9 +202,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     logs.append("="*50)
     
     # Success metrics
-    success_rate = sum(1 for s in solutions if s['is_correct']) / len(solutions) * 100
     logs.append(f"\n📊 Success Metrics:")
-    logs.append(f"✓ Success rate: {success_rate:.1f}%")
     logs.append(f"✓ Attempts for correct solution: {correct_attempt}/{config.best_of}")
     logs.append(f"✓ Attempts for wrong solution: {wrong_attempt}/{config.best_of}")
     logs.append(f"✓ Total attempts: {attempts}/{config.best_of}")
@@ -223,15 +212,6 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")
     logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")
     logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")
-    
-    # Verification details
-    logs.append(f"\n🔍 Verification Results by Attempt:")
-    for idx, sol in enumerate(solutions, 1):
-        success_marker = "✅" if sol['is_correct'] else "❌"
-        logs.append(f"\nAttempt {idx} {success_marker}")
-        logs.append(f"  ├─ Score: {sol['verification_score']}/{sol['verification_steps']}")
-        logs.append(f"  ├─ Success Rate: {(sol['verification_score']/sol['verification_steps']*100):.1f}%")
-        logs.append(f"  └─ Answer: {sol['answer']}")
     
     return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score
 
