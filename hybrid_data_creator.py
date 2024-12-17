@@ -24,6 +24,24 @@ def validate_analysis(resp: str) -> bool:
         return False
     return True
 
+def calculate_rejected_score(solution: str) -> float:
+    """Calculate rejected solution score starting from 0.4 and applying penalties"""
+    score = 0.4
+    
+    # Penalty for no boxed answer
+    if not any(c in solution for c in ['□', '■', '▢', '▣', '⬚', '▤', '▥', '▦']):
+        score -= 0.2
+        
+    # Penalty for short solutions
+    if len(solution.split()) < 80:
+        score -= 0.1
+        
+    # Penalty for invalid analysis
+    if not validate_analysis(solution):
+        score -= 0.1
+        
+    return max(0.1, score)  # Ensure minimum score of 0.1
+
 def validate_step(resp: str) -> bool:
     """Validate a solution step"""
     if "[/INST]" in resp:
@@ -89,7 +107,7 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
         chosen_score = min(1.0, chosen_score + 0.1)
         
     wrong_solution_info = next(s for s in solutions if s['solution'] == wrong_solution)
-    rejected_score = 0.4 * (wrong_solution_info['verification_score']/wrong_solution_info['verification_steps']) if wrong_solution_info['verification_score'] > 0 else 0.1
+    rejected_score = calculate_rejected_score(wrong_solution)
     
     # Print detailed logs
     print("\nFULL SOLUTION APPROACH DETAILS:")
@@ -199,9 +217,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 chosen = current_solution + response_1
                 rejected = current_solution + response_2
             
-            # Calculate scores using completion agent
+            # Calculate scores using completion agent and rejected score penalties
             score_chosen = 0
-            score_rejected = 0
+            score_rejected = calculate_rejected_score(rejected)
             
             for _ in range(config.completions):
                 try:

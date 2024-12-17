@@ -23,6 +23,24 @@ def validate_analysis(resp: str) -> bool:
         return False
     return True
 
+def calculate_rejected_score(solution: str) -> float:
+    """Calculate rejected solution score starting from 0.4 and applying penalties"""
+    score = 0.4
+    
+    # Penalty for no boxed answer
+    if not any(c in solution for c in ['□', '■', '▢', '▣', '⬚', '▤', '▥', '▦']):
+        score -= 0.2
+        
+    # Penalty for short solutions
+    if len(solution.split()) < 80:
+        score -= 0.1
+        
+    # Penalty for invalid analysis
+    if not validate_analysis(solution):
+        score -= 0.1
+        
+    return max(0.1, score)  # Ensure minimum score of 0.1
+
 def validate_step(resp: str) -> bool:
     """Validate a solution step"""
     if "[/INST]" in resp:
