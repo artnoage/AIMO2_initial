@@ -269,14 +269,15 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     logs.append("\n" + "="*50)
     logs.append("=== Full Solution Approach Details ===")
     logs.append("="*50)
-    
+            
     # Success metrics
     logs.append(f"\n📊 Success Metrics:")
-    logs.append(f"✓ Attempts for correct solution: {correct_attempt}/{config.best_of}")
-    logs.append(f"✓ Attempts for wrong solution: {wrong_attempt}/{config.best_of}")
-    logs.append(f"✓ Total attempts: {attempts}/{config.best_of}")
+    logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
+    logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
+    logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
     logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
     logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")
+    logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
     
     # Solution quality metrics
     logs.append(f"\n📝 Solution Quality:")
