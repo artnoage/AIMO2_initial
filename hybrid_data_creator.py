@@ -366,7 +366,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
-            bifurcation_prompt, path1, path2, score_path1, score_path2, solution_logs = result
+            bifurcation_prompt, path1, path2, score_path1, score_path2 = result
             
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
