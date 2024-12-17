@@ -4,10 +4,8 @@ import time
 import random
 import logging
 import asyncio
-import statistics
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
-from collections import defaultdict
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
