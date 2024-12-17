@@ -5,7 +5,6 @@ import random
 import logging
 import asyncio
 from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, field
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
@@ -45,6 +44,30 @@ def validate_analysis(resp: str) -> bool:
     if "problem" not in resp.lower() or "analysis" not in resp.lower():
         return False
     return True
+
+def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
+    """Validate a solution step"""
+    if "[/INST]" in resp:
+        return False
+    # Check if response has less than 20 words
+    word_count = len(resp.split())
+    if word_count < 20 or word_count > 100:
+        return False
+        
+    # Check step numbering if expected step is provided
+    if expected_step is not None:
+        step_mentions = [
+            f"step {expected_step}",
+            f"step{expected_step}",
+            f"({expected_step})",
+            f"{expected_step}."
+        ]
+        if not any(mention.lower() in resp.lower() for mention in step_mentions):
+            return False
+            
+    # Steps should not have multiple step mentions
+    step_count = resp.lower().count("step")
+    return step_count <= 1
 
 def analyze_solution_quality(solution: str) -> Dict[str, Any]:
     """Analyze various quality metrics of a solution"""
@@ -121,29 +144,7 @@ def calculate_rejected_score(solution: str) -> float:
             
     return max(0.0, score)  # Ensure non-negative score
 
-def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
-    """Validate a solution step"""
-    if "[/INST]" in resp:
-        return False
-    # Check if response has less than 20 words
-    word_count = len(resp.split())
-    if word_count < 20 or word_count > 100:
-        return False
-        
-    # Check step numbering if expected step is provided
-    if expected_step is not None:
-        step_mentions = [
-            f"step {expected_step}",
-            f"step{expected_step}",
-            f"({expected_step})",
-            f"{expected_step}."
-        ]
-        if not any(mention.lower() in resp.lower() for mention in step_mentions):
-            return False
-            
-    # Steps should not have multiple step mentions
-    step_count = resp.lower().count("step")
-    return step_count <= 1
+
 
 async def process_full_solution(example: Dict, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, float, float]]:
     """Process example using full solution approach"""
