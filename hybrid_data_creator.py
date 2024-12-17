@@ -57,7 +57,7 @@ def validate_analysis(resp: str) -> Tuple[bool, str]:
     if "analysis" not in resp.lower():
         return False, "Missing 'analysis' keyword"
         
-    return True, f"Passed all checks: {word_count} words, contains required keywords"
+    return True, "Analysis valid"
 
 def validate_solution(solution: str) -> Tuple[bool, str]:
     """
@@ -367,7 +367,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"\n🔄 Processing Details:")
         logs.append(f"├─ Strategy: {'Full solution' if r < 0.3 else 'Progressive building'}")
         
-        if r < 0.3:  # Full solution approach
+        if r < 0.1:  # Full solution approach
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
@@ -379,12 +379,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append("Approach: Progressive solution building")
             
             # Determine bifurcation point
-            if r < 0.5:  # Analysis only (0.3-0.5 = 0.2 probability)
+            if r < 0.4:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
                 # Exponentially decaying probability for steps 2+
                 norm_const = sum(3**(-i) for i in range(1, 11))
-                r_scaled = (r - 0.5) / 0.5  # Scale remaining probability space to [0,1]
+                r_scaled = (r - 0.4) / 0.6  # Scale remaining probability space to [0,1]
                 cumsum = 0
                 n = 1
                 while n <= 10:
@@ -403,34 +403,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Process using the analysis/steps approach from data_creator.py
             if n == 1:
                 # Try up to 3 times for path_1
-                path_1 = None
                 for retry in range(3):
-                    bifurcation_prompt, current = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    is_valid, reason = validate_analysis(current)
+                    bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    is_valid, reason = validate_analysis(path_1)
                     if is_valid:
-                        path_1 = current
-                        logs.append(f"✓ Valid analysis generated for path_1 on try {retry + 1}: {reason}")
                         break
                     logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3): {reason}")
-                
-                if path_1 is None:  # All retries failed
-                    logs.append("Failed all retries for path_1 analysis")
-                    return None
+                    if retry == 2:  # All retries failed
+                        logs.append("Failed all retries for path_1 analysis")
+                        return None
                 
                 # Try up to 3 times for path_2
-                path_2 = None
                 for retry in range(3):
-                    _, current = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    is_valid, reason = validate_analysis(current)
-                    if current != path_1 and is_valid:
-                        path_2 = current
-                        logs.append(f"✓ Valid analysis generated for path_2 on try {retry + 1}: {reason}")
+                    _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    is_valid, reason = validate_analysis(path_2)
+                    if path_2 != path_1 and is_valid:
                         break
                     logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3): {reason}")
-                
-                if path_2 is None:  # All retries failed
-                    logs.append("Failed all retries for path_2 analysis")
-                    return None
+                    if retry == 2:  # All retries failed
+                        logs.append("Failed all retries for path_2 analysis")
+                        return None
                     
                 path1 = path_1
                 path2 = path_2
@@ -444,10 +436,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         current_solution = common_analysis
                         logs.append(f"✓ Valid analysis generated: {reason}")
                         break
-                    if is_valid:
-                        logs.append(f"Analysis contained premature answer (retry {retry + 1}/3)")
-                    else:
-                        logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
+                    logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
                     if retry == 2:
                         print("\n".join(logs))
                         return None
@@ -477,7 +466,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Generate first bifurcation path
                 bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 path1 = current_solution + response_1
-                first_path_valid = validate_step(response_1, n)
+                first_path_valid = validate_step(response_1)
                 if first_path_valid:
                     logs.append("✓ Valid first bifurcation step generated")
                 else:
@@ -506,7 +495,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Generate second bifurcation path
                 response_2 = await step_agent.generate(example["problem"], current_solution)
                 path2 = current_solution + response_2
-                second_path_valid = response_2 != response_1 and validate_step(response_2, n)
+                second_path_valid = response_2 != response_1 and validate_step(response_2)
                 if second_path_valid:
                     logs.append("✓ Valid second bifurcation step generated")
                 else:
