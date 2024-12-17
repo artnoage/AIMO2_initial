@@ -112,9 +112,14 @@ def validate_entry(entry: Dict) -> bool:
     if not all(field in entry for field in required_fields):
         return False
         
-    # Get content from chosen response
+    # Get content from chosen and rejected responses
     chosen_content = entry['chosen'].get('content', '')
-    if not chosen_content:
+    rejected_content = entry['rejected'].get('content', '')
+    if not chosen_content or not rejected_content:
+        return False
+        
+    # Check if chosen and rejected are different
+    if chosen_content == rejected_content:
         return False
         
     # Determine entry type
