@@ -46,9 +46,9 @@ def calculate_rejected_score(solution: str) -> float:
     if len(steps) > 1:  # Only check if there are steps
         found_numbers = []
         for step in steps[1:]:  # Skip text before first "step"
-            # Look for step number in common formats
-            for pattern in [r'\s*(\d+)[.:\)]', r'\s*\((\d+)\)', r'\s*(\d+)\s']:
-                match = re.search(pattern, step[:20])  # Check first 20 chars for number
+            # Look for step number in common formats, must be within 2 chars after "step"
+            for pattern in [r'^.{0,2}(\d+)[.:\)]', r'^.{0,2}\((\d+)\)', r'^.{0,2}(\d+)\s']:
+                match = re.search(pattern, step)  # Check right after "step"
                 if match:
                     found_numbers.append(int(match.group(1)))
                     break
