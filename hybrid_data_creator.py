@@ -467,10 +467,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 if not first_path_valid:
                     logs.append("Failed all retries for first bifurcation step")
-                    print("\n".join(logs))
-                    return None
-
-                answer_1 = extract_answer_from_solution(path_1)
+                    path_1_valid_for_sampling = False
+                    score_path_1 = 0.0
+                else:
+                    answer_1 = extract_answer_from_solution(path_1)
                 if answer_1 is not None:
                     # First path found answer - verify it
                     score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
@@ -492,9 +492,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 if not second_path_valid:
                     logs.append("Failed all retries for second bifurcation step")
-                    print("\n".join(logs))
-                    return None
-                answer_2 = extract_answer_from_solution(path_2)
+                    path_2_valid_for_sampling = False
+                    score_path_2 = 0.0
+                else:
+                    answer_2 = extract_answer_from_solution(path_2)
                 
                 if answer_2 is not None:
                     # Second path found answer - verify it
