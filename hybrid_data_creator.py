@@ -3,6 +3,34 @@ import asyncio
 import random
 import re
 import logging
+import time
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
+from collections import defaultdict
+import statistics
+
+@dataclass
+class ProcessingMetrics:
+    """Track detailed processing metrics"""
+    total_attempts: int = 0
+    successful_attempts: int = 0
+    failed_validations: int = 0
+    timeouts: int = 0
+    avg_processing_time: float = 0.0
+    approach_distribution: Dict[str, int] = field(default_factory=lambda: {'full': 0, 'analysis': 0})
+    
+    def update(self, result: Dict):
+        """Update metrics with new result"""
+        self.total_attempts += 1
+        if result:
+            self.successful_attempts += 1
+            self.approach_distribution[result.get('approach', 'unknown')] += 1
+
+import os
+import asyncio
+import random
+import re
+import logging
 from dataclasses import dataclass
 
 # Configure logging
@@ -209,6 +237,8 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
+    start_time = time.perf_counter()
+    metrics = ProcessingMetrics()
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -360,19 +390,40 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print("\n".join(logs))
         
         # Return consistent format regardless of approach
-        return {
+        processing_time = time.perf_counter() - start_time
+        result = {
             'id': example_id,
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
             'chosen': {'content': chosen, 'role': 'assistant'},
             'rejected': {'content': rejected, 'role': 'assistant'},
             'score_chosen': score_chosen,
-            'score_rejected': score_rejected
+            'score_rejected': score_rejected,
+            'processing_metrics': {
+                'processing_time': processing_time,
+                'approach': 'full' if r < 0.3 else 'analysis',
+                'attempts': metrics.total_attempts,
+                'successful_attempts': metrics.successful_attempts
+            }
         }
+        logs.append(f"\n⏱️ Processing Time: {processing_time:.2f}s")
+        return result
         
     except Exception as e:
+        processing_time = time.perf_counter() - start_time
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'processing_time': processing_time,
+            'example_id': example_id,
+            'metrics': {
+                'total_attempts': metrics.total_attempts,
+                'successful_attempts': metrics.successful_attempts
+            }
+        }
         logging.error(f"\n❌ Error processing example {running_id}:")
-        logging.error(f"├─ Error type: {type(e).__name__}")
-        logging.error(f"├─ Error message: {str(e)}")
+        logging.error(f"├─ Error type: {error_details['error_type']}")
+        logging.error(f"├─ Error message: {error_details['error_message']}")
+        logging.error(f"├─ Processing time: {processing_time:.2f}s")
         logging.error(f"└─ Example ID: {example_id}")
         return None
 
