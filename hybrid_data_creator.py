@@ -623,7 +623,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'chosen': analyze_solution_quality(path1),
                     'rejected': analyze_solution_quality(path2)
                 },
-                'total_solution_attempts': total_solution_attempts
+                'total_solution_attempts': total_solution_attempts,
+                'logs': "\n".join(logs)
             }
 
         # Print collected logs
