@@ -366,7 +366,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
-            bifurcation_prompt, path1, path2, score_path1, score_path2, solution_logs = result
+            bifurcation_prompt, path1, path2, score_path1, score_path2 = result
             
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
@@ -646,9 +646,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'chosen': analyze_solution_quality(path1),
                 'rejected': analyze_solution_quality(path2)
             },
-            'total_solution_attempts': total_solution_attempts
+            'total_solution_attempts': total_solution_attempts,
+            'logs': "\n".join(logs)
         }
-        logs.append(f"\n⏱️ Processing Time: {processing_time:.2f}s")
+        print("\n".join(logs))  # Print logs for both approaches
         return result
         
     except Exception as e:
