@@ -151,14 +151,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': chosen_score,
             'score_rejected': rejected_score,
-            'attempts_chosen': correct_attempt,
-            'attempts_rejected': wrong_attempt,
-            'total_attempts': attempts,
-            'model_solutions': [s['solution'] for s in solutions],
-            'model_answers': [s['answer'] for s in solutions],
-            'is_correct_list': [s['is_correct'] for s in solutions],
-            'verification_scores': [s['verification_score'] for s in solutions],
-            'verification_steps': [s['verification_steps'] for s in solutions]
+            'bifurcation_point': 1  # Always 1 for sample_until_correct since it's full solution
         }
         
     except Exception as e:
