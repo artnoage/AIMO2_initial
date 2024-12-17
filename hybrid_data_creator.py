@@ -18,12 +18,21 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(message)s',
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('hybrid_creator.log')
+        logging.FileHandler('hybrid_creator.log', mode='w')
     ]
 )
+
+# Ensure all handlers use the same formatter
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+for handler in logging.getLogger().handlers:
+    handler.setFormatter(formatter)
+
+# Set logging level for specific loggers
+logging.getLogger('hybrid_creator').setLevel(logging.DEBUG)
 
 # Compile regex patterns once
 STEP_NUMBER_PATTERNS = [
