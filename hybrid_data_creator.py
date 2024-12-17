@@ -383,15 +383,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 rejected = current_solution + response_2
             
             # Calculate scores using completion agent and rejected score penalties
-            score_chosen = 0
-            score_rejected = calculate_rejected_score(rejected)
+            successful_chosen = 0
+            successful_rejected = 0
             
             for _ in range(config.completions):
                 try:
                     complete_solution = chosen + await completion_agent.generate(example["problem"], chosen)
                     score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                     if score == total_steps:
-                        score_chosen += 1
+                        successful_chosen += 1
                 except Exception as e:
                     print(f"Error in completion for chosen: {str(e)}")
                     
@@ -399,12 +399,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     complete_solution = rejected + await completion_agent.generate(example["problem"], rejected)
                     score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                     if score == total_steps:
-                        score_rejected += 1
+                        successful_rejected += 1
                 except Exception as e:
                     print(f"Error in completion for rejected: {str(e)}")
             
-            score_chosen = score_chosen / config.completions
-            score_rejected = score_rejected / config.completions
+            # Calculate success rates, ensuring they stay within 0-1 range
+            score_chosen = min(1.0, successful_chosen / config.completions)
+            score_rejected = min(1.0, calculate_rejected_score(rejected) + (successful_rejected / config.completions))
             
             # Add performance metrics
             logs.append(f"\n📊 Performance Metrics:")
