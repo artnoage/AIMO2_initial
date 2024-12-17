@@ -412,10 +412,13 @@ async def run_benchmark(
         progress_bar = tqdm(total=len(example_data), desc="Processing examples")
         results = []
         for coro in asyncio.as_completed(tasks):
-            result = await coro
-            if result:
-                results.append(result)
-            progress_bar.update(1)
+            try:
+                result = await coro
+                if result:
+                    results.append(result)
+                    progress_bar.update(1)
+            except Exception as e:
+                print(f"Error processing example: {str(e)}")
         progress_bar.close()
     
     finally:
