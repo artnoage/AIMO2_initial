@@ -363,7 +363,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
-            bifurcation_prompt, path_1, path_2, score_path1, score_path2, solution_logs = result
+            bifurcation_prompt, path_1, path_2, score_path_1, score_path_2, solution_logs = result
             print(solution_logs)  # Print the logs from full solution
             
         else:  # Analysis/Steps approach
