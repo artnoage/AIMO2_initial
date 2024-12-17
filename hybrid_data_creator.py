@@ -403,26 +403,34 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Process using the analysis/steps approach from data_creator.py
             if n == 1:
                 # Try up to 3 times for path_1
+                path_1 = None
                 for retry in range(3):
-                    bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    is_valid, reason = validate_analysis(path_1)
+                    bifurcation_prompt, current = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    is_valid, reason = validate_analysis(current)
                     if is_valid:
+                        path_1 = current
+                        logs.append(f"✓ Valid analysis generated for path_1 on try {retry + 1}: {reason}")
                         break
                     logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3): {reason}")
-                    if retry == 2:  # All retries failed
-                        logs.append("Failed all retries for path_1 analysis")
-                        return None
+                
+                if path_1 is None:  # All retries failed
+                    logs.append("Failed all retries for path_1 analysis")
+                    return None
                 
                 # Try up to 3 times for path_2
+                path_2 = None
                 for retry in range(3):
-                    _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    is_valid, reason = validate_analysis(path_2)
-                    if path_2 != path_1 and is_valid:
+                    _, current = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    is_valid, reason = validate_analysis(current)
+                    if current != path_1 and is_valid:
+                        path_2 = current
+                        logs.append(f"✓ Valid analysis generated for path_2 on try {retry + 1}: {reason}")
                         break
                     logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3): {reason}")
-                    if retry == 2:  # All retries failed
-                        logs.append("Failed all retries for path_2 analysis")
-                        return None
+                
+                if path_2 is None:  # All retries failed
+                    logs.append("Failed all retries for path_2 analysis")
+                    return None
                     
                 path1 = path_1
                 path2 = path_2
