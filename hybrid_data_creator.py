@@ -140,7 +140,7 @@ def calculate_rejected_score(solution: str) -> float:
                 score -= penalty
                 logging.debug(f"Applied penalty {penalty} for {wrong_numbers} incorrect step numbers")
             
-    return max(0.1, score)  # Ensure minimum score of 0.1
+    return max(0.0, score)  # Ensure non-negative score
 
 def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
