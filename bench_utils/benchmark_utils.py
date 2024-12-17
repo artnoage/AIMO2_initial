@@ -167,7 +167,14 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
             latex_expr = latex2sympy(clean_answer)
             # Convert to sympy expression and evaluate
             expr = sympy.sympify(latex_expr)
-            result = float(expr.evalf())
+            # Handle both single values and lists/matrices
+            if hasattr(expr, 'evalf'):
+                result = float(expr.evalf())
+            elif isinstance(expr, list):
+                # Take first element if it's a list/matrix
+                result = float(expr[0].evalf())
+            else:
+                result = float(expr)
             return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
     except TimeoutException:
         return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)

@@ -513,14 +513,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'processing_time': time.perf_counter() - start_time
                 }
                 
-            logs.append(f"Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
-                
-            # Swap if rejected has better score
+            # Swap if path2 has better score
             if score_path2 > score_path1:
                 path1, path2 = path2, path1
                 score_path1, score_path2 = score_path2, score_path1
 
-            return example['problem'], chosen, rejected, score_chosen, score_rejected
+            logs.append(f"Score difference: {abs(score_path1 - score_path2)/max(score_path1, score_path2):.1%}")
+            
+            return {
+                'id': example_id,
+                'prompt': {'content': bifurcation_prompt, 'role': 'user'},
+                'chosen': {'content': path1, 'role': 'assistant'},
+                'rejected': {'content': path2, 'role': 'assistant'},
+                'score_chosen': score_path1,
+                'score_rejected': score_path2,
+                'bifurcation_prompt': bifurcation_prompt,
+                'quality_metrics': {
+                    'chosen': analyze_solution_quality(path1),
+                    'rejected': analyze_solution_quality(path2)
+                }
+            }
 
         # Print collected logs
         print("\n".join(logs))
