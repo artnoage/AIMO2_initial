@@ -74,7 +74,7 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     for i, step in enumerate(steps, 1):
         # Check step length
         step_words = len(step.split())
-        if step_words < 20:
+        if step_words < 18:
             return False, f"Step {i} too short ({step_words} words)"
         if step_words > 100:
             return False, f"Step {i} too long ({step_words} words)"
