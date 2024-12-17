@@ -146,11 +146,12 @@ def calculate_rejected_score(solution: str) -> float:
 
 
 
-async def process_full_solution(example: Dict, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, str, float, float]]:
+async def process_full_solution(example: Dict, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, str, float, float, str]]:
     """Process example using full solution approach"""
     logs = []
-    solution_agent = FullSolutionAgent(solver)
+    solution_agent = FullSolutionAgent(solver) 
     solutions = []
+    bifurcation_prompt = None
     found_correct = False
     found_wrong = False
     correct_attempt = 0
@@ -162,7 +163,10 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
         try:
-            current_solution = await solution_agent.generate(example["problem"])
+            if bifurcation_prompt is None:
+                bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+            else:
+                current_solution = await solution_agent.generate(example["problem"])
             score, total_steps, current_answer = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
