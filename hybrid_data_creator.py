@@ -238,30 +238,30 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             # First validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
-                logs.append(f"Attempt {attempts} validation failed: {validation_reason}")
+                # Consider invalid solutions as wrong solutions
+                if not found_wrong:
+                    found_wrong = True
+                    wrong_attempt = attempts
+                    wrong_solution = current_solution
+                    logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
                 continue
             
             logs.append(f"✓ Attempt {attempts} passed validation")
             
-            # Verify correctness
+            # Only verify correctness for valid solutions
             score, total_steps, current_answer = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
                 example["problem"]
             )
             
-            is_correct = score == total_steps and is_valid
+            is_correct = score == total_steps
             if is_correct and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
                 logs.append(f"✓ Found correct solution on attempt {attempts}")
                 logs.append(f"  Total solution attempts: {total_solution_attempts}")
-            elif not is_correct and not found_wrong:
-                found_wrong = True
-                wrong_attempt = attempts
-                wrong_solution = current_solution
-                logs.append(f"✗ Found incorrect solution on attempt {attempts}")
                 
         except Exception as e:
             print(f"Error in full solution attempt {attempts}: {str(e)}")
