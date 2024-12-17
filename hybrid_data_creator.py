@@ -404,36 +404,87 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 path2 = path_2
                 
             else:
+                # Generate initial analysis
                 _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+                if extract_answer_from_solution(common_analysis) is not None:
+                    logs.append("❌ Analysis contained premature answer - dropping example")
+                    return None
+                    
                 current_solution = common_analysis
                 
+                # Generate intermediate steps
                 for step_num in range(n-2):
-                    # Try up to 3 times for each step
+                    step_added = False
                     for retry in range(3):
                         _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                         if validate_step(next_step):
-                            if extract_answer_from_solution(current_solution + next_step) is None:
-                                current_solution += next_step
+                            test_solution = current_solution + next_step
+                            premature_answer = extract_answer_from_solution(test_solution)
+                            if premature_answer is None:
+                                current_solution = test_solution
+                                step_added = True
                                 break
                             else:
                                 logs.append(f"Step {step_num + 1} generated premature answer (retry {retry + 1}/3)")
                         else:
                             logs.append(f"Step {step_num + 1} validation failed (retry {retry + 1}/3)")
-                        
-                        if retry == 2:  # All retries failed
-                            logs.append(f"Failed all retries for step {step_num + 1}")
-                            return None
+                    
+                    if not step_added:
+                        logs.append(f"Failed all retries for step {step_num + 1}")
+                        return None
                 
+                # Generate bifurcation paths
                 bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 if not validate_step(response_1):
                     return None
-                    
+                
+                path1 = current_solution + response_1
+                answer1 = extract_answer_from_solution(path1)
+                
+                if answer1 is not None:
+                    # First path found answer - verify it
+                    score, total_steps, _ = await verifier.verify(path1, correct_answer, example["problem"])
+                    if score == total_steps:
+                        logs.append("✓ First path found correct answer at bifurcation - using maximum score")
+                        return {
+                            'id': example_id,
+                            'prompt': {'content': bifurcation_prompt, 'role': 'user'},
+                            'chosen': {'content': path1, 'role': 'assistant'},
+                            'rejected': {'content': current_solution, 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0,
+                            'bifurcation_prompt': bifurcation_prompt,
+                            'quality_metrics': {
+                                'chosen': analyze_solution_quality(path1),
+                                'rejected': analyze_solution_quality(current_solution)
+                            }
+                        }
+                
                 response_2 = await step_agent.generate(example["problem"], current_solution)
                 if response_2 == response_1 or not validate_step(response_2):
                     return None
-                    
-                path1 = current_solution + response_1
+                
                 path2 = current_solution + response_2
+                answer2 = extract_answer_from_solution(path2)
+                
+                if answer2 is not None:
+                    # Second path found answer - verify it
+                    score, total_steps, _ = await verifier.verify(path2, correct_answer, example["problem"])
+                    if score == total_steps:
+                        logs.append("✓ Second path found correct answer at bifurcation - using maximum score")
+                        return {
+                            'id': example_id,
+                            'prompt': {'content': bifurcation_prompt, 'role': 'user'},
+                            'chosen': {'content': path2, 'role': 'assistant'},
+                            'rejected': {'content': current_solution, 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0,
+                            'bifurcation_prompt': bifurcation_prompt,
+                            'quality_metrics': {
+                                'chosen': analyze_solution_quality(path2),
+                                'rejected': analyze_solution_quality(current_solution)
+                            }
+                        }
             
             # Calculate scores using completion agent and rejected score penalties
             successful_path1 = 0
