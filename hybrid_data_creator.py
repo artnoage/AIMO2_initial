@@ -110,12 +110,12 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
     rejected_score = calculate_rejected_score(wrong_solution)
     
     # Print detailed logs
-    print("\nFULL SOLUTION APPROACH DETAILS:")
-    print(f"Correct solution found on attempt: {correct_attempt}")
-    print(f"Wrong solution found on attempt: {wrong_attempt}")
-    print(f"Total attempts: {attempts}")
-    print(f"Chosen score: {chosen_score:.3f}")
-    print(f"Rejected score: {rejected_score:.3f}")
+    logs.append("\nDetails:")
+    logs.append(f"Correct solution found on attempt: {correct_attempt}")
+    logs.append(f"Wrong solution found on attempt: {wrong_attempt}")
+    logs.append(f"Total attempts: {attempts}")
+    logs.append(f"Chosen score: {chosen_score:.3f}")
+    logs.append(f"Rejected score: {rejected_score:.3f}")
     
     return correct_solution, wrong_solution, chosen_score, rejected_score
 
@@ -145,12 +145,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Random approach selection
         r = random.random()
         
-        print(f"\nProcessing example {running_id + 1}")
-        print(f"Problem: {example['problem'][:200]}...")
-        print(f"Correct answer: {correct_answer}")
+        logs = []
+        logs.append(f"\nProcessing example {running_id + 1}")
+        logs.append(f"Problem: {example['problem'][:200]}...")
+        logs.append(f"Correct answer: {correct_answer}")
         
         if r < 0.3:  # Full solution approach
-            print("\nUsing FULL SOLUTION approach")
+            logs.append("\nApproach: Full solution")
             result = await process_full_solution(example, running_id, solver, verifier, config)
             if result is None:
                 return None
@@ -158,7 +159,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             bifurcation_prompt = example['problem']
             
         else:  # Analysis/Steps approach
-            print("\nUsing ANALYSIS/STEPS approach")
+            logs.append("\nApproach: Analysis/Steps")
             # Calculate step number for bifurcation
             if r < 0.5:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
@@ -174,7 +175,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     n += 1
             
-            print(f"Bifurcation at step {n}")
+            logs.append(f"Bifurcation at step {n}")
             
             analysis_agent = AnalysisAgent(solver)
             step_agent = NextStepAgent(solver)
@@ -242,11 +243,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_rejected = score_rejected / config.completions
             
             if score_chosen == 0 and score_rejected == 0:
-                print("No successful solutions")
+                logs.append("No successful solutions")
+                print("\n".join(logs))
                 return None
                 
             if abs(score_chosen - score_rejected)/max(score_chosen, score_rejected) < 0.2:
-                print("Scores too close")
+                logs.append("Scores too close")
+                print("\n".join(logs))
                 return None
                 
             # Swap if rejected has better score
@@ -254,6 +257,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 chosen, rejected = rejected, chosen
                 score_chosen, score_rejected = score_rejected, score_chosen
 
+        # Print collected logs
+        print("\n".join(logs))
+        
         # Return consistent format regardless of approach
         return {
             'id': example_id,
