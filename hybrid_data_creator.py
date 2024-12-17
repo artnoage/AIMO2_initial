@@ -145,7 +145,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     step_count = resp.lower().count("step")
     return step_count <= 1
 
-async def process_full_solution(example: Dict, running_id: int, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, float, float]]:
+async def process_full_solution(example: Dict, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, float, float]]:
     """Process example using full solution approach"""
     logs = []
     solution_agent = FullSolutionAgent(solver)
@@ -198,7 +198,6 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
     if correct_attempt == 1:
         chosen_score = min(1.0, chosen_score + 0.1)
         
-    wrong_solution_info = next(s for s in solutions if s['solution'] == wrong_solution)
     rejected_score = calculate_rejected_score(wrong_solution)
     
     # Print detailed logs
@@ -269,7 +268,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         if r < 0.3:  # Full solution approach
             logs.append("\nApproach: Full solution")
-            result = await process_full_solution(example, running_id, solver, verifier, config)
+            result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
             chosen, rejected, score_chosen, score_rejected = result
