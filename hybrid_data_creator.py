@@ -2,6 +2,15 @@ import os
 import asyncio
 import random
 import re
+import logging
+from dataclasses import dataclass
+
+# Compile regex patterns once
+STEP_NUMBER_PATTERNS = [
+    re.compile(r'^.{0,2}(\d+)[.:\)]'),
+    re.compile(r'^.{0,2}\((\d+)\)'),
+    re.compile(r'^.{0,2}(\d+)\s')
+]
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
@@ -45,18 +54,36 @@ def calculate_rejected_score(solution: str) -> float:
     steps = solution.lower().split("step")
     if len(steps) > 1:  # Only check if there are steps
         found_numbers = []
+        missing_numbers = 0
+        
         for step in steps[1:]:  # Skip text before first "step"
-            # Look for step number in common formats, must be within 2 chars after "step"
-            for pattern in [r'^.{0,2}(\d+)[.:\)]', r'^.{0,2}\((\d+)\)', r'^.{0,2}(\d+)\s']:
-                match = re.search(pattern, step)  # Check right after "step"
+            number_found = False
+            for pattern in STEP_NUMBER_PATTERNS:
+                match = pattern.search(step)
                 if match:
                     found_numbers.append(int(match.group(1)))
+                    number_found = True
                     break
+            if not number_found:
+                missing_numbers += 1
+                logging.debug(f"Missing step number in: {step[:50]}...")
         
         # Check if numbers are sequential starting from 1
         expected_sequence = list(range(1, len(steps)))
-        if not found_numbers or found_numbers != expected_sequence:
-            score -= 0.1
+        
+        # Calculate penalties
+        if missing_numbers > 0:
+            penalty = min(0.1, 0.02 * missing_numbers)
+            score -= penalty
+            logging.debug(f"Applied penalty {penalty} for {missing_numbers} missing step numbers")
+            
+        if found_numbers:
+            # Check sequence correctness
+            wrong_numbers = sum(1 for a, b in zip(found_numbers, expected_sequence) if a != b)
+            if wrong_numbers > 0:
+                penalty = min(0.1, 0.02 * wrong_numbers)
+                score -= penalty
+                logging.debug(f"Applied penalty {penalty} for {wrong_numbers} incorrect step numbers")
             
     return max(0.1, score)  # Ensure minimum score of 0.1
 
