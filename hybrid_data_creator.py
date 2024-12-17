@@ -56,6 +56,7 @@ def validate_step(resp: str) -> bool:
 
 async def process_full_solution(example: Dict, running_id: int, solver: any, verifier: any, config: BenchmarkConfig) -> Optional[Tuple[str, str, float, float]]:
     """Process example using full solution approach"""
+    logs = []
     solution_agent = FullSolutionAgent(solver)
     solutions = []
     found_correct = False
@@ -111,6 +112,7 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
     
     # Print detailed logs
     logs.append("\nDetails:")
+    print("\n".join(logs))
     logs.append(f"Correct solution found on attempt: {correct_attempt}")
     logs.append(f"Wrong solution found on attempt: {wrong_attempt}")
     logs.append(f"Total attempts: {attempts}")
