@@ -246,7 +246,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             continue
 
     if not found_correct or not found_wrong:
-        return None
+        return error_details
 
     # Calculate scores
     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
