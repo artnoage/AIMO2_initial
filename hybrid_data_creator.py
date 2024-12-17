@@ -430,7 +430,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     logs.append(f"Analysis validation failed (retry {retry + 1}/3)")
                     if retry == 2:
-                        logs.append("❌ Failed all retries for analysis - dropping example")
+                        print("\n".join(logs))
                         return None
                 
                 # Generate intermediate steps
@@ -452,6 +452,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     
                     if not step_added:
                         logs.append(f"Failed all retries for step {step_num + 1}")
+                        print("\n".join(logs))
                         return None
                 
                 # Generate and validate first bifurcation path
@@ -465,9 +466,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     logs.append(f"First bifurcation step validation failed (retry {retry + 1}/3)")
                 if not first_path_valid:
-                    logs.append("❌ Failed all retries for first bifurcation - assigning score 0")
-                    path1 = current_solution + response_1  # Use last attempt
-                    score_path1 = 0
+                    logs.append("❌ Failed all retries for first bifurcation")
+                    print("\n".join(logs))
+                    return None
                 answer1 = extract_answer_from_solution(path1)
                 
                 if answer1 is not None:
@@ -500,9 +501,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     logs.append(f"Second bifurcation step validation failed (retry {retry + 1}/3)")
                 if not second_path_valid:
-                    logs.append("❌ Failed all retries for second bifurcation - assigning score 0")
-                    path2 = current_solution + response_2  # Use last attempt
-                    score_path2 = 0
+                    logs.append("❌ Failed all retries for second bifurcation")
+                    print("\n".join(logs))
+                    return None
                 answer2 = extract_answer_from_solution(path2)
                 
                 if answer2 is not None:
