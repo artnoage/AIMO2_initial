@@ -479,6 +479,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if score == total_steps:
                         logs.append("✓ First path found correct answer at bifurcation")
                         score_path1 = 1.0
+                        path1_valid_for_sampling = False  # Skip sampling if already correct
                 
                 # Generate second bifurcation path
                 response_2 = await step_agent.generate(example["problem"], current_solution)
@@ -496,6 +497,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if score == total_steps:
                         logs.append("✓ Second path found correct answer at bifurcation")
                         score_path2 = 1.0
+                        path2_valid_for_sampling = False  # Skip sampling if already correct
             
             # Track if paths are valid for sampling
             path1_valid_for_sampling = first_path_valid if n > 1 else True
