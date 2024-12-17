@@ -601,8 +601,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append(f"   └─ Format score: {path_2_quality['formatting_quality']}/5")
             
             # Check if differences are too small (indicating statistical noise)
-            score_diff = abs(score_path_1 - score_path_2)
-            if relative_diff < 0.3 or score_diff < 3:
+            score_diff = abs(successful_path_1 - successful_path_2)
+            if relative_diff < 0.22 or score_diff < 2:
                 logs.append(f"❌ Failed: Differences too small (relative: {relative_diff:.1%}, absolute: {score_diff})")
                 print("\n".join(logs))
                 return None
