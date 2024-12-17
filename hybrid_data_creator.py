@@ -40,16 +40,36 @@ def calculate_rejected_score(solution: str) -> float:
     if not validate_analysis(solution):
         score -= 0.1
         
+    # Penalty for incorrect step numbering
+    steps = solution.lower().split("step")
+    expected_steps = list(range(1, len(steps)))
+    for i, step in enumerate(steps[1:], 1):  # Skip first split which is before "step"
+        if not any(str(i) in step[:10] for i in expected_steps):  # Check first 10 chars after "step"
+            score -= 0.1
+            break
+            
     return max(0.1, score)  # Ensure minimum score of 0.1
 
-def validate_step(resp: str) -> bool:
+def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
     if "[/INST]" in resp:
         return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 20 or word_count>100:
+    if word_count < 20 or word_count > 100:
         return False
+        
+    # Check step numbering if expected step is provided
+    if expected_step is not None:
+        step_mentions = [
+            f"step {expected_step}",
+            f"step{expected_step}",
+            f"({expected_step})",
+            f"{expected_step}."
+        ]
+        if not any(mention.lower() in resp.lower() for mention in step_mentions):
+            return False
+            
     # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
     return step_count <= 1
