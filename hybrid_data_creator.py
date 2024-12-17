@@ -524,13 +524,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             }
                         }
             
+            # Track if paths are valid for sampling
+            path1_valid_for_sampling = first_path_valid if n > 1 else True
+            path2_valid_for_sampling = second_path_valid if n > 1 else True
+            
             # Calculate scores using completion agent and rejected score penalties
             successful_path1 = 0
             successful_path2 = 0
             
             # Only sample completions for valid paths
             logs.append("\n🔍 Completion Attempts:")
-            if not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
+            
+            # Set score to 0 for invalid paths, otherwise sample
+            if not path1_valid_for_sampling:
+                score_path1 = 0
+                logs.append("Path 1: Skipping sampling due to validation failure")
+            elif not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                     
@@ -555,8 +564,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
                     
-                # Path 2 completion - only if not already scored from validation failure
-                if not hasattr(locals(), 'score_path2'):
+                # Path 2 completion - only if valid and not already scored
+                if not path2_valid_for_sampling:
+                    score_path2 = 0
+                    logs.append("Path 2: Skipping sampling due to validation failure")
+                elif not hasattr(locals(), 'score_path2'):
                     try:
                         complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
                         is_valid, validation_reason = validate_solution(complete_solution)
