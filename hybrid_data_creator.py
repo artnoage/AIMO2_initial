@@ -411,11 +411,29 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_chosen = successful_chosen / config.completions
             score_rejected = successful_rejected / config.completions
             
+            # Calculate relative scores if either has non-zero success
+            if score_chosen == 0 and score_rejected == 0:
+                logs.append("❌ Failed: No successful completions for either path")
+                print("\n".join(logs))
+                return {
+                    'id': example_id,
+                    'status': 'rejected',
+                    'reason': 'No successful completions for either path',
+                    'processing_time': time.perf_counter() - start_time
+                }
+
+            max_score = max(score_chosen, score_rejected)
+            relative_chosen = score_chosen / max_score if max_score > 0 else 0
+            relative_rejected = score_rejected / max_score if max_score > 0 else 0
+            relative_diff = abs(relative_chosen - relative_rejected)
+
             # Add performance metrics
             logs.append(f"\n📊 Performance Metrics:")
             logs.append(f"├─ Chosen solution success: {score_chosen:.2%}")
             logs.append(f"├─ Rejected solution success: {score_rejected:.2%}")
-            logs.append(f"└─ Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
+            logs.append(f"├─ Relative chosen score: {relative_chosen:.2%}")
+            logs.append(f"├─ Relative rejected score: {relative_rejected:.2%}")
+            logs.append(f"└─ Relative difference: {relative_diff:.2%}")
             
             # Add quality metrics for both solutions
             logs.append(f"\n🔍 Solution Quality:")
@@ -431,17 +449,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append(f"   ├─ Steps: {rejected_quality['step_count']}")
             logs.append(f"   └─ Format score: {rejected_quality['formatting_quality']}/5")
             
-            if score_chosen == 0 and score_rejected == 0:
-                logs.append("❌ Failed: No successful completions for either path")
-                print("\n".join(logs))
-                return {
-                    'id': example_id,
-                    'status': 'rejected',
-                    'reason': 'No successful completions for either path',
-                    'processing_time': time.perf_counter() - start_time
-                }
-                
-            if abs(score_chosen - score_rejected)/max(score_chosen, score_rejected) < 0.2:
+            # Check if relative difference is too small (indicating statistical noise)
+            if relative_diff < 0.2:
                 logs.append("❌ Failed: Score difference too small (< 20%)")
                 print("\n".join(logs))
                 return {
