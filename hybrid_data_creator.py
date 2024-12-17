@@ -358,7 +358,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"\n🔄 Processing Details:")
         logs.append(f"├─ Strategy: {'Full solution' if r < 0.3 else 'Progressive building'}")
         
-        if r < 0.1:  # Full solution approach
+        if r < 0.05:  # Full solution approach
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
@@ -615,8 +615,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append(f"   └─ Format score: {path_2_quality['formatting_quality']}/5")
             
             # Check if relative difference is too small (indicating statistical noise)
-            if relative_diff < 0.2:
-                logs.append("❌ Failed: Score difference too small (< 20%)")
+            if relative_diff < 0.3:
+                logs.append("❌ Failed: Score difference too small (< 30%)")
                 print("\n".join(logs))
                 return None
                 
