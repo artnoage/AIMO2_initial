@@ -168,13 +168,20 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
     rejected_score = calculate_rejected_score(wrong_solution)
     
     # Print detailed logs
-    logs.append("\nDetails:")
-    print("\n".join(logs))
-    logs.append(f"Correct solution found on attempt: {correct_attempt}")
-    logs.append(f"Wrong solution found on attempt: {wrong_attempt}")
-    logs.append(f"Total attempts: {attempts}")
-    logs.append(f"Chosen score: {chosen_score:.3f}")
-    logs.append(f"Rejected score: {rejected_score:.3f}")
+    logs.append("\n=== Full Solution Details ===")
+    logs.append(f"Attempts needed for correct solution: {correct_attempt}/{config.best_of}")
+    logs.append(f"Attempts needed for wrong solution: {wrong_attempt}/{config.best_of}")
+    logs.append(f"Total attempts made: {attempts}/{config.best_of}")
+    logs.append(f"Chosen solution score: {chosen_score:.3f}")
+    logs.append(f"Rejected solution score: {rejected_score:.3f}")
+    
+    # Add verification details for all attempts
+    logs.append("\nAll attempts:")
+    for idx, sol in enumerate(solutions, 1):
+        logs.append(f"\nAttempt {idx}:")
+        logs.append(f"Verification score: {sol['verification_score']}/{sol['verification_steps']}")
+        logs.append(f"Answer extracted: {sol['answer']}")
+        logs.append(f"Correct: {sol['is_correct']}")
     
     return correct_solution, wrong_solution, chosen_score, rejected_score
 
@@ -218,8 +225,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             bifurcation_prompt = example['problem']
             
         else:  # Analysis/Steps approach
-            logs.append("\nApproach: Analysis/Steps")
-            # Calculate step number for bifurcation
+            logs.append("\n=== Analysis/Steps Details ===")
+            logs.append("Approach: Progressive solution building")
             if r < 0.5:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
@@ -234,7 +241,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     n += 1
             
-            logs.append(f"Bifurcation at step {n}")
+            logs.append(f"Bifurcation point: After step {n}")
+            logs.append(f"Completion attempts planned: {config.completions}")
             
             analysis_agent = AnalysisAgent(solver)
             step_agent = NextStepAgent(solver)
@@ -301,15 +309,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_chosen = score_chosen / config.completions
             score_rejected = score_rejected / config.completions
             
+            logs.append(f"\nCompletion Results:")
+            logs.append(f"Chosen path success rate: {score_chosen:.2%}")
+            logs.append(f"Rejected path success rate: {score_rejected:.2%}")
+            
             if score_chosen == 0 and score_rejected == 0:
-                logs.append("No successful solutions")
+                logs.append("❌ Failed: No successful completions for either path")
                 print("\n".join(logs))
                 return None
                 
             if abs(score_chosen - score_rejected)/max(score_chosen, score_rejected) < 0.2:
-                logs.append("Scores too close")
+                logs.append("❌ Failed: Score difference too small (< 20%)")
                 print("\n".join(logs))
                 return None
+                
+            logs.append(f"Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
                 
             # Swap if rejected has better score
             if score_rejected > score_chosen:
