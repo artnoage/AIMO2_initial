@@ -229,29 +229,21 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
         try:
-            retry_count = 0
-            while retry_count < 3:  # Try up to 3 times for each attempt
-                total_solution_attempts += 1
-                if bifurcation_prompt is None:
-                    bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
-                else:
-                    current_solution = await solution_agent.generate(example["problem"])
-                
-                # First validate solution structure
-                is_valid, validation_reason = validate_solution(current_solution)
-                if not is_valid:
-                    retry_count += 1
-                    logs.append(f"Attempt {attempts}.{retry_count} validation failed: {validation_reason}")
-                    if retry_count < 3:
-                        continue
-                    else:
-                        logs.append(f"Failed all 3 retries for attempt {attempts}")
-                        break
-                else:
-                    logs.append(f"✓ Attempt {attempts}.{retry_count + 1} passed validation")
-                    break  # Valid solution found, exit retry loop
-                
-            # Then verify correctness
+            total_solution_attempts += 1
+            if bifurcation_prompt is None:
+                bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+            else:
+                current_solution = await solution_agent.generate(example["problem"])
+            
+            # First validate solution structure
+            is_valid, validation_reason = validate_solution(current_solution)
+            if not is_valid:
+                logs.append(f"Attempt {attempts} validation failed: {validation_reason}")
+                continue
+            
+            logs.append(f"✓ Attempt {attempts} passed validation")
+            
+            # Verify correctness
             score, total_steps, current_answer = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
