@@ -409,6 +409,8 @@ async def run_benchmark(
                 )
             if result:
                 progress_tracker.add_result(result)
+                if 'total_solution_attempts' in result:
+                    print(f"\nTotal solution attempts for example {running_id}: {result['total_solution_attempts']}")
                 progress_tracker.print_progress()
             return result
 
