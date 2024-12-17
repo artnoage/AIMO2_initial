@@ -475,7 +475,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 if answer_1 is not None:
                     # First path found answer - verify it
-                    score, total_steps, _ = await verifier.verify(path1, correct_answer, example["problem"])
+                    score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
                     if score == total_steps:
                         logs.append("✓ First path found correct answer at bifurcation")
                         score_path1 = 1.0
@@ -588,13 +588,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Add quality metrics for both solutions
             logs.append(f"\n🔍 Solution Quality:")
             logs.append("├─ Path 1:")
-            path1_quality = analyze_solution_quality(path1)
+            path1_quality = analyze_solution_quality(path_1)
             logs.append(f"│  ├─ Length: {path1_quality['length']} words")
             logs.append(f"│  ├─ Steps: {path1_quality['step_count']}")
             logs.append(f"│  └─ Format score: {path1_quality['formatting_quality']}/5")
             
             logs.append("└─ Path 2:")
-            path2_quality = analyze_solution_quality(path2)
+            path2_quality = analyze_solution_quality(path_2)
             logs.append(f"   ├─ Length: {path2_quality['length']} words")
             logs.append(f"   ├─ Steps: {path2_quality['step_count']}")
             logs.append(f"   └─ Format score: {path2_quality['formatting_quality']}/5")
@@ -607,7 +607,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
             # Swap if path2 has better score
             if score_path2 > score_path1:
-                path1, path2 = path2, path1
+                path_1, path_2 = path_2, path_1
                 score_path1, score_path2 = score_path2, score_path1
 
             logs.append(f"Score difference: {abs(score_path1 - score_path2)/max(score_path1, score_path2):.1%}")
@@ -628,8 +628,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         result = {
             'id': example_id,
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-            'chosen': {'content': path1, 'role': 'assistant'},
-            'rejected': {'content': path2, 'role': 'assistant'},
+            'chosen': {'content': path_1, 'role': 'assistant'},
+            'rejected': {'content': path_2, 'role': 'assistant'},
             'score_chosen': score_path1,
             'score_rejected': score_path2}
         print("\n".join(logs))  # Print logs for both approaches
