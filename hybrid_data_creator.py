@@ -393,12 +393,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'rejected': {'content': rejected, 'role': 'assistant'},
             'score_chosen': score_chosen,
             'score_rejected': score_rejected,
-            'processing_metrics': {
-                'processing_time': processing_time,
-                'approach': 'full' if r < 0.3 else 'analysis',
-                'attempts': metrics.total_attempts,
-                'successful_attempts': metrics.successful_attempts
-            },
             'quality_metrics': {
                 'chosen': analyze_solution_quality(chosen),
                 'rejected': analyze_solution_quality(rejected)
