@@ -409,12 +409,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             if score_chosen == 0 and score_rejected == 0:
                 logs.append("❌ Failed: No successful completions for either path")
                 print("\n".join(logs))
-                return None
+                return {
+                    'id': example_id,
+                    'status': 'rejected',
+                    'reason': 'No successful completions for either path',
+                    'processing_time': time.perf_counter() - start_time
+                }
                 
             if abs(score_chosen - score_rejected)/max(score_chosen, score_rejected) < 0.2:
                 logs.append("❌ Failed: Score difference too small (< 20%)")
                 print("\n".join(logs))
-                return None
+                return {
+                    'id': example_id,
+                    'status': 'rejected',
+                    'reason': 'Score difference too small',
+                    'processing_time': time.perf_counter() - start_time
+                }
                 
             logs.append(f"Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
                 
@@ -456,11 +466,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             else "other"
         )
         error_details = {
+            'id': example_id,
+            'status': 'error',
             'error_type': type(e).__name__,
             'error_message': str(e),
             'error_category': error_category,
-            'processing_time': processing_time,
-            'example_id': example_id,
             'processing_time': processing_time
         }
         logging.error(f"\n❌ Error processing example {running_id}:")
