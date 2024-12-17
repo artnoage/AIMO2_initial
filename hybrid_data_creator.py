@@ -15,27 +15,6 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-@dataclass
-class ProcessingMetrics:
-    """Track detailed processing metrics"""
-    total_attempts: int = 0
-    successful_attempts: int = 0
-    failed_validations: int = 0
-    timeouts: int = 0
-    avg_processing_time: float = 0.0
-    step_timings: Dict[str, float] = field(default_factory=lambda: {
-        'analysis': 0.0,
-        'verification': 0.0,
-        'completion': 0.0
-    })
-    approach_distribution: Dict[str, int] = field(default_factory=lambda: {'full': 0, 'analysis': 0})
-    
-    def update(self, result: Dict):
-        """Update metrics with new result"""
-        self.total_attempts += 1
-        if result:
-            self.successful_attempts += 1
-            self.approach_distribution[result.get('approach', 'unknown')] += 1
 
 # Configure logging
 logging.basicConfig(
@@ -255,7 +234,6 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
     start_time = time.perf_counter()
-    metrics = ProcessingMetrics()
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -444,11 +422,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'error_category': error_category,
             'processing_time': processing_time,
             'example_id': example_id,
-            'metrics': {
-                'total_attempts': metrics.total_attempts,
-                'successful_attempts': metrics.successful_attempts,
-                'step_timings': metrics.step_timings
-            }
+            'processing_time': processing_time
         }
         logging.error(f"\n❌ Error processing example {running_id}:")
         logging.error(f"├─ Error type: {error_details['error_type']}")
