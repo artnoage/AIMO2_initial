@@ -214,15 +214,25 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
         try:
-            if bifurcation_prompt is None:
-                bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
-            else:
-                current_solution = await solution_agent.generate(example["problem"])
-            # First validate solution structure
-            is_valid, validation_reason = validate_solution(current_solution)
-            if not is_valid:
-                logs.append(f"Attempt {attempts} validation failed: {validation_reason}")
-                continue
+            retry_count = 0
+            while retry_count < 3:  # Try up to 3 times for each attempt
+                if bifurcation_prompt is None:
+                    bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+                else:
+                    current_solution = await solution_agent.generate(example["problem"])
+                
+                # First validate solution structure
+                is_valid, validation_reason = validate_solution(current_solution)
+                if not is_valid:
+                    retry_count += 1
+                    logs.append(f"Attempt {attempts}.{retry_count} validation failed: {validation_reason}")
+                    if retry_count < 3:
+                        continue
+                    else:
+                        logs.append(f"Failed all 3 retries for attempt {attempts}")
+                        break
+                else:
+                    break  # Valid solution found, exit retry loop
                 
             # Then verify correctness
             score, total_steps, current_answer = await verifier.verify(
@@ -369,13 +379,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Process using the analysis/steps approach from data_creator.py
             if n == 1:
-                bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                if not validate_analysis(path_1):
-                    return None
-                    
-                _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                if path_2 == path_1 or not validate_analysis(path_2):
-                    return None
+                # Try up to 3 times for path_1
+                for retry in range(3):
+                    bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    if validate_analysis(path_1):
+                        break
+                    logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3)")
+                    if retry == 2:  # All retries failed
+                        logs.append("Failed all retries for path_1 analysis")
+                        return None
+                
+                # Try up to 3 times for path_2
+                for retry in range(3):
+                    _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    if path_2 != path_1 and validate_analysis(path_2):
+                        break
+                    logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3)")
+                    if retry == 2:  # All retries failed
+                        logs.append("Failed all retries for path_2 analysis")
+                        return None
                     
                 path1 = path_1
                 path2 = path_2
@@ -385,13 +407,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 current_solution = common_analysis
                 
                 for step_num in range(n-2):
-                    _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                    if not validate_step(next_step):
-                        return None
-                    current_solution += next_step
-                    
-                    if extract_answer_from_solution(current_solution) is not None:
-                        return None
+                    # Try up to 3 times for each step
+                    for retry in range(3):
+                        _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                        if validate_step(next_step):
+                            if extract_answer_from_solution(current_solution + next_step) is None:
+                                current_solution += next_step
+                                break
+                            else:
+                                logs.append(f"Step {step_num + 1} generated premature answer (retry {retry + 1}/3)")
+                        else:
+                            logs.append(f"Step {step_num + 1} validation failed (retry {retry + 1}/3)")
+                        
+                        if retry == 2:  # All retries failed
+                            logs.append(f"Failed all retries for step {step_num + 1}")
+                            return None
                 
                 bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 if not validate_step(response_1):
