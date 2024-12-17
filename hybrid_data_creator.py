@@ -424,8 +424,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append("Failed all retries for path_2 analysis")
                         return None
                     
-                path1 = path_1
-                path2 = path_2
+                response_1 = path_1
+                response_2 = path_2
                 
             else:
                 # Generate and validate initial analysis
@@ -465,15 +465,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Generate first bifurcation path
                 bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                path1 = current_solution + response_1
+                path_1 = current_solution + response_1
                 first_path_valid = validate_step(response_1)
                 if first_path_valid:
                     logs.append("✓ Valid first bifurcation step generated")
                 else:
                     logs.append("❌ Invalid first bifurcation step - will affect scoring")
-                answer1 = extract_answer_from_solution(path1)
+                answer_1 = extract_answer_from_solution(path_1)
                 
-                if answer1 is not None:
+                if answer_1 is not None:
                     # First path found answer - verify it
                     score, total_steps, _ = await verifier.verify(path1, correct_answer, example["problem"])
                     if score == total_steps:
@@ -481,44 +481,33 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         return {
                             'id': example_id,
                             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                            'chosen': {'content': path1, 'role': 'assistant'},
+                            'chosen': {'content': response_1, 'role': 'assistant'},
                             'rejected': {'content': current_solution, 'role': 'assistant'},
                             'score_chosen': 1.0,
-                            'score_rejected': 0.0,
-                            'bifurcation_prompt': bifurcation_prompt,
-                            'quality_metrics': {
-                                'chosen': analyze_solution_quality(path1),
-                                'rejected': analyze_solution_quality(current_solution)
-                            }
-                        }
+                            'score_rejected': 0.0}
                 
                 # Generate second bifurcation path
                 response_2 = await step_agent.generate(example["problem"], current_solution)
-                path2 = current_solution + response_2
+                path_2 = current_solution + response_2
                 second_path_valid = response_2 != response_1 and validate_step(response_2)
                 if second_path_valid:
                     logs.append("✓ Valid second bifurcation step generated")
                 else:
                     logs.append("❌ Invalid second bifurcation step - will affect scoring")
-                answer2 = extract_answer_from_solution(path2)
+                answer_2 = extract_answer_from_solution(path_2)
                 
-                if answer2 is not None:
+                if answer_2 is not None:
                     # Second path found answer - verify it
-                    score, total_steps, _ = await verifier.verify(path2, correct_answer, example["problem"])
+                    score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                     if score == total_steps:
                         logs.append("✓ Second path found correct answer at bifurcation - using maximum score")
                         return {
                             'id': example_id,
                             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                            'chosen': {'content': path2, 'role': 'assistant'},
+                            'chosen': {'content': response_2, 'role': 'assistant'},
                             'rejected': {'content': current_solution, 'role': 'assistant'},
                             'score_chosen': 1.0,
-                            'score_rejected': 0.0,
-                            'bifurcation_prompt': bifurcation_prompt,
-                            'quality_metrics': {
-                                'chosen': analyze_solution_quality(path2),
-                                'rejected': analyze_solution_quality(current_solution)
-                            }
+                            'score_rejected': 0.0
                         }
             
             # Track if paths are valid for sampling
@@ -536,7 +525,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                     try:
-                        complete_solution = path1 + await completion_agent.generate(example["problem"], path1)
+                        complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
                         is_valid, validation_reason = validate_solution(complete_solution)
                         logs.append(f"Path 1:")
                         logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
@@ -562,7 +551,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             if path2_valid_for_sampling and not hasattr(locals(), 'score_path2'):
                 for attempt in range(config.completions):
                     try:
-                        complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
+                        complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
                         is_valid, validation_reason = validate_solution(complete_solution)
                         logs.append(f"Path 2:")
                         logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
@@ -637,18 +626,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return {
                 'id': example_id,
                 'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                'chosen': {'content': path1, 'role': 'assistant'},
-                'rejected': {'content': path2, 'role': 'assistant'},
+                'chosen': {'content': response_1, 'role': 'assistant'},
+                'rejected': {'content': response_2, 'role': 'assistant'},
                 'score_chosen': score_path1,
-                'score_rejected': score_path2,
-                'bifurcation_prompt': bifurcation_prompt,
-                'quality_metrics': {
-                    'chosen': analyze_solution_quality(path1),
-                    'rejected': analyze_solution_quality(path2)
-                },
-                'total_solution_attempts': total_solution_attempts,
-                'logs': "\n".join(logs)
-            }
+                'score_rejected': score_path2}
 
         # Add logs to result instead of printing
         logs.append("\n" + "="*50)
@@ -661,15 +642,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'chosen': {'content': path1, 'role': 'assistant'},
             'rejected': {'content': path2, 'role': 'assistant'},
             'score_chosen': score_path1,
-            'score_rejected': score_path2,
-            'bifurcation_prompt': bifurcation_prompt,
-            'quality_metrics': {
-                'chosen': analyze_solution_quality(path1),
-                'rejected': analyze_solution_quality(path2)
-            },
-            'total_solution_attempts': total_solution_attempts,
-            'logs': "\n".join(logs)
-        }
+            'score_rejected': score_path2}
         print("\n".join(logs))  # Print logs for both approaches
         return result
         
