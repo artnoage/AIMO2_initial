@@ -477,14 +477,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     # First path found answer - verify it
                     score, total_steps, _ = await verifier.verify(path1, correct_answer, example["problem"])
                     if score == total_steps:
-                        logs.append("✓ First path found correct answer at bifurcation - using maximum score")
-                        return {
-                            'id': example_id,
-                            'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                            'chosen': {'content': response_1, 'role': 'assistant'},
-                            'rejected': {'content': current_solution, 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0}
+                        logs.append("✓ First path found correct answer at bifurcation")
+                        score_path1 = 1.0
                 
                 # Generate second bifurcation path
                 response_2 = await step_agent.generate(example["problem"], current_solution)
@@ -500,15 +494,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     # Second path found answer - verify it
                     score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                     if score == total_steps:
-                        logs.append("✓ Second path found correct answer at bifurcation - using maximum score")
-                        return {
-                            'id': example_id,
-                            'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                            'chosen': {'content': response_2, 'role': 'assistant'},
-                            'rejected': {'content': current_solution, 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        }
+                        logs.append("✓ Second path found correct answer at bifurcation")
+                        score_path2 = 1.0
             
             # Track if paths are valid for sampling
             path1_valid_for_sampling = first_path_valid if n > 1 else True
