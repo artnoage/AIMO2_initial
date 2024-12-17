@@ -339,7 +339,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
-            bifurcation_prompt, chosen, rejected, score_chosen, score_rejected = result
+            bifurcation_prompt, path1, path2, score_path1, score_path2 = result
             
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
@@ -377,8 +377,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if path_2 == path_1 or not validate_analysis(path_2):
                     return None
                     
-                chosen = path_1
-                rejected = path_2
+                path1 = path_1
+                path2 = path_2
                 
             else:
                 _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
@@ -401,40 +401,40 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if response_2 == response_1 or not validate_step(response_2):
                     return None
                     
-                chosen = current_solution + response_1
-                rejected = current_solution + response_2
+                path1 = current_solution + response_1
+                path2 = current_solution + response_2
             
             # Calculate scores using completion agent and rejected score penalties
-            successful_chosen = 0
-            successful_rejected = 0
+            successful_path1 = 0
+            successful_path2 = 0
             
             for _ in range(config.completions):
                 try:
-                    complete_solution = chosen + await completion_agent.generate(example["problem"], chosen)
+                    complete_solution = path1 + await completion_agent.generate(example["problem"], path1)
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
                         score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                         if score == total_steps:
-                            successful_chosen += 1
+                            successful_path1 += 1
                 except Exception as e:
-                    print(f"Error in completion for chosen: {str(e)}")
+                    print(f"Error in completion for path1: {str(e)}")
                     
                 try:
-                    complete_solution = rejected + await completion_agent.generate(example["problem"], rejected)
+                    complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
                         score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                         if score == total_steps:
-                            successful_rejected += 1
+                            successful_path2 += 1
                 except Exception as e:
-                    print(f"Error in completion for rejected: {str(e)}")
+                    print(f"Error in completion for path2: {str(e)}")
             
             # Calculate success rates as ratios
-            score_chosen = successful_chosen / config.completions
-            score_rejected = successful_rejected / config.completions
+            score_path1 = successful_path1 / config.completions
+            score_path2 = successful_path2 / config.completions
             
             # Calculate relative scores if either has non-zero success
-            if score_chosen == 0 and score_rejected == 0:
+            if score_path1 == 0 and score_path2 == 0:
                 logs.append("❌ Failed: No successful completions for either path")
                 print("\n".join(logs))
                 return {
@@ -444,32 +444,32 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'processing_time': time.perf_counter() - start_time
                 }
 
-            max_score = max(score_chosen, score_rejected)
-            relative_chosen = score_chosen / max_score if max_score > 0 else 0
-            relative_rejected = score_rejected / max_score if max_score > 0 else 0
-            relative_diff = abs(relative_chosen - relative_rejected)
+            max_score = max(score_path1, score_path2)
+            relative_path1 = score_path1 / max_score if max_score > 0 else 0
+            relative_path2 = score_path2 / max_score if max_score > 0 else 0
+            relative_diff = abs(relative_path1 - relative_path2)
 
             # Add performance metrics
             logs.append(f"\n📊 Performance Metrics:")
-            logs.append(f"├─ Chosen solution success: {score_chosen:.2%}")
-            logs.append(f"├─ Rejected solution success: {score_rejected:.2%}")
-            logs.append(f"├─ Relative chosen score: {relative_chosen:.2%}")
-            logs.append(f"├─ Relative rejected score: {relative_rejected:.2%}")
+            logs.append(f"├─ Path 1 success: {score_path1:.2%}")
+            logs.append(f"├─ Path 2 success: {score_path2:.2%}")
+            logs.append(f"├─ Relative path 1 score: {relative_path1:.2%}")
+            logs.append(f"├─ Relative path 2 score: {relative_path2:.2%}")
             logs.append(f"└─ Relative difference: {relative_diff:.2%}")
             
             # Add quality metrics for both solutions
             logs.append(f"\n🔍 Solution Quality:")
-            logs.append("├─ Chosen solution:")
-            chosen_quality = analyze_solution_quality(chosen)
-            logs.append(f"│  ├─ Length: {chosen_quality['length']} words")
-            logs.append(f"│  ├─ Steps: {chosen_quality['step_count']}")
-            logs.append(f"│  └─ Format score: {chosen_quality['formatting_quality']}/5")
+            logs.append("├─ Path 1:")
+            path1_quality = analyze_solution_quality(path1)
+            logs.append(f"│  ├─ Length: {path1_quality['length']} words")
+            logs.append(f"│  ├─ Steps: {path1_quality['step_count']}")
+            logs.append(f"│  └─ Format score: {path1_quality['formatting_quality']}/5")
             
-            logs.append("└─ Rejected solution:")
-            rejected_quality = analyze_solution_quality(rejected)
-            logs.append(f"   ├─ Length: {rejected_quality['length']} words")
-            logs.append(f"   ├─ Steps: {rejected_quality['step_count']}")
-            logs.append(f"   └─ Format score: {rejected_quality['formatting_quality']}/5")
+            logs.append("└─ Path 2:")
+            path2_quality = analyze_solution_quality(path2)
+            logs.append(f"   ├─ Length: {path2_quality['length']} words")
+            logs.append(f"   ├─ Steps: {path2_quality['step_count']}")
+            logs.append(f"   └─ Format score: {path2_quality['formatting_quality']}/5")
             
             # Check if relative difference is too small (indicating statistical noise)
             if relative_diff < 0.2:
@@ -485,9 +485,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append(f"Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
                 
             # Swap if rejected has better score
-            if score_rejected > score_chosen:
-                chosen, rejected = rejected, chosen
-                score_chosen, score_rejected = score_rejected, score_chosen
+            if score_path2 > score_path1:
+                path1, path2 = path2, path1
+                score_path1, score_path2 = score_path2, score_path1
 
             return example['problem'], chosen, rejected, score_chosen, score_rejected
 
@@ -499,14 +499,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         result = {
             'id': example_id,
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-            'chosen': {'content': chosen, 'role': 'assistant'},
-            'rejected': {'content': rejected, 'role': 'assistant'},
-            'score_chosen': score_chosen,
-            'score_rejected': score_rejected,
+            'chosen': {'content': path1, 'role': 'assistant'},
+            'rejected': {'content': path2, 'role': 'assistant'},
+            'score_chosen': score_path1,
+            'score_rejected': score_path2,
             'bifurcation_prompt': bifurcation_prompt,
             'quality_metrics': {
-                'chosen': analyze_solution_quality(chosen),
-                'rejected': analyze_solution_quality(rejected)
+                'chosen': analyze_solution_quality(path1),
+                'rejected': analyze_solution_quality(path2)
             }
         }
         logs.append(f"\n⏱️ Processing Time: {processing_time:.2f}s")
