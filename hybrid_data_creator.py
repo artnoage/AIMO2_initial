@@ -1,13 +1,21 @@
 import os
-import asyncio
-import random
 import re
-import logging
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from collections import defaultdict
+import random
+import logging
+import asyncio
 import statistics
+from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass, field
+from collections import defaultdict
+from dotenv import load_dotenv
+from bench_utils.benchmark_config import *
+from bench_utils.benchmark_utils import *
+from bench_utils.agents import *
+from bench_utils.verify import *
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
 
 @dataclass
 class ProcessingMetrics:
@@ -31,13 +39,6 @@ class ProcessingMetrics:
             self.successful_attempts += 1
             self.approach_distribution[result.get('approach', 'unknown')] += 1
 
-import os
-import asyncio
-import random
-import re
-import logging
-from dataclasses import dataclass
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -54,15 +55,6 @@ STEP_NUMBER_PATTERNS = [
     re.compile(r'^.{0,2}\((\d+)\)'),
     re.compile(r'^.{0,2}(\d+)\s')
 ]
-from typing import Optional, Dict, Tuple
-from dotenv import load_dotenv
-from bench_utils.benchmark_config import *
-from bench_utils.benchmark_utils import *
-from bench_utils.agents import *
-from bench_utils.verify import *
-
-os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
-load_dotenv()
 
 def validate_analysis(resp: str) -> bool:
     """Validate an analysis response"""
