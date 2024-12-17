@@ -374,12 +374,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 n = 1
             else:
                 # Exponentially decaying probability for steps 2+
-                norm_const = sum(3**(-i) for i in range(1, 11))
+                norm_const = sum(2**(-i) for i in range(1, 11))
                 r_scaled = (r - 0.4) / 0.6  # Scale remaining probability space to [0,1]
                 cumsum = 0
                 n = 1
                 while n <= 10:
-                    cumsum += (3**(-n)) / norm_const
+                    cumsum += (2**(-n)) / norm_const
                     if r_scaled <= cumsum:
                         break
                     n += 1
