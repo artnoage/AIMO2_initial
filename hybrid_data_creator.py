@@ -628,8 +628,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'logs': "\n".join(logs)
             }
 
-        # Print collected logs
-        print("\n".join(logs))
+        # Add logs to result instead of printing
+        logs.append("\n" + "="*50)
             
         # Return consistent format regardless of approach
         processing_time = time.perf_counter() - start_time
