@@ -221,7 +221,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             # First validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
-                print(f"Solution validation failed: {validation_reason}")
+                logs.append(f"Attempt {attempts} validation failed: {validation_reason}")
                 continue
                 
             # Then verify correctness
