@@ -10,6 +10,24 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def calculate_rejected_score(solution: str) -> float:
+    """Calculate rejected solution score starting from 0.4 and applying penalties"""
+    score = 0.4
+    
+    # Penalty for no boxed answer
+    if not any(c in solution for c in ['□', '■', '▢', '▣', '⬚', '▤', '▥', '▦']):
+        score -= 0.2
+        
+    # Penalty for short solutions
+    if len(solution.split()) < 80:
+        score -= 0.1
+        
+    # Penalty for invalid analysis
+    if not validate_analysis(solution):
+        score -= 0.1
+        
+    return max(0.1, score)  # Ensure minimum score of 0.1
+
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example, sampling until correct answer found or max attempts reached"""
     try:
