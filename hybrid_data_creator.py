@@ -478,7 +478,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
                     if score == total_steps:
                         logs.append("✓ First path found correct answer at bifurcation")
-                        score_path1 = 1.0
+                        score_path_1 = 1.0
                         path1_valid_for_sampling = False  # Skip sampling if already correct
                 
                 # Generate second bifurcation path
@@ -496,7 +496,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                     if score == total_steps:
                         logs.append("✓ Second path found correct answer at bifurcation")
-                        score_path2 = 1.0
+                        score_path_2 = 1.0
                         path2_valid_for_sampling = False  # Skip sampling if already correct
             
             # Track if paths are valid for sampling
@@ -563,26 +563,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 successful_path2 = 0
             
             # Calculate success rates as ratios
-            score_path1 = successful_path1 / config.completions
-            score_path2 = successful_path2 / config.completions
+            score_path_1 = successful_path1 / config.completions
+            score_path_2 = successful_path2 / config.completions
             
             # Calculate relative scores if either has non-zero success
-            if score_path1 == 0 and score_path2 == 0:
+            if score_path_1 == 0 and score_path_2 == 0:
                 logs.append("❌ Failed: No successful completions for either path")
                 print("\n".join(logs))
                 return None
 
-            max_score = max(score_path1, score_path2)
-            relative_path1 = score_path1 / max_score if max_score > 0 else 0
-            relative_path2 = score_path2 / max_score if max_score > 0 else 0
-            relative_diff = abs(relative_path1 - relative_path2)
+            max_score = max(score_path_1, score_path_2)
+            relative_path_1 = score_path_1 / max_score if max_score > 0 else 0
+            relative_path_2 = score_path_2 / max_score if max_score > 0 else 0
+            relative_diff = abs(relative_path_1 - relative_path_2)
 
             # Add performance metrics
             logs.append(f"\n📊 Performance Metrics:")
-            logs.append(f"├─ Path 1 success: {score_path1:.2%}")
-            logs.append(f"├─ Path 2 success: {score_path2:.2%}")
-            logs.append(f"├─ Relative path 1 score: {relative_path1:.2%}")
-            logs.append(f"├─ Relative path 2 score: {relative_path2:.2%}")
+            logs.append(f"├─ Path 1 success: {score_path_1:.2%}")
+            logs.append(f"├─ Path 2 success: {score_path_2:.2%}")
+            logs.append(f"├─ Relative path 1 score: {relative_path_1:.2%}")
+            logs.append(f"├─ Relative path 2 score: {relative_path_2:.2%}")
             logs.append(f"└─ Relative difference: {relative_diff:.2%}")
             
             # Add quality metrics for both solutions
@@ -606,19 +606,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 return None
                 
             # Swap if path2 has better score
-            if score_path2 > score_path1:
+            if score_path_2 > score_path_1:
                 path_1, path_2 = path_2, path_1
-                score_path1, score_path2 = score_path2, score_path1
+                score_path_1, score_path_2 = score_path_2, score_path_1
 
-            logs.append(f"Score difference: {abs(score_path1 - score_path2)/max(score_path1, score_path2):.1%}")
+            logs.append(f"Score difference: {abs(score_path_1 - score_path_2)/max(score_path_1, score_path_2):.1%}")
             
             return {
                 'id': example_id,
                 'prompt': {'content': bifurcation_prompt, 'role': 'user'},
                 'chosen': {'content': response_1, 'role': 'assistant'},
                 'rejected': {'content': response_2, 'role': 'assistant'},
-                'score_chosen': score_path1,
-                'score_rejected': score_path2}
+                'score_chosen': score_path_1,
+                'score_rejected': score_path_2}
 
         # Add logs to result instead of printing
         logs.append("\n" + "="*50)
@@ -630,8 +630,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
             'chosen': {'content': path_1, 'role': 'assistant'},
             'rejected': {'content': path_2, 'role': 'assistant'},
-            'score_chosen': score_path1,
-            'score_rejected': score_path2}
+            'score_chosen': score_path_1,
+            'score_rejected': score_path_2}
         print("\n".join(logs))  # Print logs for both approaches
         return result
         
