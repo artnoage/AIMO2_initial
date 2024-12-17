@@ -492,17 +492,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         path2_valid_for_sampling = False  # Skip sampling if already correct
             
             # Track if paths are valid for sampling
-            path1_valid_for_sampling = first_path_valid if n > 1 else True
-            path2_valid_for_sampling = second_path_valid if n > 1 else True
+            path_1_valid_for_sampling = first_path_valid if n > 1 else True
+            path_2_valid_for_sampling = second_path_valid if n > 1 else True
             
             # Calculate scores using completion agent
-            successful_path1 = 0
-            successful_path2 = 0
+            successful_path_1 = 0
+            successful_path_2 = 0
             
             logs.append("\n🔍 Completion Attempts:")
             
             # Only sample completions for valid paths and if not already scored
-            if path1_valid_for_sampling and not hasattr(locals(), 'score_path1'):
+            if path_1_valid_for_sampling and not hasattr(locals(), 'score_path_1'):
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                     try:
@@ -516,8 +516,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                             logs.append(f"├─ Verification Score: {score}/{total_steps}")
                             if score == total_steps:
-                                successful_path1 += 1
-                                logs.append(f"└─ Success! ({successful_path1} total successes)")
+                                successful_path_1 += 1
+                                logs.append(f"└─ Success! ({successful_path_1} total successes)")
                             else:
                                 logs.append(f"└─ Failed verification")
                         else:
@@ -526,10 +526,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append(f"└─ Error: {str(e)}")
             else:
                 logs.append("Path 1: Skipping completion sampling - path invalid")
-                successful_path1 = 0
+                successful_path_1 = 0
             
             # Path 2 completion - only if valid and not already scored
-            if path2_valid_for_sampling and not hasattr(locals(), 'score_path2'):
+            if path_2_valid_for_sampling and not hasattr(locals(), 'score_path_2'):
                 for attempt in range(config.completions):
                     try:
                         complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
@@ -542,8 +542,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                             logs.append(f"├─ Verification Score: {score}/{total_steps}")
                             if score == total_steps:
-                                successful_path2 += 1
-                                logs.append(f"└─ Success! ({successful_path2} total successes)")
+                                successful_path_2 += 1
+                                logs.append(f"└─ Success! ({successful_path_2} total successes)")
                             else:
                                 logs.append(f"└─ Failed verification")
                         else:
@@ -552,11 +552,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append(f"└─ Error: {str(e)}")
             else:
                 logs.append("Path 2: Skipping completion sampling - path invalid")
-                successful_path2 = 0
+                successful_path_2 = 0
             
             # Calculate success rates as ratios
-            score_path_1 = successful_path1 / config.completions
-            score_path_2 = successful_path2 / config.completions
+            score_path_1 = successful_path_1 / config.completions
+            score_path_2 = successful_path_2 / config.completions
             
             # Calculate relative scores if either has non-zero success
             if score_path_1 == 0 and score_path_2 == 0:
@@ -580,16 +580,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Add quality metrics for both solutions
             logs.append(f"\n🔍 Solution Quality:")
             logs.append("├─ Path 1:")
-            path1_quality = analyze_solution_quality(path_1)
-            logs.append(f"│  ├─ Length: {path1_quality['length']} words")
-            logs.append(f"│  ├─ Steps: {path1_quality['step_count']}")
-            logs.append(f"│  └─ Format score: {path1_quality['formatting_quality']}/5")
+            path_1_quality = analyze_solution_quality(path_1)
+            logs.append(f"│  ├─ Length: {path_1_quality['length']} words")
+            logs.append(f"│  ├─ Steps: {path_1_quality['step_count']}")
+            logs.append(f"│  └─ Format score: {path_1_quality['formatting_quality']}/5")
             
             logs.append("└─ Path 2:")
-            path2_quality = analyze_solution_quality(path_2)
-            logs.append(f"   ├─ Length: {path2_quality['length']} words")
-            logs.append(f"   ├─ Steps: {path2_quality['step_count']}")
-            logs.append(f"   └─ Format score: {path2_quality['formatting_quality']}/5")
+            path_2_quality = analyze_solution_quality(path_2)
+            logs.append(f"   ├─ Length: {path_2_quality['length']} words")
+            logs.append(f"   ├─ Steps: {path_2_quality['step_count']}")
+            logs.append(f"   └─ Format score: {path_2_quality['formatting_quality']}/5")
             
             # Check if relative difference is too small (indicating statistical noise)
             if relative_diff < 0.2:
