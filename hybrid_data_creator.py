@@ -314,8 +314,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Approach info
         logs.append(f"\n🔄 Processing Details:")
         logs.append(f"├─ Strategy: {'Full solution' if r < 0.3 else 'Progressive building'}")
-        if r >= 0.3:
-            logs.append(f"└─ Bifurcation: After step {n}")
+        
+        if r < 0.3:  # Full solution approach
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
@@ -324,6 +324,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
             logs.append("Approach: Progressive solution building")
+            
+            # Determine bifurcation point
             if r < 0.5:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
@@ -338,7 +340,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     n += 1
             
-            logs.append(f"Bifurcation point: After step {n}")
+            logs.append(f"└─ Bifurcation: After step {n}")
             logs.append(f"Completion attempts planned: {config.completions}")
             
             analysis_agent = AnalysisAgent(solver)
