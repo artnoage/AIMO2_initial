@@ -5,6 +5,16 @@ import re
 import logging
 from dataclasses import dataclass
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('hybrid_creator.log')
+    ]
+)
+
 # Compile regex patterns once
 STEP_NUMBER_PATTERNS = [
     re.compile(r'^.{0,2}(\d+)[.:\)]'),
@@ -168,20 +178,32 @@ async def process_full_solution(example: Dict, running_id: int, solver: any, ver
     rejected_score = calculate_rejected_score(wrong_solution)
     
     # Print detailed logs
-    logs.append("\n=== Full Solution Details ===")
-    logs.append(f"Attempts needed for correct solution: {correct_attempt}/{config.best_of}")
-    logs.append(f"Attempts needed for wrong solution: {wrong_attempt}/{config.best_of}")
-    logs.append(f"Total attempts made: {attempts}/{config.best_of}")
-    logs.append(f"Chosen solution score: {chosen_score:.3f}")
-    logs.append(f"Rejected solution score: {rejected_score:.3f}")
+    logs.append("\n" + "="*50)
+    logs.append("=== Full Solution Approach Details ===")
+    logs.append("="*50)
     
-    # Add verification details for all attempts
-    logs.append("\nAll attempts:")
+    # Success metrics
+    success_rate = sum(1 for s in solutions if s['is_correct']) / len(solutions) * 100
+    logs.append(f"\n📊 Success Metrics:")
+    logs.append(f"✓ Success rate: {success_rate:.1f}%")
+    logs.append(f"✓ Attempts for correct solution: {correct_attempt}/{config.best_of}")
+    logs.append(f"✓ Attempts for wrong solution: {wrong_attempt}/{config.best_of}")
+    logs.append(f"✓ Total attempts: {attempts}/{config.best_of}")
+    
+    # Scoring details
+    logs.append(f"\n💯 Scoring Details:")
+    logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")
+    logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")
+    logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")
+    
+    # Verification details
+    logs.append(f"\n🔍 Verification Results by Attempt:")
     for idx, sol in enumerate(solutions, 1):
-        logs.append(f"\nAttempt {idx}:")
-        logs.append(f"Verification score: {sol['verification_score']}/{sol['verification_steps']}")
-        logs.append(f"Answer extracted: {sol['answer']}")
-        logs.append(f"Correct: {sol['is_correct']}")
+        success_marker = "✅" if sol['is_correct'] else "❌"
+        logs.append(f"\nAttempt {idx} {success_marker}")
+        logs.append(f"  ├─ Score: {sol['verification_score']}/{sol['verification_steps']}")
+        logs.append(f"  ├─ Success Rate: {(sol['verification_score']/sol['verification_steps']*100):.1f}%")
+        logs.append(f"  └─ Answer: {sol['answer']}")
     
     return correct_solution, wrong_solution, chosen_score, rejected_score
 
@@ -212,9 +234,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         r = random.random()
         
         logs = []
-        logs.append(f"\nProcessing example {running_id + 1}")
-        logs.append(f"Problem: {example['problem'][:200]}...")
-        logs.append(f"Correct answer: {correct_answer}")
+        logs.append("\n" + "="*50)
+        logs.append(f"📝 Processing Example {running_id + 1}")
+        logs.append("="*50)
+        logs.append(f"\n📋 Problem Summary:")
+        logs.append(f"├─ ID: {example_id}")
+        logs.append(f"├─ Problem: {example['problem'][:200]}...")
+        logs.append(f"└─ Expected Answer: {correct_answer}")
         
         if r < 0.3:  # Full solution approach
             logs.append("\nApproach: Full solution")
@@ -344,7 +370,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         }
         
     except Exception as e:
-        print(f"Error processing example {running_id}: {e}")
+        logging.error(f"\n❌ Error processing example {running_id}:")
+        logging.error(f"├─ Error type: {type(e).__name__}")
+        logging.error(f"├─ Error message: {str(e)}")
+        logging.error(f"└─ Example ID: {example_id}")
         return None
 
 async def main():
