@@ -389,17 +389,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for _ in range(config.completions):
                 try:
                     complete_solution = chosen + await completion_agent.generate(example["problem"], chosen)
-                    score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                    if score == total_steps:
-                        successful_chosen += 1
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if is_valid:
+                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                        if score == total_steps:
+                            successful_chosen += 1
                 except Exception as e:
                     print(f"Error in completion for chosen: {str(e)}")
                     
                 try:
                     complete_solution = rejected + await completion_agent.generate(example["problem"], rejected)
-                    score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                    if score == total_steps:
-                        successful_rejected += 1
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if is_valid:
+                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                        if score == total_steps:
+                            successful_rejected += 1
                 except Exception as e:
                     print(f"Error in completion for rejected: {str(e)}")
             
