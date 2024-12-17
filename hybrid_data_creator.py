@@ -265,12 +265,32 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     logs.append(f"✓ Attempts for correct solution: {correct_attempt}/{config.best_of}")
     logs.append(f"✓ Attempts for wrong solution: {wrong_attempt}/{config.best_of}")
     logs.append(f"✓ Total attempts: {attempts}/{config.best_of}")
+    logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
+    logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")
+    
+    # Solution quality metrics
+    logs.append(f"\n📝 Solution Quality:")
+    correct_quality = analyze_solution_quality(correct_solution)
+    wrong_quality = analyze_solution_quality(wrong_solution)
+    
+    logs.append(f"✓ Correct solution:")
+    logs.append(f"  ├─ Length: {correct_quality['length']} words")
+    logs.append(f"  ├─ Steps: {correct_quality['step_count']}")
+    logs.append(f"  ├─ Has equations: {'Yes' if correct_quality['has_equations'] else 'No'}")
+    logs.append(f"  └─ Format score: {correct_quality['formatting_quality']}/5")
+    
+    logs.append(f"✓ Wrong solution:")
+    logs.append(f"  ├─ Length: {wrong_quality['length']} words")
+    logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")
+    logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")
+    logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")
     
     # Scoring details
     logs.append(f"\n💯 Scoring Details:")
     logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")
     logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")
     logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")
+    logs.append(f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
     
     return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score
 
