@@ -150,8 +150,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'chosen': {'content': correct_solution, 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': chosen_score,
-            'score_rejected': rejected_score,
-            'bifurcation_point': 1  # Always 1 for sample_until_correct since it's full solution
+            'score_rejected': rejected_score
         }
         
     except Exception as e:

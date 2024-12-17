@@ -261,8 +261,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'chosen': {'content': chosen, 'role': 'assistant'},
             'rejected': {'content': rejected, 'role': 'assistant'},
             'score_chosen': score_chosen,
-            'score_rejected': score_rejected,
-            'bifurcation_point': n
+            'score_rejected': score_rejected
         }
         
     except Exception as e:
