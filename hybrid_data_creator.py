@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+import re
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
@@ -42,11 +43,20 @@ def calculate_rejected_score(solution: str) -> float:
         
     # Penalty for incorrect step numbering
     steps = solution.lower().split("step")
-    expected_steps = list(range(1, len(steps)))
-    for i, step in enumerate(steps[1:], 1):  # Skip first split which is before "step"
-        if not any(str(i) in step[:10] for i in expected_steps):  # Check first 10 chars after "step"
+    if len(steps) > 1:  # Only check if there are steps
+        found_numbers = []
+        for step in steps[1:]:  # Skip text before first "step"
+            # Look for step number in common formats
+            for pattern in [r'\s*(\d+)[.:\)]', r'\s*\((\d+)\)', r'\s*(\d+)\s']:
+                match = re.search(pattern, step[:20])  # Check first 20 chars for number
+                if match:
+                    found_numbers.append(int(match.group(1)))
+                    break
+        
+        # Check if numbers are sequential starting from 1
+        expected_sequence = list(range(1, len(steps)))
+        if not found_numbers or found_numbers != expected_sequence:
             score -= 0.1
-            break
             
     return max(0.1, score)  # Ensure minimum score of 0.1
 
