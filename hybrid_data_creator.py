@@ -421,13 +421,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 path2 = path_2
                 
             else:
-                # Generate initial analysis
-                _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
-                if extract_answer_from_solution(common_analysis) is not None:
-                    logs.append("❌ Analysis contained premature answer - dropping example")
-                    return None
-                    
-                current_solution = common_analysis
+                # Generate and validate initial analysis
+                for retry in range(3):
+                    _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+                    if validate_analysis(common_analysis) and extract_answer_from_solution(common_analysis) is None:
+                        current_solution = common_analysis
+                        logs.append("✓ Valid analysis generated")
+                        break
+                    logs.append(f"Analysis validation failed (retry {retry + 1}/3)")
+                    if retry == 2:
+                        logs.append("❌ Failed all retries for analysis - dropping example")
+                        return None
                 
                 # Generate intermediate steps
                 for step_num in range(n-2):
@@ -450,12 +454,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append(f"Failed all retries for step {step_num + 1}")
                         return None
                 
-                # Generate bifurcation paths
-                bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                if not validate_step(response_1):
-                    return None
-                
-                path1 = current_solution + response_1
+                # Generate and validate first bifurcation path
+                for retry in range(3):
+                    bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                    if validate_step(response_1, n):
+                        path1 = current_solution + response_1
+                        logs.append("✓ Valid first bifurcation step generated")
+                        break
+                    logs.append(f"First bifurcation step validation failed (retry {retry + 1}/3)")
+                    if retry == 2:
+                        logs.append("❌ Failed all retries for first bifurcation - dropping example")
+                        return None
                 answer1 = extract_answer_from_solution(path1)
                 
                 if answer1 is not None:
@@ -477,11 +486,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             }
                         }
                 
-                response_2 = await step_agent.generate(example["problem"], current_solution)
-                if response_2 == response_1 or not validate_step(response_2):
-                    return None
-                
-                path2 = current_solution + response_2
+                # Generate and validate second bifurcation path
+                for retry in range(3):
+                    response_2 = await step_agent.generate(example["problem"], current_solution)
+                    if response_2 != response_1 and validate_step(response_2, n):
+                        path2 = current_solution + response_2
+                        logs.append("✓ Valid second bifurcation step generated")
+                        break
+                    logs.append(f"Second bifurcation step validation failed (retry {retry + 1}/3)")
+                    if retry == 2:
+                        logs.append("❌ Failed all retries for second bifurcation - dropping example")
+                        return None
                 answer2 = extract_answer_from_solution(path2)
                 
                 if answer2 is not None:
