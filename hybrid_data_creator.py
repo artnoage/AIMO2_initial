@@ -72,6 +72,22 @@ def validate_analysis(resp: str) -> bool:
         return False
     return True
 
+def analyze_solution_quality(solution: str) -> Dict[str, Any]:
+    """Analyze various quality metrics of a solution"""
+    return {
+        'length': len(solution.split()),
+        'has_analysis': bool(re.search(r'analysis|approach|strategy', solution.lower())),
+        'step_count': len(re.findall(r'step\s+\d+', solution.lower())),
+        'has_boxed': '\\boxed{' in solution,
+        'has_equations': bool(re.search(r'\$.*\$', solution)),
+        'formatting_quality': sum([
+            '\\boxed{' in solution,
+            bool(re.search(r'\$.*\$', solution)),
+            bool(re.findall(r'step\s+\d+', solution.lower())),
+            'therefore' in solution.lower() or 'thus' in solution.lower(),
+        ])
+    }
+
 def calculate_rejected_score(solution: str) -> float:
     """Calculate rejected solution score starting from 0.4 and applying penalties"""
     score = 0.4
@@ -403,6 +419,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'approach': 'full' if r < 0.3 else 'analysis',
                 'attempts': metrics.total_attempts,
                 'successful_attempts': metrics.successful_attempts
+            },
+            'quality_metrics': {
+                'chosen': analyze_solution_quality(chosen),
+                'rejected': analyze_solution_quality(rejected)
             }
         }
         logs.append(f"\n⏱️ Processing Time: {processing_time:.2f}s")
