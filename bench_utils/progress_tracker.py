@@ -129,25 +129,6 @@ class ProgressTracker:
                     f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
                     f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
                 )
-                if self._has_field(last_batch, 'bifurcation_point'):
-                    # Count bifurcation points
-                    bifurcation_counts = {}
-                    valid_points = 0
-                    total_bifurcation = 0
-                    
-                    for r in last_batch:
-                        if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                            point = r['bifurcation_point']
-                            if isinstance(point, (int, float)):
-                                bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-                                total_bifurcation += point
-                                valid_points += 1
-                    
-                    avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
-                    stats_str += (
-                        f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-                        f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
-                    )
                 stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
             print(stats_str)
@@ -264,32 +245,6 @@ class ProgressTracker:
                 f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
                 f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
             )
-            if self._has_field(self.results, 'bifurcation_point'):
-                # Ensure we start with a fresh dictionary
-                bifurcation_counts = {}
-                valid_points = 0
-                total_bifurcation = 0
-                
-                # Calculate average and distribution
-                for r in self.results:
-                    if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                        point = r['bifurcation_point']
-                        if isinstance(point, (int, float)):
-                            bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-                            total_bifurcation += point
-                            valid_points += 1
-                
-                avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
-                for r in self.results:
-                    if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                        point = r['bifurcation_point']
-                        if isinstance(point, (int, float)):
-                            bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-                
-                stats_str += (
-                    f"- Average bifurcation point: {avg_bifurcation:.2f}\n"
-                    f"- Bifurcation point distribution: {dict(sorted(bifurcation_counts.items()))}\n"
-                )
             stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
 
         print(stats_str)
