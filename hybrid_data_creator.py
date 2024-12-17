@@ -517,18 +517,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             path1_valid_for_sampling = first_path_valid if n > 1 else True
             path2_valid_for_sampling = second_path_valid if n > 1 else True
             
-            # Calculate scores using completion agent and rejected score penalties
+            # Calculate scores using completion agent
             successful_path1 = 0
             successful_path2 = 0
             
-            # Only sample completions if not already scored
             logs.append("\n🔍 Completion Attempts:")
             
-            if not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
+            # Only sample completions for valid paths and if not already scored
+            if path1_valid_for_sampling and not hasattr(locals(), 'score_path1'):
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
-                    
-                    # Path 1 completion
                     try:
                         complete_solution = path1 + await completion_agent.generate(example["problem"], path1)
                         is_valid, validation_reason = validate_solution(complete_solution)
@@ -548,9 +546,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             logs.append(f"└─ Failed validation")
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
-                    
-                # Path 2 completion - only if not already scored
-                if not hasattr(locals(), 'score_path2'):
+            else:
+                logs.append("Path 1: Skipping completion sampling - path invalid")
+                successful_path1 = 0
+            
+            # Path 2 completion - only if valid and not already scored
+            if path2_valid_for_sampling and not hasattr(locals(), 'score_path2'):
+                for attempt in range(config.completions):
                     try:
                         complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
                         is_valid, validation_reason = validate_solution(complete_solution)
@@ -570,6 +572,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             logs.append(f"└─ Failed validation")
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
+            else:
+                logs.append("Path 2: Skipping completion sampling - path invalid")
+                successful_path2 = 0
             
             # Calculate success rates as ratios
             score_path1 = successful_path1 / config.completions
