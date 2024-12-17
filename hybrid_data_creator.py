@@ -17,6 +17,11 @@ class ProcessingMetrics:
     failed_validations: int = 0
     timeouts: int = 0
     avg_processing_time: float = 0.0
+    step_timings: Dict[str, float] = field(default_factory=lambda: {
+        'analysis': 0.0,
+        'verification': 0.0,
+        'completion': 0.0
+    })
     approach_distribution: Dict[str, int] = field(default_factory=lambda: {'full': 0, 'analysis': 0})
     
     def update(self, result: Dict):
@@ -74,17 +79,23 @@ def validate_analysis(resp: str) -> bool:
 
 def analyze_solution_quality(solution: str) -> Dict[str, Any]:
     """Analyze various quality metrics of a solution"""
+    explanation_patterns = r'because|since|as\s+|explain|due\s+to|results?\s+in|leads?\s+to'
+    logical_patterns = r'therefore|thus|hence|consequently|so|accordingly'
+    
     return {
         'length': len(solution.split()),
         'has_analysis': bool(re.search(r'analysis|approach|strategy', solution.lower())),
         'step_count': len(re.findall(r'step\s+\d+', solution.lower())),
         'has_boxed': '\\boxed{' in solution,
         'has_equations': bool(re.search(r'\$.*\$', solution)),
+        'has_therefore': bool(re.search(logical_patterns, solution.lower())),
+        'has_explanation': bool(re.search(explanation_patterns, solution.lower())),
         'formatting_quality': sum([
             '\\boxed{' in solution,
             bool(re.search(r'\$.*\$', solution)),
             bool(re.findall(r'step\s+\d+', solution.lower())),
-            'therefore' in solution.lower() or 'thus' in solution.lower(),
+            bool(re.search(logical_patterns, solution.lower())),
+            bool(re.search(explanation_patterns, solution.lower()))
         ])
     }
 
@@ -430,14 +441,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
     except Exception as e:
         processing_time = time.perf_counter() - start_time
+        error_category = (
+            "timeout" if isinstance(e, TimeoutError)
+            else "validation" if isinstance(e, ValueError)
+            else "rate_limit" if "rate limit" in str(e).lower()
+            else "context_length" if "context length" in str(e).lower()
+            else "other"
+        )
         error_details = {
             'error_type': type(e).__name__,
             'error_message': str(e),
+            'error_category': error_category,
             'processing_time': processing_time,
             'example_id': example_id,
             'metrics': {
                 'total_attempts': metrics.total_attempts,
-                'successful_attempts': metrics.successful_attempts
+                'successful_attempts': metrics.successful_attempts,
+                'step_timings': metrics.step_timings
             }
         }
         logging.error(f"\n❌ Error processing example {running_id}:")

@@ -22,6 +22,8 @@ class ProgressTracker:
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
     accumulated_stats: Dict = field(default_factory=dict)
+    success_rate_history: List[float] = field(default_factory=list)
+    error_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
