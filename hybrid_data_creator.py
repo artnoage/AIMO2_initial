@@ -318,7 +318,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")
     logs.append(f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
     
-    return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score
+    return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score, "\n".join(logs)
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
@@ -366,7 +366,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
-            bifurcation_prompt, path1, path2, score_path1, score_path2 = result
+            bifurcation_prompt, path1, path2, score_path1, score_path2, solution_logs = result
+            print(solution_logs)  # Print the logs from full solution
             
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
