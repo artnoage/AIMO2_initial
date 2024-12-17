@@ -388,7 +388,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Print collected logs
         print("\n".join(logs))
-        
+            
         # Return consistent format regardless of approach
         processing_time = time.perf_counter() - start_time
         result = {
@@ -398,6 +398,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'rejected': {'content': rejected, 'role': 'assistant'},
             'score_chosen': score_chosen,
             'score_rejected': score_rejected,
+            'bifurcation_prompt': bifurcation_prompt,
             'quality_metrics': {
                 'chosen': analyze_solution_quality(chosen),
                 'rejected': analyze_solution_quality(rejected)
