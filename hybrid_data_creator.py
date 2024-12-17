@@ -532,10 +532,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append("\n🔍 Completion Attempts:")
             if not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
                 for attempt in range(config.completions):
-                logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
-                
-                # Path 1 completion
-                try:
+                    logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
+                    
+                    # Path 1 completion
+                    try:
                     complete_solution = path1 + await completion_agent.generate(example["problem"], path1)
                     is_valid, validation_reason = validate_solution(complete_solution)
                     logs.append(f"Path 1:")
