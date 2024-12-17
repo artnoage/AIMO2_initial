@@ -620,20 +620,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 return None
                 
-            # Swap if path_2 has better score
+            # Return higher scoring response as chosen
             if score_path_2 > score_path_1:
-                path_1, path_2 = path_2, path_1
-                score_path_1, score_path_2 = score_path_2, score_path_1
+                chosen_response = response_2
+                rejected_response = response_1
+                chosen_score = score_path_2
+                rejected_score = score_path_1
+            else:
+                chosen_response = response_1
+                rejected_response = response_2
+                chosen_score = score_path_1
+                rejected_score = score_path_2
 
-            logs.append(f"Score difference: {abs(score_path_1 - score_path_2)/max(score_path_1, score_path_2):.1%}")
+            logs.append(f"Score difference: {abs(chosen_score - rejected_score)/max(chosen_score, rejected_score):.1%}")
             
             return {
                 'id': example_id,
                 'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                'chosen': {'content': response_1, 'role': 'assistant'},
-                'rejected': {'content': response_2, 'role': 'assistant'},
-                'score_chosen': score_path_1,
-                'score_rejected': score_path_2}
+                'chosen': {'content': chosen_response, 'role': 'assistant'},
+                'rejected': {'content': rejected_response, 'role': 'assistant'},
+                'score_chosen': chosen_score,
+                'score_rejected': rejected_score}
 
         # Add logs to result instead of printing
         logs.append("\n" + "="*50)
