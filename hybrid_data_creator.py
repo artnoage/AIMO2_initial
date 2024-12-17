@@ -380,6 +380,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 chosen, rejected = rejected, chosen
                 score_chosen, score_rejected = score_rejected, score_chosen
 
+            return example['problem'], chosen, rejected, score_chosen, score_rejected
+
         # Print collected logs
         print("\n".join(logs))
         
