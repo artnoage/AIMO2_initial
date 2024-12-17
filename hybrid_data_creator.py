@@ -233,7 +233,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
         logs.append(f"  ├─ Success Rate: {(sol['verification_score']/sol['verification_steps']*100):.1f}%")
         logs.append(f"  └─ Answer: {sol['answer']}")
     
-    return correct_solution, wrong_solution, chosen_score, rejected_score
+    return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
