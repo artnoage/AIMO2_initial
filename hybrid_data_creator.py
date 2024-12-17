@@ -320,7 +320,6 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using hybrid approach"""
     start_time = time.perf_counter()
-    total_solution_attempts = 0  # Initialize counter
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
@@ -471,7 +470,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if score == total_steps:
                         logs.append("✓ First path found correct answer at bifurcation")
                         score_path_1 = 1.0
-                        path1_valid_for_sampling = False  # Skip sampling if already correct
+                        path_1_valid_for_sampling = False  # Skip sampling if already correct
                 
                 # Generate second bifurcation path
                 response_2 = await step_agent.generate(example["problem"], current_solution)
@@ -489,7 +488,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if score == total_steps:
                         logs.append("✓ Second path found correct answer at bifurcation")
                         score_path_2 = 1.0
-                        path2_valid_for_sampling = False  # Skip sampling if already correct
+                        path_2_valid_for_sampling = False  # Skip sampling if already correct
             
             # Track if paths are valid for sampling
             path_1_valid_for_sampling = first_path_valid if n > 1 else True
@@ -597,7 +596,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 return None
                 
-            # Swap if path2 has better score
+            # Swap if path_2 has better score
             if score_path_2 > score_path_1:
                 path_1, path_2 = path_2, path_1
                 score_path_1, score_path_2 = score_path_2, score_path_1
