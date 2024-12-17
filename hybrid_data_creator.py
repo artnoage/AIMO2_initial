@@ -302,16 +302,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         r = random.random()
         
         logs = []
-        logs.append("\n" + "="*50)
-        logs.append(f"📝 Processing Example {running_id + 1}")
-        logs.append("="*50)
-        logs.append(f"\n📋 Problem Summary:")
-        logs.append(f"├─ ID: {example_id}")
-        logs.append(f"├─ Problem: {example['problem'][:200]}...")
-        logs.append(f"└─ Expected Answer: {correct_answer}")
+        logs.append("\n" + "="*80)
+        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        logs.append("="*80)
         
-        if r < 0.3:  # Full solution approach
-            logs.append("\nApproach: Full solution")
+        # Problem details
+        logs.append(f"\n📋 Problem:")
+        logs.append(f"{example['problem'][:200]}...")
+        logs.append(f"\n✓ Expected Answer: {correct_answer}")
+        
+        # Approach info
+        logs.append(f"\n🔄 Processing Details:")
+        logs.append(f"├─ Strategy: {'Full solution' if r < 0.3 else 'Progressive building'}")
+        if r >= 0.3:
+            logs.append(f"└─ Bifurcation: After step {n}")
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
@@ -402,9 +406,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_chosen = score_chosen / config.completions
             score_rejected = score_rejected / config.completions
             
-            logs.append(f"\nCompletion Results:")
-            logs.append(f"Chosen path success rate: {score_chosen:.2%}")
-            logs.append(f"Rejected path success rate: {score_rejected:.2%}")
+            # Add performance metrics
+            logs.append(f"\n📊 Performance Metrics:")
+            logs.append(f"├─ Chosen solution success: {score_chosen:.2%}")
+            logs.append(f"├─ Rejected solution success: {score_rejected:.2%}")
+            logs.append(f"└─ Score difference: {abs(score_chosen - score_rejected)/max(score_chosen, score_rejected):.1%}")
+            
+            # Add quality metrics for both solutions
+            logs.append(f"\n🔍 Solution Quality:")
+            logs.append("├─ Chosen solution:")
+            chosen_quality = analyze_solution_quality(chosen)
+            logs.append(f"│  ├─ Length: {chosen_quality['length']} words")
+            logs.append(f"│  ├─ Steps: {chosen_quality['step_count']}")
+            logs.append(f"│  └─ Format score: {chosen_quality['formatting_quality']}/5")
+            
+            logs.append("└─ Rejected solution:")
+            rejected_quality = analyze_solution_quality(rejected)
+            logs.append(f"   ├─ Length: {rejected_quality['length']} words")
+            logs.append(f"   ├─ Steps: {rejected_quality['step_count']}")
+            logs.append(f"   └─ Format score: {rejected_quality['formatting_quality']}/5")
             
             if score_chosen == 0 and score_rejected == 0:
                 logs.append("❌ Failed: No successful completions for either path")
