@@ -522,21 +522,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                     try:
                         complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                        is_valid, validation_reason = validate_solution(complete_solution)
+                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                         logs.append(f"Path 1:")
-                        logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
-                        logs.append(f"├─ Reason: {validation_reason}")
-                        
-                        if is_valid:
-                            score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                            logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                            if score == total_steps:
-                                successful_path_1 += 1
-                                logs.append(f"└─ Success! ({successful_path_1} total successes)")
-                            else:
-                                logs.append(f"└─ Failed verification")
+                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
+                        if score == total_steps:
+                            successful_path_1 += 1
+                            logs.append(f"└─ Success! ({successful_path_1} total successes)")
                         else:
-                            logs.append(f"└─ Failed validation")
+                            logs.append(f"└─ Failed verification")
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
             else:
@@ -548,21 +541,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 for attempt in range(config.completions):
                     try:
                         complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
-                        is_valid, validation_reason = validate_solution(complete_solution)
+                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
                         logs.append(f"Path 2:")
-                        logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
-                        logs.append(f"├─ Reason: {validation_reason}")
-                        
-                        if is_valid:
-                            score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                            logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                            if score == total_steps:
-                                successful_path_2 += 1
-                                logs.append(f"└─ Success! ({successful_path_2} total successes)")
-                            else:
-                                logs.append(f"└─ Failed verification")
+                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
+                        if score == total_steps:
+                            successful_path_2 += 1
+                            logs.append(f"└─ Success! ({successful_path_2} total successes)")
                         else:
-                            logs.append(f"└─ Failed validation")
+                            logs.append(f"└─ Failed verification")
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
             else:
