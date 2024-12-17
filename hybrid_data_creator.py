@@ -209,6 +209,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
     wrong_attempt = 0
     correct_solution = None
     wrong_solution = None
+    total_solution_attempts = 0
     
     attempts = 0
     while (not found_correct or not found_wrong) and attempts < config.best_of:
@@ -216,6 +217,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
         try:
             retry_count = 0
             while retry_count < 3:  # Try up to 3 times for each attempt
+                total_solution_attempts += 1
                 if bifurcation_prompt is None:
                     bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
                 else:
@@ -232,6 +234,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
                         logs.append(f"Failed all 3 retries for attempt {attempts}")
                         break
                 else:
+                    logs.append(f"✓ Attempt {attempts}.{retry_count + 1} passed validation")
                     break  # Valid solution found, exit retry loop
                 
             # Then verify correctness
@@ -246,10 +249,13 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
+                logs.append(f"✓ Found correct solution on attempt {attempts} (try {retry_count + 1})")
+                logs.append(f"  Total solution attempts: {total_solution_attempts}")
             elif not is_correct and not found_wrong:
                 found_wrong = True
                 wrong_attempt = attempts
                 wrong_solution = current_solution
+                logs.append(f"✗ Found incorrect solution on attempt {attempts} (try {retry_count + 1})")
                 
         except Exception as e:
             print(f"Error in full solution attempt {attempts}: {str(e)}")
