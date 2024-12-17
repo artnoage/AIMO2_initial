@@ -255,13 +255,13 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
-                logs.append(f"✓ Found correct solution on attempt {attempts} (try {retry_count + 1})")
+                logs.append(f"✓ Found correct solution on attempt {attempts}")
                 logs.append(f"  Total solution attempts: {total_solution_attempts}")
             elif not is_correct and not found_wrong:
                 found_wrong = True
                 wrong_attempt = attempts
                 wrong_solution = current_solution
-                logs.append(f"✗ Found incorrect solution on attempt {attempts} (try {retry_count + 1})")
+                logs.append(f"✗ Found incorrect solution on attempt {attempts}")
                 
         except Exception as e:
             print(f"Error in full solution attempt {attempts}: {str(e)}")
