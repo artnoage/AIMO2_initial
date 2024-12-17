@@ -473,12 +473,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 else:
                     answer_1 = extract_answer_from_solution(path_1)
                     if answer_1 is not None:
-                    # First path found answer - verify it
-                    score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
-                    if score == total_steps:
-                        logs.append("✓ First path found correct answer at bifurcation")
-                        score_path_1 = 1.0
-                        path_1_valid_for_sampling = False  # Skip sampling if already correct
+                        # First path found answer - verify it
+                        score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
+                        if score == total_steps:
+                            logs.append("✓ First path found correct answer at bifurcation")
+                            score_path_1 = 1.0
+                            path_1_valid_for_sampling = False  # Skip sampling if already correct
 
                 # Generate second bifurcation path with retries
                 second_path_valid = False
@@ -499,12 +499,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 else:
                     answer_2 = extract_answer_from_solution(path_2)
                     if answer_2 is not None:
-                    # Second path found answer - verify it
-                    score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
-                    if score == total_steps:
-                        logs.append("✓ Second path found correct answer at bifurcation")
-                        score_path_2 = 1.0
-                        path_2_valid_for_sampling = False  # Skip sampling if already correct
+                        # Second path found answer - verify it
+                        score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
+                        if score == total_steps:
+                            logs.append("✓ Second path found correct answer at bifurcation")
+                            score_path_2 = 1.0
+                            path_2_valid_for_sampling = False  # Skip sampling if already correct
             
             # Track if paths are valid for sampling
             path_1_valid_for_sampling = first_path_valid if n > 1 else True
