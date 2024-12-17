@@ -455,16 +455,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         return None
                 
                 # Generate and validate first bifurcation path
+                first_path_valid = False
                 for retry in range(3):
                     bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                     if validate_step(response_1, n):
                         path1 = current_solution + response_1
+                        first_path_valid = True
                         logs.append("✓ Valid first bifurcation step generated")
                         break
                     logs.append(f"First bifurcation step validation failed (retry {retry + 1}/3)")
-                    if retry == 2:
-                        logs.append("❌ Failed all retries for first bifurcation - dropping example")
-                        return None
+                if not first_path_valid:
+                    logs.append("❌ Failed all retries for first bifurcation - assigning score 0")
+                    path1 = current_solution + response_1  # Use last attempt
+                    score_path1 = 0
                 answer1 = extract_answer_from_solution(path1)
                 
                 if answer1 is not None:
@@ -487,16 +490,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         }
                 
                 # Generate and validate second bifurcation path
+                second_path_valid = False
                 for retry in range(3):
                     response_2 = await step_agent.generate(example["problem"], current_solution)
                     if response_2 != response_1 and validate_step(response_2, n):
                         path2 = current_solution + response_2
+                        second_path_valid = True
                         logs.append("✓ Valid second bifurcation step generated")
                         break
                     logs.append(f"Second bifurcation step validation failed (retry {retry + 1}/3)")
-                    if retry == 2:
-                        logs.append("❌ Failed all retries for second bifurcation - dropping example")
-                        return None
+                if not second_path_valid:
+                    logs.append("❌ Failed all retries for second bifurcation - assigning score 0")
+                    path2 = current_solution + response_2  # Use last attempt
+                    score_path2 = 0
                 answer2 = extract_answer_from_solution(path2)
                 
                 if answer2 is not None:
@@ -522,8 +528,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             successful_path1 = 0
             successful_path2 = 0
             
+            # Only sample completions for valid paths
             logs.append("\n🔍 Completion Attempts:")
-            for attempt in range(config.completions):
+            if not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
+                for attempt in range(config.completions):
                 logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                 
                 # Path 1 completion
@@ -547,26 +555,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 except Exception as e:
                     logs.append(f"└─ Error: {str(e)}")
                     
-                # Path 2 completion
-                try:
-                    complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
-                    is_valid, validation_reason = validate_solution(complete_solution)
-                    logs.append(f"Path 2:")
-                    logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
-                    logs.append(f"├─ Reason: {validation_reason}")
-                    
-                    if is_valid:
-                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                        if score == total_steps:
-                            successful_path2 += 1
-                            logs.append(f"└─ Success! ({successful_path2} total successes)")
+                # Path 2 completion - only if not already scored from validation failure
+                if not hasattr(locals(), 'score_path2'):
+                    try:
+                        complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
+                        is_valid, validation_reason = validate_solution(complete_solution)
+                        logs.append(f"Path 2:")
+                        logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
+                        logs.append(f"├─ Reason: {validation_reason}")
+                        
+                        if is_valid:
+                            score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                            logs.append(f"├─ Verification Score: {score}/{total_steps}")
+                            if score == total_steps:
+                                successful_path2 += 1
+                                logs.append(f"└─ Success! ({successful_path2} total successes)")
+                            else:
+                                logs.append(f"└─ Failed verification")
                         else:
-                            logs.append(f"└─ Failed verification")
-                    else:
-                        logs.append(f"└─ Failed validation")
-                except Exception as e:
-                    logs.append(f"└─ Error: {str(e)}")
+                            logs.append(f"└─ Failed validation")
+                    except Exception as e:
+                        logs.append(f"└─ Error: {str(e)}")
             
             # Calculate success rates as ratios
             score_path1 = successful_path1 / config.completions
