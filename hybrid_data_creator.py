@@ -553,7 +553,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         else:
                             logs.append(f"└─ Failed validation")
                     except Exception as e:
-                    logs.append(f"└─ Error: {str(e)}")
+                        logs.append(f"└─ Error: {str(e)}")
                     
                 # Path 2 completion - only if not already scored from validation failure
                 if not hasattr(locals(), 'score_path2'):
