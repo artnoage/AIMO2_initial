@@ -466,9 +466,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     logs.append(f"First bifurcation step validation failed (retry {retry + 1}/3)")
                 if not first_path_valid:
-                    logs.append("❌ Failed all retries for first bifurcation")
-                    print("\n".join(logs))
-                    return None
+                    logs.append("❌ Failed all retries for first bifurcation - assigning score 0")
+                    path1 = current_solution + response_1  # Use last attempt
+                    score_path1 = 0
                 answer1 = extract_answer_from_solution(path1)
                 
                 if answer1 is not None:
@@ -501,9 +501,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break
                     logs.append(f"Second bifurcation step validation failed (retry {retry + 1}/3)")
                 if not second_path_valid:
-                    logs.append("❌ Failed all retries for second bifurcation")
-                    print("\n".join(logs))
-                    return None
+                    logs.append("❌ Failed all retries for second bifurcation - assigning score 0")
+                    path2 = current_solution + response_2  # Use last attempt  
+                    score_path2 = 0
                 answer2 = extract_answer_from_solution(path2)
                 
                 if answer2 is not None:
@@ -533,14 +533,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             successful_path1 = 0
             successful_path2 = 0
             
-            # Only sample completions for valid paths
+            # Only sample completions if not already scored
             logs.append("\n🔍 Completion Attempts:")
             
-            # Set score to 0 for invalid paths, otherwise sample
-            if not path1_valid_for_sampling:
-                score_path1 = 0
-                logs.append("Path 1: Skipping sampling due to validation failure")
-            elif not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
+            if not hasattr(locals(), 'score_path1'):  # If score not already set from validation failure
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                     
@@ -565,11 +561,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     except Exception as e:
                         logs.append(f"└─ Error: {str(e)}")
                     
-                # Path 2 completion - only if valid and not already scored
-                if not path2_valid_for_sampling:
-                    score_path2 = 0
-                    logs.append("Path 2: Skipping sampling due to validation failure")
-                elif not hasattr(locals(), 'score_path2'):
+                # Path 2 completion - only if not already scored
+                if not hasattr(locals(), 'score_path2'):
                     try:
                         complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
                         is_valid, validation_reason = validate_solution(complete_solution)
