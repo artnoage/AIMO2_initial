@@ -57,7 +57,7 @@ def validate_analysis(resp: str) -> Tuple[bool, str]:
     if "analysis" not in resp.lower():
         return False, "Missing 'analysis' keyword"
         
-    return True, "Analysis valid"
+    return True, f"Passed all checks: {word_count} words, contains required keywords"
 
 def validate_solution(solution: str) -> Tuple[bool, str]:
     """
