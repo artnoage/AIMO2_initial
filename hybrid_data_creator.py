@@ -444,7 +444,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         current_solution = common_analysis
                         logs.append(f"✓ Valid analysis generated: {reason}")
                         break
-                    logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
+                    if is_valid:
+                        logs.append(f"Analysis contained premature answer (retry {retry + 1}/3)")
+                    else:
+                        logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
                     if retry == 2:
                         print("\n".join(logs))
                         return None
