@@ -650,10 +650,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         result = {
             'id': example_id,
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-            'chosen': {'content': path_1, 'role': 'assistant'},
-            'rejected': {'content': path_2, 'role': 'assistant'},
-            'score_chosen': score_path_1,
-            'score_rejected': score_path_2}
+            'chosen': {'content': chosen_response, 'role': 'assistant'},
+            'rejected': {'content': rejected_response, 'role': 'assistant'},
+            'score_chosen': chosen_score,
+            'score_rejected': rejected_score}
         print("\n".join(logs))  # Print logs for both approaches
         return result
         
