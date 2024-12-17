@@ -33,12 +33,22 @@ def merge_json_files(input_dir: str, output_file: str) -> None:
 
     print(f"Found {len(json_files)} JSON files")
     
-    # Merge all data
+    # Merge all data, keeping only specified fields
     merged_data = []
     for file_path in json_files:
         print(f"Processing {file_path.name}...")
         data = load_json_file(file_path)
-        merged_data.extend(data)
+        for entry in data:
+            if all(field in entry for field in ["id", "prompt", "chosen", "rejected", "score_chosen", "score_rejected"]):
+                filtered_entry = {
+                    "id": entry["id"],
+                    "prompt": entry["prompt"],
+                    "chosen": entry["chosen"],
+                    "rejected": entry["rejected"],
+                    "score_chosen": entry["score_chosen"],
+                    "score_rejected": entry["score_rejected"]
+                }
+                merged_data.append(filtered_entry)
 
     # Save merged data
     try:
