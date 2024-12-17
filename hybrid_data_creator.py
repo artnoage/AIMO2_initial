@@ -41,18 +41,23 @@ STEP_NUMBER_PATTERNS = [
     re.compile(r'^.{0,2}(\d+)\s')
 ]
 
-def validate_analysis(resp: str) -> bool:
+def validate_analysis(resp: str) -> Tuple[bool, str]:
     """Validate an analysis response"""
     if "[/INST]" in resp:
-        return False
+        return False, "Contains [/INST] token"
+        
     # Check if response has less than 20 words
     word_count = len(resp.split())
     if word_count < 20:
-        return False
+        return False, f"Too short: only {word_count} words (minimum 20)"
+        
     # Analysis should mention problem and analysis
-    if "problem" not in resp.lower() or "analysis" not in resp.lower():
-        return False
-    return True
+    if "problem" not in resp.lower():
+        return False, "Missing 'problem' keyword"
+    if "analysis" not in resp.lower():
+        return False, "Missing 'analysis' keyword"
+        
+    return True, "Analysis valid"
 
 def validate_solution(solution: str) -> Tuple[bool, str]:
     """
@@ -400,9 +405,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Try up to 3 times for path_1
                 for retry in range(3):
                     bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    if validate_analysis(path_1):
+                    is_valid, reason = validate_analysis(path_1)
+                    if is_valid:
                         break
-                    logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3)")
+                    logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3): {reason}")
                     if retry == 2:  # All retries failed
                         logs.append("Failed all retries for path_1 analysis")
                         return None
@@ -410,9 +416,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Try up to 3 times for path_2
                 for retry in range(3):
                     _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    if path_2 != path_1 and validate_analysis(path_2):
+                    is_valid, reason = validate_analysis(path_2)
+                    if path_2 != path_1 and is_valid:
                         break
-                    logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3)")
+                    logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3): {reason}")
                     if retry == 2:  # All retries failed
                         logs.append("Failed all retries for path_2 analysis")
                         return None
@@ -424,11 +431,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Generate and validate initial analysis
                 for retry in range(3):
                     _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    if validate_analysis(common_analysis) and extract_answer_from_solution(common_analysis) is None:
+                    is_valid, reason = validate_analysis(common_analysis)
+                    if is_valid and extract_answer_from_solution(common_analysis) is None:
                         current_solution = common_analysis
-                        logs.append("✓ Valid analysis generated")
+                        logs.append(f"✓ Valid analysis generated: {reason}")
                         break
-                    logs.append(f"Analysis validation failed (retry {retry + 1}/3)")
+                    logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
                     if retry == 2:
                         print("\n".join(logs))
                         return None
