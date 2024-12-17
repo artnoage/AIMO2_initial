@@ -45,6 +45,58 @@ def validate_analysis(resp: str) -> bool:
         return False
     return True
 
+def validate_solution(solution: str) -> Tuple[bool, str]:
+    """
+    Validate a complete solution against all required criteria.
+    Returns (is_valid, reason) tuple.
+    """
+    # Check for analysis section
+    if "analysis" not in solution.lower():
+        return False, "Missing analysis section"
+    
+    # Check analysis length
+    analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
+    if analysis_parts and len(analysis_parts[0].split()) < 20:
+        return False, "Analysis section too short (< 20 words)"
+        
+    # Check for boxed answer
+    if "\\boxed{" not in solution:
+        return False, "Missing boxed answer"
+        
+    # Split into steps and validate each
+    steps = solution.lower().split("step")[1:]  # Skip text before first "step"
+    if not steps:
+        return False, "No numbered steps found"
+        
+    # Track step numbers found
+    found_numbers = []
+    
+    for i, step in enumerate(steps, 1):
+        # Check step length
+        step_words = len(step.split())
+        if step_words < 20:
+            return False, f"Step {i} too short ({step_words} words)"
+        if step_words > 100:
+            return False, f"Step {i} too long ({step_words} words)"
+            
+        # Check step numbering
+        number_found = False
+        for pattern in STEP_NUMBER_PATTERNS:
+            match = pattern.search(step)
+            if match:
+                found_numbers.append(int(match.group(1)))
+                number_found = True
+                break
+        if not number_found:
+            return False, f"Missing number for step {i}"
+            
+    # Verify sequential step numbers
+    expected_numbers = list(range(1, len(steps) + 1))
+    if found_numbers != expected_numbers:
+        return False, f"Steps not properly numbered. Found {found_numbers}, expected {expected_numbers}"
+        
+    return True, "Solution valid"
+
 def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
     if "[/INST]" in resp:
@@ -166,13 +218,20 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
                 bifurcation_prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
             else:
                 current_solution = await solution_agent.generate(example["problem"])
+            # First validate solution structure
+            is_valid, validation_reason = validate_solution(current_solution)
+            if not is_valid:
+                print(f"Solution validation failed: {validation_reason}")
+                continue
+                
+            # Then verify correctness
             score, total_steps, current_answer = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
                 example["problem"]
             )
             
-            is_correct = score == total_steps
+            is_correct = score == total_steps and is_valid
             if is_correct and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
