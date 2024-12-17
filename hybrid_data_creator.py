@@ -455,20 +455,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         print("\n".join(logs))
                         return None
                 
-                # Generate and validate first bifurcation path
-                first_path_valid = False
-                for retry in range(3):
-                    bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                    if validate_step(response_1, n):
-                        path1 = current_solution + response_1
-                        first_path_valid = True
-                        logs.append("✓ Valid first bifurcation step generated")
-                        break
-                    logs.append(f"First bifurcation step validation failed (retry {retry + 1}/3)")
-                if not first_path_valid:
-                    logs.append("❌ Failed all retries for first bifurcation - assigning score 0")
-                    path1 = current_solution + response_1  # Use last attempt
-                    score_path1 = 0
+                # Generate first bifurcation path
+                bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                path1 = current_solution + response_1
+                first_path_valid = validate_step(response_1, n)
+                if first_path_valid:
+                    logs.append("✓ Valid first bifurcation step generated")
+                else:
+                    logs.append("❌ Invalid first bifurcation step - will affect scoring")
                 answer1 = extract_answer_from_solution(path1)
                 
                 if answer1 is not None:
@@ -490,20 +484,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             }
                         }
                 
-                # Generate and validate second bifurcation path
-                second_path_valid = False
-                for retry in range(3):
-                    response_2 = await step_agent.generate(example["problem"], current_solution)
-                    if response_2 != response_1 and validate_step(response_2, n):
-                        path2 = current_solution + response_2
-                        second_path_valid = True
-                        logs.append("✓ Valid second bifurcation step generated")
-                        break
-                    logs.append(f"Second bifurcation step validation failed (retry {retry + 1}/3)")
-                if not second_path_valid:
-                    logs.append("❌ Failed all retries for second bifurcation - assigning score 0")
-                    path2 = current_solution + response_2  # Use last attempt  
-                    score_path2 = 0
+                # Generate second bifurcation path
+                response_2 = await step_agent.generate(example["problem"], current_solution)
+                path2 = current_solution + response_2
+                second_path_valid = response_2 != response_1 and validate_step(response_2, n)
+                if second_path_valid:
+                    logs.append("✓ Valid second bifurcation step generated")
+                else:
+                    logs.append("❌ Invalid second bifurcation step - will affect scoring")
                 answer2 = extract_answer_from_solution(path2)
                 
                 if answer2 is not None:
