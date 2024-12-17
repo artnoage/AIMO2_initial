@@ -563,7 +563,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'id': example_id,
                     'status': 'rejected',
                     'reason': 'No successful completions for either path',
-                    'processing_time': time.perf_counter() - start_time
+                    'processing_time': time.perf_counter() - start_time,
+                    'logs': "\n".join(logs)
                 }
 
             max_score = max(score_path1, score_path2)
@@ -663,7 +664,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'error_type': type(e).__name__,
             'error_message': str(e),
             'error_category': error_category,
-            'processing_time': processing_time
+            'processing_time': processing_time,
+            'logs': "\n".join(logs)
         }
         logging.error(f"\n❌ Error processing example {running_id}:")
         logging.error(f"├─ Error type: {error_details['error_type']}")
