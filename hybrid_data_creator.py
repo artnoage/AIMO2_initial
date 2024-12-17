@@ -439,26 +439,51 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             successful_path1 = 0
             successful_path2 = 0
             
-            for _ in range(config.completions):
+            logs.append("\n🔍 Completion Attempts:")
+            for attempt in range(config.completions):
+                logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
+                
+                # Path 1 completion
                 try:
                     complete_solution = path1 + await completion_agent.generate(example["problem"], path1)
                     is_valid, validation_reason = validate_solution(complete_solution)
+                    logs.append(f"Path 1:")
+                    logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
+                    logs.append(f"├─ Reason: {validation_reason}")
+                    
                     if is_valid:
                         score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
                         if score == total_steps:
                             successful_path1 += 1
+                            logs.append(f"└─ Success! ({successful_path1} total successes)")
+                        else:
+                            logs.append(f"└─ Failed verification")
+                    else:
+                        logs.append(f"└─ Failed validation")
                 except Exception as e:
-                    print(f"Error in completion for path1: {str(e)}")
+                    logs.append(f"└─ Error: {str(e)}")
                     
+                # Path 2 completion
                 try:
                     complete_solution = path2 + await completion_agent.generate(example["problem"], path2)
                     is_valid, validation_reason = validate_solution(complete_solution)
+                    logs.append(f"Path 2:")
+                    logs.append(f"├─ Validation: {'✓' if is_valid else '✗'}")
+                    logs.append(f"├─ Reason: {validation_reason}")
+                    
                     if is_valid:
                         score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
                         if score == total_steps:
                             successful_path2 += 1
+                            logs.append(f"└─ Success! ({successful_path2} total successes)")
+                        else:
+                            logs.append(f"└─ Failed verification")
+                    else:
+                        logs.append(f"└─ Failed validation")
                 except Exception as e:
-                    print(f"Error in completion for path2: {str(e)}")
+                    logs.append(f"└─ Error: {str(e)}")
             
             # Calculate success rates as ratios
             score_path1 = successful_path1 / config.completions
