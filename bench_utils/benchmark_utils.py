@@ -409,12 +409,6 @@ async def run_benchmark(
                 )
             if result:
                 progress_tracker.add_result(result)
-                if 'logs' in result:
-                    print("\n" + "="*80)
-                    print(result['logs'])
-                    print("="*80 + "\n")
-                if 'total_solution_attempts' in result:
-                    print(f"\nTotal solution attempts for example {running_id}: {result['total_solution_attempts']}")
                 progress_tracker.print_progress()
             return result
 
@@ -424,16 +418,30 @@ async def run_benchmark(
         
         progress_bar = tqdm(total=len(example_data), desc="Processing examples")
         results = []
+        all_logs = []
+        
         for coro in asyncio.as_completed(tasks):
             try:
                 result = await coro
                 if result:
                     results.append(result)
+                    if 'logs' in result:
+                        all_logs.append(result['logs'])
+                    if 'total_solution_attempts' in result:
+                        all_logs.append(f"\nTotal solution attempts for example {len(results)}: {result['total_solution_attempts']}")
                     progress_bar.update(1)
             except Exception as e:
-                print(f"Error processing example: {str(e)}")
+                all_logs.append(f"Error processing example: {str(e)}")
         progress_bar.close()
     
     finally:
+        # Print all collected logs
+        print("\n" + "="*80)
+        print("COMPLETE LOG OUTPUT")
+        print("="*80)
+        for log in all_logs:
+            print("\n" + log)
+        print("\n" + "="*80)
+        
         progress_tracker.print_final_stats()
         progress_tracker.save_results()
