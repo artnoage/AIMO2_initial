@@ -107,15 +107,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         if correct_attempt == 1:
             chosen_score = min(1.0, chosen_score + 0.1)
             
-        # Wrong solution scoring
-        wrong_solution_info = next(s for s in solutions if s['solution'] == wrong_solution)
-        # Base score for wrong solution
-        if wrong_solution_info['verification_score'] > 0:
-            # Partially correct solutions get score based on verification
-            rejected_score = 0.4 * (wrong_solution_info['verification_score']/wrong_solution_info['verification_steps'])
-        else:
-            # Completely wrong solutions get minimum score
-            rejected_score = 0.1
+        # Calculate rejected score with penalties
+        rejected_score = calculate_rejected_score(wrong_solution)
             
         # Ensure scores are in [0,1] range
         chosen_score = max(0.0, min(1.0, chosen_score))
