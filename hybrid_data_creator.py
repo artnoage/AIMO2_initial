@@ -510,6 +510,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             path_1_valid_for_sampling = first_path_valid if n > 1 else True
             path_2_valid_for_sampling = second_path_valid if n > 1 else True
             
+            # Check if responses are equal
+            if response_1 == response_2:
+                logs.append("❌ Failed: Bifurcated responses are identical")
+                print("\n".join(logs))
+                return None
+
             # Calculate scores using completion agent
             successful_path_1 = 0
             successful_path_2 = 0
