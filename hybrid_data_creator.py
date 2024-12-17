@@ -30,7 +30,7 @@ def validate_step(resp: str) -> bool:
         return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 20:
+    if word_count < 20 or word_count>100:
         return False
     # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
