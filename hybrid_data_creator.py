@@ -573,12 +573,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_path_2 = successful_path_2 / config.completions
             
             # Calculate relative scores if either has non-zero success
-            if score_path_1 == 0 and score_path_2 == 0:
-                logs.append("❌ Failed: No successful completions for either path")
+            # Only return None if both paths are invalid
+            if not path_1_valid_for_sampling and not path_2_valid_for_sampling:
+                logs.append("❌ Failed: Both paths are invalid")
                 print("\n".join(logs))
                 return None
 
-            max_score = max(score_path_1, score_path_2)
+            # Calculate max score from valid paths only
+            valid_scores = []
+            if path_1_valid_for_sampling:
+                valid_scores.append(score_path_1)
+            if path_2_valid_for_sampling:
+                valid_scores.append(score_path_2)
+            
+            max_score = max(valid_scores) if valid_scores else 0
             relative_path_1 = score_path_1 / max_score if max_score > 0 else 0
             relative_path_2 = score_path_2 / max_score if max_score > 0 else 0
             relative_diff = abs(relative_path_1 - relative_path_2)
