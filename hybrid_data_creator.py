@@ -403,9 +403,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 except Exception as e:
                     print(f"Error in completion for rejected: {str(e)}")
             
-            # Calculate success rates, ensuring they stay within 0-1 range
-            score_chosen = min(1.0, successful_chosen / config.completions)
-            score_rejected = min(1.0, calculate_rejected_score(rejected) + (successful_rejected / config.completions))
+            # Calculate success rates as ratios
+            score_chosen = successful_chosen / config.completions
+            score_rejected = successful_rejected / config.completions
             
             # Add performance metrics
             logs.append(f"\n📊 Performance Metrics:")
