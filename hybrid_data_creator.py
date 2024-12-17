@@ -29,7 +29,7 @@ def calculate_rejected_score(solution: str) -> float:
     score = 0.4
     
     # Penalty for no boxed answer
-    if not any(c in solution for c in ['□', '■', '▢', '▣', '⬚', '▤', '▥', '▦']):
+    if '\\boxed{' not in solution:
         score -= 0.2
         
     # Penalty for short solutions
