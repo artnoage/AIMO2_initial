@@ -592,13 +592,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             if score_path1 == 0 and score_path2 == 0:
                 logs.append("❌ Failed: No successful completions for either path")
                 print("\n".join(logs))
-                return {
-                    'id': example_id,
-                    'status': 'rejected',
-                    'reason': 'No successful completions for either path',
-                    'processing_time': time.perf_counter() - start_time,
-                    'logs': "\n".join(logs)
-                }
+                return None
 
             max_score = max(score_path1, score_path2)
             relative_path1 = score_path1 / max_score if max_score > 0 else 0
@@ -631,12 +625,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             if relative_diff < 0.2:
                 logs.append("❌ Failed: Score difference too small (< 20%)")
                 print("\n".join(logs))
-                return {
-                    'id': example_id,
-                    'status': 'rejected',
-                    'reason': 'Score difference too small',
-                    'processing_time': time.perf_counter() - start_time
-                }
+                return None
                 
             # Swap if path2 has better score
             if score_path2 > score_path1:
