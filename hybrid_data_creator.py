@@ -128,6 +128,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     """Process a single example using hybrid approach"""
     start_time = time.perf_counter()
     try:
+        # Initialize variables that might be referenced in any code path
+        answer_1 = None
+        answer_2 = None
+        
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
