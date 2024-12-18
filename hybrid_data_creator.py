@@ -467,6 +467,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 score_path_2 = 0.0
                 response_1 = None
                 response_2 = None
+                first_path_valid = False
+                second_path_valid = False
                 
                 # Generate first bifurcation path with retries
                 first_path_valid = False
