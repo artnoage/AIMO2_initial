@@ -559,15 +559,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         path_2_valid = False
                         successful_path_2 = config.completions
 
-            # If neither path is valid for sampling, fail
-            if not path_1_valid and not path_2_valid:
-                if successful_path_1 == 0 and successful_path_2 == 0:
-                    logs.append("❌ Failed: No valid paths and no successful verifications")
-                    print("\n".join(logs))
-                    return None
+            # If neither path is valid for sampling and no successes yet, fail
+            if not path_1_valid and not path_2_valid and successful_path_1 == 0 and successful_path_2 == 0:
+                logs.append("❌ Failed: No valid paths and no successful verifications")
+                print("\n".join(logs))
+                return None
             
-            # Do completions only for valid paths
-            if path_1_valid or path_2_valid:
+            # Do completions only if we have valid paths and need more successes
+            if (path_1_valid and successful_path_1 < config.completions) or (path_2_valid and successful_path_2 < config.completions):
                 logs.append("\n🔍 Completion Attempts:")
                 
                 for attempt in range(config.completions):
