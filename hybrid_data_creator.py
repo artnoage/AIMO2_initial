@@ -130,8 +130,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     try:
         # Initialize variables that might be referenced in any code path
         # Initialize variables
-        path_1_valid_for_sampling = False
-        path_2_valid_for_sampling = False
         answer_1 = None
         answer_2 = None
         score_path_1 = 0.0
@@ -432,7 +430,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Calculate relative scores if either has non-zero success
             # Only return None if both paths are invalid
-            if not path_1_valid_for_sampling and not path_2_valid_for_sampling:
+            if not first_path_valid and not second_path_valid:
                 logs.append("❌ Failed: Both paths are invalid")
                 logs.append("\n📊 Early Return Summary:")
                 logs.append("├─ Status: Failed - both paths invalid")
@@ -442,9 +440,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
             # Calculate max score from valid paths only
             valid_scores = []
-            if path_1_valid_for_sampling:
+            if first_path_valid:
                 valid_scores.append(score_path_1)
-            if path_2_valid_for_sampling:
+            if second_path_valid:
                 valid_scores.append(score_path_2)
             
             max_score = max(valid_scores) if valid_scores else 0
