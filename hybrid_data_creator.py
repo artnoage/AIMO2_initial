@@ -520,50 +520,66 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 return None
 
-            # Calculate scores using completion agent
-            successful_path_1 = 0
-            successful_path_2 = 0
+            # Check if either path already has an answer at bifurcation
+            answer_1_correct = False
+            answer_2_correct = False
             
-            logs.append("\n🔍 Completion Attempts:")
+            if answer_1 is not None:
+                score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
+                answer_1_correct = score == total_steps
+                
+            if answer_2 is not None:
+                score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
+                answer_2_correct = score == total_steps
             
-            # Only sample completions for valid paths and if not already scored
-            if path_1_valid_for_sampling and not hasattr(locals(), 'score_path_1'):
+            # If one path has correct answer and other doesn't, we can skip completions
+            if answer_1_correct and not answer_2_correct:
+                successful_path_1 = config.completions
+                successful_path_2 = 0
+                logs.append("\n🎯 Path 1 already has correct answer, skipping completions")
+            elif answer_2_correct and not answer_1_correct:
+                successful_path_1 = 0
+                successful_path_2 = config.completions
+                logs.append("\n🎯 Path 2 already has correct answer, skipping completions")
+            else:
+                # Need to do completions for both paths
+                successful_path_1 = 0
+                successful_path_2 = 0
+                logs.append("\n🔍 Completion Attempts:")
+                
+                # Interleaved completions for both paths
                 for attempt in range(config.completions):
                     logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
-                    try:
-                        complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                        logs.append(f"Path 1:")
-                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                        if score == total_steps:
-                            successful_path_1 += 1
-                            logs.append(f"└─ Success! ({successful_path_1} total successes)")
-                        else:
-                            logs.append(f"└─ Failed verification")
-                    except Exception as e:
-                        logs.append(f"└─ Error: {str(e)}")
-            else:
-                logs.append("Path 1: Skipping completion sampling - path invalid")
-                successful_path_1 = 0
-            
-            # Path 2 completion - only if valid and not already scored
-            if path_2_valid_for_sampling and not hasattr(locals(), 'score_path_2'):
-                for attempt in range(config.completions):
-                    try:
-                        complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
-                        score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
-                        logs.append(f"Path 2:")
-                        logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                        if score == total_steps:
-                            successful_path_2 += 1
-                            logs.append(f"└─ Success! ({successful_path_2} total successes)")
-                        else:
-                            logs.append(f"└─ Failed verification")
-                    except Exception as e:
-                        logs.append(f"└─ Error: {str(e)}")
-            else:
-                logs.append("Path 2: Skipping completion sampling - path invalid")
-                successful_path_2 = 0
+                    
+                    # Path 1 completion
+                    if path_1_valid_for_sampling and not hasattr(locals(), 'score_path_1'):
+                        try:
+                            complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
+                            score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                            logs.append(f"Path 1:")
+                            logs.append(f"├─ Verification Score: {score}/{total_steps}")
+                            if score == total_steps:
+                                successful_path_1 += 1
+                                logs.append(f"└─ Success! ({successful_path_1} total successes)")
+                            else:
+                                logs.append(f"└─ Failed verification")
+                        except Exception as e:
+                            logs.append(f"└─ Error: {str(e)}")
+                    
+                    # Path 2 completion
+                    if path_2_valid_for_sampling and not hasattr(locals(), 'score_path_2'):
+                        try:
+                            complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
+                            score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                            logs.append(f"Path 2:")
+                            logs.append(f"├─ Verification Score: {score}/{total_steps}")
+                            if score == total_steps:
+                                successful_path_2 += 1
+                                logs.append(f"└─ Success! ({successful_path_2} total successes)")
+                            else:
+                                logs.append(f"└─ Failed verification")
+                        except Exception as e:
+                            logs.append(f"└─ Error: {str(e)}")
             
             # Calculate success rates as ratios
             score_path_1 = successful_path_1 / config.completions
