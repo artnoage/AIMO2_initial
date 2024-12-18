@@ -458,6 +458,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         print("\n".join(logs))
                         return None
                 
+                # Initialize variables
+                path_1_valid_for_sampling = False
+                path_2_valid_for_sampling = False
+                answer_1 = None
+                answer_2 = None
+                score_path_1 = 0.0
+                score_path_2 = 0.0
+                
                 # Generate first bifurcation path with retries
                 first_path_valid = False
                 for retry in range(3):
