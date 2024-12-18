@@ -635,11 +635,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'score_chosen': chosen_score,
                 'score_rejected': rejected_score}
 
-        # Add logs to result instead of printing
+        # Add final summary to logs
         logs.append("\n" + "="*50)
-            
-        # Return consistent format regardless of approach
+        logs.append("📊 Final Summary:")
         processing_time = time.perf_counter() - start_time
+        logs.append(f"├─ Processing time: {processing_time:.2f}s")
+        logs.append(f"├─ Score chosen: {chosen_score:.3f}")
+        logs.append(f"├─ Score rejected: {rejected_score:.3f}")
+        logs.append(f"└─ Score difference: {abs(chosen_score - rejected_score):.3f}")
+        logs.append("="*50)
+
+        # Always print logs before returning result
+        print("\n".join(logs))
+        
+        # Return consistent format
         result = {
             'id': example_id,
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},
@@ -647,7 +656,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'rejected': {'content': rejected_response, 'role': 'assistant'},
             'score_chosen': chosen_score,
             'score_rejected': rejected_score}
-        print("\n".join(logs))  # Print logs for both approaches
         return result
         
     except Exception as e:
