@@ -129,11 +129,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     start_time = time.perf_counter()
     try:
         # Initialize variables that might be referenced in any code path
-        answer_1 = None
-        answer_2 = None
+        # Initialize variables
         path_1_valid_for_sampling = False
         path_2_valid_for_sampling = False
-        
+        answer_1 = None
+        answer_2 = None
+        score_path_1 = 0.0
+        score_path_2 = 0.0
+        response_1 = None
+        response_2 = None
+        first_path_valid = False
+        second_path_valid = False
+        path_1_valid = False  # Initialize path validity flags
+        path_2_valid = False
+        current_solution = ""  # Initialize empty string for current solution
+
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
             return None
@@ -183,16 +193,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append("Approach: Progressive solution building")
             
             # Determine bifurcation point
-            if r < 0.4:  # Analysis only (0.3-0.5 = 0.2 probability)
+            if r < 0.6:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
                 # Exponentially decaying probability for steps 2+
-                norm_const = sum(2**(-i) for i in range(1, 11))
-                r_scaled = (r - 0.4) / 0.6  # Scale remaining probability space to [0,1]
+                norm_const = sum(3**(-i) for i in range(1, 11))
+                r_scaled = (r - 0.6) / 0.4  # Scale remaining probability space to [0,1]
                 cumsum = 0
                 n = 1
                 while n <= 10:
-                    cumsum += (2**(-n)) / norm_const
+                    cumsum += (3**(-n)) / norm_const
                     if r_scaled <= cumsum:
                         break
                     n += 1
@@ -207,25 +217,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Process using the analysis/steps approach from data_creator.py
             if n == 1:
                 # Try up to 3 times for path_1
-                for retry in range(5):
+                for retry in range(10):
                     bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(path_1)
                     if is_valid:
                         break
                     logs.append(f"Analysis validation failed for path_1 (retry {retry + 1}/3): {reason}")
-                    if retry == 2:  # All retries failed
+                    if retry == 9:  # All retries failed
                         logs.append("Failed all retries for path_1 analysis")
+                        print("\n".join(logs))
                         return None
                 
                 # Try up to 3 times for path_2
-                for retry in range(5):
+                for retry in range(10):
                     _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(path_2)
                     if path_2 != path_1 and is_valid:
                         break
                     logs.append(f"Analysis validation failed for path_2 (retry {retry + 1}/3): {reason}")
-                    if retry == 2:  # All retries failed
+                    if retry == 9:  # All retries failed
                         logs.append("Failed all retries for path_2 analysis")
+                        print("\n".join(logs))
                         return None
                     
                 response_1 = path_1
@@ -233,7 +245,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
             else:
                 # Generate and validate initial analysis
-                for retry in range(5):
+                for retry in range(10):
                     _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(common_analysis)
                     if is_valid and extract_answer_from_solution(common_analysis) is None:
@@ -241,14 +253,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append(f"✓ Valid analysis generated: {reason}")
                         break
                     logs.append(f"Analysis validation failed (retry {retry + 1}/3): {reason}")
-                    if retry == 2:
+                    if retry == 9:
                         print("\n".join(logs))
                         return None
                 
                 # Generate intermediate steps
                 for step_num in range(n-2):
                     step_added = False
-                    for retry in range(5):
+                    for retry in range(10):
                         _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                         if validate_step(next_step):
                             test_solution = current_solution + next_step
@@ -267,24 +279,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         print("\n".join(logs))
                         return None
                 
-                # Initialize variables
-                path_1_valid_for_sampling = False
-                path_2_valid_for_sampling = False
-                answer_1 = None
-                answer_2 = None
-                score_path_1 = 0.0
-                score_path_2 = 0.0
-                response_1 = None
-                response_2 = None
-                first_path_valid = False
-                second_path_valid = False
-                path_1_valid = False  # Initialize path validity flags
-                path_2_valid = False
-                current_solution = ""  # Initialize empty string for current solution
                 
                 # Generate first bifurcation path with retries
                 first_path_valid = False
-                for retry in range(5):
+                for retry in range(10):
                     bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                     path_1 = current_solution + response_1
                     first_path_valid = validate_step(response_1)
@@ -322,7 +320,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
                 # Generate second bifurcation path with retries
                 second_path_valid = False
-                for retry in range(5):
+                for retry in range(10):
                     response_2 = await step_agent.generate(example["problem"], current_solution)
                     path_2 = current_solution + response_2
                     second_path_valid = response_2 != response_1 and validate_step(response_2)
@@ -422,7 +420,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Check at midpoint if paths are showing meaningful difference
                 if attempt + 1 == midpoint:
                     current_score_diff = abs(successful_path_1 - successful_path_2)
-                    if current_score_diff < 2:
+                    if current_score_diff < 1:
                         logs.append("\n❌ Early termination at midpoint:")
                         logs.append(f"├─ Path 1 successes: {successful_path_1}")
                         logs.append(f"├─ Path 2 successes: {successful_path_2}")
