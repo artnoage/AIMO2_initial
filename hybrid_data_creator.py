@@ -244,6 +244,10 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
                     wrong_attempt = attempts
                     wrong_solution = current_solution
                     logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
+                elif not found_correct:
+                    continue  # Keep looking for correct solution
+                else:
+                    break  # We have both solutions
                 continue
             
             logs.append(f"✓ Attempt {attempts} passed validation")
