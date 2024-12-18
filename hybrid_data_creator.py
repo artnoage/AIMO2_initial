@@ -546,26 +546,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 return None
 
-            # Case 3: Both valid paths but with answers - verify them
-            elif path_1_valid and path_2_valid:
-                if answer_1 is not None:
-                    score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
-                    if score == total_steps:
-                        path_1_valid = False
-                        successful_path_1 = config.completions
-                if answer_2 is not None:
-                    score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
-                    if score == total_steps:
-                        path_2_valid = False
-                        successful_path_2 = config.completions
-
-            # If neither path is valid for sampling and no successes yet, fail
-            if not path_1_valid and not path_2_valid and successful_path_1 == 0 and successful_path_2 == 0:
-                logs.append("❌ Failed: No valid paths and no successful verifications")
-                print("\n".join(logs))
-                return None
+            # At this point both paths must be valid and without answers
+            # Verify this assumption
+            assert path_1_valid and path_2_valid, "Logic error: Should have both valid paths"
+            assert answer_1 is None and answer_2 is None, "Logic error: Should have no answers"
             
-            # Do completions only if we have valid paths and need more successes
+            logs.append("\n✓ Both paths valid and need completions")
+            
+            # Do completions for both paths
             if (path_1_valid and successful_path_1 < config.completions) or (path_2_valid and successful_path_2 < config.completions):
                 logs.append("\n🔍 Completion Attempts:")
                 
