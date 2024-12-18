@@ -556,6 +556,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Do completions for both paths
             logs.append("\n🔍 Completion Attempts:")
             
+            midpoint = config.completions // 2
             for attempt in range(config.completions):
                 logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                 
@@ -584,6 +585,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logs.append(f"└─ Failed verification")
                 except Exception as e:
                     logs.append(f"└─ Error: {str(e)}")
+                
+                # Check at midpoint if paths are showing meaningful difference
+                if attempt + 1 == midpoint:
+                    current_score_diff = abs(successful_path_1 - successful_path_2)
+                    if current_score_diff < 2:
+                        logs.append("\n❌ Early termination at midpoint:")
+                        logs.append(f"├─ Path 1 successes: {successful_path_1}")
+                        logs.append(f"├─ Path 2 successes: {successful_path_2}")
+                        logs.append("└─ Reason: Bifurcation steps don't make a difference")
+                        print("\n".join(logs))
+                        return None
             
             # Calculate success rates as ratios
             score_path_1 = successful_path_1 / config.completions
