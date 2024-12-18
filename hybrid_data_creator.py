@@ -593,6 +593,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Only return None if both paths are invalid
             if not path_1_valid_for_sampling and not path_2_valid_for_sampling:
                 logs.append("❌ Failed: Both paths are invalid")
+                logs.append("\n📊 Early Return Summary:")
+                logs.append("├─ Status: Failed - both paths invalid")
+                logs.append("└─ Reason: No valid paths for sampling")
                 print("\n".join(logs))
                 return None
 
@@ -634,6 +637,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             score_diff = abs(successful_path_1 - successful_path_2)
             if relative_diff < 0.22 or score_diff < 2:
                 logs.append(f"❌ Failed: Differences too small (relative: {relative_diff:.1%}, absolute: {score_diff})")
+                logs.append("\n📊 Early Return Summary:")
+                logs.append("├─ Status: Failed - insufficient score difference")
+                logs.append(f"└─ Details: relative diff {relative_diff:.1%}, absolute diff {score_diff}")
                 print("\n".join(logs))
                 return None
                 
