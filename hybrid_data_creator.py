@@ -520,30 +520,38 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             path_1_valid = (first_path_valid if n > 1 else True)
             path_2_valid = (second_path_valid if n > 1 else True)
 
-            # Check for existing answers
+            # Initialize success counters
+            successful_path_1 = 0
+            successful_path_2 = 0
+
+            # Check for existing answers and validate paths
             if path_1_valid and answer_1 is not None:
                 score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
                 if score == total_steps:
                     successful_path_1 = config.completions
-                    path_1_valid = False  # No need for completions
-                    logs.append("\n✓ Path 1 already correct")
+                    successful_path_2 = 0  # Force other path to 0 if this one is perfect
+                    path_1_valid = path_2_valid = False  # Skip completions
+                    logs.append("\n✓ Path 1 already correct, forcing Path 2 score to 0")
+                else:
+                    path_1_valid = False  # Skip invalid path with answer
+                    logs.append("\n❌ Path 1 has incorrect answer, skipping")
 
             if path_2_valid and answer_2 is not None:
                 score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                 if score == total_steps:
                     successful_path_2 = config.completions
-                    path_2_valid = False  # No need for completions
-                    logs.append("\n✓ Path 2 already correct")
+                    successful_path_1 = 0  # Force other path to 0 if this one is perfect
+                    path_1_valid = path_2_valid = False  # Skip completions
+                    logs.append("\n✓ Path 2 already correct, forcing Path 1 score to 0")
+                else:
+                    path_2_valid = False  # Skip invalid path with answer
+                    logs.append("\n❌ Path 2 has incorrect answer, skipping")
 
             # If neither path is valid, fail early
             if not path_1_valid and not path_2_valid:
                 logs.append("❌ Failed: No valid paths for completion")
                 print("\n".join(logs))
                 return None
-
-            # Initialize success counters
-            successful_path_1 = 0 if path_1_valid else config.completions
-            successful_path_2 = 0 if path_2_valid else config.completions
             
             # Do completions only for valid paths
             if path_1_valid or path_2_valid:
