@@ -205,7 +205,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Process using the analysis/steps approach from data_creator.py
             if n == 1:
                 # Try up to 3 times for path_1
-                for retry in range(3):
+                for retry in range(5):
                     bifurcation_prompt, path_1 = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(path_1)
                     if is_valid:
@@ -216,7 +216,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         return None
                 
                 # Try up to 3 times for path_2
-                for retry in range(3):
+                for retry in range(5):
                     _, path_2 = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(path_2)
                     if path_2 != path_1 and is_valid:
@@ -231,7 +231,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
             else:
                 # Generate and validate initial analysis
-                for retry in range(3):
+                for retry in range(5):
                     _, common_analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
                     is_valid, reason = validate_analysis(common_analysis)
                     if is_valid and extract_answer_from_solution(common_analysis) is None:
@@ -246,7 +246,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Generate intermediate steps
                 for step_num in range(n-2):
                     step_added = False
-                    for retry in range(3):
+                    for retry in range(5):
                         _, next_step = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                         if validate_step(next_step):
                             test_solution = current_solution + next_step
@@ -282,7 +282,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Generate first bifurcation path with retries
                 first_path_valid = False
-                for retry in range(3):
+                for retry in range(5):
                     bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                     path_1 = current_solution + response_1
                     first_path_valid = validate_step(response_1)
@@ -320,7 +320,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
                 # Generate second bifurcation path with retries
                 second_path_valid = False
-                for retry in range(3):
+                for retry in range(5):
                     response_2 = await step_agent.generate(example["problem"], current_solution)
                     path_2 = current_solution + response_2
                     second_path_valid = response_2 != response_1 and validate_step(response_2)
