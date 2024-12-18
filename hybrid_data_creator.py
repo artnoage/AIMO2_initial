@@ -465,6 +465,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 answer_2 = None
                 score_path_1 = 0.0
                 score_path_2 = 0.0
+                response_1 = None
+                response_2 = None
                 
                 # Generate first bifurcation path with retries
                 first_path_valid = False
@@ -540,8 +542,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                 'score_rejected': 0.0
                             }
             
-            # Check if responses are equal
-            if response_1 == response_2:
+            # Check if responses are equal or either is None
+            if response_1 is None or response_2 is None or response_1 == response_2:
                 logs.append("❌ Failed: Bifurcated responses are identical")
                 print("\n".join(logs))
                 return None
