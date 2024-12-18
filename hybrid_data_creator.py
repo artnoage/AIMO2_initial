@@ -481,6 +481,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
                         if score == total_steps:
                             logs.append("✓ First path found correct answer at bifurcation")
+                            logs.append("\n📊 Early Return Summary:")
+                            logs.append("├─ Status: Success - correct answer found in first path")
+                            logs.append("└─ Score: 1.0 vs 0.0")
+                            print("\n".join(logs))
                             # Return immediately since we found a correct answer
                             return {
                                 'id': example_id,
@@ -514,6 +518,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                         if score == total_steps:
                             logs.append("✓ Second path found correct answer at bifurcation")
+                            logs.append("\n📊 Early Return Summary:")
+                            logs.append("├─ Status: Success - correct answer found in second path")
+                            logs.append("└─ Score: 1.0 vs 0.0")
+                            print("\n".join(logs))
                             # Return immediately since we found a correct answer
                             return {
                                 'id': example_id,
