@@ -524,28 +524,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             successful_path_1 = 0
             successful_path_2 = 0
 
-            # Case 1: One path valid with answer, other invalid
-            if path_1_valid and not path_2_valid and answer_1 is not None:
-                score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
-                if score == total_steps:
-                    logs.append("\n✓ Path 1 correct and Path 2 invalid - using 1.0/0.0 scores")
-                    successful_path_1 = config.completions
-                    successful_path_2 = 0
-                    path_1_valid = path_2_valid = False  # Skip completions
-            elif path_2_valid and not path_1_valid and answer_2 is not None:
-                score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
-                if score == total_steps:
-                    logs.append("\n✓ Path 2 correct and Path 1 invalid - using 1.0/0.0 scores")
-                    successful_path_2 = config.completions
-                    successful_path_1 = 0
-                    path_1_valid = path_2_valid = False  # Skip completions
-
-            # Case 2: At least one invalid path and no answers - drop case
-            elif (not path_1_valid or not path_2_valid) and answer_1 is None and answer_2 is None:
-                logs.append("❌ Failed: At least one invalid path and no answers")
-                print("\n".join(logs))
-                return None
-
             # At this point both paths must be valid and without answers
             # Verify this assumption
             assert path_1_valid and path_2_valid, "Logic error: Should have both valid paths"
@@ -553,7 +531,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             logs.append("\n✓ Both paths valid and need completions")
             
-            # Do completions for both paths
+            # Do completions for both paths since they're both valid and have no answers
             if (path_1_valid and successful_path_1 < config.completions) or (path_2_valid and successful_path_2 < config.completions):
                 logs.append("\n🔍 Completion Attempts:")
                 
