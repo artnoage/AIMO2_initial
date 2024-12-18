@@ -481,8 +481,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         score, total_steps, _ = await verifier.verify(path_1, correct_answer, example["problem"])
                         if score == total_steps:
                             logs.append("✓ First path found correct answer at bifurcation")
-                            score_path_1 = 1.0
-                            path_1_valid_for_sampling = False  # Skip sampling if already correct
+                            # Return immediately since we found a correct answer
+                            return {
+                                'id': example_id,
+                                'prompt': {'content': bifurcation_prompt, 'role': 'user'},
+                                'chosen': {'content': response_1, 'role': 'assistant'},
+                                'rejected': {'content': response_2, 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            }
 
                 # Generate second bifurcation path with retries
                 second_path_valid = False
@@ -507,8 +514,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         score, total_steps, _ = await verifier.verify(path_2, correct_answer, example["problem"])
                         if score == total_steps:
                             logs.append("✓ Second path found correct answer at bifurcation")
-                            score_path_2 = 1.0
-                            path_2_valid_for_sampling = False  # Skip sampling if already correct
+                            # Return immediately since we found a correct answer
+                            return {
+                                'id': example_id,
+                                'prompt': {'content': bifurcation_prompt, 'role': 'user'},
+                                'chosen': {'content': response_2, 'role': 'assistant'},
+                                'rejected': {'content': response_1, 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            }
             
             # Check if responses are equal
             if response_1 == response_2:
