@@ -289,6 +289,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     path_1_valid_for_sampling = False
                     score_path_1 = 0.0
                     answer_1 = None
+                    path_1 = current_solution  # Ensure path_1 is initialized
                 else:
                     answer_1 = extract_answer_from_solution(path_1)
                     if answer_1 is not None:
@@ -326,6 +327,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     path_2_valid_for_sampling = False
                     score_path_2 = 0.0
                     answer_2 = None
+                    path_2 = current_solution  # Ensure path_2 is initialized
                 else:
                     answer_2 = extract_answer_from_solution(path_2)
                     if answer_2 is not None:
