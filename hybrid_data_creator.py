@@ -652,6 +652,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Always print logs before returning result
         print("\n".join(logs))
         
+        # Always print logs before returning result
+        print("\n".join(logs))
+        
         # Return consistent format
         result = {
             'id': example_id,
