@@ -276,6 +276,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 response_2 = None
                 first_path_valid = False
                 second_path_valid = False
+                path_1_valid = False  # Initialize path validity flags
+                path_2_valid = False
                 current_solution = ""  # Initialize empty string for current solution
                 
                 # Generate first bifurcation path with retries
@@ -368,10 +370,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             successful_path_1 = 0
             successful_path_2 = 0
 
-            # At this point both paths must be valid and without answers
-            # Verify this assumption
-            assert path_1_valid and path_2_valid, "Logic error: Should have both valid paths"
-            assert answer_1 is None and answer_2 is None, "Logic error: Should have no answers"
+            # Check path validity before proceeding
+            if not (path_1_valid and path_2_valid):
+                logs.append("❌ Failed: One or both paths are invalid")
+                print("\n".join(logs))
+                return None
+                
+            # Verify no premature answers
+            if answer_1 is not None or answer_2 is not None:
+                logs.append("❌ Failed: Premature answer found")
+                print("\n".join(logs))
+                return None
             
             logs.append("\n✓ Both paths valid and need completions")
             
