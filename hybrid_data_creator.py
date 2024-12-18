@@ -272,6 +272,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 response_2 = None
                 first_path_valid = False
                 second_path_valid = False
+                current_solution = ""  # Initialize empty string for current solution
                 
                 # Generate first bifurcation path with retries
                 first_path_valid = False
