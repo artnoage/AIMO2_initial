@@ -362,16 +362,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 return None
 
-            # Determine validity of each path
-            path_1_valid = (first_path_valid if n > 1 else True)
-            path_2_valid = (second_path_valid if n > 1 else True)
+            # Update path validity based on step number
+            first_path_valid = first_path_valid if n > 1 else True
+            second_path_valid = second_path_valid if n > 1 else True
 
             # Initialize success counters
             successful_path_1 = 0
             successful_path_2 = 0
 
             # Check path validity before proceeding
-            if not (path_1_valid and path_2_valid):
+            if not (first_path_valid and second_path_valid):
                 logs.append("❌ Failed: One or both paths are invalid")
                 print("\n".join(logs))
                 return None
