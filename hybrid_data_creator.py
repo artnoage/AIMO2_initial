@@ -131,6 +131,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Initialize variables that might be referenced in any code path
         answer_1 = None
         answer_2 = None
+        path_1_valid_for_sampling = False
+        path_2_valid_for_sampling = False
         
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             print(f"Error processing example {running_id}: Invalid example format")
