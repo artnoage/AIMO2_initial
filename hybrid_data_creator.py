@@ -140,8 +140,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         response_2 = None
         first_path_valid = False
         second_path_valid = False
-        path_1_valid = False  # Initialize path validity flags
-        path_2_valid = False
         current_solution = ""  # Initialize empty string for current solution
 
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
