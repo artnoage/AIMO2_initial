@@ -136,8 +136,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         score_path_2 = 0.0
         response_1 = None
         response_2 = None
-        first_path_valid = False
-        second_path_valid = False
+        first_path_valid = True
+        second_path_valid = True
         current_solution = ""  # Initialize empty string for current solution
 
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
@@ -189,12 +189,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append("Approach: Progressive solution building")
             
             # Determine bifurcation point
-            if r < 0.6:  # Analysis only (0.3-0.5 = 0.2 probability)
+            if r < 0.3:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
                 # Exponentially decaying probability for steps 2+
                 norm_const = sum(3**(-i) for i in range(1, 11))
-                r_scaled = (r - 0.6) / 0.4  # Scale remaining probability space to [0,1]
+                r_scaled = (r - 0.3) / 0.7  # Scale remaining probability space to [0,1]
                 cumsum = 0
                 n = 1
                 while n <= 10:
@@ -277,7 +277,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 
                 # Generate first bifurcation path with retries
-                first_path_valid = False
                 for retry in range(10):
                     bifurcation_prompt, response_1 = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                     path_1 = current_solution + response_1
@@ -289,7 +288,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 if not first_path_valid:
                     logs.append("Failed all retries for first bifurcation step")
-                    path_1_valid_for_sampling = False
                     score_path_1 = 0.0
                     answer_1 = None
                     path_1 = current_solution  # Ensure path_1 is initialized
@@ -305,17 +303,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             logs.append("└─ Score: 1.0 vs 0.0")
                             print("\n".join(logs))
                             # Return immediately since we found a correct answer
-                            return {
-                                'id': example_id,
-                                'prompt': {'content': bifurcation_prompt, 'role': 'user'},
-                                'chosen': {'content': response_1, 'role': 'assistant'},
-                                'rejected': {'content': response_2, 'role': 'assistant'},
-                                'score_chosen': 1.0,
-                                'score_rejected': 0.0
-                            }
+                            return None
 
                 # Generate second bifurcation path with retries
-                second_path_valid = False
                 for retry in range(10):
                     response_2 = await step_agent.generate(example["problem"], current_solution)
                     path_2 = current_solution + response_2
@@ -327,7 +317,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 if not second_path_valid:
                     logs.append("Failed all retries for second bifurcation step")
-                    path_2_valid_for_sampling = False
                     score_path_2 = 0.0
                     answer_2 = None
                     path_2 = current_solution  # Ensure path_2 is initialized
@@ -383,7 +372,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Do completions for both paths
             logs.append("\n🔍 Completion Attempts:")
             
-            midpoint = config.completions // 2
+            midpoint = config.completions // 3
             for attempt in range(config.completions):
                 logs.append(f"\nAttempt {attempt + 1}/{config.completions}:")
                 
