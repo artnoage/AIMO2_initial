@@ -19,7 +19,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20241218_113446",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20241226_132503",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -47,7 +47,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20241224_160949")
+    dataset = load_from_disk("local_datasets/20241226_165830")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -79,7 +79,7 @@ def main():
     training_args = ORPOConfig(
         max_length=4096,
         max_prompt_length=2048,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         gradient_accumulation_steps=16,
         num_train_epochs=1,
         learning_rate=4e-6,
