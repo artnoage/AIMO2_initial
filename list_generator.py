@@ -45,8 +45,8 @@ async def evaluate_analysis(
                 problem
             )
             successful += (score == max_score)
-        except Exception as e:
-            print(f"Completion error: {e}")
+        except Exception:
+            pass
             
     return successful / num_completions if num_completions > 0 else 0.0
 
@@ -84,8 +84,8 @@ async def evaluate_step(
                 problem
             )
             successful += (score == max_score)
-        except Exception as e:
-            
+        except Exception:
+            pass
             
     return (successful / num_completions if num_completions > 0 else 0.0), False
 
