@@ -144,6 +144,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     best_high_score = high_score
                     best_low_score = low_score
             
+            # Print score range for this level
+            print(f"\nLevel {step} scores:")
+            print(f"Max score: {highest_overall_score:.3f}")
+            print(f"Min score: {best_low_score:.3f}")
+            print(f"Score range: {(highest_overall_score - best_low_score):.3f}")
+            
             # If no continuation scored above 0, stop
             if highest_overall_score <= 0:
                 break
