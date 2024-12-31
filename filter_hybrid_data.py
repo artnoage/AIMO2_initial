@@ -33,6 +33,8 @@ def validate_analysis(resp: str) -> bool:
         return False
     if "analysis" not in resp.lower():
         return False
+    if "step" in resp.lower():
+        return False
         
     return True
 
