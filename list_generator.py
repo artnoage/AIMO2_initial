@@ -140,14 +140,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         prompts = []
         scores = []
         
-        max_score_found = False
-        min_score_found = False
+        attempts = 0
+        max_attempts = config.best_of * 2  # Allow more attempts to get diverse scores
+        score_diff_threshold = 0.3  # Minimum score difference we want
         
-        for _ in range(config.best_of):
+        while attempts < max_attempts and len(analyses) < config.best_of:
+            attempts += 1
             prompt, analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+            
             if analysis not in analyses:
-                analyses.append(analysis)
-                prompts.append(prompt)
                 score = await evaluate_analysis(
                     example["problem"],
                     analysis,
@@ -156,25 +157,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     correct_answer,
                     config.completions
                 )
-                scores.append(score)
-                logs.append(f"├─ Analysis score: {score:.2f}")
                 
-                # Check if we found max (1.0) and min (0.0) scores
-                if score == 1.0:
-                    max_score_found = True
-                elif score == 0.0:
-                    min_score_found = True
+                # Only add if score is different enough from existing scores
+                should_add = True
+                for existing_score in scores:
+                    if abs(score - existing_score) < score_diff_threshold:
+                        should_add = False
+                        break
+                
+                if should_add or not scores:  # Always add first analysis
+                    analyses.append(analysis)
+                    prompts.append(prompt)
+                    scores.append(score)
+                    logs.append(f"├─ Analysis score: {score:.2f}")
                     
-                # Stop if we found both extremes or got a perfect score
-                if max_score_found and min_score_found or score == 1.0:
-                    return [{
-                        'id': example_id,
-                        'prompt': {'content': prompt, 'role': 'user'},
-                        'chosen': {'content': analysis, 'role': 'assistant'},
-                        'rejected': {'content': "", 'role': 'assistant'},
-                        'score_chosen': 1.0,
-                        'score_rejected': 0.0
-                    }]
+                    # If we found a perfect score, we can stop
+                    if score == 1.0:
+                        return [{
+                            'id': example_id,
+                            'prompt': {'content': prompt, 'role': 'user'},
+                            'chosen': {'content': analysis, 'role': 'assistant'},
+                            'rejected': {'content': analyses[scores.index(min(scores))], 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': min(scores)
+                        }]
         
         if not analyses:
             logs.append("❌ No valid analyses generated")
