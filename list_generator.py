@@ -171,16 +171,32 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     scores.append(score)
                     logs.append(f"├─ Analysis score: {score:.2f}")
                     
-                    # If we found a perfect score, we can stop
+                    # If we found a perfect score, add it to results and stop
                     if score == 1.0:
-                        return [{
+                        # Add all previous results if any
+                        final_results = []
+                        if len(analyses) > 1:  # If we have multiple analyses to compare
+                            for i in range(len(analyses)-1):
+                                if scores[i] != scores[i+1]:  # Only add pairs with different scores
+                                    final_results.append({
+                                        'id': example_id,
+                                        'prompt': {'content': prompts[i], 'role': 'user'},
+                                        'chosen': {'content': analyses[i], 'role': 'assistant'},
+                                        'rejected': {'content': analyses[i+1], 'role': 'assistant'},
+                                        'score_chosen': scores[i],
+                                        'score_rejected': scores[i+1]
+                                    })
+                        
+                        # Add the perfect score result
+                        final_results.append({
                             'id': example_id,
                             'prompt': {'content': prompt, 'role': 'user'},
                             'chosen': {'content': analysis, 'role': 'assistant'},
                             'rejected': {'content': analyses[scores.index(min(scores))], 'role': 'assistant'},
                             'score_chosen': 1.0,
                             'score_rejected': min(scores)
-                        }]
+                        })
+                        return final_results
         
         if not analyses:
             logs.append("❌ No valid analyses generated")
