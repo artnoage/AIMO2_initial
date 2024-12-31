@@ -163,10 +163,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             results.append({
                 'id': example_id,
                 'prompt': {'content': best_prompt, 'role': 'user'},
-                'chosen': {'content': best_high_completion, 'role': 'assistant'},
-                'rejected': {'content': best_low_completion, 'role': 'assistant'},
-                'score_chosen': best_high_score,
-                'score_rejected': best_low_score
+                'chosen': {'content': best_correct, 'role': 'assistant'},
+                'rejected': {'content': best_wrong, 'role': 'assistant'},
+                'score_chosen': best_success_rate,
+                'score_rejected': 0.0
             })
             
             # Update current partial solution with best continuation
