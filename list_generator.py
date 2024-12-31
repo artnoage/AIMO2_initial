@@ -100,16 +100,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"No answer found: {running_id}")
         return None
 
-    # Setup models
-    solver = get_model(ModelOption[config.solver], temp=config.temperature)
-    verifier = create_verifier(
-        config.verification_type,
-        verifier_model=None if config.verification_type == 'numeric' else get_model(
-            ModelOption[config.verifier], temp=config.verifier_temp),
-        second_verifier_model=None if config.verification_type != 'solution' else get_model(
-            ModelOption[config.second_verifier], temp=config.verifier_temp),
-        tolerance=config.tolerance
-    )
+    try:
+        # Setup models
+        solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        verifier = create_verifier(
+            config.verification_type,
+            verifier_model=None if config.verification_type == 'numeric' else get_model(
+                ModelOption[config.verifier], temp=config.verifier_temp),
+            second_verifier_model=None if config.verification_type != 'solution' else get_model(
+                ModelOption[config.second_verifier], temp=config.verifier_temp),
+            tolerance=config.tolerance
+        )
 
         analysis_agent = AnalysisAgent(solver)
         step_agent = NextStepAgent(solver)
