@@ -124,6 +124,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         prompts = []
         scores = []
         
+        max_score_found = False
+        min_score_found = False
+        
         for _ in range(config.best_of):
             prompt, analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
             if analysis not in analyses:
@@ -140,8 +143,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 scores.append(score)
                 print(f"Analysis score: {score:.2f}")
                 
-                # If analysis contains correct answer, return immediately
+                # Check if we found max (1.0) and min (0.0) scores
                 if score == 1.0:
+                    max_score_found = True
+                elif score == 0.0:
+                    min_score_found = True
+                    
+                # Stop if we found both extremes or got a perfect score
+                if max_score_found and min_score_found or score == 1.0:
                     return [{
                         'id': example_id,
                         'prompt': {'content': prompt, 'role': 'user'},
@@ -182,6 +191,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             step_scores = []
             found_answer = False
             
+            max_step_score_found = False
+            min_step_score_found = False
+            
             for _ in range(config.best_of):
                 prompt, step_text = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
                 if step_text not in steps:
@@ -199,7 +211,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     step_scores.append(score)
                     print(f"Step score: {score:.2f}")
                     
-                    if has_answer and score == 1.0:
+                    # Check if we found max and min scores
+                    if score == 1.0:
+                        max_step_score_found = True
+                    elif score == 0.0:
+                        min_step_score_found = True
+                    
+                    # Stop if we found both extremes or a correct answer
+                    if (max_step_score_found and min_step_score_found) or (has_answer and score == 1.0):
                         # Found correct answer in this step
                         return results + [{
                             'id': example_id,
