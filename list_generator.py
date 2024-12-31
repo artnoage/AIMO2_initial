@@ -85,7 +85,7 @@ async def evaluate_step(
             )
             successful += (score == max_score)
         except Exception as e:
-            print(f"Completion error: {e}")
+            
             
     return (successful / num_completions if num_completions > 0 else 0.0), False
 
