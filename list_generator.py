@@ -20,33 +20,33 @@ async def evaluate_analysis(
     num_completions: int
 ) -> float:
     """Evaluate an analysis by attempting completions"""
-    # First validate analysis
     is_valid, reason = validate_analysis(analysis)
     if not is_valid:
         print(f"Analysis validation failed: {reason}")
         return 0.0
-        
-    completion_agent = CompletionAgent(solver)
-    successful_completions = 0
-    
+
     # Check if analysis already contains answer
-    answer = extract_answer_from_solution(analysis)
-    if answer is not None:
+    if answer := extract_answer_from_solution(analysis):
         score, max_score, _ = await verifier.verify(analysis, correct_answer, problem)
-        return 1.0 if score == max_score else 0.0
-        
+        return float(score == max_score)
+
+    # Try completions
+    completion_agent = CompletionAgent(solver)
+    successful = 0
+    
     for _ in range(num_completions):
         try:
             completion = await completion_agent.generate(problem, analysis)
-            complete_solution = analysis + completion
-            score, max_score, _ = await verifier.verify(complete_solution, correct_answer, problem)
-            if score == max_score:
-                successful_completions += 1
+            score, max_score, _ = await verifier.verify(
+                analysis + completion, 
+                correct_answer, 
+                problem
+            )
+            successful += (score == max_score)
         except Exception as e:
-            print(f"Error in completion: {str(e)}")
-            continue
+            print(f"Completion error: {e}")
             
-    return successful_completions / num_completions if num_completions > 0 else 0.0
+    return successful / num_completions if num_completions > 0 else 0.0
 
 async def evaluate_step(
     problem: str,
@@ -58,66 +58,58 @@ async def evaluate_step(
     num_completions: int
 ) -> Tuple[float, bool]:
     """Evaluate a step by checking for answer or attempting completions"""
-    # First validate step
     if not validate_step(next_step):
         print("Step validation failed")
         return 0.0, False
-        
-    completion_agent = CompletionAgent(solver)
+
     solution_with_step = current_solution + next_step
-    
-    # Validate combined solution
-    is_valid, reason = validate_solution(solution_with_step)
-    if not is_valid:
-        print(f"Combined solution validation failed: {reason}")
+    if not validate_solution(solution_with_step)[0]:
         return 0.0, False
-    
+
     # Check if step contains answer
-    answer = extract_answer_from_solution(solution_with_step)
-    if answer is not None:
+    if answer := extract_answer_from_solution(solution_with_step):
         score, max_score, _ = await verifier.verify(solution_with_step, correct_answer, problem)
-        return 1.0 if score == max_score else 0.0, True
-        
-    # If no answer, try completions
-    successful_completions = 0
+        return float(score == max_score), True
+
+    # Try completions
+    completion_agent = CompletionAgent(solver)
+    successful = 0
+    
     for _ in range(num_completions):
         try:
             completion = await completion_agent.generate(problem, solution_with_step)
-            complete_solution = solution_with_step + completion
-            score, max_score, _ = await verifier.verify(complete_solution, correct_answer, problem)
-            if score == max_score:
-                successful_completions += 1
+            score, max_score, _ = await verifier.verify(
+                solution_with_step + completion,
+                correct_answer,
+                problem
+            )
+            successful += (score == max_score)
         except Exception as e:
-            print(f"Error in completion: {str(e)}")
-            continue
+            print(f"Completion error: {e}")
             
-    success_rate = successful_completions / num_completions if num_completions > 0 else 0.0
-    return success_rate, False
+    return (successful / num_completions if num_completions > 0 else 0.0), False
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using list generation approach"""
-    try:
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            print(f"Error processing example {running_id}: Invalid example format")
-            return None
-            
-        correct_answer = extract_answer_from_solution(example['solution'])
-        if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {running_id}")
-            return None
+    # Validate input
+    if not isinstance(example, dict) or not {'problem', 'solution'} <= example.keys():
+        print(f"Invalid example format: {running_id}")
+        return None
+        
+    if not (correct_answer := extract_answer_from_solution(example['solution'])):
+        print(f"No answer found: {running_id}")
+        return None
 
-        # Initialize models and verifier
-        solver = get_model(ModelOption[config.solver], temp=config.temperature)
-        verifier_model = None if config.verification_type == 'numeric' else get_model(
-            ModelOption[config.verifier], temp=config.verifier_temp)
-        second_verifier_model = None if config.verification_type != 'solution' else get_model(
-            ModelOption[config.second_verifier], temp=config.verifier_temp)
-        verifier = create_verifier(
-            config.verification_type,
-            verifier_model=verifier_model,
-            second_verifier_model=second_verifier_model,
-            tolerance=config.tolerance
-        )
+    # Setup models
+    solver = get_model(ModelOption[config.solver], temp=config.temperature)
+    verifier = create_verifier(
+        config.verification_type,
+        verifier_model=None if config.verification_type == 'numeric' else get_model(
+            ModelOption[config.verifier], temp=config.verifier_temp),
+        second_verifier_model=None if config.verification_type != 'solution' else get_model(
+            ModelOption[config.second_verifier], temp=config.verifier_temp),
+        tolerance=config.tolerance
+    )
 
         analysis_agent = AnalysisAgent(solver)
         step_agent = NextStepAgent(solver)
