@@ -75,7 +75,7 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             continue
 
     if not found_correct or not found_wrong:
-        return None
+        return []
 
     # Calculate scores
     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
@@ -303,7 +303,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             logs.append("└─ Score: 1.0 vs 0.0")
                             print("\n".join(logs))
                             # Return immediately since we found a correct answer
-                            return None
+                            return []
 
                 # Generate second bifurcation path with retries
                 for retry in range(10):
@@ -332,14 +332,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             logs.append("└─ Score: 1.0 vs 0.0")
                             print("\n".join(logs))
                             # Return immediately since we found a correct answer
-                            return {
+                            return [{
                                 'id': example_id,
                                 'prompt': {'content': bifurcation_prompt, 'role': 'user'},
                                 'chosen': {'content': response_2, 'role': 'assistant'},
                                 'rejected': {'content': response_1, 'role': 'assistant'},
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
-                            }
+                            }]
             
             # Check if responses are equal or either is None
             if response_1 is None or response_2 is None or response_1 == response_2:
@@ -425,7 +425,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logs.append("├─ Status: Failed - both paths invalid")
                 logs.append("└─ Reason: No valid paths for sampling")
                 print("\n".join(logs))
-                return None
+                return []
 
             # Calculate max score from valid paths only
             valid_scores = []
@@ -517,7 +517,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'rejected': {'content': rejected_response, 'role': 'assistant'},
             'score_chosen': chosen_score,
             'score_rejected': rejected_score}
-        return result
+        return [result]
         
     except Exception as e:
         processing_time = time.perf_counter() - start_time
