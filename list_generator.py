@@ -17,42 +17,37 @@ async def generate_and_score_completions(
     verifier: Any,
     correct_answer: str,
     num_completions: int
-) -> Tuple[str, str, float, float]:
-    """Generate completions and find highest/lowest scoring ones"""
+) -> Tuple[str, str, int, int]:
+    """Generate completions and count correct/incorrect solutions"""
     completion_agent = CompletionAgent(solver)
-    highest_score = -1
-    lowest_score = float('inf')
-    highest_completion = ""
-    lowest_completion = ""
+    correct_count = 0
+    total_count = 0
+    best_completion = ""
+    worst_completion = ""
     
     for _ in range(num_completions):
         try:
             complete_solution = partial_solution + await completion_agent.generate(problem, partial_solution)
-            score, max_score, current_answer = await verifier.verify(
+            score, max_score, _ = await verifier.verify(
                 complete_solution,
                 correct_answer,
                 problem
             )
-                
-            # Normalize score
-            normalized_score = score / max_score if max_score > 0 else 0
             
-            if normalized_score > highest_score:
-                highest_score = normalized_score
-                highest_completion = complete_solution
-            if normalized_score < lowest_score:
-                lowest_score = normalized_score
-                lowest_completion = complete_solution
-                
-            # Early exit if we found correct answer
-            if normalized_score == 1.0:
-                return highest_completion, lowest_completion, 1.0, normalized_score
-                
+            total_count += 1
+            if score == max_score:  # Solution is correct
+                correct_count += 1
+                if not best_completion:  # Keep first correct solution
+                    best_completion = complete_solution
+            else:  # Solution is wrong
+                if not worst_completion:  # Keep first wrong solution
+                    worst_completion = complete_solution
+                    
         except Exception as e:
             print(f"Error in completion: {str(e)}")
             continue
             
-    return highest_completion, lowest_completion, highest_score, lowest_score
+    return best_completion, worst_completion, correct_count, total_count
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using list generation approach"""
@@ -107,9 +102,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     continuations.append(continuation)
                     
             # Score each continuation
-            highest_overall_score = -1
+            best_success_rate = 0
             best_continuation = ""
             best_prompt = ""
+            best_correct = ""
+            best_wrong = ""
             
             for idx, continuation in enumerate(continuations):
                 partial_solution = current_partial + continuation
@@ -134,7 +131,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         }]
                 
                 # If no answer or wrong answer, proceed with completions
-                highest_completion, lowest_completion, high_score, low_score = await generate_and_score_completions(
+                correct_completion, wrong_completion, num_correct, total = await generate_and_score_completions(
                     example["problem"],
                     partial_solution,
                     solver,
@@ -143,43 +140,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     config.completions
                 )
                 
-                # Check if this continuation already has the answer (before completion)
-                answer = extract_answer_from_solution(partial_solution)
-                if answer is not None:
-                    score, max_score, _ = await verifier.verify(
-                        partial_solution,
-                        correct_answer,
-                        problem
-                    )
-                    if score == max_score:  # Found correct solution in the step itself
-                        results.append({
-                            'id': example_id,
-                            'prompt': {'content': prompts[idx], 'role': 'user'},
-                            'chosen': {'content': partial_solution, 'role': 'assistant'},
-                            'rejected': {'content': lowest_completion or "", 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
-                        return results
-                    
-                # Track best continuation
-                if high_score > highest_overall_score:
-                    highest_overall_score = high_score
+                # Calculate success rate for this continuation
+                success_rate = num_correct / total if total > 0 else 0
+                
+                # Track best performing continuation
+                if success_rate > best_success_rate:
+                    best_success_rate = success_rate
                     best_continuation = continuation
                     best_prompt = prompts[idx]
-                    best_high_completion = highest_completion
-                    best_low_completion = lowest_completion
-                    best_high_score = high_score
-                    best_low_score = low_score
+                    best_correct = correct_completion
+                    best_wrong = wrong_completion
             
-            # Print score range for this level
-            print(f"\nLevel {step} scores:")
-            print(f"Max score: {highest_overall_score:.3f}")
-            print(f"Min score: {best_low_score:.3f}")
-            print(f"Score range: {(highest_overall_score - best_low_score):.3f}")
+            # Print statistics for this level
+            print(f"\nLevel {step} completion stats:")
+            print(f"Best success rate: {best_success_rate:.1%}")
             
-            # If no continuation scored above 0, stop
-            if highest_overall_score <= 0:
+            # Stop if no completions succeeded
+            if best_success_rate == 0:
                 break
                 
             # Add result for this step
