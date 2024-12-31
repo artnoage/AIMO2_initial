@@ -10,68 +10,71 @@ from bench_utils.verify import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-async def generate_and_score_completions(
+async def evaluate_analysis(
     problem: str,
-    partial_solution: str,
+    analysis: str,
     solver: Any,
     verifier: Any,
     correct_answer: str,
     num_completions: int
-) -> Tuple[str, str, int, int]:
-    """Generate completions and count correct/incorrect solutions"""
+) -> float:
+    """Evaluate an analysis by attempting completions"""
     completion_agent = CompletionAgent(solver)
-    total_count = 0
-    step_success_counts = {}  # Track success count per unique step
-    step_seen_counts = {}     # Track total attempts per unique step
+    successful_completions = 0
     
+    # First check if analysis already contains answer
+    answer = extract_answer_from_solution(analysis)
+    if answer is not None:
+        score, max_score, _ = await verifier.verify(analysis, correct_answer, problem)
+        return 1.0 if score == max_score else 0.0
+        
     for _ in range(num_completions):
         try:
-            next_step = await completion_agent.generate(problem, partial_solution)
-            complete_solution = partial_solution + next_step
-            score, max_score, _ = await verifier.verify(
-                complete_solution,
-                correct_answer,
-                problem
-            )
-            
-            # Update counts for this step
-            if next_step not in step_success_counts:
-                step_success_counts[next_step] = 0
-                step_seen_counts[next_step] = 0
-            
-            step_seen_counts[next_step] += 1
-            total_count += 1
-            
-            if score == max_score:  # Solution is correct
-                step_success_counts[next_step] += 1
-                
+            completion = await completion_agent.generate(problem, analysis)
+            complete_solution = analysis + completion
+            score, max_score, _ = await verifier.verify(complete_solution, correct_answer, problem)
+            if score == max_score:
+                successful_completions += 1
         except Exception as e:
             print(f"Error in completion: {str(e)}")
             continue
-    
-    # Find best and worst performing steps
-    best_step = ""
-    worst_step = ""
-    best_success_rate = -1
-    worst_success_rate = float('inf')
-    
-    for step, successes in step_success_counts.items():
-        success_rate = successes / step_seen_counts[step]
-        if success_rate > best_success_rate:
-            best_success_rate = success_rate
-            best_step = step
-        if success_rate < worst_success_rate:
-            worst_success_rate = success_rate
-            worst_step = step
-    
-    # If no steps succeeded, pick any step as worst
-    if not best_step and step_seen_counts:
-        worst_step = next(iter(step_seen_counts.keys()))
-    
-    # Calculate total correct count
-    correct_count = sum(step_success_counts.values())
             
-    return best_step, worst_step, correct_count, total_count
+    return successful_completions / num_completions if num_completions > 0 else 0.0
+
+async def evaluate_step(
+    problem: str,
+    current_solution: str,
+    next_step: str,
+    solver: Any, 
+    verifier: Any,
+    correct_answer: str,
+    num_completions: int
+) -> Tuple[float, bool]:
+    """Evaluate a step by checking for answer or attempting completions"""
+    completion_agent = CompletionAgent(solver)
+    solution_with_step = current_solution + next_step
+    
+    # First check if step contains answer
+    answer = extract_answer_from_solution(solution_with_step)
+    if answer is not None:
+        score, max_score, _ = await verifier.verify(solution_with_step, correct_answer, problem)
+        return 1.0 if score == max_score else 0.0, True
+        
+    # If no answer, try completions
+    successful_completions = 0
+    for _ in range(num_completions):
+        try:
+            completion = await completion_agent.generate(problem, solution_with_step)
+            complete_solution = solution_with_step + completion
+            score, max_score, _ = await verifier.verify(complete_solution, correct_answer, problem)
+            if score == max_score:
+                successful_completions += 1
+        except Exception as e:
+            print(f"Error in completion: {str(e)}")
+            continue
+            
+    success_rate = successful_completions / num_completions if num_completions > 0 else 0.0
+    return success_rate, False
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using list generation approach"""
@@ -101,100 +104,126 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         analysis_agent = AnalysisAgent(solver)
         step_agent = NextStepAgent(solver)
         results = []
-        current_partial = ""
-        step = 0
         
-        while True:
-            print(f"\nProcessing step {step} for example {running_id}")
-            
-            # Generate multiple continuations
-            continuations = []
-            prompts = []
-            
-            # Generate different continuations based on best_of parameter
-            for _ in range(config.best_of):
-                if step == 0:
-                    # For first step, generate analysis
-                    prompt, continuation = await analysis_agent.generate(example["problem"], return_prompt=True)
-                    prompts.append(prompt)
-                else:
-                    # For subsequent steps, generate next step
-                    prompt, continuation = await step_agent.generate(example["problem"], current_partial, return_prompt=True)
-                    prompts.append(prompt)
-                    
-                if continuation not in continuations:
-                    continuations.append(continuation)
-                    
-            # Score each continuation
-            best_success_rate = 0
-            best_continuation = ""
-            best_prompt = ""
-            best_correct = ""
-            best_wrong = ""
-            
-            for idx, continuation in enumerate(continuations):
-                partial_solution = current_partial + continuation
-                
-                # First check if this step already contains an answer
-                answer = extract_answer_from_solution(partial_solution)
-                if answer is not None:
-                    # Verify if this answer is correct
-                    score, max_score, _ = await verifier.verify(
-                        partial_solution,
-                        correct_answer,
-                        example["problem"]
-                    )
-                    if score == max_score:  # Found correct solution in the step itself
-                        return [{
-                            'id': example_id,
-                            'prompt': {'content': prompts[idx], 'role': 'user'},
-                            'chosen': {'content': partial_solution, 'role': 'assistant'},
-                            'rejected': {'content': "", 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        }]
-                
-                # If no answer or wrong answer, proceed with completions
-                correct_completion, wrong_completion, num_correct, total = await generate_and_score_completions(
+        print(f"\nProcessing example {running_id}")
+        
+        # First generate and evaluate analyses
+        print("Generating analyses...")
+        analyses = []
+        prompts = []
+        scores = []
+        
+        for _ in range(config.best_of):
+            prompt, analysis = await analysis_agent.generate(example["problem"], return_prompt=True)
+            if analysis not in analyses:
+                analyses.append(analysis)
+                prompts.append(prompt)
+                score = await evaluate_analysis(
                     example["problem"],
-                    partial_solution,
+                    analysis,
                     solver,
                     verifier,
                     correct_answer,
                     config.completions
                 )
+                scores.append(score)
+                print(f"Analysis score: {score:.2f}")
                 
-                # Calculate success rate for this continuation
-                success_rate = num_correct / total if total > 0 else 0
+                # If analysis contains correct answer, return immediately
+                if score == 1.0:
+                    return [{
+                        'id': example_id,
+                        'prompt': {'content': prompt, 'role': 'user'},
+                        'chosen': {'content': analysis, 'role': 'assistant'},
+                        'rejected': {'content': "", 'role': 'assistant'},
+                        'score_chosen': 1.0,
+                        'score_rejected': 0.0
+                    }]
+        
+        if not analyses:
+            print("No valid analyses generated")
+            return None
+            
+        # Find best and worst analysis
+        best_idx = scores.index(max(scores))
+        worst_idx = scores.index(min(scores))
+        
+        # Add first result comparing analyses
+        results.append({
+            'id': example_id,
+            'prompt': {'content': prompts[best_idx], 'role': 'user'},
+            'chosen': {'content': analyses[best_idx], 'role': 'assistant'},
+            'rejected': {'content': analyses[worst_idx], 'role': 'assistant'},
+            'score_chosen': scores[best_idx],
+            'score_rejected': scores[worst_idx]
+        })
+        
+        # Continue with best analysis
+        current_solution = analyses[best_idx]
+        step = 1
+        
+        while True:
+            print(f"\nProcessing step {step}")
+            
+            # Generate multiple steps
+            steps = []
+            step_prompts = []
+            step_scores = []
+            found_answer = False
+            
+            for _ in range(config.best_of):
+                prompt, step_text = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
+                if step_text not in steps:
+                    steps.append(step_text)
+                    step_prompts.append(prompt)
+                    score, has_answer = await evaluate_step(
+                        example["problem"],
+                        current_solution,
+                        step_text,
+                        solver,
+                        verifier,
+                        correct_answer,
+                        config.completions
+                    )
+                    step_scores.append(score)
+                    print(f"Step score: {score:.2f}")
+                    
+                    if has_answer and score == 1.0:
+                        # Found correct answer in this step
+                        return results + [{
+                            'id': example_id,
+                            'prompt': {'content': prompt, 'role': 'user'},
+                            'chosen': {'content': current_solution + step_text, 'role': 'assistant'},
+                            'rejected': {'content': "", 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0
+                        }]
+                    found_answer = found_answer or has_answer
+            
+            if not steps:
+                print("No valid steps generated")
+                break
                 
-                # Track best performing continuation
-                if success_rate > best_success_rate:
-                    best_success_rate = success_rate
-                    best_continuation = continuation
-                    best_prompt = prompts[idx]
-                    best_correct = best_step
-                    best_wrong = worst_step
+            # Find best and worst steps
+            best_step_idx = step_scores.index(max(step_scores))
+            worst_step_idx = step_scores.index(min(step_scores))
             
-            # Print statistics for this level
-            print(f"\nLevel {step} completion stats:")
-            print(f"Best success rate: {best_success_rate:.1%}")
-            
-            # Stop if no completions succeeded
-            if best_success_rate == 0:
+            # If best step has score 0 or we found wrong answer, stop
+            if step_scores[best_step_idx] == 0 or (found_answer and max(step_scores) < 1.0):
                 break
                 
             # Add result for this step
             results.append({
                 'id': example_id,
-                'prompt': {'content': best_prompt, 'role': 'user'},
-                'chosen': {'content': best_correct, 'role': 'assistant'},
-                'rejected': {'content': best_wrong, 'role': 'assistant'},
-                'score_chosen': best_success_rate,
-                'score_rejected': 0.0
+                'prompt': {'content': step_prompts[best_step_idx], 'role': 'user'},
+                'chosen': {'content': steps[best_step_idx], 'role': 'assistant'},
+                'rejected': {'content': steps[worst_step_idx], 'role': 'assistant'},
+                'score_chosen': step_scores[best_step_idx],
+                'score_rejected': step_scores[worst_step_idx]
             })
             
-            # Update current partial solution with best continuation
-            current_partial += best_continuation
+            # Update current solution with best step
+            current_solution += steps[best_step_idx]
             step += 1
             
         return results if results else None
