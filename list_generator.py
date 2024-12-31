@@ -60,14 +60,12 @@ async def evaluate_step(
     num_completions: int
 ) -> Tuple[float, bool]:
     """Evaluate a step by checking for answer or attempting completions"""
-    if not validate_step(next_step):
-        print("Step validation failed")
-        return 0.0, False
-
     solution_with_step = current_solution + next_step
+    
+    # Return 0 score if solution becomes invalid
     if not validate_solution(solution_with_step)[0]:
         return 0.0, False
-
+        
     # Check if step contains answer
     if answer := extract_answer_from_solution(solution_with_step):
         score, max_score, _ = await verifier.verify(solution_with_step, correct_answer, problem)
@@ -228,7 +226,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         correct_answer,
                         config.completions
                     )
-                if score > 0 and step_text not in steps:  # Only add valid steps with non-zero scores
+                if step_text not in steps:  # Only check for duplicates
                     steps.append(step_text)
                     step_prompts.append(prompt)
                     step_scores.append(score)
@@ -253,7 +251,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         }]
                     found_answer = found_answer or has_answer
                 else:
-                    logs.append(f"├─ Skipped invalid/duplicate step (attempt {attempts}/{max_attempts})")
+                    logs.append(f"├─ Skipped duplicate step (attempt {attempts}/{max_attempts})")
             
             if not steps:
                 logs.append("❌ No valid steps generated")
