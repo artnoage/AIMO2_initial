@@ -20,10 +20,9 @@ async def generate_and_score_completions(
 ) -> Tuple[str, str, int, int]:
     """Generate completions and count correct/incorrect solutions"""
     completion_agent = CompletionAgent(solver)
-    correct_count = 0
     total_count = 0
-    best_step = ""
-    worst_step = ""
+    step_success_counts = {}  # Track success count per unique step
+    step_seen_counts = {}     # Track total attempts per unique step
     
     for _ in range(num_completions):
         try:
@@ -35,14 +34,38 @@ async def generate_and_score_completions(
                 problem
             )
             
+            # Update counts for this step
+            if next_step not in step_success_counts:
+                step_success_counts[next_step] = 0
+                step_seen_counts[next_step] = 0
+            
+            step_seen_counts[next_step] += 1
             total_count += 1
+            
             if score == max_score:  # Solution is correct
-                correct_count += 1
-                if not best_step:  # Keep first correct step
-                    best_step = next_step
-            else:  # Solution is wrong
-                if not worst_step:  # Keep first wrong step
-                    worst_step = next_step
+                step_success_counts[next_step] += 1
+    
+    # Find best and worst performing steps
+    best_step = ""
+    worst_step = ""
+    best_success_rate = -1
+    worst_success_rate = float('inf')
+    
+    for step, successes in step_success_counts.items():
+        success_rate = successes / step_seen_counts[step]
+        if success_rate > best_success_rate:
+            best_success_rate = success_rate
+            best_step = step
+        if success_rate < worst_success_rate:
+            worst_success_rate = success_rate
+            worst_step = step
+    
+    # If no steps succeeded, pick any step as worst
+    if not best_step and step_seen_counts:
+        worst_step = next(iter(step_seen_counts.keys()))
+    
+    # Calculate total correct count
+    correct_count = sum(step_success_counts.values())
                     
         except Exception as e:
             print(f"Error in completion: {str(e)}")
