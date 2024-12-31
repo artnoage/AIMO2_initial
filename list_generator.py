@@ -28,14 +28,14 @@ async def generate_and_score_completions(
     for _ in range(num_completions):
         try:
             complete_solution = partial_solution + await completion_agent.generate(problem, partial_solution)
-            score, total_steps, current_answer = await verifier.verify(
+            score, max_score, current_answer = await verifier.verify(
                 complete_solution,
                 correct_answer,
                 problem
             )
-            
+                
             # Normalize score
-            normalized_score = score / total_steps if total_steps > 0 else 0
+            normalized_score = score / max_score if max_score > 0 else 0
             
             if normalized_score > highest_score:
                 highest_score = normalized_score
@@ -122,17 +122,24 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     config.completions
                 )
                 
-                # If we found a perfect solution, return immediately
-                if high_score == 1.0:
-                    results.append({
-                        'id': example_id,
-                        'prompt': {'content': prompts[idx], 'role': 'user'},
-                        'chosen': {'content': highest_completion, 'role': 'assistant'},
-                        'rejected': {'content': lowest_completion, 'role': 'assistant'},
-                        'score_chosen': high_score,
-                        'score_rejected': low_score
-                    })
-                    return results
+                # Check if this continuation already has the answer (before completion)
+                answer = extract_answer_from_solution(partial_solution)
+                if answer is not None:
+                    score, max_score, _ = await verifier.verify(
+                        partial_solution,
+                        correct_answer,
+                        problem
+                    )
+                    if score == max_score:  # Found correct solution in the step itself
+                        results.append({
+                            'id': example_id,
+                            'prompt': {'content': prompts[idx], 'role': 'user'},
+                            'chosen': {'content': partial_solution, 'role': 'assistant'},
+                            'rejected': {'content': lowest_completion or "", 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0
+                        })
+                        return results
                     
                 # Track best continuation
                 if high_score > highest_overall_score:
