@@ -113,6 +113,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             for idx, continuation in enumerate(continuations):
                 partial_solution = current_partial + continuation
+                
+                # First check if this step already contains an answer
+                answer = extract_answer_from_solution(partial_solution)
+                if answer is not None:
+                    # Verify if this answer is correct
+                    score, max_score, _ = await verifier.verify(
+                        partial_solution,
+                        correct_answer,
+                        example["problem"]
+                    )
+                    if score == max_score:  # Found correct solution in the step itself
+                        return [{
+                            'id': example_id,
+                            'prompt': {'content': prompts[idx], 'role': 'user'},
+                            'chosen': {'content': partial_solution, 'role': 'assistant'},
+                            'rejected': {'content': "", 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0
+                        }]
+                
+                # If no answer or wrong answer, proceed with completions
                 highest_completion, lowest_completion, high_score, low_score = await generate_and_score_completions(
                     example["problem"],
                     partial_solution,
