@@ -44,6 +44,10 @@ async def generate_and_score_completions(
             
             if score == max_score:  # Solution is correct
                 step_success_counts[next_step] += 1
+                
+        except Exception as e:
+            print(f"Error in completion: {str(e)}")
+            continue
     
     # Find best and worst performing steps
     best_step = ""
@@ -66,10 +70,6 @@ async def generate_and_score_completions(
     
     # Calculate total correct count
     correct_count = sum(step_success_counts.values())
-                    
-        except Exception as e:
-            print(f"Error in completion: {str(e)}")
-            continue
             
     return best_step, worst_step, correct_count, total_count
 
