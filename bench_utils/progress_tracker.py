@@ -36,9 +36,10 @@ class ProgressTracker:
         with open(stats_file, 'a') as f:
             f.write(f"{datetime.now().isoformat()}: {stats}\n")
 
-    def add_result(self, result: Dict) -> None:
-        if result:
-            self.results.append(result)
+    def add_result(self, results: List[Dict]) -> None:
+        """Add a list of results to the tracker"""
+        if results:
+            self.results.extend(results)
     
     def _has_field(self, results: List[Dict], field: str) -> bool:
         """Check if field exists in any result"""
