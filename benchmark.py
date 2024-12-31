@@ -92,7 +92,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Success rate: {(correct_count/config.best_of)*100:.1f}%")
         print("-" * 80)
         
-        return {
+        return [{
             'id': example_id,
             'problem': example['problem'],
             'correct_solution': example['solution'],
@@ -102,7 +102,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [s['is_correct'] for s in solutions],
             'verification_scores': [s['verification_score'] for s in solutions],
             'verification_steps': [s['verification_steps'] for s in solutions]
-        }
+        }]
         
     except Exception as e:
         print(f"Error processing example {str(running_id)}: {e}")

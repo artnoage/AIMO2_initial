@@ -486,13 +486,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append(f"Score difference: {abs(chosen_score - rejected_score)/max(chosen_score, rejected_score):.1%}")
                     # Always print logs before returning result
             print("\n".join(logs))
-            return {
+            return [{
                 'id': example_id,
                 'prompt': {'content': bifurcation_prompt, 'role': 'user'},
                 'chosen': {'content': chosen_response, 'role': 'assistant'},
                 'rejected': {'content': rejected_response, 'role': 'assistant'},
                 'score_chosen': chosen_score,
-                'score_rejected': rejected_score}
+                'score_rejected': rejected_score}]
 
         # Add final summary to logs
         logs.append("\n" + "="*50)
