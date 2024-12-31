@@ -218,8 +218,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'score_rejected': scores[sorted_indices[i+1]]
                 })
         
-        # Continue with best analysis
-        current_solution = analyses[best_idx]
+        # Continue with best analysis (first in sorted indices)
+        current_solution = analyses[sorted_indices[0]]
         step = 1
         
         while True:
