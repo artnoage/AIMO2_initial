@@ -220,6 +220,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             attempts = 0
             max_attempts = config.best_of * 3  # Allow more attempts to get valid steps
             
+            score_diff_threshold = 0.3  # Minimum score difference we want
+            
             while len(steps) < config.best_of and attempts < max_attempts:
                 attempts += 1
                 prompt, step_text = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
@@ -232,20 +234,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         correct_answer,
                         config.completions
                     )
-                if step_text not in steps:  # Only check for duplicates
+                
+                # Only add if score is different enough from existing scores
+                should_add = True
+                for existing_score in step_scores:
+                    if abs(score - existing_score) < score_diff_threshold:
+                        should_add = False
+                        break
+                        
+                if (should_add or not step_scores) and step_text not in steps:
                     steps.append(step_text)
                     step_prompts.append(prompt)
                     step_scores.append(score)
                     logs.append(f"├─ Step score: {score:.2f}")
                     
-                    # Check if we found max and min scores
-                    if score == 1.0:
-                        max_step_score_found = True
-                    elif score == 0.0:
-                        min_step_score_found = True
-                    
-                    # Stop if we found both extremes or a correct answer
-                    if (max_step_score_found and min_step_score_found) or (has_answer and score == 1.0):
+                    # If we found a perfect score with answer, we can stop
+                    if has_answer and score == 1.0:
                         # Found correct answer in this step
                         return results + [{
                             'id': example_id,
