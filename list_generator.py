@@ -22,12 +22,13 @@ async def generate_and_score_completions(
     completion_agent = CompletionAgent(solver)
     correct_count = 0
     total_count = 0
-    best_completion = ""
-    worst_completion = ""
+    best_step = ""
+    worst_step = ""
     
     for _ in range(num_completions):
         try:
-            complete_solution = partial_solution + await completion_agent.generate(problem, partial_solution)
+            next_step = await completion_agent.generate(problem, partial_solution)
+            complete_solution = partial_solution + next_step
             score, max_score, _ = await verifier.verify(
                 complete_solution,
                 correct_answer,
@@ -37,17 +38,17 @@ async def generate_and_score_completions(
             total_count += 1
             if score == max_score:  # Solution is correct
                 correct_count += 1
-                if not best_completion:  # Keep first correct solution
-                    best_completion = complete_solution
+                if not best_step:  # Keep first correct step
+                    best_step = next_step
             else:  # Solution is wrong
-                if not worst_completion:  # Keep first wrong solution
-                    worst_completion = complete_solution
+                if not worst_step:  # Keep first wrong step
+                    worst_step = next_step
                     
         except Exception as e:
             print(f"Error in completion: {str(e)}")
             continue
             
-    return best_completion, worst_completion, correct_count, total_count
+    return best_step, worst_step, correct_count, total_count
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using list generation approach"""
@@ -148,8 +149,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     best_success_rate = success_rate
                     best_continuation = continuation
                     best_prompt = prompts[idx]
-                    best_correct = correct_completion
-                    best_wrong = wrong_completion
+                    best_correct = best_step
+                    best_wrong = worst_step
             
             # Print statistics for this level
             print(f"\nLevel {step} completion stats:")
