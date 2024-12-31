@@ -203,19 +203,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print("\n".join(logs))
             return None
             
-        # Find best and worst analysis
-        best_idx = scores.index(max(scores))
-        worst_idx = scores.index(min(scores))
+        # Sort analyses by score and pair them
+        sorted_indices = sorted(range(len(scores)), key=lambda k: scores[k], reverse=True)
         
-        # Add first result comparing analyses
-        results.append({
-            'id': example_id,
-            'prompt': {'content': prompts[best_idx], 'role': 'user'},
-            'chosen': {'content': analyses[best_idx], 'role': 'assistant'},
-            'rejected': {'content': analyses[worst_idx], 'role': 'assistant'},
-            'score_chosen': scores[best_idx],
-            'score_rejected': scores[worst_idx]
-        })
+        # Add results comparing adjacent pairs with different scores
+        for i in range(len(sorted_indices)-1):
+            if scores[sorted_indices[i]] > scores[sorted_indices[i+1]]:
+                results.append({
+                    'id': example_id,
+                    'prompt': {'content': prompts[sorted_indices[i]], 'role': 'user'},
+                    'chosen': {'content': analyses[sorted_indices[i]], 'role': 'assistant'},
+                    'rejected': {'content': analyses[sorted_indices[i+1]], 'role': 'assistant'},
+                    'score_chosen': scores[sorted_indices[i]],
+                    'score_rejected': scores[sorted_indices[i+1]]
+                })
         
         # Continue with best analysis
         current_solution = analyses[best_idx]
@@ -284,23 +285,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("\n".join(logs))
                 break
                 
-            # Find best and worst steps
-            best_step_idx = step_scores.index(max(step_scores))
-            worst_step_idx = step_scores.index(min(step_scores))
+            # Sort steps by score
+            sorted_step_indices = sorted(range(len(step_scores)), key=lambda k: step_scores[k], reverse=True)
+            best_step_idx = sorted_step_indices[0]
             
             # If best step has score 0 or we found wrong answer, stop
             if step_scores[best_step_idx] == 0 or (found_answer and max(step_scores) < 1.0):
                 break
                 
-            # Add result for this step
-            results.append({
-                'id': example_id,
-                'prompt': {'content': step_prompts[best_step_idx], 'role': 'user'},
-                'chosen': {'content': steps[best_step_idx], 'role': 'assistant'},
-                'rejected': {'content': steps[worst_step_idx], 'role': 'assistant'},
-                'score_chosen': step_scores[best_step_idx],
-                'score_rejected': step_scores[worst_step_idx]
-            })
+            # Add results comparing adjacent pairs with different scores
+            for i in range(len(sorted_step_indices)-1):
+                if step_scores[sorted_step_indices[i]] > step_scores[sorted_step_indices[i+1]]:
+                    results.append({
+                        'id': example_id,
+                        'prompt': {'content': step_prompts[sorted_step_indices[i]], 'role': 'user'},
+                        'chosen': {'content': steps[sorted_step_indices[i]], 'role': 'assistant'},
+                        'rejected': {'content': steps[sorted_step_indices[i+1]], 'role': 'assistant'},
+                        'score_chosen': step_scores[sorted_step_indices[i]],
+                        'score_rejected': step_scores[sorted_step_indices[i+1]]
+                    })
             
             # Update current solution with best step
             current_solution += steps[best_step_idx]
