@@ -92,8 +92,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             continuations = []
             prompts = []
             
-            # Generate 10 different continuations
-            for _ in range(10):
+            # Generate different continuations based on best_of parameter
+            for _ in range(config.best_of):
                 if step == 0:
                     # For first step, generate analysis
                     prompt, continuation = await analysis_agent.generate(example["problem"], return_prompt=True)
