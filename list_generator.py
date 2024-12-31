@@ -213,12 +213,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             max_step_score_found = False
             min_step_score_found = False
             
-            for _ in range(config.best_of):
+            attempts = 0
+            max_attempts = config.best_of * 3  # Allow more attempts to get valid steps
+            
+            while len(steps) < config.best_of and attempts < max_attempts:
+                attempts += 1
                 prompt, step_text = await step_agent.generate(example["problem"], current_solution, return_prompt=True)
-                if step_text not in steps:
-                    steps.append(step_text)
-                    step_prompts.append(prompt)
-                    score, has_answer = await evaluate_step(
+                score, has_answer = await evaluate_step(
                         example["problem"],
                         current_solution,
                         step_text,
@@ -227,6 +228,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         correct_answer,
                         config.completions
                     )
+                if score > 0 and step_text not in steps:  # Only add valid steps with non-zero scores
+                    steps.append(step_text)
+                    step_prompts.append(prompt)
                     step_scores.append(score)
                     logs.append(f"├─ Step score: {score:.2f}")
                     
@@ -248,6 +252,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             'score_rejected': 0.0
                         }]
                     found_answer = found_answer or has_answer
+                else:
+                    logs.append(f"├─ Skipped invalid/duplicate step (attempt {attempts}/{max_attempts})")
             
             if not steps:
                 logs.append("❌ No valid steps generated")
