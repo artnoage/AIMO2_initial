@@ -1,5 +1,7 @@
 import os
+import time
 import asyncio
+import logging
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from hybrid_data_creator import validate_solution, validate_analysis, validate_step
@@ -91,14 +93,29 @@ async def evaluate_step(
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using list generation approach"""
+    start_time = time.perf_counter()
+    logs = []
+    
+    logs.append("\n" + "="*80)
+    logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+    logs.append("="*80)
+    
+    # Problem details
+    logs.append(f"\n📋 Problem:")
+    logs.append(f"{example['problem'][:200]}...")
+    
     # Validate input
     if not isinstance(example, dict) or not {'problem', 'solution'} <= example.keys():
-        print(f"Invalid example format: {running_id}")
+        logs.append("❌ Invalid example format")
+        print("\n".join(logs))
         return None
         
     if not (correct_answer := extract_answer_from_solution(example['solution'])):
-        print(f"No answer found: {running_id}")
+        logs.append("❌ No answer found in solution")
+        print("\n".join(logs))
         return None
+        
+    logs.append(f"✓ Expected Answer: {correct_answer}")
 
     try:
         # Setup models
@@ -116,10 +133,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         step_agent = NextStepAgent(solver)
         results = []
         
-        print(f"\nProcessing example {running_id}")
+        logs.append("\n🔄 Processing Details:")
+        logs.append("├─ Strategy: List generation")
         
         # First generate and evaluate analyses
-        print("Generating analyses...")
+        logs.append("\n📊 Generating analyses...")
         analyses = []
         prompts = []
         scores = []
@@ -141,7 +159,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     config.completions
                 )
                 scores.append(score)
-                print(f"Analysis score: {score:.2f}")
+                logs.append(f"├─ Analysis score: {score:.2f}")
                 
                 # Check if we found max (1.0) and min (0.0) scores
                 if score == 1.0:
@@ -161,7 +179,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     }]
         
         if not analyses:
-            print("No valid analyses generated")
+            logs.append("❌ No valid analyses generated")
+            print("\n".join(logs))
             return None
             
         # Find best and worst analysis
@@ -183,7 +202,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         step = 1
         
         while True:
-            print(f"\nProcessing step {step}")
+            logs.append(f"\n📝 Processing step {step}")
             
             # Generate multiple steps
             steps = []
@@ -209,7 +228,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         config.completions
                     )
                     step_scores.append(score)
-                    print(f"Step score: {score:.2f}")
+                    logs.append(f"├─ Step score: {score:.2f}")
                     
                     # Check if we found max and min scores
                     if score == 1.0:
@@ -231,7 +250,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     found_answer = found_answer or has_answer
             
             if not steps:
-                print("No valid steps generated")
+                logs.append("❌ No valid steps generated")
+                print("\n".join(logs))
                 break
                 
             # Find best and worst steps
@@ -259,7 +279,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         return results if results else None
         
     except Exception as e:
-        print(f"Error processing example {running_id}: {str(e)}")
+        processing_time = time.perf_counter() - start_time
+        error_category = (
+            "timeout" if isinstance(e, TimeoutError)
+            else "validation" if isinstance(e, ValueError)
+            else "rate_limit" if "rate limit" in str(e).lower()
+            else "context_length" if "context length" in str(e).lower()
+            else "other"
+        )
+        
+        logs.append("\n❌ Error Details:")
+        logs.append(f"├─ Error type: {type(e).__name__}")
+        logs.append(f"├─ Error message: {str(e)}")
+        logs.append(f"├─ Error category: {error_category}")
+        logs.append(f"├─ Processing time: {processing_time:.2f}s")
+        logs.append(f"└─ Example ID: {example_id}")
+        
+        print("\n".join(logs))
         return None
 
 async def main():
