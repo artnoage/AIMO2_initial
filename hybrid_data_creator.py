@@ -177,7 +177,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"\n🔄 Processing Details:")
         logs.append(f"├─ Strategy: {'Full solution' if r < 0.3 else 'Progressive building'}")
         
-        if r < 0.05:  # Full solution approach
+        if r < 0.1:  # Full solution approach
             result = await process_full_solution(example, solver, verifier, config)
             if result is None:
                 return None
@@ -189,12 +189,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logs.append("Approach: Progressive solution building")
             
             # Determine bifurcation point
-            if r < 0.3:  # Analysis only (0.3-0.5 = 0.2 probability)
+            if r < 0.2:  # Analysis only (0.3-0.5 = 0.2 probability)
                 n = 1
             else:
                 # Exponentially decaying probability for steps 2+
                 norm_const = sum(3**(-i) for i in range(1, 11))
-                r_scaled = (r - 0.3) / 0.7  # Scale remaining probability space to [0,1]
+                r_scaled = (r - 0.2) / 0.8  # Scale remaining probability space to [0,1]
                 cumsum = 0
                 n = 1
                 while n <= 10:

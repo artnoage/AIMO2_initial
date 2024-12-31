@@ -20,7 +20,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20241226_132503"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20241229_194229"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
