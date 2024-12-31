@@ -1,69 +1,8 @@
 import os
-import re
 import asyncio
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
-
-def validate_solution(solution: str) -> Tuple[bool, str]:
-    """Validate solution structure and format"""
-    if not solution or not isinstance(solution, str):
-        return False, "Empty or invalid solution"
-        
-    # Check minimum length
-    if len(solution.strip()) < 50:
-        return False, "Solution too short"
-        
-    # Check for analysis section
-    if not re.search(r'(?i)(analysis|approach|strategy|let\'s|first)', solution[:200]):
-        return False, "Missing analysis section"
-        
-    # Check for steps or method
-    if not re.search(r'(?i)(step|[1-9]\.|\*|method|solution)', solution):
-        return False, "Missing solution steps"
-        
-    # Check for mathematical notation
-    if not re.search(r'[0-9+\-*/=]', solution):
-        return False, "Missing mathematical notation"
-        
-    return True, "Valid solution"
-
-def validate_analysis(analysis: str) -> Tuple[bool, str]:
-    """Validate analysis structure and content"""
-    if not analysis or not isinstance(analysis, str):
-        return False, "Empty or invalid analysis"
-        
-    # Check minimum length
-    if len(analysis.strip()) < 30:
-        return False, "Analysis too short"
-        
-    # Check for analysis keywords
-    if not re.search(r'(?i)(approach|strategy|method|solve|understand|given)', analysis):
-        return False, "Missing analysis keywords"
-        
-    # Check for problem understanding
-    if not re.search(r'(?i)(problem|question|task|goal|need to|we have|given)', analysis):
-        return False, "Missing problem understanding"
-        
-    return True, "Valid analysis"
-
-def validate_step(step: str) -> bool:
-    """Validate solution step"""
-    if not step or not isinstance(step, str):
-        return False
-        
-    # Check minimum length
-    if len(step.strip()) < 10:
-        return False
-        
-    # Check for step indicators
-    if not re.search(r'(?i)(step|[1-9]\.|\*|next|then|first|second|third|finally)', step):
-        return False
-        
-    # Check for mathematical content
-    if not re.search(r'[0-9+\-*/=]', step):
-        return False
-        
-    return True
+from hybrid_data_creator import validate_solution, validate_analysis, validate_step
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
