@@ -29,9 +29,11 @@ class ListGenerator:
     ) -> float:
         """Score a partial solution by attempting completions"""
         successful = 0
+        print("\n🔄 Starting completion attempts...")
         
-        for _ in range(self.completions):
+        for attempt in range(self.completions):
             try:
+                print(f"\nAttempt {attempt + 1}/{self.completions}:")
                 complete_solution = current_solution + await self.completion_agent.generate(
                     problem,
                     current_solution
@@ -41,12 +43,19 @@ class ListGenerator:
                     correct_answer,
                     problem
                 )
+                print(f"Verification result: {score}/{total_steps}")
                 if score == total_steps:
                     successful += 1
-            except Exception:
+                    print("✅ Successful completion!")
+                else:
+                    print("❌ Failed verification")
+            except Exception as e:
+                print(f"❌ Error in completion: {str(e)}")
                 continue
-                
-        return successful / self.completions
+        
+        final_score = successful / self.completions
+        print(f"\n📊 Final score: {final_score} ({successful}/{self.completions} successful)")
+        return final_score
 
     async def generate(
         self,
@@ -126,11 +135,6 @@ class ListGenerator:
         # Use tracked best/worst scores
         best_analysis_score = best_score
         worst_analysis_score = worst_score
-            
-        print(f"\nAnalysis Scores:")
-        print(f"Best score: {best_analysis_score}")
-        print(f"Worst score: {worst_analysis_score}")
-        print(f"All scores: {[a[1] for a in analyses]}")
             
         logs.append(f"\n📊 Analysis Phase:")
         logs.append(f"├─ Best score: {best_analysis_score:.3f}")
@@ -219,11 +223,6 @@ class ListGenerator:
             steps.sort(key=lambda x: x[1])
             best_step_score = steps[-1][1]
             worst_step_score = steps[0][1]
-            
-            print(f"\nStep Scores:")
-            print(f"Best score: {best_step_score}")
-            print(f"Worst score: {worst_step_score}")
-            print(f"All scores: {[s[1] for s in steps]}")
                 
             # Check if all steps have zero score or all steps have high scores (>0.7)
             all_zero = all(step[1] == 0 for step in steps)
