@@ -20,7 +20,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20241229_194229"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20241231_185755"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
 
@@ -93,7 +93,7 @@ class BenchmarkConfig:
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--initial-steps', type=int, default=1,
                           help='Number of initial steps before completion (default: 1)')
-        parser.add_argument('--completions', type=int, default=50,
+        parser.add_argument('--completions', type=int, default=7,
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments
