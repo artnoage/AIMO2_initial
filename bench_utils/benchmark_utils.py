@@ -295,7 +295,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 
 STEP_NUMBER_PATTERNS = [
-    re.compile(r'^.{0,2}(\d+)[.:\)]'),
+    re.compile(r'^.{0,2}(\d+)[:\)]'),  # Removed dot from pattern
     re.compile(r'^.{0,2}\((\d+)\)'),
     re.compile(r'^.{0,2}(\d+)\s')
 ]
@@ -389,10 +389,22 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     if expected_step is not None:
         # First check for any step numbers in the text
         found_numbers = []
+        
+        # Reject if there are any decimal numbers in steps (e.g. 2.1)
+        if re.search(r'step\s*\d+\.\d+', resp.lower()):
+            return False
+            
         for pattern in STEP_NUMBER_PATTERNS:
             match = pattern.search(resp)
             if match:
-                found_numbers.append(int(match.group(1)))
+                try:
+                    num = int(match.group(1))
+                    # Reject decimal numbers
+                    if '.' in match.group(1):
+                        return False
+                    found_numbers.append(num)
+                except ValueError:
+                    return False
                 
         # If we found any numbers, they must match the expected step
         if found_numbers:
