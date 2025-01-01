@@ -21,15 +21,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
-        model_name = None
-        if config.lora_dir:
-            model_name = Path(config.lora_dir).name
-        elif config.upload_lora:
-            latest_lora = get_latest_lora_path()
-            if latest_lora:
-                model_name = Path(latest_lora).name
-                
-        solver = get_model(ModelOption[config.solver], temp=config.temperature, model_name=model_name)
+        solver = get_model(ModelOption[config.solver], temp=config.temperature)
         solution_agent = FullSolutionAgent(solver)
         solutions = []
         correct_count = 0

@@ -246,43 +246,6 @@ def is_multiple_choice(problem: str) -> bool:
     pattern = r'(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*'
     return bool(re.search(pattern, problem))
 
-async def load_lora_adapter(lora_name: str, lora_path: str):
-    """Send request to load LoRA adapter to local LLM server"""
-    print(f"\nAttempting to load LoRA adapter:")
-    print(f"Name: {lora_name}")
-    print(f"Path: {lora_path}")
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            print("Sending request to server...")
-            async with session.post(
-                "http://localhost:8000/v1/load_lora_adapter",
-                json={
-                    "lora_name": lora_name,
-                    "lora_path": lora_path
-                }
-            ) as response:
-                response_text = await response.text()
-                print(f"Server response status: {response.status}")
-                print(f"Server response text: {response_text}")
-                
-                if response.status != 200:
-                    if "already been loaded" in response_text:
-                        print("LoRA adapter already loaded, continuing...")
-                    else:
-                        raise Exception(f"Failed to load LoRA adapter: {response_text}")
-                else:
-                    print("LoRA adapter loaded successfully")
-    except Exception as e:
-        print(f"Error during LoRA loading: {str(e)}")
-        raise
-
-def get_latest_lora_path():
-    """Get the path of the most recent lora folder"""
-    lora_folders = glob('loras/*/')
-    if not lora_folders:
-        return None
-    return max(lora_folders, key=os.path.getctime)
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
@@ -506,30 +469,6 @@ async def run_benchmark(
     if config.max_concurrent < 1:
         print("Error: Maximum concurrent problems must be at least 1")
         return
-    # Handle LoRA loading based on config
-    if config.lora_dir:
-        # If specific directory provided, use that
-        lora_dir = Path(config.lora_dir)
-        if not lora_dir.exists():
-            print(f"Warning: LoRA directory {lora_dir} does not exist")
-        else:
-            try:
-                lora_name = lora_dir.name
-                print(f"Loading LoRA adapter {lora_name} from: {lora_dir}")
-                await load_lora_adapter(lora_name, str(lora_dir.absolute()))
-            except Exception as e:
-                print(f"Warning: Failed to load LoRA adapter {lora_name}: {e}")
-    elif config.upload_lora:
-        # Only try latest if no specific directory provided
-        lora_path = get_latest_lora_path()
-        if lora_path:
-            try:
-                print(f"Using latest LoRA adapter from: {lora_path}")
-                lora_name = Path(lora_path).name
-                await load_lora_adapter(lora_name, str(Path(lora_path).absolute()))
-            except Exception as e:
-                print(f"Warning: Failed to load latest LoRA adapter: {e}")
-                print("Continuing benchmark without LoRA adapter...")
 
     # Load exclude list if provided
     excluded_problems = set()
