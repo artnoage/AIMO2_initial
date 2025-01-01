@@ -166,6 +166,17 @@ class ListGenerator:
             best_step_score = steps[-1][1]
             worst_step_score = steps[0][1]
             
+            # Check if all steps have zero score or all steps have high scores (>0.7)
+            all_zero = all(step[1] == 0 for step in steps)
+            all_high = all(step[1] > 0.7 for step in steps)
+            
+            if all_zero:
+                logs.append(f"\n❌ Stopping: All generated steps received zero score")
+                break
+            elif all_high:
+                logs.append(f"\n✓ Stopping: All generated steps have high scores (>0.7)")
+                break
+            
             logs.append(f"\n📊 Step {step_num} Phase:")
             logs.append(f"├─ Best score: {best_step_score:.3f}")
             logs.append(f"├─ Worst score: {worst_step_score:.3f}")
