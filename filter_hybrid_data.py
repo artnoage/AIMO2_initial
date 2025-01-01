@@ -33,7 +33,11 @@ def validate_analysis(resp: str) -> bool:
         return False
     if "analysis" not in resp.lower():
         return False
+        
+    # Analysis should not contain steps or boxed answers
     if "step" in resp.lower():
+        return False
+    if "\\boxed{" in resp:
         return False
         
     return True
