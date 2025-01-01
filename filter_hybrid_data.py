@@ -2,7 +2,9 @@ import json
 import re
 from typing import Dict, List, Optional, Tuple
 import argparse
+import asyncio
 from pathlib import Path
+from bench_utils.benchmark_utils import NumericVerifier
 
 def determine_entry_type(content: str) -> str:
     """Determine if entry is full solution, analysis, or step"""
@@ -111,7 +113,7 @@ def validate_solution(solution: str) -> bool:
         
     return True
 
-def validate_entry(entry: Dict) -> bool:
+async def validate_entry(entry: Dict, verifier: NumericVerifier) -> bool:
     """Validate a single entry from the dataset"""
     # Check if entry has required fields
     required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected']
@@ -131,11 +133,17 @@ def validate_entry(entry: Dict) -> bool:
     # Determine entry type
     entry_type = determine_entry_type(chosen_content)
     
-    # Validate based on type
+    # Get correct answer from prompt
+    correct_answer = entry.get('correct_answer', '')
+    if not correct_answer:
+        return False
+
+    # Validate chosen solution
     if entry_type == "full_solution":
-        is_valid = validate_solution(chosen_content)
+        correct, total, _ = await verifier.verify(chosen_content, correct_answer, entry['prompt'])
+        is_valid = correct == total
     elif entry_type == "analysis":
-        is_valid = validate_analysis(chosen_content)
+        is_valid = validate_analysis(chosen_content)[0]
     elif entry_type == "step":
         is_valid = validate_step(chosen_content)
     else:
@@ -148,7 +156,7 @@ def validate_entry(entry: Dict) -> bool:
         
     return is_valid
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description='Filter hybrid data JSON file')
     parser.add_argument('input_file', type=str, help='Input JSON file path')
     parser.add_argument('output_file', type=str, help='Output JSON file path')
@@ -160,12 +168,15 @@ def main():
     
     print(f"Read {len(data)} entries from {args.input_file}")
     
+    # Initialize verifier
+    verifier = NumericVerifier()
+    
     # Filter entries
     valid_entries = []
     stats = {'full_solution': 0, 'analysis': 0, 'step': 0, 'unknown': 0, 'invalid': 0}
     
     for entry in data:
-        if validate_entry(entry):
+        if await validate_entry(entry, verifier):
             valid_entries.append(entry)
             entry_type = determine_entry_type(entry['chosen']['content'])
             stats[entry_type] += 1
@@ -190,4 +201,4 @@ def main():
     print(f"\nFiltered data saved to {args.output_file}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
