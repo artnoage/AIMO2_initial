@@ -195,6 +195,14 @@ class ListGenerator:
                         )
                         steps.append((step, score))
                         
+                        # Update best and worst steps
+                        if score > best_step_score:
+                            best_step_score = score
+                            best_step = step
+                        if score < worst_step_score:
+                            worst_step_score = score
+                            worst_step = step
+                            
                         # Check for perfect or zero score
                         if score == 1.0:
                             has_perfect = True
@@ -211,11 +219,6 @@ class ListGenerator:
                     
             if not steps:  # No valid steps generated
                 break
-                
-            # Sort and get best/worst step
-            steps.sort(key=lambda x: x[1])
-            best_step_score = steps[-1][1]
-            worst_step_score = steps[0][1]
                 
             # Check if all steps have zero score or all steps have high scores (>0.7)
             all_zero = all(step[1] == 0 for step in steps)
@@ -235,8 +238,8 @@ class ListGenerator:
             
             results.append({
                 'prompt': {'content': step_prompt, 'role': 'user'},
-                'chosen': {'content': steps[-1][0], 'role': 'assistant'},
-                'rejected': {'content': steps[0][0], 'role': 'assistant'},
+                'chosen': {'content': best_step, 'role': 'assistant'},
+                'rejected': {'content': worst_step, 'role': 'assistant'},
                 'score_chosen': best_step_score,
                 'score_rejected': worst_step_score
             })
