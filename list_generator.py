@@ -29,11 +29,9 @@ class ListGenerator:
     ) -> float:
         """Score a partial solution by attempting completions"""
         successful = 0
-        print("\n🔄 Starting completion attempts...")
         
         for attempt in range(self.completions):
             try:
-                print(f"\nAttempt {attempt + 1}/{self.completions}:")
                 complete_solution = current_solution + await self.completion_agent.generate(
                     problem,
                     current_solution
@@ -43,18 +41,13 @@ class ListGenerator:
                     correct_answer,
                     problem
                 )
-                print(f"Verification result: {'✅ Correct' if is_correct else '❌ Incorrect'}")
                 if is_correct:
                     successful += 1
-                    print("✅ Successful completion!")
-                else:
-                    print("❌ Failed verification")
             except Exception as e:
                 print(f"❌ Error in completion: {str(e)}")
                 continue
         
         final_score = successful / self.completions
-        print(f"\n📊 Final score: {final_score} ({successful}/{self.completions} successful)")
         return final_score
 
     async def generate(
@@ -91,9 +84,6 @@ class ListGenerator:
                     analysis = await self.analysis_agent.generate(problem)
                 
                 is_valid, reason = validate_analysis(analysis)
-                print(f"\n🔍 Analysis Validation: {'✅ Passed' if is_valid else '❌ Failed'}")
-                if not is_valid:
-                    print(f"Reason: {reason}")
                 if is_valid:
                     score = await self._score_with_completions(
                         problem,
@@ -101,11 +91,6 @@ class ListGenerator:
                         correct_answer
                     )
                     analyses.append((analysis, score))
-                    
-                    print(f"\n🎯 Analysis Score: {score}")
-                    if score > 0:
-                        print("✅ Found successful completion!")
-                        print(f"Analysis:\n{analysis[:200]}...")
                     
                     # Update best and worst scores
                     if score > best_score:
