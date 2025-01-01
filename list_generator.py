@@ -95,11 +95,9 @@ class ListGenerator:
                     if score > best_score:
                         best_score = score
                         best_analysis = analysis
-                        print(f"📈 New best score: {best_score}")
                     if score < worst_score:
                         worst_score = score
                         worst_analysis = analysis
-                        print(f"📉 New worst score: {worst_score}")
                     
                     # Check for perfect and zero scores
                     has_perfect = any(a[1] == 1.0 for a in analyses)
@@ -177,7 +175,6 @@ class ListGenerator:
                             
                     # Score step if no answer yet
                     is_valid = validate_step(step)
-                    print(f"\n🔍 Step Validation: {'✅ Passed' if is_valid else '❌ Failed'}")
                     if is_valid:
                         score = await self._score_with_completions(
                             problem,
