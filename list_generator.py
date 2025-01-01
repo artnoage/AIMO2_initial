@@ -90,10 +90,10 @@ class ListGenerator:
                     has_perfect = any(a[1] == 1.0 for a in analyses)
                     has_zero = any(a[1] == 0.0 for a in analyses)
                     
-                    # Break early if we have both
+                    # Break out of for loop if we have both
                     if has_perfect and has_zero:
                         logs.append(f"\n✓ Early stop in analysis: Found both perfect (1.0) and zero scoring analyses")
-                        break
+                        continue
                         
             except Exception:
                 continue
@@ -176,10 +176,10 @@ class ListGenerator:
                         elif score == 0.0:
                             has_zero = True
                             
-                        # Break early if we have both
+                        # Break out of for loop if we have both
                         if has_perfect and has_zero:
-                            logs.append(f"\n✓ Early stop: Found both perfect (1.0) and zero scoring steps")
-                            break
+                            logs.append(f"\n✓ Early stop in step {step_num}: Found both perfect (1.0) and zero scoring steps")
+                            continue
                             
                 except Exception:
                     continue
