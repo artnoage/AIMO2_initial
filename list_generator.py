@@ -171,12 +171,16 @@ class ListGenerator:
                     # Check if step contains answer
                     answer = extract_answer_from_solution(test_solution)
                     if answer is not None:
-                        score, _, _ = await self.verifier.verify(
+                        # Verify the answer is correct
+                        is_correct, _ = await self.verifier.verify(
                             test_solution,
                             correct_answer,
                             problem
                         )
-                        if score:  # Valid answer found
+                        # Also validate the complete solution
+                        is_valid, _ = validate_solution(test_solution)
+                        
+                        if is_correct and is_valid:  # Both correct answer and valid solution
                             steps.append((step, 1.0))
                             has_perfect = True
                             break
@@ -240,9 +244,13 @@ class ListGenerator:
             # Use best step and continue
             current_solution += steps[-1][0]
             
-            # Check if we found a valid answer
-            if extract_answer_from_solution(current_solution) is not None:
-                break
+            # Check if we found a valid and correct solution
+            answer = extract_answer_from_solution(current_solution)
+            if answer is not None:
+                is_correct, _ = await self.verifier.verify(current_solution, correct_answer, problem)
+                is_valid, _ = validate_solution(current_solution)
+                if is_correct and is_valid:
+                    break
                 
             step_num += 1
             
