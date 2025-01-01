@@ -183,6 +183,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
     clean_answer = clean_answer.replace('\\,', '')
+    clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
     
     # Keep only what comes after the last = or \approx if present
     if '=' in clean_answer or '\\approx' in clean_answer:
