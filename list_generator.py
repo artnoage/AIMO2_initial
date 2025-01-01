@@ -146,6 +146,10 @@ class ListGenerator:
         while True:
             steps = []
             step_prompt = None
+            best_step = None
+            worst_step = None
+            best_step_score = 0.0
+            worst_step_score = float('inf')
             
             # Generate and score steps
             has_perfect = False
