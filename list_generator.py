@@ -44,7 +44,6 @@ class ListGenerator:
                 if is_correct:
                     successful += 1
             except Exception as e:
-                print(f"❌ Error in completion: {str(e)}")
                 continue
         
         final_score = successful / self.completions
