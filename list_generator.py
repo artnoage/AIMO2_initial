@@ -131,13 +131,15 @@ class ListGenerator:
         logs.append(f"├─ Worst score: {worst_analysis_score:.3f}")
         logs.append(f"└─ Score difference: {(best_analysis_score - worst_analysis_score):.3f}")
         
-        results.append({
-            'prompt': {'content': analysis_prompt, 'role': 'user'},
-            'chosen': {'content': best_analysis, 'role': 'assistant'},
-            'rejected': {'content': worst_analysis, 'role': 'assistant'},
-            'score_chosen': best_analysis_score,
-            'score_rejected': worst_analysis_score
-        })
+        # Only append if worst score is zero
+        if worst_analysis_score == 0:
+            results.append({
+                'prompt': {'content': analysis_prompt, 'role': 'user'},
+                'chosen': {'content': best_analysis, 'role': 'assistant'},
+                'rejected': {'content': worst_analysis, 'role': 'assistant'},
+                'score_chosen': best_analysis_score,
+                'score_rejected': worst_analysis_score
+            })
         
         # Use best analysis as starting point
         current_solution = analyses[-1][0]
@@ -244,13 +246,15 @@ class ListGenerator:
             logs.append(f"├─ Worst score: {worst_step_score:.3f}")
             logs.append(f"└─ Score difference: {(best_step_score - worst_step_score):.3f}")
             
-            results.append({
-                'prompt': {'content': step_prompt, 'role': 'user'},
-                'chosen': {'content': best_step, 'role': 'assistant'},
-                'rejected': {'content': worst_step, 'role': 'assistant'},
-                'score_chosen': best_step_score,
-                'score_rejected': worst_step_score
-            })
+            # Only append if worst score is zero
+            if worst_step_score == 0:
+                results.append({
+                    'prompt': {'content': step_prompt, 'role': 'user'},
+                    'chosen': {'content': best_step, 'role': 'assistant'},
+                    'rejected': {'content': worst_step, 'role': 'assistant'},
+                    'score_chosen': best_step_score,
+                    'score_rejected': worst_step_score
+                })
             
             # Use best step and continue
             current_solution += steps[-1][0]
