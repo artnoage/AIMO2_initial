@@ -215,10 +215,12 @@ class ListGenerator:
                             
                         # If we have both perfect and zero scoring steps at this level,
                         # we don't need to sample more steps at this level - we already 
-                        # have good examples of what works and what doesn't work
+                        # have good examples of what works and what doesn't work.
+                        # Using break will exit only this for loop (sampling loop) but continue
+                        # the outer while loop (solution steps)
                         if has_perfect and has_zero:
                             logs.append(f"\n✓ Early stop sampling step {step_num}: Found both perfect (1.0) and zero scoring steps")
-                            break  # Break out of for loop, continue to next solution step
+                            break  # Exits only the for loop, continues with while loop
                             
                 except Exception:
                     continue
