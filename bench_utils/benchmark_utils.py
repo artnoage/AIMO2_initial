@@ -183,6 +183,14 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
     clean_answer = clean_answer.replace('\\,', '')
+    
+    # Keep only what comes after the last = or \approx if present
+    if '=' in clean_answer or '\\approx' in clean_answer:
+        last_eq = clean_answer.rfind('=')
+        last_approx = clean_answer.rfind('\\approx')
+        split_point = max(last_eq, last_approx)
+        if split_point != -1:
+            clean_answer = clean_answer[split_point + (2 if last_eq > last_approx else 8):].strip()
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
