@@ -151,14 +151,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Initialize models and verifier
         solver = get_model(ModelOption[config.solver], temp=config.temperature)
-        verifier_model = None if config.verification_type == 'numeric' else get_model(ModelOption[config.verifier], temp=config.verifier_temp)
-        second_verifier_model = None if config.verification_type != 'solution' else get_model(ModelOption[config.second_verifier], temp=config.verifier_temp)
-        verifier = create_verifier(
-            config.verification_type,
-            verifier_model=verifier_model,
-            second_verifier_model=second_verifier_model,
-            tolerance=config.tolerance
-        )
+        verifier = NumericVerifier(tolerance=config.tolerance)
 
         # Random approach selection
         r = random.random()
