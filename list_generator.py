@@ -38,13 +38,13 @@ class ListGenerator:
                     problem,
                     current_solution
                 )
-                score, total_steps, _ = await self.verifier.verify(
+                is_correct, answer = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
                     problem
                 )
-                print(f"Verification result: {score}/{total_steps}")
-                if score == total_steps:
+                print(f"Verification result: {'✅ Correct' if is_correct else '❌ Incorrect'}")
+                if is_correct:
                     successful += 1
                     print("✅ Successful completion!")
                 else:
