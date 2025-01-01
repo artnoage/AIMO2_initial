@@ -85,6 +85,16 @@ class ListGenerator:
                         correct_answer
                     )
                     analyses.append((analysis, score))
+                    
+                    # Check for perfect and zero scores
+                    has_perfect = any(a[1] == 1.0 for a in analyses)
+                    has_zero = any(a[1] == 0.0 for a in analyses)
+                    
+                    # Break early if we have both
+                    if has_perfect and has_zero:
+                        logs.append(f"\n✓ Early stop in analysis: Found both perfect (1.0) and zero scoring analyses")
+                        break
+                        
             except Exception:
                 continue
                 
