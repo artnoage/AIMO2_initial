@@ -200,7 +200,7 @@ class ListGenerator:
                         # Break out of for loop if we have both
                         if has_perfect and has_zero:
                             logs.append(f"\n✓ Early stop in step {step_num}: Found both perfect (1.0) and zero scoring steps")
-                            continue
+                            break
                             
                 except Exception:
                     continue
