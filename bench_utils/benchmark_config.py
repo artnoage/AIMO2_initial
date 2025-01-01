@@ -46,11 +46,7 @@ class BenchmarkConfig:
     completions: int = 20
     
     # Verification settings
-    verification_type: str = 'numeric'  # 'numeric', 'answer', or 'solution'
-    verifier: str = 'CODER'
-    second_verifier: str = 'CODER'
-    verifier_temp: float = 0
-    tolerance: float = 1e-6
+    tolerance: float = 1e-6  # Tolerance for numeric answer comparison
     
     # Output settings
     produce_statistics: bool = True
@@ -97,20 +93,8 @@ class BenchmarkConfig:
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments
-        parser.add_argument('--verifier', type=str,
-                          choices=[model.name for model in ModelOption],
-                          default='GEMINI_FLASH', help='Model to use for verification')
-        parser.add_argument('--second-verifier', type=str,
-                          choices=[model.name for model in ModelOption],
-                          default='NEMOTRON', help='Second model to use for verification')
-        parser.add_argument('--verifier-temp', type=float, default=0,
-                          help='Temperature for verifier models')
-        parser.add_argument('--verification-type', type=str,
-                          choices=['numeric', 'answer', 'solution'],
-                          default='numeric',
-                          help='Type of verification to use')
         parser.add_argument('--tolerance', type=float, default=1e-6,
-                          help='Tolerance for numeric answer comparison (only used with --numeric)')
+                          help='Tolerance for numeric answer comparison')
         
         # Output settings
         parser.add_argument('--produce-statistics', action='store_true', default=True,
