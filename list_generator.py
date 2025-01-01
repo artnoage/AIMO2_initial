@@ -118,6 +118,9 @@ class ListGenerator:
             step_prompt = None
             
             # Generate and score steps
+            has_perfect = False
+            has_zero = False
+            
             for _ in range(self.best_of):
                 try:
                     if step_prompt is None:
@@ -145,6 +148,7 @@ class ListGenerator:
                         )
                         if score:  # Valid answer found
                             steps.append((step, 1.0))
+                            has_perfect = True
                             break
                             
                     # Score step if no answer yet
@@ -155,6 +159,18 @@ class ListGenerator:
                             correct_answer
                         )
                         steps.append((step, score))
+                        
+                        # Check for perfect or zero score
+                        if score == 1.0:
+                            has_perfect = True
+                        elif score == 0.0:
+                            has_zero = True
+                            
+                        # Break early if we have both
+                        if has_perfect and has_zero:
+                            logs.append(f"\n✓ Early stop: Found both perfect (1.0) and zero scoring steps")
+                            break
+                            
                 except Exception:
                     continue
                     
