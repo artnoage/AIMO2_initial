@@ -131,8 +131,8 @@ class ListGenerator:
         logs.append(f"├─ Worst score: {worst_analysis_score:.3f}")
         logs.append(f"└─ Score difference: {(best_analysis_score - worst_analysis_score):.3f}")
         
-        # Only append if worst score is zero
-        if worst_analysis_score == 0:
+        # Append if score difference is more than 0.5
+        if best_analysis_score - worst_analysis_score > 0.5:
             results.append({
                 'prompt': {'content': analysis_prompt, 'role': 'user'},
                 'chosen': {'content': best_analysis, 'role': 'assistant'},
