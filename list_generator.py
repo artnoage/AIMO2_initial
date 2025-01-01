@@ -1,16 +1,13 @@
+import os
 import asyncio
 from typing import Dict, List, Optional, Tuple, Any
-from bench_utils.benchmark_utils import (
-    validate_analysis, 
-    validate_step,
-    extract_answer_from_solution,
-    NumericVerifier
-)
-from bench_utils.agents import (
-    AnalysisAgent,
-    NextStepAgent,
-    CompletionAgent
-)
+from dotenv import load_dotenv
+from bench_utils.benchmark_config import *
+from bench_utils.benchmark_utils import *
+from bench_utils.agents import *
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
 
 class ListGenerator:
     """Generates lists of solution components with best/worst variants"""
@@ -174,6 +171,51 @@ class ListGenerator:
             step_num += 1
             
         return results
+
+async def main():
+    """Main function for list generation approach"""
+    config = BenchmarkConfig.from_args('List generation approach for creating training data')
+    
+    async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
+        """Process a single example using list generation"""
+        try:
+            # Initialize solver
+            solver = get_model(ModelOption[config.solver], temp=config.temperature)
+            
+            # Create list generator
+            generator = ListGenerator(solver, config.best_of, config.completions)
+            
+            # Extract answer
+            correct_answer = extract_answer_from_solution(example['solution'])
+            if correct_answer is None:
+                print(f"Warning: Could not extract answer from solution for example {running_id}")
+                return None
+                
+            # Generate solution components
+            results = await generator.generate(example['problem'], correct_answer)
+            
+            # Add example ID to results
+            for result in results:
+                result['id'] = example_id
+                
+            return results
+            
+        except Exception as e:
+            print(f"Error processing example {running_id}: {str(e)}")
+            return None
+
+    await run_benchmark(
+        config=config,
+        process_example_func=process_example
+    )
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
 import asyncio
 from typing import Dict, List, Optional, Tuple, Any
 from bench_utils.benchmark_utils import (
