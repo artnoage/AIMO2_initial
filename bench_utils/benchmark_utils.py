@@ -387,14 +387,27 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
         
     # Check step numbering if expected step is provided
     if expected_step is not None:
-        step_mentions = [
-            f"step {expected_step}",
-            f"step{expected_step}",
-            f"({expected_step})",
-            f"{expected_step}."
-        ]
-        if not any(mention.lower() in resp.lower() for mention in step_mentions):
-            return False
+        # First check for any step numbers in the text
+        found_numbers = []
+        for pattern in STEP_NUMBER_PATTERNS:
+            match = pattern.search(resp)
+            if match:
+                found_numbers.append(int(match.group(1)))
+                
+        # If we found any numbers, they must match the expected step
+        if found_numbers:
+            if not any(num == expected_step for num in found_numbers):
+                return False
+        else:
+            # No explicit numbers found, check for text mentions
+            step_mentions = [
+                f"step {expected_step}",
+                f"step{expected_step}",
+                f"({expected_step})",
+                f"{expected_step}."
+            ]
+            if not any(mention.lower() in resp.lower() for mention in step_mentions):
+                return False
             
     # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
