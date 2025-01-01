@@ -117,6 +117,12 @@ class ListGenerator:
         # Use tracked best/worst scores
         best_analysis_score = best_score
         worst_analysis_score = worst_score
+
+        # Check if both scores are zero
+        if best_analysis_score == 0 and worst_analysis_score == 0:
+            logs.append(f"\n❌ Both analysis paths received zero scores")
+            print("\n".join(logs))
+            return []
             
         logs.append(f"\n📊 Analysis Phase:")
         logs.append(f"├─ Best score: {best_analysis_score:.3f}")
