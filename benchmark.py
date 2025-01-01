@@ -32,14 +32,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Create numeric verifier
                 verifier = NumericVerifier(tolerance=config.tolerance)
-                score, total_steps, current_answer = await verifier.verify(
+                is_correct, current_answer = await verifier.verify(
                     current_solution,
                     correct_answer,
                     example["problem"]
                 )
-                # For solution verification, consider it correct if it passes majority of steps
-                threshold = total_steps 
-                if score >= threshold:
+                
+                if is_correct:
                     correct_count += 1
                     if best_solution is None:
                         best_solution = current_solution
@@ -47,9 +46,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solutions.append({
                     'solution': current_solution,
                     'answer': current_answer,
-                    'verification_score': score,
-                    'verification_steps': total_steps,
-                    'is_correct': score == total_steps
+                    'is_correct': is_correct
                 })
             except Exception as e:
                 print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
@@ -82,8 +79,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'verification_scores': [s['verification_score'] for s in solutions],
-            'verification_steps': [s['verification_steps'] for s in solutions]
+            'is_correct': [s['is_correct'] for s in solutions]
         }]
         
     except Exception as e:
