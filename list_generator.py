@@ -112,6 +112,8 @@ class ListGenerator:
                 continue
                 
         if len(analyses) < 2:
+            logs.append(f"\n❌ Less than two valid analyses")
+            print("\n".join(logs))
             return []
             
         # Use tracked best/worst scores
@@ -120,7 +122,7 @@ class ListGenerator:
 
         # Check if both scores are zero
         if best_analysis_score == 0 and worst_analysis_score == 0:
-            logs.append(f"\n❌ Both analysis paths received zero scores")
+            logs.append(f"\n❌ ALL analysis paths received zero scores")
             print("\n".join(logs))
             return []
             
