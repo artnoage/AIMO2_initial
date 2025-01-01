@@ -166,6 +166,14 @@ class ListGenerator:
             best_step_score = steps[-1][1]
             worst_step_score = steps[0][1]
             
+            # Check if we have both a perfect and zero score step
+            has_perfect = any(step[1] == 1.0 for step in steps)
+            has_zero = any(step[1] == 0.0 for step in steps)
+            
+            if has_perfect and has_zero:
+                logs.append(f"\n✓ Stopping: Found both perfect (1.0) and zero scoring steps")
+                break
+                
             # Check if all steps have zero score or all steps have high scores (>0.7)
             all_zero = all(step[1] == 0 for step in steps)
             all_high = all(step[1] > 0.7 for step in steps)
