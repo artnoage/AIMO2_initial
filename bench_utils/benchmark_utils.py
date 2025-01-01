@@ -316,6 +316,12 @@ def validate_analysis(resp: str) -> Tuple[bool, str]:
     if "analysis" not in resp.lower():
         return False, "Missing 'analysis' keyword"
         
+    # Analysis should not contain steps or boxed answers
+    if "step" in resp.lower():
+        return False, "Contains step(s)"
+    if "\\boxed{" in resp:
+        return False, "Contains boxed answer"
+        
     return True, "Analysis valid"
 
 def validate_solution(solution: str) -> Tuple[bool, str]:
