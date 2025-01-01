@@ -426,31 +426,26 @@ class NumericVerifier:
     def __init__(self, tolerance: float = 1e-6):
         self.tolerance = tolerance
         
-    async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[int, int, Optional[str]]:
+    async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[bool, Optional[str]]:
+        """Verify if solution's answer matches correct_answer within tolerance"""
         if not solution or not correct_answer:
-            return 0, 1, None
+            return False, None
             
         model_answer = extract_answer_from_solution(solution)
         if model_answer is None:
-            return 0, 1, None
+            return False, None
         
-        # Extract and convert model answer
-        numeric_answer, model_error = extract_numeric_answer(model_answer, debug=False)
-        if numeric_answer is None:
-            return 0, 1, model_answer if model_error is None else f"{model_answer} (Error: {model_error})"
+        # Extract and convert answers to numeric values
+        numeric_answer, _ = extract_numeric_answer(model_answer, debug=False)
+        correct_numeric, _ = extract_numeric_answer(correct_answer, debug=False)
+        
+        if numeric_answer is None or correct_numeric is None:
+            return False, model_answer
             
-        # Extract and convert correct answer
-        correct_numeric, correct_error = extract_numeric_answer(correct_answer, debug=False)
-        if correct_numeric is None:
-            return 0, 1, model_answer if correct_error is None else f"{model_answer} (Error: Correct answer not parseable - {correct_error})"
-
         # Compare the numeric values
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
-        
-        # Return just the model answer if no debug info, otherwise include parsing details
-        display_answer = model_answer if model_error is None else f"{model_answer} (Model: {model_error}, Correct: {correct_error})"
             
-        return 1 if is_correct else 0, 1, display_answer
+        return is_correct, model_answer
 
 def calculate_rejected_score(solution: str) -> float:
     """Calculate rejected solution score starting from 0.4 and applying penalties"""
