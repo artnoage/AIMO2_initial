@@ -140,8 +140,8 @@ async def validate_entry(entry: Dict, verifier: NumericVerifier) -> bool:
 
     # Validate chosen solution
     if entry_type == "full_solution":
-        correct, total, _ = await verifier.verify(chosen_content, correct_answer, entry['prompt'])
-        is_valid = correct == total
+        is_correct, _ = await verifier.verify(chosen_content, correct_answer, entry['prompt'])
+        is_valid = is_correct
     elif entry_type == "analysis":
         is_valid = validate_analysis(chosen_content)[0]
     elif entry_type == "step":
