@@ -29,7 +29,7 @@ class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
     # Solver settings
     solver: str
-    temperature: float = 0.7
+    temperature: float = 0.9
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -62,8 +62,8 @@ class BenchmarkConfig:
         parser.add_argument('--solver', type=str, 
                           choices=[model.name for model in ModelOption],
                           default='LOCAL', help='Model to use for solving problems')
-        parser.add_argument('--temperature', type=float, default=0.7,
-                          help='Temperature for model generation (default: 0.7)')
+        parser.add_argument('--temperature', type=float, default=0.9,
+                          help='Temperature for model generation (default: 0.9)')
                           
         # Dataset arguments
         parser.add_argument('--dataset', type=str,
