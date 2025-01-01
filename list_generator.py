@@ -296,11 +296,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Add results comparing adjacent pairs with different scores
             for i in range(len(sorted_step_indices)-1):
                 if step_scores[sorted_step_indices[i]] > step_scores[sorted_step_indices[i+1]]:
+                    # Create entries with full solution context up to this point
                     results.append({
                         'id': example_id,
                         'prompt': {'content': step_prompts[sorted_step_indices[i]], 'role': 'user'},
-                        'chosen': {'content': steps[sorted_step_indices[i]], 'role': 'assistant'},
-                        'rejected': {'content': steps[sorted_step_indices[i+1]], 'role': 'assistant'},
+                        'chosen': {'content': current_solution + steps[sorted_step_indices[i]], 'role': 'assistant'},
+                        'rejected': {'content': current_solution + steps[sorted_step_indices[i+1]], 'role': 'assistant'},
                         'score_chosen': step_scores[sorted_step_indices[i]],
                         'score_rejected': step_scores[sorted_step_indices[i+1]]
                     })
