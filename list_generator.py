@@ -81,7 +81,10 @@ class ListGenerator:
                 else:
                     analysis = await self.analysis_agent.generate(problem)
                 
-                is_valid, _ = validate_analysis(analysis)
+                is_valid, reason = validate_analysis(analysis)
+                print(f"\n🔍 Analysis Validation: {'✅ Passed' if is_valid else '❌ Failed'}")
+                if not is_valid:
+                    print(f"Reason: {reason}")
                 if is_valid:
                     score = await self._score_with_completions(
                         problem,
@@ -185,7 +188,9 @@ class ListGenerator:
                             break
                             
                     # Score step if no answer yet
-                    if validate_step(step):
+                    is_valid = validate_step(step)
+                    print(f"\n🔍 Step Validation: {'✅ Passed' if is_valid else '❌ Failed'}")
+                    if is_valid:
                         score = await self._score_with_completions(
                             problem,
                             test_solution,
