@@ -182,7 +182,7 @@ class ListGenerator:
                             break
                             
                     # Score step if no answer yet
-                    is_valid = validate_step(step)
+                    is_valid = validate_step(step, expected_step=step_num)
                     if is_valid:
                         score = await self._score_with_completions(
                             problem,
