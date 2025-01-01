@@ -116,7 +116,12 @@ class ListGenerator:
         # Use tracked best/worst scores
         best_analysis_score = best_score
         worst_analysis_score = worst_score
-        
+            
+        print(f"\nAnalysis Scores:")
+        print(f"Best score: {best_analysis_score}")
+        print(f"Worst score: {worst_analysis_score}")
+        print(f"All scores: {[a[1] for a in analyses]}")
+            
         logs.append(f"\n📊 Analysis Phase:")
         logs.append(f"├─ Best score: {best_analysis_score:.3f}")
         logs.append(f"├─ Worst score: {worst_analysis_score:.3f}")
@@ -202,6 +207,11 @@ class ListGenerator:
             steps.sort(key=lambda x: x[1])
             best_step_score = steps[-1][1]
             worst_step_score = steps[0][1]
+            
+            print(f"\nStep Scores:")
+            print(f"Best score: {best_step_score}")
+            print(f"Worst score: {worst_step_score}")
+            print(f"All scores: {[s[1] for s in steps]}")
                 
             # Check if all steps have zero score or all steps have high scores (>0.7)
             all_zero = all(step[1] == 0 for step in steps)
