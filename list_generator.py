@@ -65,6 +65,10 @@ class ListGenerator:
         # Generate and score analyses
         analyses = []
         analysis_prompt = None
+        best_analysis = None
+        worst_analysis = None
+        best_score = 0.0
+        worst_score = float('inf')
         
         for _ in range(self.best_of):
             try:
@@ -86,6 +90,14 @@ class ListGenerator:
                     )
                     analyses.append((analysis, score))
                     
+                    # Update best and worst scores
+                    if score > best_score:
+                        best_score = score
+                        best_analysis = analysis
+                    if score < worst_score:
+                        worst_score = score
+                        worst_analysis = analysis
+                    
                     # Check for perfect and zero scores
                     has_perfect = any(a[1] == 1.0 for a in analyses)
                     has_zero = any(a[1] == 0.0 for a in analyses)
@@ -101,10 +113,9 @@ class ListGenerator:
         if len(analyses) < 2:
             return []
             
-        # Sort and get best/worst analysis
-        analyses.sort(key=lambda x: x[1])
-        best_analysis_score = analyses[-1][1]
-        worst_analysis_score = analyses[0][1]
+        # Use tracked best/worst scores
+        best_analysis_score = best_score
+        worst_analysis_score = worst_score
         
         logs.append(f"\n📊 Analysis Phase:")
         logs.append(f"├─ Best score: {best_analysis_score:.3f}")
@@ -113,8 +124,8 @@ class ListGenerator:
         
         results.append({
             'prompt': {'content': analysis_prompt, 'role': 'user'},
-            'chosen': {'content': analyses[-1][0], 'role': 'assistant'},
-            'rejected': {'content': analyses[0][0], 'role': 'assistant'},
+            'chosen': {'content': best_analysis, 'role': 'assistant'},
+            'rejected': {'content': worst_analysis, 'role': 'assistant'},
             'score_chosen': best_analysis_score,
             'score_rejected': worst_analysis_score
         })
