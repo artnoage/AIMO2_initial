@@ -90,13 +90,20 @@ class ListGenerator:
                     )
                     analyses.append((analysis, score))
                     
+                    print(f"\n🎯 Analysis Score: {score}")
+                    if score > 0:
+                        print("✅ Found successful completion!")
+                        print(f"Analysis:\n{analysis[:200]}...")
+                    
                     # Update best and worst scores
                     if score > best_score:
                         best_score = score
                         best_analysis = analysis
+                        print(f"📈 New best score: {best_score}")
                     if score < worst_score:
                         worst_score = score
                         worst_analysis = analysis
+                        print(f"📉 New worst score: {worst_score}")
                     
                     # Check for perfect and zero scores
                     has_perfect = any(a[1] == 1.0 for a in analyses)
