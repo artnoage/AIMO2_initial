@@ -30,7 +30,7 @@ class ListGenerator:
         """Score a partial solution by attempting completions"""
         successful = 0
         
-        for attempt in range(self.completions):
+        for _ in range(self.completions):
             try:
                 complete_solution = current_solution + await self.completion_agent.generate(
                     problem,
