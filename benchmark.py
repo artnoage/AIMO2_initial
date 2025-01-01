@@ -31,17 +31,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             try:
                 current_solution = await solution_agent.generate(example["problem"])
                 
-                # Create and use appropriate verifier
-                verifier_model = None if config.verification_type == 'numeric' else get_model(
-                    ModelOption[config.verifier], temp=config.verifier_temp, model_name=model_name)
-                second_verifier_model = None if config.verification_type != 'solution' else get_model(
-                    ModelOption[config.second_verifier], temp=config.verifier_temp, model_name=model_name)
-                verifier = create_verifier(
-                    config.verification_type,
-                    verifier_model=verifier_model,
-                    second_verifier_model=second_verifier_model,
-                    tolerance=config.tolerance
-                )
+                # Create numeric verifier
+                verifier = NumericVerifier(tolerance=config.tolerance)
                 score, total_steps, current_answer = await verifier.verify(
                     current_solution,
                     correct_answer,
