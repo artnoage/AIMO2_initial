@@ -59,6 +59,8 @@ class ListGenerator:
         """
         results = []
         current_solution = ""
+        logs = []
+        logs.append("\n=== List Generation Details ===")
         
         # Generate and score analyses
         analyses = []
@@ -91,12 +93,20 @@ class ListGenerator:
             
         # Sort and get best/worst analysis
         analyses.sort(key=lambda x: x[1])
+        best_analysis_score = analyses[-1][1]
+        worst_analysis_score = analyses[0][1]
+        
+        logs.append(f"\n📊 Analysis Phase:")
+        logs.append(f"├─ Best score: {best_analysis_score:.3f}")
+        logs.append(f"├─ Worst score: {worst_analysis_score:.3f}")
+        logs.append(f"└─ Score difference: {(best_analysis_score - worst_analysis_score):.3f}")
+        
         results.append({
             'prompt': {'content': analysis_prompt, 'role': 'user'},
             'chosen': {'content': analyses[-1][0], 'role': 'assistant'},
             'rejected': {'content': analyses[0][0], 'role': 'assistant'},
-            'score_chosen': analyses[-1][1],
-            'score_rejected': analyses[0][1]
+            'score_chosen': best_analysis_score,
+            'score_rejected': worst_analysis_score
         })
         
         # Use best analysis as starting point
@@ -153,12 +163,20 @@ class ListGenerator:
                 
             # Sort and get best/worst step
             steps.sort(key=lambda x: x[1])
+            best_step_score = steps[-1][1]
+            worst_step_score = steps[0][1]
+            
+            logs.append(f"\n📊 Step {step_num} Phase:")
+            logs.append(f"├─ Best score: {best_step_score:.3f}")
+            logs.append(f"├─ Worst score: {worst_step_score:.3f}")
+            logs.append(f"└─ Score difference: {(best_step_score - worst_step_score):.3f}")
+            
             results.append({
                 'prompt': {'content': step_prompt, 'role': 'user'},
                 'chosen': {'content': steps[-1][0], 'role': 'assistant'},
                 'rejected': {'content': steps[0][0], 'role': 'assistant'},
-                'score_chosen': steps[-1][1],
-                'score_rejected': steps[0][1]
+                'score_chosen': best_step_score,
+                'score_rejected': worst_step_score
             })
             
             # Use best step and continue
@@ -170,6 +188,8 @@ class ListGenerator:
                 
             step_num += 1
             
+        # Print all logs at the end
+        print("\n".join(logs))
         return results
 
 async def main():
