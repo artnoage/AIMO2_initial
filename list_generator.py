@@ -43,8 +43,8 @@ class ListGenerator:
                 )
                 if is_correct:
                     successful += 1
-            except Exception as e:
-                continue
+            except Exception:
+                successful += 0  # Explicitly count failed attempts
         
         final_score = successful / self.completions
         return final_score
