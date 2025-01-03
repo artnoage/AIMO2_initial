@@ -46,8 +46,9 @@ class FullSolutionSampler:
                     solution = await self.solution_agent.generate(problem)
 
                 # Validate solution format
-                is_valid, _ = validate_solution(solution)
+                is_valid, reason = validate_solution(solution)
                 if not is_valid:
+                    print(f"✗ Solution validation failed: {reason}")
                     continue
 
                 # Extract and verify answer
@@ -55,7 +56,7 @@ class FullSolutionSampler:
                 if answer is None:
                     continue
                     
-                is_correct, _ = await self.verifier.verify(
+                is_correct, reason = await self.verifier.verify(
                     solution,
                     correct_answer, 
                     problem
