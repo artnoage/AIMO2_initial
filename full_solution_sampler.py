@@ -103,23 +103,23 @@ async def process_full_solution(
     correct_quality = analyze_solution_quality(correct_solution)
     wrong_quality = analyze_solution_quality(wrong_solution)
                                                                                                     
-     logs.append(f"✓ Correct solution:")                                                            
-     logs.append(f"  ├─ Length: {correct_quality['length']} words")                                 
-     logs.append(f"  ├─ Steps: {correct_quality['step_count']}")                                    
-     logs.append(f"  ├─ Has equations: {'Yes' if correct_quality['has_equations'] else 'No'}")      
-     logs.append(f"  └─ Format score: {correct_quality['formatting_quality']}/5")                   
-                                                                                                    
-     logs.append(f"✓ Wrong solution:")                                                              
-     logs.append(f"  ├─ Length: {wrong_quality['length']} words")                                   
-     logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")                                      
-     logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")        
-     logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")                     
-                                                                                                    
-     # Scoring details                                                                              
-     logs.append(f"\n💯 Scoring Details:")                                                          
-     logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")                                    
-     logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")                                
-     logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")                      
+    logs.append(f"✓ Correct solution:")                                                            
+    logs.append(f"  ├─ Length: {correct_quality['length']} words")                                 
+    logs.append(f"  ├─ Steps: {correct_quality['step_count']}")                                    
+    logs.append(f"  ├─ Has equations: {'Yes' if correct_quality['has_equations'] else 'No'}")      
+    logs.append(f"  └─ Format score: {correct_quality['formatting_quality']}/5")                   
+                                                                                                
+    logs.append(f"✓ Wrong solution:")                                                              
+    logs.append(f"  ├─ Length: {wrong_quality['length']} words")                                   
+    logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")                                      
+    logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")        
+    logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")                     
+                                                                                                
+    # Scoring details                                                                              
+    logs.append(f"\n💯 Scoring Details:")                                                          
+    logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")                                    
+    logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")                                
+    logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")                      
     logs.append(
         f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
                                                                                                     
@@ -147,53 +147,53 @@ async def process_example(
              print(f"Error processing example {running_id}: Invalid example format")                
              return None                                                                            
                                                                                                     
-         correct_answer = extract_answer_from_solution(example['solution'])                         
-         if correct_answer is None:                                                                 
-             print(f"Warning: Could not extract answer from solution for example {running_id}")     
-             return None                                                                            
+        correct_answer = extract_answer_from_solution(example['solution'])                         
+        if correct_answer is None:                                                                 
+            print(f"Warning: Could not extract answer from solution for example {running_id}")     
+            return None                                                                            
                                                                                                     
          # Initialize models and verifier                                                           
-         solver = get_model(ModelOption[config.solver], temp=config.temperature)                    
-         verifier = NumericVerifier(tolerance=config.tolerance)                                     
+        solver = get_model(ModelOption[config.solver], temp=config.temperature)                    
+        verifier = NumericVerifier(tolerance=config.tolerance)                                     
                                                                                                     
-         logs.append("\n" + "="*80)                                                                 
-         logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")                             
-         logs.append("="*80)                                                                        
+        logs.append("\n" + "="*80)                                                                 
+        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")                             
+        logs.append("="*80)                                                                        
                                                                                                     
-         # Problem details                                                                          
-         logs.append(f"\n📋 Problem:")                                                              
-         logs.append(f"{example['problem'][:200]}...")                                              
-         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
-                                                                                                    
-         result = await process_full_solution(example, solver, verifier, config)                    
-         if not result:                                                                             
-             return None                                                                            
+        # Problem details                                                                          
+        logs.append(f"\n📋 Problem:")                                                              
+        logs.append(f"{example['problem'][:200]}...")                                              
+        logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
+                                                                                                
+        result = await process_full_solution(example, solver, verifier, config)                    
+        if not result:                                                                             
+            return None                                                                            
                                                                                                     
         bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
-         print(solution_logs)  # Print the logs from full solution                                  
+        print(solution_logs)  # Print the logs from full solution                                  
                                                                                                     
          # Add final summary to logs                                                                
-         logs.append("\n" + "="*50)                                                                 
-         logs.append("📊 Final Summary:")                                                           
-         processing_time = time.perf_counter() - start_time                                         
-         logs.append(f"├─ Processing time: {processing_time:.2f}s")                                 
-         logs.append(f"├─ Score chosen: {chosen_score:.3f}")                                        
-         logs.append(f"├─ Score rejected: {rejected_score:.3f}")                                    
-         logs.append(f"└─ Score difference: {abs(chosen_score - rejected_score):.3f}")              
-         logs.append("="*50)                                                                        
+        logs.append("\n" + "="*50)                                                                 
+        logs.append("📊 Final Summary:")                                                           
+        processing_time = time.perf_counter() - start_time                                         
+        logs.append(f"├─ Processing time: {processing_time:.2f}s")                                 
+        logs.append(f"├─ Score chosen: {chosen_score:.3f}")                                        
+        logs.append(f"├─ Score rejected: {rejected_score:.3f}")                                    
+        logs.append(f"└─ Score difference: {abs(chosen_score - rejected_score):.3f}")              
+        logs.append("="*50)                                                                        
                                                                                                     
          # Always print logs before returning result                                                
-         print("\n".join(logs))                                                                     
-                                                                                                    
-         # Return consistent format                                                                 
-         result = {                                                                                 
-             'id': example_id,                                                                      
-             'prompt': {'content': bifurcation_prompt, 'role': 'user'},                             
-             'chosen': {'content': chosen_response, 'role': 'assistant'},                           
-             'rejected': {'content': rejected_response, 'role': 'assistant'},                       
-             'score_chosen': chosen_score,                                                          
-             'score_rejected': rejected_score}                                                      
-         return [result]                                                                            
+        print("\n".join(logs))                                                                     
+                                                                                                
+        # Return consistent format                                                                 
+        result = {                                                                                 
+            'id': example_id,                                                                      
+            'prompt': {'content': bifurcation_prompt, 'role': 'user'},                             
+            'chosen': {'content': chosen_response, 'role': 'assistant'},                           
+            'rejected': {'content': rejected_response, 'role': 'assistant'},                       
+            'score_chosen': chosen_score,                                                          
+            'score_rejected': rejected_score}                                                      
+        return [result]                                                                            
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
@@ -204,34 +204,34 @@ async def process_example(
             else "context_length" if "context length" in str(e).lower()
             else "other"
         )
-         error_details = {                                                                          
-             'id': example_id,                                                                      
-             'status': 'error',                                                                     
-             'error_type': type(e).__name__,                                                        
-             'error_message': str(e),                                                               
-             'error_category': error_category,                                                      
-             'processing_time': processing_time,                                                    
-             'logs': "\n".join(logs)                                                                
-         }                                                                                          
-         logging.error(f"\n❌ Error processing example {running_id}:")                              
-         logging.error(f"├─ Error type: {error_details['error_type']}")                             
-         logging.error(f"├─ Error message: {error_details['error_message']}")                       
-         logging.error(f"├─ Processing time: {processing_time:.2f}s")                               
-         logging.error(f"└─ Example ID: {example_id}")                                              
-         return None                                                                                
+        error_details = {                                                                          
+            'id': example_id,                                                                      
+            'status': 'error',                                                                     
+            'error_type': type(e).__name__,                                                        
+            'error_message': str(e),                                                               
+            'error_category': error_category,                                                      
+            'processing_time': processing_time,                                                    
+            'logs': "\n".join(logs)                                                                
+        }                                                                                          
+        logging.error(f"\n❌ Error processing example {running_id}:")                              
+        logging.error(f"├─ Error type: {error_details['error_type']}")                             
+        logging.error(f"├─ Error message: {error_details['error_message']}")                       
+        logging.error(f"├─ Processing time: {processing_time:.2f}s")                               
+        logging.error(f"└─ Example ID: {example_id}")                                              
+        return None                                                                                
                                                                                                     
- async def main():                                                                                  
-     """Main function for full solution sampling approach."""                                       
-     config = BenchmarkConfig.from_args('Full solution sampling approach')                          
-     await run_benchmark(                                                                           
-         config=config,                                                                             
-         process_example_func=process_example                                                       
-     )                                                                                              
+async def main():                                                                                  
+    """Main function for full solution sampling approach."""                                       
+    config = BenchmarkConfig.from_args('Full solution sampling approach')                          
+    await run_benchmark(                                                                           
+        config=config,                                                                             
+        process_example_func=process_example                                                       
+    )                                                                                              
                                                                                                     
- if __name__ == "__main__":                                                                         
-     try:                                                                                           
-         asyncio.run(main())                                                                        
-     except KeyboardInterrupt:                                                                      
-         print("\nBenchmark interrupted by user")                                                   
-     except Exception as e:                                                                         
-         print(f"\nBenchmark failed with error: {e}")       
+if __name__ == "__main__":                                                                         
+    try:                                                                                           
+        asyncio.run(main())                                                                        
+    except KeyboardInterrupt:                                                                      
+        print("\nBenchmark interrupted by user")                                                   
+    except Exception as e:                                                                         
+        print(f"\nBenchmark failed with error: {e}")       
