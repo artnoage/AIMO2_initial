@@ -29,9 +29,11 @@ async def process_full_solution(
     wrong_solution = None
     total_solution_attempts = 0
     
+    print(f"\nStarting solution sampling with {config.best_of} max attempts...")
     attempts = 0
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
+        print(f"\nAttempt {attempts}/{config.best_of}:")
         try:
             total_solution_attempts += 1
             if bifurcation_prompt is None:
@@ -40,8 +42,10 @@ async def process_full_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
+            print("Validating solution structure...")
             # First validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
+            print(f"Validation result: {'✓ Valid' if is_valid else f'✗ Invalid - {validation_reason}'}") 
             if not is_valid:
                 # Consider invalid solutions as wrong solutions
                 if not found_wrong:
@@ -57,6 +61,7 @@ async def process_full_solution(
                                                                                                     
             logs.append(f"✓ Attempt {attempts} passed validation")
 
+            print("Verifying solution correctness...")
             # Only verify correctness for valid solutions
             is_correct, reason = await verifier.verify(
                 current_solution,
@@ -77,6 +82,7 @@ async def process_full_solution(
     if not found_correct or not found_wrong:
         return None
 
+    print("\nCalculating final scores...")
     # Calculate scores
     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
     if correct_attempt == 1:
