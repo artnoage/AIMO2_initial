@@ -1,18 +1,22 @@
- import os                                                                                          
- import time                                                                                        
- import logging                                                                                     
- import asyncio                                                                                     
- from typing import Dict, List, Optional, Any, Tuple                                                
- from dotenv import load_dotenv                                                                     
- from bench_utils.benchmark_config import *                                                         
- from bench_utils.benchmark_utils import *                                                          
- from bench_utils.agents import *                                                                   
+import os
+import time
+import logging
+import asyncio
+from typing import Dict, List, Optional, Any, Tuple
+from dotenv import load_dotenv
+from bench_utils.benchmark_config import *
+from bench_utils.benchmark_utils import *
+from bench_utils.agents import *
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
                                                                                                     
- os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"                                     
- load_dotenv()                                                                                      
-                                                                                                    
- async def process_full_solution(example: Dict, solver: any, verifier: any, config: BenchmarkConfig 
- -> Optional[Tuple[str, str, str, float, float, str]]:                                              
+async def process_full_solution(
+    example: Dict,
+    solver: any,
+    verifier: any,
+    config: BenchmarkConfig
+) -> Optional[Tuple[str, str, str, float, float, str]]:
      """Process example using full solution approach"""                                             
      logs = []                                                                                      
      solution_agent = FullSolutionAgent(solver)                                                     
@@ -30,11 +34,11 @@
          attempts += 1                                                                              
          try:                                                                                       
              total_solution_attempts += 1                                                           
-             if bifurcation_prompt is None:                                                         
-                 bifurcation_prompt, current_solution = await                                       
- solution_agent.generate(example["problem"], return_prompt=True)                                    
-             else:                                                                                  
-                 current_solution = await solution_agent.generate(example["problem"])               
+            if bifurcation_prompt is None:
+                bifurcation_prompt, current_solution = await solution_agent.generate(
+                    example["problem"], return_prompt=True)
+            else:
+                current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
              # First validate solution structure                                                    
              is_valid, validation_reason = validate_solution(current_solution)                      
@@ -117,14 +121,18 @@
      logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")                                    
      logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")                                
      logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")                      
-     logs.append(f"✓ Relative improvement: {((chosen_score -                                        
- rejected_score)/rejected_score)*100:.1f}%")                                                        
+    logs.append(
+        f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
                                                                                                     
      return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score,     
  "\n".join(logs)                                                                                    
                                                                                                     
- async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig 
- -> Optional[Dict]:                                                                                 
+async def process_example(
+    example: Dict,
+    running_id: int,
+    example_id: int,
+    config: BenchmarkConfig
+) -> Optional[Dict]:
      """Process a single example using full solution sampling"""                                    
      start_time = time.perf_counter()                                                               
      logs = []                                                                                      
@@ -156,8 +164,7 @@
          if not result:                                                                             
              return None                                                                            
                                                                                                     
-         bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score,      
- solution_logs = result                                                                             
+        bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
          print(solution_logs)  # Print the logs from full solution                                  
                                                                                                     
          # Add final summary to logs                                                                
