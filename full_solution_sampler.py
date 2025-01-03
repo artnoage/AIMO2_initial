@@ -81,10 +81,10 @@ async def process_full_solution(
     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
     if correct_attempt == 1:
         chosen_score = min(1.0, chosen_score + 0.1)
-                                                                                                    
-     rejected_score = calculate_rejected_score(wrong_solution)                                      
-                                                                                                    
-     # Print detailed logs                                                                          
+
+    rejected_score = calculate_rejected_score(wrong_solution)
+
+    # Print detailed logs
     logs.append("\n" + "="*50)
     logs.append("=== Full Solution Details ===")
     logs.append("="*50)
@@ -138,12 +138,12 @@ async def process_example(
     example_id: int,
     config: BenchmarkConfig
 ) -> Optional[Dict]:
-     """Process a single example using full solution sampling"""                                    
-     start_time = time.perf_counter()                                                               
-     logs = []                                                                                      
-                                                                                                    
-     try:                                                                                           
-         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example: 
+    """Process a single example using full solution sampling"""
+    start_time = time.perf_counter()
+    logs = []
+
+    try:
+        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
              print(f"Error processing example {running_id}: Invalid example format")                
              return None                                                                            
                                                                                                     
@@ -195,15 +195,15 @@ async def process_example(
              'score_rejected': rejected_score}                                                      
          return [result]                                                                            
                                                                                                     
-     except Exception as e:                                                                         
-         processing_time = time.perf_counter() - start_time                                         
-         error_category = (                                                                         
-             "timeout" if isinstance(e, TimeoutError)                                               
-             else "validation" if isinstance(e, ValueError)                                         
-             else "rate_limit" if "rate limit" in str(e).lower()                                    
-             else "context_length" if "context length" in str(e).lower()                            
-             else "other"                                                                           
-         )                                                                                          
+    except Exception as e:
+        processing_time = time.perf_counter() - start_time
+        error_category = (
+            "timeout" if isinstance(e, TimeoutError)
+            else "validation" if isinstance(e, ValueError)
+            else "rate_limit" if "rate limit" in str(e).lower()
+            else "context_length" if "context length" in str(e).lower()
+            else "other"
+        )
          error_details = {                                                                          
              'id': example_id,                                                                      
              'status': 'error',                                                                     
