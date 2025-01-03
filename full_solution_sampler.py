@@ -120,9 +120,15 @@ async def main():
             
             # Add example ID if we got a result
             if result is not None:
-                result['id'] = example_id
-                
-            return result
+                return [{
+                    'id': example_id,
+                    'prompt': result['prompt'],
+                    'chosen': result['chosen'],
+                    'rejected': result['rejected'],
+                    'score_chosen': result['score_chosen'],
+                    'score_rejected': result['score_rejected']
+                }]
+            return None
             
         except Exception as e:
             print(f"Error processing example {running_id}: {str(e)}")
