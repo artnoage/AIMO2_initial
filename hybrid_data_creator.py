@@ -55,13 +55,11 @@ async def process_full_solution(example: Dict, solver: any, verifier: any, confi
             logs.append(f"✓ Attempt {attempts} passed validation")
             
             # Only verify correctness for valid solutions
-            score, total_steps, current_answer = await verifier.verify(
+            is_correct, reason = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
                 example["problem"]
             )
-            
-            is_correct = score == total_steps
             if is_correct and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
@@ -370,10 +368,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 try:
                     complete_solution = path_1 + await completion_agent.generate(example["problem"], path_1)
-                    score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                    is_correct, reason = await verifier.verify(complete_solution, correct_answer, example["problem"])
                     logs.append(f"Path 1:")
-                    logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                    if score == total_steps:
+                    logs.append(f"├─ Verification Result: {reason}")
+                    if is_correct:
                         successful_path_1 += 1
                         logs.append(f"└─ Success! ({successful_path_1} total successes)")
                     else:
@@ -383,10 +381,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 try:
                     complete_solution = path_2 + await completion_agent.generate(example["problem"], path_2)
-                    score, total_steps, _ = await verifier.verify(complete_solution, correct_answer, example["problem"])
+                    is_correct, reason = await verifier.verify(complete_solution, correct_answer, example["problem"])
                     logs.append(f"Path 2:")
-                    logs.append(f"├─ Verification Score: {score}/{total_steps}")
-                    if score == total_steps:
+                    logs.append(f"├─ Verification Result: {reason}")
+                    if is_correct:
                         successful_path_2 += 1
                         logs.append(f"└─ Success! ({successful_path_2} total successes)")
                     else:
