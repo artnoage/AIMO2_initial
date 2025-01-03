@@ -54,7 +54,7 @@ async def process_full_solution(
             # Print detailed validation info
             print("\nValidation details:")
             print(f"- Has 'analysis' section: {'Yes' if 'analysis' in current_solution.lower() else 'No'}")
-            print(f"- Has boxed answer: {'Yes' if '\\boxed{' in current_solution else 'No'}")
+            print(f"- Has boxed answer: {'Yes' if 'boxed{' in current_solution else 'No'}")
             
             # Check for step patterns
             step_patterns = [
