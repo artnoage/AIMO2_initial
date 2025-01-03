@@ -40,47 +40,47 @@ async def process_full_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
-             # First validate solution structure                                                    
-             is_valid, validation_reason = validate_solution(current_solution)                      
-             if not is_valid:                                                                       
-                 # Consider invalid solutions as wrong solutions                                    
-                 if not found_wrong:                                                                
-                     found_wrong = True                                                             
-                     wrong_attempt = attempts                                                       
-                     wrong_solution = current_solution                                              
-                     logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
-                 elif not found_correct:                                                            
-                     continue  # Keep looking for correct solution                                  
-                 else:                                                                              
-                     break  # We have both solutions                                                
-                 continue                                                                           
+            # First validate solution structure
+            is_valid, validation_reason = validate_solution(current_solution)
+            if not is_valid:
+                # Consider invalid solutions as wrong solutions
+                if not found_wrong:
+                    found_wrong = True
+                    wrong_attempt = attempts
+                    wrong_solution = current_solution
+                    logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
+                elif not found_correct:
+                    continue  # Keep looking for correct solution
+                else:
+                    break  # We have both solutions
+                continue
                                                                                                     
-             logs.append(f"✓ Attempt {attempts} passed validation")                                 
+            logs.append(f"✓ Attempt {attempts} passed validation")
+
+            # Only verify correctness for valid solutions
+            is_correct, reason = await verifier.verify(
+                current_solution,
+                extract_answer_from_solution(example['solution']),
+                example["problem"]
+            )
+            if is_correct and not found_correct:
+                found_correct = True
+                correct_attempt = attempts
+                correct_solution = current_solution
+                logs.append(f"✓ Found correct solution on attempt {attempts}")
+                logs.append(f"  Total solution attempts: {total_solution_attempts}")
                                                                                                     
-             # Only verify correctness for valid solutions                                          
-             is_correct, reason = await verifier.verify(                                            
-                 current_solution,                                                                  
-                 extract_answer_from_solution(example['solution']),                                 
-                 example["problem"]                                                                 
-             )                                                                                      
-             if is_correct and not found_correct:                                                   
-                 found_correct = True                                                               
-                 correct_attempt = attempts                                                         
-                 correct_solution = current_solution                                                
-                 logs.append(f"✓ Found correct solution on attempt {attempts}")                     
-                 logs.append(f"  Total solution attempts: {total_solution_attempts}")               
-                                                                                                    
-         except Exception as e:                                                                     
-             print(f"Error in full solution attempt {attempts}: {str(e)}")                          
-             continue                                                                               
-                                                                                                    
-     if not found_correct or not found_wrong:                                                       
-         return None                                                                                
-                                                                                                    
-     # Calculate scores                                                                             
-     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)                                
-     if correct_attempt == 1:                                                                       
-         chosen_score = min(1.0, chosen_score + 0.1)                                                
+        except Exception as e:
+            print(f"Error in full solution attempt {attempts}: {str(e)}")
+            continue
+
+    if not found_correct or not found_wrong:
+        return None
+
+    # Calculate scores
+    chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
+    if correct_attempt == 1:
+        chosen_score = min(1.0, chosen_score + 0.1)
                                                                                                     
      rejected_score = calculate_rejected_score(wrong_solution)                                      
                                                                                                     
@@ -92,16 +92,16 @@ async def process_full_solution(
     # Success metrics
     logs.append(f"\n📊 Success Metrics:")
     logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
-     logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")            
-     logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")                           
-     logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")                            
-     logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")                              
-     logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")                        
-                                                                                                    
-     # Solution quality metrics                                                                     
-     logs.append(f"\n📝 Solution Quality:")                                                         
-     correct_quality = analyze_solution_quality(correct_solution)                                   
-     wrong_quality = analyze_solution_quality(wrong_solution)                                       
+    logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
+    logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
+    logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
+    logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")
+    logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
+
+    # Solution quality metrics
+    logs.append(f"\n📝 Solution Quality:")
+    correct_quality = analyze_solution_quality(correct_solution)
+    wrong_quality = analyze_solution_quality(wrong_solution)
                                                                                                     
      logs.append(f"✓ Correct solution:")                                                            
      logs.append(f"  ├─ Length: {correct_quality['length']} words")                                 
