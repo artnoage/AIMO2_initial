@@ -17,18 +17,18 @@ async def process_full_solution(
     verifier: any,
     config: BenchmarkConfig
 ) -> Optional[Tuple[str, str, str, float, float, str]]:
-     """Process example using full solution approach"""                                             
-     logs = []                                                                                      
-     solution_agent = FullSolutionAgent(solver)                                                     
-     bifurcation_prompt = None                                                                      
-     found_correct = False                                                                          
-     found_wrong = False                                                                            
-     correct_attempt = 0                                                                            
-     wrong_attempt = 0                                                                              
-     correct_solution = None                                                                        
-     wrong_solution = None                                                                          
-     total_solution_attempts = 0                                                                    
-                                                                                                    
+    """Process example using full solution approach"""
+    logs = []
+    solution_agent = FullSolutionAgent(solver)
+    bifurcation_prompt = None
+    found_correct = False
+    found_wrong = False
+    correct_attempt = 0
+    wrong_attempt = 0
+    correct_solution = None
+    wrong_solution = None
+    total_solution_attempts = 0
+    
     attempts = 0
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
@@ -124,8 +124,14 @@ async def process_full_solution(
     logs.append(
         f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
                                                                                                     
-     return bifurcation_prompt, correct_solution, wrong_solution, chosen_score, rejected_score,     
- "\n".join(logs)                                                                                    
+    return (
+        bifurcation_prompt,
+        correct_solution,
+        wrong_solution,
+        chosen_score,
+        rejected_score,
+        "\n".join(logs)
+    )
                                                                                                     
 async def process_example(
     example: Dict,
