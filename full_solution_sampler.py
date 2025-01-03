@@ -29,11 +29,11 @@ async def process_full_solution(
      wrong_solution = None                                                                          
      total_solution_attempts = 0                                                                    
                                                                                                     
-     attempts = 0                                                                                   
-     while (not found_correct or not found_wrong) and attempts < config.best_of:                    
-         attempts += 1                                                                              
-         try:                                                                                       
-             total_solution_attempts += 1                                                           
+    attempts = 0
+    while (not found_correct or not found_wrong) and attempts < config.best_of:
+        attempts += 1
+        try:
+            total_solution_attempts += 1
             if bifurcation_prompt is None:
                 bifurcation_prompt, current_solution = await solution_agent.generate(
                     example["problem"], return_prompt=True)
@@ -86,13 +86,13 @@ async def process_full_solution(
      rejected_score = calculate_rejected_score(wrong_solution)                                      
                                                                                                     
      # Print detailed logs                                                                          
-     logs.append("\n" + "="*50)                                                                     
-     logs.append("=== Full Solution Details ===")                                                   
-     logs.append("="*50)                                                                            
-                                                                                                    
-     # Success metrics                                                                              
-     logs.append(f"\n📊 Success Metrics:")                                                          
-     logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")        
+    logs.append("\n" + "="*50)
+    logs.append("=== Full Solution Details ===")
+    logs.append("="*50)
+    
+    # Success metrics
+    logs.append(f"\n📊 Success Metrics:")
+    logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
      logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")            
      logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")                           
      logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")                            
