@@ -48,8 +48,7 @@ async def process_full_solution(
                      found_wrong = True                                                             
                      wrong_attempt = attempts                                                       
                      wrong_solution = current_solution                                              
-                     logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}:          
- {validation_reason}")                                                                              
+                     logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
                  elif not found_correct:                                                            
                      continue  # Keep looking for correct solution                                  
                  else:                                                                              
