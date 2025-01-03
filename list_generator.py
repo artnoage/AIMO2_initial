@@ -60,6 +60,7 @@ class ListGenerator:
         """
         results = []
         current_solution = ""
+        rejected_part_solution = ""  # Track rejected solution path
         logs = []
         logs.append("\n=== List Generation Details ===")
         
@@ -133,12 +134,14 @@ class ListGenerator:
         
         # Append if score difference is more than 0.5
         if best_analysis_score - worst_analysis_score > 0.5:
+            rejected_part_solution = worst_analysis  # Track rejected analysis
             results.append({
                 'prompt': {'content': analysis_prompt, 'role': 'user'},
                 'chosen': {'content': best_analysis, 'role': 'assistant'},
                 'rejected': {'content': worst_analysis, 'role': 'assistant'},
                 'score_chosen': best_analysis_score,
-                'score_rejected': worst_analysis_score
+                'score_rejected': worst_analysis_score,
+                'rejected_part_solution': rejected_part_solution
             })
         
         # Use best analysis as starting point
@@ -248,12 +251,15 @@ class ListGenerator:
             
             # Only append if worst score is zero
             if worst_step_score == 0:
+                # Update rejected part solution with current solution plus worst step
+                rejected_part_solution = current_solution + worst_step
                 results.append({
                     'prompt': {'content': step_prompt, 'role': 'user'},
                     'chosen': {'content': best_step, 'role': 'assistant'},
                     'rejected': {'content': worst_step, 'role': 'assistant'},
                     'score_chosen': best_step_score,
-                    'score_rejected': worst_step_score
+                    'score_rejected': worst_step_score,
+                    'rejected_part_solution': rejected_part_solution
                 })
             
             # Use best step and continue
