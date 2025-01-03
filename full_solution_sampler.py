@@ -44,6 +44,7 @@ async def process_full_solution(
                                                                                                     
             print("Validating solution structure...")
             # First validate solution structure
+            print(current_solution)
             is_valid, validation_reason = validate_solution(current_solution)
             print(f"Validation result: {'✓ Valid' if is_valid else f'✗ Invalid - {validation_reason}'}") 
             if not is_valid:
