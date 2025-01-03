@@ -42,11 +42,37 @@ async def process_full_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
-            print("Validating solution structure...")
-            # First validate solution structure
+            print("\nValidating solution structure...")
+            print("Current solution text:")
+            print("-" * 40)
             print(current_solution)
+            print("-" * 40)
+            
+            # First validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
-            print(f"Validation result: {'✓ Valid' if is_valid else f'✗ Invalid - {validation_reason}'}") 
+            
+            # Print detailed validation info
+            print("\nValidation details:")
+            print(f"- Has 'analysis' section: {'Yes' if 'analysis' in current_solution.lower() else 'No'}")
+            print(f"- Has '\\boxed{{': {'Yes' if '\\boxed{' in current_solution else 'No'}")
+            
+            # Check for step patterns
+            step_patterns = [
+                r'^.{0,2}(\d+)[:\)]',
+                r'^.{0,2}\((\d+)\)',
+                r'^.{0,2}(\d+)\s'
+            ]
+            
+            print("\nChecking step patterns:")
+            steps = current_solution.lower().split("step")[1:]  # Skip text before first "step"
+            for i, step in enumerate(steps, 1):
+                print(f"\nStep {i} text (first 50 chars): {step[:50]}...")
+                for pattern in step_patterns:
+                    match = re.search(pattern, step)
+                    if match:
+                        print(f"  Found step number {match.group(1)} with pattern {pattern}")
+                        
+            print(f"\nValidation result: {'✓ Valid' if is_valid else f'✗ Invalid - {validation_reason}'}")
             if not is_valid:
                 # Consider invalid solutions as wrong solutions
                 if not found_wrong:
