@@ -169,10 +169,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         if r < 0.8:  # Full solution approach
             result = await process_full_solution(example, solver, verifier, config)
-            if result is None:
+            if not result or result is None:
                 return None
-            bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
-            print(solution_logs)  # Print the logs from full solution
+            try:
+                bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
+                print(solution_logs)  # Print the logs from full solution
+            except ValueError:
+                logging.error(f"Invalid result format from process_full_solution: {result}")
+                return None
             
         else:  # Analysis/Steps approach
             logs.append("\n=== Analysis/Steps Details ===")
