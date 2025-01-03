@@ -29,11 +29,9 @@ async def process_full_solution(
     wrong_solution = None
     total_solution_attempts = 0
     
-    print(f"\nStarting solution sampling with {config.best_of} max attempts...")
     attempts = 0
     while (not found_correct or not found_wrong) and attempts < config.best_of:
         attempts += 1
-        print(f"\nAttempt {attempts}/{config.best_of}:")
         try:
             total_solution_attempts += 1
             if bifurcation_prompt is None:
@@ -42,37 +40,8 @@ async def process_full_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
-            print("\nValidating solution structure...")
-            print("Current solution text:")
-            print("-" * 40)
-            print(current_solution)
-            print("-" * 40)
-            
-            # First validate solution structure
+            # Validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
-            
-            # Print detailed validation info
-            print("\nValidation details:")
-            print(f"- Has 'analysis' section: {'Yes' if 'analysis' in current_solution.lower() else 'No'}")
-            print(f"- Has boxed answer: {'Yes' if 'boxed{' in current_solution else 'No'}")
-            
-            # Check for step patterns
-            step_patterns = [
-                r'^.{0,2}(\d+)[:\)]',
-                r'^.{0,2}\((\d+)\)',
-                r'^.{0,2}(\d+)\s'
-            ]
-            
-            print("\nChecking step patterns:")
-            steps = current_solution.lower().split("step")[1:]  # Skip text before first "step"
-            for i, step in enumerate(steps, 1):
-                print(f"\nStep {i} text (first 50 chars): {step[:50]}...")
-                for pattern in step_patterns:
-                    match = re.search(pattern, step)
-                    if match:
-                        print(f"  Found step number {match.group(1)} with pattern {pattern}")
-                        
-            print(f"\nValidation result: {'✓ Valid' if is_valid else f'✗ Invalid - {validation_reason}'}")
             if not is_valid:
                 # Consider invalid solutions as wrong solutions
                 if not found_wrong:
@@ -88,7 +57,6 @@ async def process_full_solution(
                                                                                                     
             logs.append(f"✓ Attempt {attempts} passed validation")
 
-            print("Verifying solution correctness...")
             # Only verify correctness for valid solutions
             is_correct, reason = await verifier.verify(
                 current_solution,
@@ -109,7 +77,9 @@ async def process_full_solution(
     if not found_correct or not found_wrong:
         return None
 
-    print("\nCalculating final scores...")
+    # Print summary of attempts
+    print(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
+    print(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
     # Calculate scores
     chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
     if correct_attempt == 1:
