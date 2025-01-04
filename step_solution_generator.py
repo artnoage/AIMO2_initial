@@ -132,8 +132,8 @@ class ListGenerator:
         logs.append(f"├─ Worst score: {worst_analysis_score:.3f}")
         logs.append(f"└─ Score difference: {(best_analysis_score - worst_analysis_score):.3f}")
         
-        # Append if score difference is more than 0.5
-        if best_analysis_score - worst_analysis_score > 0.5:
+        # Append if score difference is more than 0.5 and analyses are different
+        if best_analysis_score - worst_analysis_score > 0.5 and best_analysis != worst_analysis:
             rejected_part_solution = worst_analysis  # Track rejected analysis
             results.append({
                 'problem': problem,
@@ -252,7 +252,9 @@ class ListGenerator:
             logs.append(f"└─ Score difference: {(best_step_score - worst_step_score):.3f}")
             
             # Only append if worst score is zero AND we have a valid best step with non-zero score
-            if worst_step_score == 0 and best_step is not None and best_step_score > 0:
+            # AND the steps are different
+            if (worst_step_score == 0 and best_step is not None and 
+                best_step_score > 0 and best_step != worst_step):
                 # Update rejected part solution with current solution plus worst step
                 rejected_part_solution = current_solution + worst_step
                 results.append({
