@@ -58,7 +58,16 @@ def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
         if "Here is a mathematical problem:" in prompt:
             parts = prompt.split("Here is a mathematical problem:", 1)
             if len(parts) == 2:
-                problem_text = parts[1].split("Before solving", 1)[0]
+                # Extract just the problem text before any analysis instructions
+                problem_text = parts[1].split("\n\nBefore solving", 1)[0]
+                # Further clean by splitting on any analysis-related text
+                for marker in [
+                    "Before solving this problem",
+                    "provide a thorough analysis",
+                    "Important guidelines:"
+                ]:
+                    if marker in problem_text:
+                        problem_text = problem_text.split(marker)[0]
                 return clean_problem_text(problem_text), "analysis"
                 
     # Handle unknown format
