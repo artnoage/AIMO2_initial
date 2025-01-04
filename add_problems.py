@@ -13,8 +13,8 @@ def parse_null(val):
 # Register the custom parser
 json.JSONDecoder.parse_constant = parse_null
 
-def extract_problem_from_prompt(prompt: str) -> Optional[str]:
-    """Extract problem from different types of prompts"""
+def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
+    """Extract problem from different types of prompts and return problem and type"""
     
     # For FullSolutionAgent format
     full_solution_pattern = r"Solve this math problem step by step:\n\n(.*?)(?:\n\nProvide|$)"
@@ -25,14 +25,16 @@ def extract_problem_from_prompt(prompt: str) -> Optional[str]:
     # Try full solution pattern first
     match = re.search(full_solution_pattern, prompt, re.DOTALL)
     if match:
-        return match.group(1).strip()
+        return match.group(1).strip(), "full_solution"
         
     # Try step pattern
     match = re.search(step_pattern, prompt, re.DOTALL)
     if match:
-        return match.group(1).strip()
+        return match.group(1).strip(), "step"
         
-    return None
+    # Print first few chars to help debug
+    preview = prompt[:100].replace('\n', '\\n')
+    return None, f"unknown (preview: {preview}...)"
 
 def process_json_file(input_path: str, output_path: str):
     """Process JSON file to add problem field to each entry"""
@@ -59,13 +61,13 @@ def process_json_file(input_path: str, output_path: str):
             
         if 'prompt' in entry:
             prompt_content = entry['prompt'].get('content') or ''
-            problem = extract_problem_from_prompt(prompt_content)
+            problem, prompt_type = extract_problem_from_prompt(prompt_content)
             if problem:
                 entry['problem'] = problem
                 modified = True
-                print(f"Entry {i}: Added problem field")
+                print(f"Entry {i}: Added problem field (type: {prompt_type})")
             else:
-                print(f"Entry {i}: Could not extract problem")
+                print(f"Entry {i}: Could not extract problem (type: {prompt_type})")
             filtered_data.append(entry)
                 
     if filtered_data:
