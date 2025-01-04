@@ -41,20 +41,28 @@ def process_json_file(input_path: str, output_path: str):
         data = json.load(f, strict=False)
         
     modified = False
+    filtered_data = []
     
     for entry in data:
-        if 'problem' in entry:
+        # Skip entries with null content
+        if 'prompt' in entry and entry['prompt'].get('content') is None:
             continue
+            
+        if 'problem' in entry:
+            filtered_data.append(entry)
+            continue
+            
         if 'prompt' in entry:
             prompt_content = entry['prompt'].get('content') or ''
             problem = extract_problem_from_prompt(prompt_content)
             if problem:
                 entry['problem'] = problem
                 modified = True
+            filtered_data.append(entry)
                 
-    if modified:
+    if filtered_data:
         with open(output_path, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(filtered_data, f, indent=2)
         print(f"Updated {output_path} with problem fields")
     else:
         print(f"No changes needed for {input_path}")
