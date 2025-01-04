@@ -17,29 +17,26 @@ def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
     """Extract problem from different types of prompts and return problem and type"""
     
     # For FullSolutionAgent format
-    if "[INST]" in prompt and "[/INST]" in prompt:
-        # Extract content between [INST] and [/INST]
-        inst_pattern = r"\[INST\](.*?)\[/INST\]"
-        match = re.search(inst_pattern, prompt, re.DOTALL)
-        if match:
-            inst_content = match.group(1).strip()
-            # Now look for the problem within the instruction
-            if "Solve this step by step:" in inst_content:
-                problem = inst_content.split("Solve this step by step:", 1)[1].strip()
-                return problem, "full_solution"
+    if "Here is a mathematical problem to solve:" in prompt:
+        parts = prompt.split("Here is a mathematical problem to solve:", 1)
+        if len(parts) == 2:
+            problem_text = parts[1].split("Please provide", 1)[0].strip()
+            return problem_text, "full_solution"
     
     # For NextStepAgent format
-    if "Current solution so far:" in prompt:
-        # Extract problem before the current solution
-        parts = prompt.split("Current solution so far:", 1)
-        if len(parts) == 2 and "Problem:" in parts[0]:
-            problem = parts[0].split("Problem:", 1)[1].strip()
-            return problem, "step"
+    if "Here is a mathematical problem:" in prompt:
+        parts = prompt.split("Here is a mathematical problem:", 1)
+        if len(parts) == 2:
+            # Extract between the header and "Your task is"
+            problem_text = parts[1].split("Your task is", 1)[0].strip()
+            return problem_text, "step"
             
     # For AnalysisAgent format
-    if "Analyze this problem:" in prompt:
-        problem = prompt.split("Analyze this problem:", 1)[1].strip()
-        return problem, "analysis"
+    if "You are a mathematical analysis expert" in prompt:
+        parts = prompt.split("Here is a mathematical problem:", 1)
+        if len(parts) == 2:
+            problem_text = parts[1].split("Before solving", 1)[0].strip()
+            return problem_text, "analysis"
     
     # Print first few chars to help debug
     preview = prompt[:100].replace('\n', '\\n')
