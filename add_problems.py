@@ -13,8 +13,8 @@ def parse_null(val):
 # Register the custom parser
 json.JSONDecoder.parse_constant = parse_null
 
-def extract_partial_solution(prompt: str) -> Optional[str]:
-    """Extract partial solution from NextStepAgent prompt"""
+def extract_reject_part_solution(prompt: str) -> Optional[str]:
+    """Extract reject part solution from NextStepAgent prompt"""
     if "Here are the steps so far:" in prompt:
         parts = prompt.split("Here are the steps so far:\n\n")
         if len(parts) == 2:
@@ -105,12 +105,12 @@ def process_json_file(input_path: str, output_path: str):
                 
             # Create rejected_partial_solution if needed
             if 'prompt' in entry and 'rejected' in entry:
-                partial = extract_partial_solution(prompt_content)
-                if partial is not None:
-                    # Create rejected_partial_solution by combining partial with rejected step
+                reject_part = extract_reject_part_solution(prompt_content)
+                if reject_part is not None:
+                    # Create rejected_partial_solution by combining reject part with rejected step
                     rejected_content = entry['rejected'].get('content', '')
                     if rejected_content:
-                        entry['rejected_partial_solution'] = (partial + "\n" + rejected_content).strip() if partial else rejected_content
+                        entry['rejected_partial_solution'] = (reject_part + "\n" + rejected_content).strip() if reject_part else rejected_content
                 
             # Reorder fields to ensure id and problem come first
             ordered_entry = {}
