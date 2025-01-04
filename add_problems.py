@@ -70,11 +70,23 @@ def process_json_file(input_path: str, output_path: str):
             if problem:
                 entry['problem'] = problem
                 modified = True
-            filtered_data.append(entry)
+            # Reorder fields to ensure id and problem come first
+            ordered_entry = {}
+            # Add id first if it exists
+            if 'id' in entry:
+                ordered_entry['id'] = entry['id']
+            # Add problem second
+            if 'problem' in entry:
+                ordered_entry['problem'] = entry['problem']
+            # Add remaining fields
+            for key, value in entry.items():
+                if key not in ['id', 'problem']:
+                    ordered_entry[key] = value
+            filtered_data.append(ordered_entry)
                 
     if filtered_data:
         with open(output_path, 'w') as f:
-            json.dump(filtered_data, f, indent=2)
+            json.dump(filtered_data, f, indent=2, ensure_ascii=False)
 
 def main():
     parser = argparse.ArgumentParser(description='Add missing problem fields to JSON files')
