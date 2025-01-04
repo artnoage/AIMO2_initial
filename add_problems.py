@@ -54,9 +54,8 @@ def process_json_file(input_path: str, output_path: str):
         
     modified = False
     filtered_data = []
-    print(f"Processing {len(data)} entries...")
     
-    for i, entry in enumerate(data):
+    for entry in data:
         # Skip entries with null content
         if 'prompt' in entry and entry['prompt'].get('content') is None:
             continue
@@ -67,22 +66,15 @@ def process_json_file(input_path: str, output_path: str):
             
         if 'prompt' in entry:
             prompt_content = entry['prompt'].get('content') or ''
-            problem, prompt_type = extract_problem_from_prompt(prompt_content)
+            problem, _ = extract_problem_from_prompt(prompt_content)
             if problem:
                 entry['problem'] = problem
                 modified = True
-                print(f"Entry {i}: Added problem field (type: {prompt_type})")
-            else:
-                print(f"Entry {i}: Could not extract problem (type: {prompt_type})")
             filtered_data.append(entry)
                 
     if filtered_data:
-        print(f"Writing {len(filtered_data)} entries to output file...")
         with open(output_path, 'w') as f:
             json.dump(filtered_data, f, indent=2)
-        print(f"Updated {output_path} with problem fields")
-    else:
-        print(f"No changes needed for {input_path}")
 
 def main():
     parser = argparse.ArgumentParser(description='Add missing problem fields to JSON files')
