@@ -50,21 +50,12 @@ def process_json_file(input_path: str, output_path: str):
 
 def main():
     parser = argparse.ArgumentParser(description='Add missing problem fields to JSON files')
-    parser.add_argument('input_files', nargs='+', help='Input JSON files to process')
-    parser.add_argument('--output-dir', help='Output directory (default: same as input)', default=None)
+    parser.add_argument('input_file', help='Input JSON file to process')
+    parser.add_argument('output_file', help='Output JSON file path')
     
     args = parser.parse_args()
     
-    for input_file in args.input_files:
-        input_path = Path(input_file)
-        if args.output_dir:
-            output_dir = Path(args.output_dir)
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / input_path.name
-        else:
-            output_path = input_path.parent / f"updated_{input_path.name}"
-            
-        process_json_file(str(input_path), str(output_path))
+    process_json_file(args.input_file, args.output_file)
 
 if __name__ == "__main__":
     main()
