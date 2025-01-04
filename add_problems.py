@@ -103,11 +103,10 @@ def process_json_file(input_path: str, output_path: str):
                 entry['problem'] = problem
                 modified = True
                 
-            # Extract partial solution and create rejected_partial_solution if needed
+            # Create rejected_partial_solution if needed
             if 'prompt' in entry and 'rejected' in entry:
                 partial = extract_partial_solution(prompt_content)
                 if partial is not None:
-                    entry['partial_solution'] = partial
                     # Create rejected_partial_solution by combining partial with rejected step
                     rejected_content = entry['rejected'].get('content', '')
                     if rejected_content:
