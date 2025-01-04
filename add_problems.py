@@ -22,31 +22,46 @@ def extract_partial_solution(prompt: str) -> Optional[str]:
     return None
 
 def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
-    """Extract problem from different types of prompts and return problem and type"""
+    """
+    Extract problem from different types of prompts and return problem and type.
+    Handles FullSolutionAgent, NextStepAgent, and AnalysisAgent formats.
+    """
     
-    # For FullSolutionAgent format
+    def clean_problem_text(text: str) -> str:
+        """Clean extracted problem text by removing common artifacts"""
+        # Remove extra whitespace and normalize newlines
+        text = re.sub(r'\s+', ' ', text.strip())
+        # Remove any trailing colons or periods
+        text = text.rstrip(':.')
+        return text
+    
+    # Identify prompt type and extract accordingly
     if "Here is a mathematical problem to solve:" in prompt:
+        # FullSolutionAgent format
         parts = prompt.split("Here is a mathematical problem to solve:", 1)
         if len(parts) == 2:
-            problem_text = parts[1].split("Please provide", 1)[0].strip()
-            return problem_text, "full_solution"
-    
-    # For NextStepAgent format
-    if "Here is a mathematical problem:" in prompt:
-        parts = prompt.split("Here is a mathematical problem:", 1)
-        if len(parts) == 2:
-            # Extract between the header and "Your task is"
-            problem_text = parts[1].split("Your task is", 1)[0].strip()
-            return problem_text, "step"
+            problem_text = parts[1].split("Please provide", 1)[0]
+            return clean_problem_text(problem_text), "full_solution"
             
-    # For AnalysisAgent format
-    if "You are a mathematical analysis expert" in prompt:
+    elif "Here is a mathematical problem:" in prompt:
+        # NextStepAgent format
         parts = prompt.split("Here is a mathematical problem:", 1)
         if len(parts) == 2:
-            problem_text = parts[1].split("Before solving", 1)[0].strip()
-            return problem_text, "analysis"
-    
-    # Print first few chars to help debug
+            if "Your task is" in parts[1]:
+                problem_text = parts[1].split("Your task is", 1)[0]
+            else:
+                problem_text = parts[1].split("Guidelines:", 1)[0]
+            return clean_problem_text(problem_text), "step"
+            
+    elif "You are a mathematical analysis expert" in prompt:
+        # AnalysisAgent format
+        if "Here is a mathematical problem:" in prompt:
+            parts = prompt.split("Here is a mathematical problem:", 1)
+            if len(parts) == 2:
+                problem_text = parts[1].split("Before solving", 1)[0]
+                return clean_problem_text(problem_text), "analysis"
+                
+    # Handle unknown format
     preview = prompt[:100].replace('\n', '\\n')
     return None, f"unknown (preview: {preview}...)"
 
