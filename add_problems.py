@@ -40,10 +40,15 @@ def process_json_file(input_path: str, output_path: str):
     with open(input_path, 'r') as f:
         data = json.load(f, strict=False)
         
+    if not isinstance(data, list):
+        print(f"Error: Input JSON must contain a list of entries")
+        return
+        
     modified = False
     filtered_data = []
+    print(f"Processing {len(data)} entries...")
     
-    for entry in data:
+    for i, entry in enumerate(data):
         # Skip entries with null content
         if 'prompt' in entry and entry['prompt'].get('content') is None:
             continue
@@ -58,9 +63,13 @@ def process_json_file(input_path: str, output_path: str):
             if problem:
                 entry['problem'] = problem
                 modified = True
+                print(f"Entry {i}: Added problem field")
+            else:
+                print(f"Entry {i}: Could not extract problem")
             filtered_data.append(entry)
                 
     if filtered_data:
+        print(f"Writing {len(filtered_data)} entries to output file...")
         with open(output_path, 'w') as f:
             json.dump(filtered_data, f, indent=2)
         print(f"Updated {output_path} with problem fields")
