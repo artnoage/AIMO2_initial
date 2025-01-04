@@ -47,10 +47,10 @@ def merge_json_files(input_dir: str, output_file: str) -> None:
                     "chosen": entry["chosen"],
                     "rejected": entry["rejected"],
                     "score_chosen": entry["score_chosen"],
-                    "score_rejected": entry["score_rejected"],
-                    "rejected_part_solution": entry["rejected_part_solution"]
-
+                    "score_rejected": entry["score_rejected"]
                 }
+                if "rejected_part_solution" in entry:
+                    filtered_entry["rejected_part_solution"] = entry["rejected_part_solution"]
                 merged_data.append(filtered_entry)
 
     # Save merged data
