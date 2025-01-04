@@ -12,6 +12,11 @@ def json_to_markdown(data: list, limit: int = 100) -> str:
         if 'problem' in entry:
             markdown += f"{entry['problem']}\n\n"
             
+        # Add prompt if available
+        if 'prompt' in entry and entry['prompt'].get('content'):
+            markdown += "### Prompt\n\n"
+            markdown += f"```\n{entry['prompt']['content']}\n```\n\n"
+            
         # Add chosen solution if available
         if 'chosen' in entry and entry['chosen'].get('content'):
             markdown += "### Correct Solution\n\n"
