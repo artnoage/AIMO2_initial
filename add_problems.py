@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import argparse
 from pathlib import Path
 
