@@ -251,8 +251,8 @@ class ListGenerator:
             logs.append(f"├─ Worst score: {worst_step_score:.3f}")
             logs.append(f"└─ Score difference: {(best_step_score - worst_step_score):.3f}")
             
-            # Only append if worst score is zero
-            if worst_step_score == 0:
+            # Only append if worst score is zero AND we have a valid best step with non-zero score
+            if worst_step_score == 0 and best_step is not None and best_step_score > 0:
                 # Update rejected part solution with current solution plus worst step
                 rejected_part_solution = current_solution + worst_step
                 results.append({
