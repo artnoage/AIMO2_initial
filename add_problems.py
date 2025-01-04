@@ -56,13 +56,9 @@ def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
     elif "You are a mathematical analysis expert" in prompt:
         # AnalysisAgent format
         if "Here is a mathematical problem:" in prompt:
-            parts = prompt.split("Here is a mathematical problem:", 1)
+            parts = prompt.split("Here is a mathematical problem:\n\n", 1)
             if len(parts) == 2:
-                # Extract just the problem text before any analysis instructions
-                problem_text = parts[1].split("\n\n", 1)[0]
-                # Clean up any remaining analysis text
-                if "Before solving" in problem_text:
-                    problem_text = problem_text.split("Before solving")[0]
+                problem_text = parts[1].split("\n\nBefore solving", 1)[0]
                 return clean_problem_text(problem_text), "analysis"
                 
     # Handle unknown format
