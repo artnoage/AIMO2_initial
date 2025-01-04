@@ -132,7 +132,7 @@ def get_model(model: ModelOption, temp: float, model_name: Optional[str] = None)
             model=name,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:8000/v1")
+            base_url="http://localhost:6000/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
@@ -556,7 +556,7 @@ async def run_benchmark(
         try:
             with open(config.exclude, 'r') as f:
                 exclude_data = json.load(f)
-                excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
+                excluded_problems = {item['id'] for item in exclude_data if 'id' in item}
             print(f"Loaded {len(excluded_problems)} problems to exclude")
         except Exception as e:
             print(f"Error loading exclude file: {e}")
@@ -576,7 +576,7 @@ async def run_benchmark(
             
         # Filter out excluded problems
         if excluded_problems:
-            dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+            dataset = dataset.filter(lambda x: x['id'] not in excluded_problems)
             print(f"Filtered dataset to exclude {len(excluded_problems)} problems")
             
         # Shuffle dataset with seed if specified

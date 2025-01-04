@@ -63,8 +63,7 @@ def upload_dataset_to_hub(dataset, repo_name):
     print(f"Uploading dataset to {repo_name}...")
     with tqdm(total=100, desc="Uploading") as pbar:
         dataset.push_to_hub(
-            repo_name,
-            callbacks=[lambda x: pbar.update(x.percentage)]
+            repo_name
         )
 
 def upload_model_to_hub(model_path, repo_name):

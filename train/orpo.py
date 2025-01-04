@@ -1,5 +1,4 @@
 import os
-import torch
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from trl import ORPOTrainer, ORPOConfig
@@ -19,18 +18,18 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250102_202736",
         max_seq_length=4096,
         load_in_4bit=False)
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
         use_gradient_checkpointing=True,  # True or "unsloth" for very long context
@@ -47,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("local_datasets/20241231_191017")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250104_111906")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -84,7 +83,7 @@ def main():
         per_device_train_batch_size=2,
         gradient_accumulation_steps=16,
         num_train_epochs=1,
-        learning_rate=4e-6,
+        learning_rate=3e-6,
         logging_steps=1,
         optim = "adafactor",
         seed=42,
