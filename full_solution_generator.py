@@ -191,7 +191,8 @@ async def process_example(
         # Return consistent format                                                                 
         result = {                                                                                 
             'id': example_id,
-            'problem': example['problem'],                                                                      
+            'problem': example['problem'],
+            'correct_answer': correct_answer,                                                                      
             'prompt': {'content': bifurcation_prompt, 'role': 'user'},                             
             'chosen': {'content': chosen_response, 'role': 'assistant'},                           
             'rejected': {'content': rejected_response, 'role': 'assistant'},                       

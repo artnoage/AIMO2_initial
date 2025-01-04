@@ -137,6 +137,7 @@ class ListGenerator:
             rejected_part_solution = worst_analysis  # Track rejected analysis
             results.append({
                 'problem': problem,
+                'correct_answer': correct_answer,
                 'prompt': {'content': analysis_prompt, 'role': 'user'},
                 'chosen': {'content': best_analysis, 'role': 'assistant'},
                 'rejected': {'content': worst_analysis, 'role': 'assistant'},
@@ -256,6 +257,7 @@ class ListGenerator:
                 rejected_part_solution = current_solution + worst_step
                 results.append({
                     'problem': problem,
+                    'correct_answer': correct_answer,
                     'prompt': {'content': step_prompt, 'role': 'user'},
                     'chosen': {'content': best_step, 'role': 'assistant'},
                     'rejected': {'content': worst_step, 'role': 'assistant'},
