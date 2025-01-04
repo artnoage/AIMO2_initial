@@ -17,21 +17,30 @@ def extract_problem_from_prompt(prompt: str) -> Tuple[Optional[str], str]:
     """Extract problem from different types of prompts and return problem and type"""
     
     # For FullSolutionAgent format
-    full_solution_pattern = r"Solve this math problem step by step:\n\n(.*?)(?:\n\nProvide|$)"
+    if "[INST]" in prompt and "[/INST]" in prompt:
+        # Extract content between [INST] and [/INST]
+        inst_pattern = r"\[INST\](.*?)\[/INST\]"
+        match = re.search(inst_pattern, prompt, re.DOTALL)
+        if match:
+            inst_content = match.group(1).strip()
+            # Now look for the problem within the instruction
+            if "Solve this step by step:" in inst_content:
+                problem = inst_content.split("Solve this step by step:", 1)[1].strip()
+                return problem, "full_solution"
     
-    # For StepAgent format 
-    step_pattern = r"Problem:\n(.*?)(?:\n\nCurrent solution:|$)"
+    # For NextStepAgent format
+    if "Current solution so far:" in prompt:
+        # Extract problem before the current solution
+        parts = prompt.split("Current solution so far:", 1)
+        if len(parts) == 2 and "Problem:" in parts[0]:
+            problem = parts[0].split("Problem:", 1)[1].strip()
+            return problem, "step"
+            
+    # For AnalysisAgent format
+    if "Analyze this problem:" in prompt:
+        problem = prompt.split("Analyze this problem:", 1)[1].strip()
+        return problem, "analysis"
     
-    # Try full solution pattern first
-    match = re.search(full_solution_pattern, prompt, re.DOTALL)
-    if match:
-        return match.group(1).strip(), "full_solution"
-        
-    # Try step pattern
-    match = re.search(step_pattern, prompt, re.DOTALL)
-    if match:
-        return match.group(1).strip(), "step"
-        
     # Print first few chars to help debug
     preview = prompt[:100].replace('\n', '\\n')
     return None, f"unknown (preview: {preview}...)"
