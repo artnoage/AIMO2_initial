@@ -37,7 +37,7 @@ def process_json_file(input_path: str, output_path: str):
         if 'problem' in entry:
             continue
         if 'prompt' in entry:
-            prompt_content = entry['prompt'].get('content', '')
+            prompt_content = entry['prompt'].get('content') or ''
             problem = extract_problem_from_prompt(prompt_content)
             if problem:
                 entry['problem'] = problem
