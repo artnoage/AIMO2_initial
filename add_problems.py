@@ -34,7 +34,9 @@ def process_json_file(input_path: str, output_path: str):
     modified = False
     
     for entry in data:
-        if 'problem' not in entry and 'prompt' in entry:
+        if 'problem' in entry:
+            continue
+        if 'prompt' in entry:
             prompt_content = entry['prompt'].get('content', '')
             problem = extract_problem_from_prompt(prompt_content)
             if problem:
