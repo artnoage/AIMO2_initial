@@ -39,14 +39,17 @@ def merge_json_files(input_dir: str, output_file: str) -> None:
         print(f"Processing {file_path.name}...")
         data = load_json_file(file_path)
         for entry in data:
-            if all(field in entry for field in ["id", "prompt", "chosen", "rejected", "score_chosen", "score_rejected"]):
+            if all(field in entry for field in ["id", "problem","prompt", "chosen", "rejected", "score_chosen", "score_rejected"]):
                 filtered_entry = {
                     "id": entry["id"],
+                    "problem": entry["problem"],
                     "prompt": entry["prompt"],
                     "chosen": entry["chosen"],
                     "rejected": entry["rejected"],
                     "score_chosen": entry["score_chosen"],
-                    "score_rejected": entry["score_rejected"]
+                    "score_rejected": entry["score_rejected"],
+                    "rejected_part_solution": entry["rejected_part_solution"]
+
                 }
                 merged_data.append(filtered_entry)
 
