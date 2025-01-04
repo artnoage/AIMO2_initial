@@ -4,6 +4,15 @@ from typing import Dict, Optional
 import argparse
 from pathlib import Path
 
+# Custom JSON decoder to handle null values
+def parse_null(val):
+    if val == 'null':
+        return None
+    raise ValueError(f'Invalid null value: {val}')
+
+# Register the custom parser
+json.JSONDecoder.parse_constant = parse_null
+
 def extract_problem_from_prompt(prompt: str) -> Optional[str]:
     """Extract problem from different types of prompts"""
     
@@ -29,7 +38,7 @@ def process_json_file(input_path: str, output_path: str):
     """Process JSON file to add problem field to each entry"""
     
     with open(input_path, 'r') as f:
-        data = json.load(f)
+        data = json.load(f, strict=False)
         
     modified = False
     
