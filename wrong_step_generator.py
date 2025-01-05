@@ -85,13 +85,19 @@ class WrongStepGenerator:
                     if len(completion_steps) > 0:
                         correct_step = completion_steps[0]
                         if successful > 0:  # Return as soon as we have one successful completion
-                            print(f"Step {step_index + 1}: {successful}/{self.completions} completions successful")
+                            if step_index == 0:
+                                print(f"Analysis section: {successful}/{self.completions} completions successful")
+                            else:
+                                print(f"Step {step_index}: {successful}/{self.completions} completions successful")
                             return True, correct_step
                     
             except Exception:
                 continue
         
-        print(f"Step {step_index + 1}: {successful}/{self.completions} completions successful")
+        if step_index == 0:
+            print(f"Analysis section: {successful}/{self.completions} completions successful")
+        else:
+            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
         return False, None  # Only return False if we had no successful completions
 
     async def generate(
