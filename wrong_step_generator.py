@@ -198,9 +198,8 @@ class WrongStepGenerator:
                     'correct_step': None  # We don't have a correct step since all completions failed
                 }
             
-            print(f"✓ Step {i + 1} is valid")
+            print(f"✓ Step {i} is valid")
             # Continue checking next step since this one is valid
-            continue
                 
         # If we get here, all steps were valid
         print("✓ All steps are valid")
