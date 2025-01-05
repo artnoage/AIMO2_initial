@@ -91,7 +91,7 @@ class WrongStepGenerator:
             except Exception:
                 continue
         
-        print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+        print(f"Step {step_index + 1}: {successful}/{self.completions} completions successful")
         return False, None
 
     async def generate(
@@ -165,12 +165,20 @@ class WrongStepGenerator:
             if not has_correct:
                 wrong_step_index = i
                 print(f"✗ Found wrong step at step {i + 1}")
-                break
+                return {
+                    'problem': problem,
+                    'correct_answer': correct_answer,
+                    'wrong_solution': wrong_solution,
+                    'wrong_step_index': wrong_step_index,
+                    'wrong_step': steps[wrong_step_index],
+                    'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
+                    'correct_step': None  # We don't have a correct step since all completions failed
+                }
             else:
                 correct_step = correct_step
                 print(f"✓ Step {i + 1} is valid")
                 
-        if wrong_step_index is None or correct_step is None:
+        # If we get here, we didn't find a wrong step
             print("❌ Could not identify wrong step")
             return None
             
