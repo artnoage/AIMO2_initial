@@ -55,7 +55,8 @@ class WrongStepGenerator:
         self,
         problem: str,
         partial_solution: str,
-        correct_answer: str
+        correct_answer: str,
+        step_index: int
     ) -> Tuple[bool, Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         for _ in range(self.completions):
@@ -74,7 +75,11 @@ class WrongStepGenerator:
                 )
                 
                 if is_correct:
-                    return True, completion
+                    # Extract the correct step at the given index
+                    completion_steps = self._split_into_steps(completion)
+                    if len(completion_steps) > 0:
+                        # Get the first step from completion since that's the nth step we want
+                        return True, completion_steps[0]
                     
             except Exception:
                 continue
@@ -135,19 +140,20 @@ class WrongStepGenerator:
         
         for i, partial in enumerate(partial_solutions):
             # Try completions
-            has_correct, completion = await self._verify_completions(
+            has_correct, correct_step = await self._verify_completions(
                 problem,
                 partial,
-                correct_answer
+                correct_answer,
+                i
             )
             
             if not has_correct:
                 wrong_step_index = i
                 break
             else:
-                correct_completion = completion
+                correct_step = correct_step
                 
-        if wrong_step_index is None or correct_completion is None:
+        if wrong_step_index is None or correct_step is None:
             return None
             
         return {
@@ -157,7 +163,7 @@ class WrongStepGenerator:
             'wrong_step_index': wrong_step_index,
             'wrong_step': steps[wrong_step_index],
             'partial_solution': partial_solutions[wrong_step_index - 1],
-            'correct_completion': correct_completion
+            'correct_step': correct_step
         }
 
 async def main():
