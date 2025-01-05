@@ -91,14 +91,30 @@ class WrongStepGenerator:
 
         # If we found a successful completion, extract the correct step
         if successful > 0 and correct_completion:
+            print("\nDEBUG: Found successful completion:")
+            print("=" * 50)
+            print(correct_completion)
+            print("=" * 50)
+            
             # Get all steps from the completion
             completion_steps = self._split_into_steps(correct_completion)
+            print(f"\nDEBUG: Split into {len(completion_steps)} steps:")
+            for i, step in enumerate(completion_steps):
+                print(f"\nStep {i}:")
+                print("-" * 30)
+                print(step)
+                print("-" * 30)
             
             # Extract the step at the current index
             if step_index < len(completion_steps):
                 correct_step = completion_steps[step_index]
+                print(f"\nDEBUG: Extracted step {step_index}:")
+                print("-" * 30)
+                print(correct_step)
+                print("-" * 30)
             else:
                 correct_step = None
+                print(f"\nDEBUG: Step index {step_index} out of bounds (max: {len(completion_steps)-1})")
                 
             if step_index == 0:
                 print(f"Analysis section: {successful}/{self.completions} completions successful")
