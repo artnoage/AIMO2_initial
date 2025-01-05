@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    #dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250105_104504")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250105_130908")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
