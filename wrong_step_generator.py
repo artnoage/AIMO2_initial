@@ -63,6 +63,9 @@ class WrongStepGenerator:
     ) -> Tuple[bool, Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         successful = 0
+        correct_completion = None
+
+        # First try to get a successful completion
         for i in range(self.completions):
             try:
                 completion = await self.completion_agent.generate(
@@ -80,25 +83,35 @@ class WrongStepGenerator:
                 
                 if is_correct:
                     successful += 1
-                    # Extract the correct step at the given index from the completion
-                    completion_steps = self._split_into_steps(completion)
-                    if step_index < len(completion_steps):
-                        correct_step = completion_steps[step_index]
-                        if successful > 0:  # Return as soon as we have one successful completion
-                            if step_index == 0:
-                                print(f"Analysis section: {successful}/{self.completions} completions successful")
-                            else:
-                                print(f"Step {step_index}: {successful}/{self.completions} completions successful")
-                            return True, correct_step
+                    correct_completion = completion
+                    break
                     
             except Exception:
                 continue
-        
+
+        # If we found a successful completion, extract the correct step
+        if successful > 0 and correct_completion:
+            # Get all steps from the completion
+            completion_steps = self._split_into_steps(correct_completion)
+            
+            # Extract the step at the current index
+            if step_index < len(completion_steps):
+                correct_step = completion_steps[step_index]
+            else:
+                correct_step = None
+                
+            if step_index == 0:
+                print(f"Analysis section: {successful}/{self.completions} completions successful")
+            else:
+                print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+            return True, correct_step
+
+        # No successful completion found
         if step_index == 0:
             print(f"Analysis section: {successful}/{self.completions} completions successful")
         else:
             print(f"Step {step_index}: {successful}/{self.completions} completions successful")
-        return False, None  # Only return False if we had no successful completions
+        return False, None
 
     async def generate(
         self,
