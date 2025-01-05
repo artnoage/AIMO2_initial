@@ -59,7 +59,8 @@ class WrongStepGenerator:
         step_index: int
     ) -> Tuple[bool, Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
-        for _ in range(self.completions):
+        successful = 0
+        for i in range(self.completions):
             try:
                 completion = await self.completion_agent.generate(
                     problem,
@@ -75,15 +76,19 @@ class WrongStepGenerator:
                 )
                 
                 if is_correct:
+                    successful += 1
                     # Extract the correct step at the given index
                     completion_steps = self._split_into_steps(completion)
                     if len(completion_steps) > 0:
-                        # Get the first step from completion since that's the nth step we want
-                        return True, completion_steps[0]
+                        correct_step = completion_steps[0]
+                        if i == self.completions - 1:  # Last attempt
+                            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+                            return True, correct_step
                     
             except Exception:
                 continue
-                
+        
+        print(f"Step {step_index}: {successful}/{self.completions} completions successful")
         return False, None
 
     async def generate(
@@ -138,7 +143,9 @@ class WrongStepGenerator:
         wrong_step_index = None
         correct_completion = None
         
+        print("\n=== Analyzing solution steps ===")
         for i, partial in enumerate(partial_solutions):
+            print(f"\nChecking step {i}...")
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
@@ -149,11 +156,14 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
+                print(f"✗ Found wrong step at index {i}")
                 break
             else:
                 correct_step = correct_step
+                print(f"✓ Step {i} is valid")
                 
         if wrong_step_index is None or correct_step is None:
+            print("❌ Could not identify wrong step")
             return None
             
         return {
