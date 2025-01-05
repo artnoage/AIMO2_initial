@@ -174,9 +174,10 @@ class WrongStepGenerator:
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
                     'correct_step': None  # We don't have a correct step since all completions failed
                 }
-            else:
-                correct_step = correct_step
-                print(f"✓ Step {i + 1} is valid")
+            
+            print(f"✓ Step {i + 1} is valid")
+            # Break early since we found a valid step
+            break
                 
         # If we get here, we didn't find a wrong step
             print("❌ Could not identify wrong step")
