@@ -85,7 +85,7 @@ class WrongStepGenerator:
                     if len(completion_steps) > 0:
                         correct_step = completion_steps[0]
                         if successful > 0:  # Return as soon as we have one successful completion
-                            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+                            print(f"Step {step_index + 1}: {successful}/{self.completions} completions successful")
                             return True, correct_step
                     
             except Exception:
@@ -153,7 +153,7 @@ class WrongStepGenerator:
         
         print("\n=== Analyzing solution steps ===")
         for i, partial in enumerate(partial_solutions):
-            print(f"\nChecking step {i}...")
+            print(f"\nChecking step {i + 1}...")
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
@@ -164,7 +164,7 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
-                print(f"✗ Found wrong step at step {i}")
+                print(f"✗ Found wrong step at step {i + 1}")
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -175,7 +175,7 @@ class WrongStepGenerator:
                     'correct_step': None  # We don't have a correct step since all completions failed
                 }
             
-            print(f"✓ Step {i} is valid")
+            print(f"✓ Step {i + 1} is valid")
             # Continue checking next step since this one is valid
             continue
                 
