@@ -112,34 +112,6 @@ class CompletionAgent:
         return (prompt[0].content, response) if return_prompt else response
 
 
-class AnalysisPlusStepAgent:
-    """Agent that provides both problem analysis and first solution step"""
-    
-    def __init__(self, model, numeric: bool = False):
-        self.model = model
-        
-    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Generate analysis and first step for a given problem"""
-        prompt = [
-            HumanMessage(content=(
-                "You are a mathematical expert. Your task is to analyze the problem "
-                "and provide the first solution step.\n\n"
-                f"Here is a mathematical problem:\n\n{problem}\n\n"
-                "Please provide:\n\n"
-                "1. First, a thorough analysis under '**Problem Analysis and Approach**:' that:\n"
-                "   - Categorizes the problem type\n"
-                "   - Lists specific theorems and techniques that will be useful\n"
-                "   - Outlines the general approach\n\n"
-                "2. Then, provide exactly ONE solution step under 'Step 1:' that:\n"
-                "   - Shows clear work and calculations\n"
-                "   - Uses LaTeX notation where appropriate\n"
-                "   - Includes justification in [brackets]\n\n"
-                "Please provide both the analysis and first step now:"
-            ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
-        return (prompt[0].content, response) if return_prompt else response
-
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
