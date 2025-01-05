@@ -80,10 +80,10 @@ class WrongStepGenerator:
                 
                 if is_correct:
                     successful += 1
-                    # Extract the correct step at the given index
+                    # Extract the correct step at the given index from the completion
                     completion_steps = self._split_into_steps(completion)
-                    if len(completion_steps) > 0:
-                        correct_step = completion_steps[0]
+                    if step_index < len(completion_steps):
+                        correct_step = completion_steps[step_index]
                         if successful > 0:  # Return as soon as we have one successful completion
                             if step_index == 0:
                                 print(f"Analysis section: {successful}/{self.completions} completions successful")
