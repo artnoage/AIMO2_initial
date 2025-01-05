@@ -85,13 +85,13 @@ class WrongStepGenerator:
                     if len(completion_steps) > 0:
                         correct_step = completion_steps[0]
                         if i == self.completions - 1:  # Last attempt
-                            self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
+                            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
                             return True, correct_step
                     
             except Exception:
                 continue
         
-        self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
+        print(f"Step {step_index}: {successful}/{self.completions} completions successful")
         return False, None
 
     async def generate(
@@ -137,13 +137,11 @@ class WrongStepGenerator:
         # Split wrong solution into steps
         steps = self._split_into_steps(wrong_solution)
         if not steps:
-            self.logs.append("❌ No steps found in solution - likely incorrect format")
-            print("\n".join(self.logs))
+            print("❌ No steps found in solution - likely incorrect format")
             return None
             
         if len(steps) < 2:  # Need at least analysis + one step
-            self.logs.append("❌ Not enough steps found (need at least analysis + one step)")
-            print("\n".join(self.logs))
+            print("❌ Not enough steps found (need at least analysis + one step)")
             return None
             
         # Get partial solutions
@@ -153,9 +151,9 @@ class WrongStepGenerator:
         wrong_step_index = None
         correct_completion = None
         
-        self.logs.append("\n=== Analyzing solution steps ===")
+        print("\n=== Analyzing solution steps ===")
         for i, partial in enumerate(partial_solutions):
-            self.logs.append(f"\nChecking step {i}...")
+            print(f"\nChecking step {i}...")
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
@@ -166,18 +164,15 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
-                self.logs.append(f"✗ Found wrong step at index {i}")
+                print(f"✗ Found wrong step at index {i}")
                 break
             else:
                 correct_step = correct_step
-                self.logs.append(f"✓ Step {i} is valid")
+                print(f"✓ Step {i} is valid")
                 
         if wrong_step_index is None or correct_step is None:
-            self.logs.append("❌ Could not identify wrong step")
+            print("❌ Could not identify wrong step")
             return None
-            
-        # Print collected logs
-        print("\n".join(self.logs))
             
         return {
             'problem': problem,
