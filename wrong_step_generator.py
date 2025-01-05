@@ -56,7 +56,7 @@ class WrongStepGenerator:
         problem: str,
         partial_solution: str,
         correct_answer: str
-    ) -> bool:
+    ) -> Tuple[bool, Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         for _ in range(self.completions):
             try:
@@ -74,12 +74,12 @@ class WrongStepGenerator:
                 )
                 
                 if is_correct:
-                    return True
+                    return True, completion
                     
             except Exception:
                 continue
                 
-        return False
+        return False, None
 
     async def generate(
         self,
@@ -131,10 +131,11 @@ class WrongStepGenerator:
         
         # Find first step that makes all completions wrong
         wrong_step_index = None
+        correct_completion = None
         
         for i, partial in enumerate(partial_solutions):
             # Try completions
-            has_correct = await self._verify_completions(
+            has_correct, completion = await self._verify_completions(
                 problem,
                 partial,
                 correct_answer
@@ -143,8 +144,10 @@ class WrongStepGenerator:
             if not has_correct:
                 wrong_step_index = i
                 break
+            else:
+                correct_completion = completion
                 
-        if wrong_step_index is None:
+        if wrong_step_index is None or correct_completion is None:
             return None
             
         return {
@@ -152,7 +155,9 @@ class WrongStepGenerator:
             'correct_answer': correct_answer,
             'wrong_solution': wrong_solution,
             'wrong_step_index': wrong_step_index,
-            'wrong_step': steps[wrong_step_index]
+            'wrong_step': steps[wrong_step_index],
+            'partial_solution': partial_solutions[wrong_step_index - 1],
+            'correct_completion': correct_completion
         }
 
 async def main():
