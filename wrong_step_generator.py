@@ -22,23 +22,25 @@ class WrongStepGenerator:
         self.logs = []
         
     def _split_into_steps(self, solution: str) -> List[str]:
-        """Split a solution into individual steps"""
-        # Split on Step X: or similar patterns
-        steps = []
-        current_step = []
-        lines = solution.split('\n')
-        
-        for line in lines:
-            if line.strip().lower().startswith(('step', 'analysis:')):
-                if current_step:
-                    steps.append('\n'.join(current_step))
-                current_step = [line]
-            else:
-                current_step.append(line)
-                
-        if current_step:
-            steps.append('\n'.join(current_step))
+        """Split a solution into analysis and numbered steps"""
+        # First split into analysis and steps sections
+        parts = solution.lower().split("step")
+        if not parts:
+            return []
             
+        steps = []
+        # Add analysis section if present
+        analysis = parts[0]
+        if "analysis" in analysis.lower():
+            steps.append(parts[0])
+            
+        # Process numbered steps
+        for step in parts[1:]:
+            if step.strip():  # Skip empty steps
+                # Reconstruct the step with its prefix
+                full_step = "Step" + step
+                steps.append(full_step)
+                
         return steps
         
     def _get_partial_solutions(self, steps: List[str]) -> List[str]:
