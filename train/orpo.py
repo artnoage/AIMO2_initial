@@ -18,18 +18,18 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250102_202736",
+        model_name="mistralai/Mathstral-7B-v0.1",
         max_seq_length=4096,
         load_in_4bit=False)
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=256,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-        lora_alpha=64,
+        lora_alpha=256,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
         use_gradient_checkpointing=True,  # True or "unsloth" for very long context
@@ -45,8 +45,8 @@ def main():
         map_eos_token=True)
     
     # Load dataset - adjust path as needed
-    #dataset = load_dataset("local_dataset/20241208_111257", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250104_111906")
+    #dataset = load_dataset("Metaskepsis/orpo", split="train")
+    #dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250105_104504")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -80,8 +80,8 @@ def main():
     training_args = ORPOConfig(
         max_length=4096,
         max_prompt_length=2048,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=16,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=32,
         num_train_epochs=1,
         learning_rate=3e-6,
         logging_steps=1,
