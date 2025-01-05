@@ -152,8 +152,33 @@ class WrongStepGenerator:
         correct_completion = None
         
         print("\n=== Analyzing solution steps ===")
-        for i, partial in enumerate(partial_solutions):
-            print(f"\nChecking step {i + 1}...")
+        
+        # First check the analysis section (index 0)
+        print("\nChecking analysis section...")
+        has_correct, correct_step = await self._verify_completions(
+            problem,
+            partial_solutions[0],
+            correct_answer,
+            0
+        )
+        
+        if not has_correct:
+            print("✗ Found wrong analysis section")
+            return {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'wrong_solution': wrong_solution,
+                'wrong_step_index': 0,
+                'wrong_step': steps[0],
+                'partial_solution': "",  # Empty string since analysis is first
+                'correct_step': None
+            }
+            
+        print("✓ Analysis section is valid")
+        
+        # Then check numbered steps
+        for i in range(1, len(partial_solutions)):
+            print(f"\nChecking step {i}...")
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
