@@ -61,6 +61,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solutions.append(solution_info)
         
         
+        # Calculate most common answer statistics
+        model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
+        most_common_answer = None
+        is_most_common_correct = False
+        if model_answers:
+            from collections import Counter
+            most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
+            is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
+
         # Print statistics
         print(f"\nExample {str(running_id + 1)}:")
         print(f"Problem: {example['problem'][:200]}...")
@@ -69,6 +78,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
         print(f"Correct solutions: {correct_count}/{config.best_of}")
         print(f"Success rate: {(correct_count/config.best_of)*100:.1f}%")
+        print(f"Most common answer: {most_common_answer}")
+        print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print("-" * 80)
         
         return [{
