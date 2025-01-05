@@ -195,7 +195,7 @@ class WrongStepGenerator:
                     'wrong_step_index': wrong_step_index,
                     'wrong_step': steps[wrong_step_index],
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': None  # We don't have a correct step since all completions failed
+                    'correct_step': correct_step  # Save the correct step from the successful completion
                 }
             
             print(f"✓ Step {i} is valid")
