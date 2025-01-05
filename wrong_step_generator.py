@@ -169,16 +169,8 @@ class WrongStepGenerator:
         )
         
         if not has_correct:
-            print("✗ Found wrong analysis section")
-            return {
-                'problem': problem,
-                'correct_answer': correct_answer,
-                'wrong_solution': wrong_solution,
-                'wrong_step_index': 0,
-                'wrong_step': steps[0],
-                'partial_solution': "",  # Empty string since analysis is first
-                'correct_step': None
-            }
+            print("✗ Found wrong analysis section - skipping example")
+            return None
             
         print("✓ Analysis section is valid")
         
