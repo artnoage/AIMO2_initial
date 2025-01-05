@@ -182,7 +182,7 @@ class WrongStepGenerator:
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
-                partial,
+                partial_solutions[i],
                 correct_answer,
                 i
             )
