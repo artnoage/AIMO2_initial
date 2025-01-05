@@ -19,6 +19,7 @@ class WrongStepGenerator:
         self.solution_agent = FullSolutionAgent(solver)
         self.completion_agent = CompletionAgent(solver)
         self.verifier = NumericVerifier()
+        self.logs = []
         
     def _split_into_steps(self, solution: str) -> List[str]:
         """Split a solution into individual steps"""
@@ -82,13 +83,13 @@ class WrongStepGenerator:
                     if len(completion_steps) > 0:
                         correct_step = completion_steps[0]
                         if i == self.completions - 1:  # Last attempt
-                            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+                            self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
                             return True, correct_step
                     
             except Exception:
                 continue
         
-        print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+        self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
         return False, None
 
     async def generate(
@@ -143,9 +144,9 @@ class WrongStepGenerator:
         wrong_step_index = None
         correct_completion = None
         
-        print("\n=== Analyzing solution steps ===")
+        self.logs.append("\n=== Analyzing solution steps ===")
         for i, partial in enumerate(partial_solutions):
-            print(f"\nChecking step {i}...")
+            self.logs.append(f"\nChecking step {i}...")
             # Try completions
             has_correct, correct_step = await self._verify_completions(
                 problem,
@@ -156,15 +157,18 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
-                print(f"✗ Found wrong step at index {i}")
+                self.logs.append(f"✗ Found wrong step at index {i}")
                 break
             else:
                 correct_step = correct_step
-                print(f"✓ Step {i} is valid")
+                self.logs.append(f"✓ Step {i} is valid")
                 
         if wrong_step_index is None or correct_step is None:
-            print("❌ Could not identify wrong step")
+            self.logs.append("❌ Could not identify wrong step")
             return None
+            
+        # Print collected logs
+        print("\n".join(self.logs))
             
         return {
             'problem': problem,
