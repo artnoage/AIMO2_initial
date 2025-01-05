@@ -136,7 +136,14 @@ class WrongStepGenerator:
             
         # Split wrong solution into steps
         steps = self._split_into_steps(wrong_solution)
+        if not steps:
+            self.logs.append("❌ No steps found in solution - likely incorrect format")
+            print("\n".join(self.logs))
+            return None
+            
         if len(steps) < 2:  # Need at least analysis + one step
+            self.logs.append("❌ Not enough steps found (need at least analysis + one step)")
+            print("\n".join(self.logs))
             return None
             
         # Get partial solutions
