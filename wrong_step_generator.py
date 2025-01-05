@@ -187,7 +187,7 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
-                print(f"✗ Found wrong step at step {i + 1}")
+                print(f"✗ Found wrong step at step {i}")
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
