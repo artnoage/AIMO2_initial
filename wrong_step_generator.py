@@ -176,22 +176,20 @@ class WrongStepGenerator:
                 }
             
             print(f"✓ Step {i + 1} is valid")
-            # Break early since we found a valid step
-            break
+            # Return early since we found a valid step
+            return {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'wrong_solution': wrong_solution,
+                'wrong_step_index': i,
+                'wrong_step': steps[i],
+                'partial_solution': partial_solutions[max(0, i - 1)],
+                'correct_step': correct_step
+            }
                 
         # If we get here, we didn't find a wrong step
-            print("❌ Could not identify wrong step")
-            return None
-            
-        return {
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'wrong_solution': wrong_solution,
-            'wrong_step_index': wrong_step_index,
-            'wrong_step': steps[wrong_step_index],
-            'partial_solution': partial_solutions[wrong_step_index - 1],
-            'correct_step': correct_step
-        }
+        print("❌ Could not identify wrong step")
+        return None
 
 async def main():
     """Main function for wrong step generation"""
