@@ -94,12 +94,29 @@ class ProgressTracker:
                 # Count problems with success rate above 50%
                 above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
                 
+                # Count problems where most common answer is correct
+                most_common_correct = 0
+                for r in last_batch:
+                    if not r.get('model_answers'):
+                        continue
+                    # Get most common answer
+                    answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
+                    if not answers:
+                        continue
+                    from collections import Counter
+                    most_common = Counter(answers).most_common(1)[0][0]
+                    # Check if most common answer is in list of correct answers
+                    if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', [])) 
+                          if ans is not None and str(ans) == most_common):
+                        most_common_correct += 1
+                
                 # Batch statistics
                 stats_str += (
                     f"\nBatch Statistics (last {total_examples}):\n"
                     f"- Problems with at least one correct solution: {at_least_one}/{total_examples} ({at_least_one/total_examples*100:.1f}%)\n"
                     f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                     f"- Problems with above average correct solutions: {above_avg}/{total_examples} ({above_avg/total_examples*100:.1f}%)\n"
+                    f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} ({most_common_correct/total_examples*100:.1f}%)\n"
                 )
 
                 # Accumulated statistics
@@ -233,11 +250,28 @@ class ProgressTracker:
             # Count problems with success rate above 50%
             above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
             
+            # Count problems where most common answer is correct
+            most_common_correct = 0
+            for r in self.results:
+                if not r.get('model_answers'):
+                    continue
+                # Get most common answer
+                answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
+                if not answers:
+                    continue
+                from collections import Counter
+                most_common = Counter(answers).most_common(1)[0][0]
+                # Check if most common answer is in list of correct answers
+                if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', []))
+                      if ans is not None and str(ans) == most_common):
+                    most_common_correct += 1
+            
             stats_str += (
                 f"\nBenchmark Statistics:\n"
                 f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
                 f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                 f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
+                f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
