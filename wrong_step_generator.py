@@ -1,0 +1,201 @@
+import os
+import asyncio
+from typing import Dict, List, Optional, Tuple, Any
+from dotenv import load_dotenv
+from bench_utils.benchmark_config import *
+from bench_utils.benchmark_utils import *
+from bench_utils.agents import *
+
+os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
+load_dotenv()
+
+class WrongStepGenerator:
+    """Generates wrong solution steps by finding valid but incorrect solutions"""
+    
+    def __init__(self, solver, best_of: int, completions: int):
+        self.solver = solver
+        self.best_of = best_of
+        self.completions = completions
+        self.solution_agent = FullSolutionAgent(solver)
+        self.completion_agent = CompletionAgent(solver)
+        self.verifier = NumericVerifier()
+        
+    def _split_into_steps(self, solution: str) -> List[str]:
+        """Split a solution into individual steps"""
+        # Split on Step X: or similar patterns
+        steps = []
+        current_step = []
+        lines = solution.split('\n')
+        
+        for line in lines:
+            if line.strip().lower().startswith(('step', 'analysis:')):
+                if current_step:
+                    steps.append('\n'.join(current_step))
+                current_step = [line]
+            else:
+                current_step.append(line)
+                
+        if current_step:
+            steps.append('\n'.join(current_step))
+            
+        return steps
+        
+    def _get_partial_solutions(self, steps: List[str]) -> List[str]:
+        """Generate partial solutions ending at each step"""
+        partial_solutions = []
+        current = ""
+        
+        for step in steps:
+            current += step + "\n"
+            partial_solutions.append(current)
+            
+        return partial_solutions
+        
+    async def _verify_completions(
+        self,
+        problem: str,
+        partial_solution: str,
+        correct_answer: str
+    ) -> bool:
+        """Try multiple completions of a partial solution to check if any are correct"""
+        for _ in range(self.completions):
+            try:
+                completion = await self.completion_agent.generate(
+                    problem,
+                    partial_solution
+                )
+                complete_solution = partial_solution + completion
+                
+                # Verify the completed solution
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    return True
+                    
+            except Exception:
+                continue
+                
+        return False
+
+    async def generate(
+        self,
+        problem: str,
+        correct_answer: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generate a wrong solution and identify which step causes it to go wrong.
+        Returns dict with problem, answer, wrong solution and wrong step info.
+        """
+        # Try to generate wrong but valid solutions
+        wrong_solution = None
+        attempts = 0
+        
+        while attempts < self.best_of:
+            try:
+                attempts += 1
+                solution = await self.solution_agent.generate(problem)
+                
+                # Validate solution structure
+                is_valid, _ = validate_solution(solution)
+                if not is_valid:
+                    continue
+                    
+                # Check if solution is wrong
+                is_correct, _ = await self.verifier.verify(
+                    solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if not is_correct:
+                    wrong_solution = solution
+                    break
+                    
+            except Exception:
+                continue
+                
+        if wrong_solution is None:
+            return None
+            
+        # Split wrong solution into steps
+        steps = self._split_into_steps(wrong_solution)
+        if len(steps) < 2:  # Need at least analysis + one step
+            return None
+            
+        # Get partial solutions
+        partial_solutions = self._get_partial_solutions(steps)
+        
+        # Find first step that makes all completions wrong
+        wrong_step_index = None
+        
+        for i, partial in enumerate(partial_solutions):
+            # Try completions
+            has_correct = await self._verify_completions(
+                problem,
+                partial,
+                correct_answer
+            )
+            
+            if not has_correct:
+                wrong_step_index = i
+                break
+                
+        if wrong_step_index is None:
+            return None
+            
+        return {
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'wrong_solution': wrong_solution,
+            'wrong_step_index': wrong_step_index,
+            'wrong_step': steps[wrong_step_index]
+        }
+
+async def main():
+    """Main function for wrong step generation"""
+    config = BenchmarkConfig.from_args('Wrong step generation approach')
+    
+    async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
+        """Process a single example"""
+        try:
+            # Initialize solver
+            solver = get_model(ModelOption[config.solver], temp=config.temperature)
+            
+            # Create generator
+            generator = WrongStepGenerator(solver, config.best_of, config.completions)
+            
+            # Extract answer
+            correct_answer = extract_answer_from_solution(example['solution'])
+            if correct_answer is None:
+                print(f"Warning: Could not extract answer from solution for example {running_id}")
+                return None
+                
+            # Generate wrong step
+            result = await generator.generate(example['problem'], correct_answer)
+            if result is None:
+                return None
+                
+            # Add example ID
+            result['id'] = example_id
+            return [result]
+            
+        except Exception as e:
+            print(f"Error processing example {running_id}: {str(e)}")
+            return None
+
+    await run_benchmark(
+        config=config,
+        process_example_func=process_example
+    )
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
