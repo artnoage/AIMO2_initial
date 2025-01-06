@@ -16,16 +16,12 @@ def generate_analysis_conversation(problem: str, analysis: str) -> Dict:
         'conversations': [
             {
                 'content': (
-                    f"Here is a mathematical problem:\n\n{problem}\n\n"
-                    "Before solving this problem step-by-step, provide a thorough analysis that:\n"
-                    "1. Categorizes the problem type\n"
-                    "2. Lists the specific theorems and techniques that will be useful\n"
-                    "3. Outlines the general approach to solving it\n\n"
-                    "Important guidelines:\n"
-                    "- Start with '**Problem Analysis and Approach**:'\n"
-                    "- Be specific about which theorems/techniques apply\n"
-                    "- Explain why these approaches are suitable\n"
-                    "- Do NOT provide the actual solution steps"
+                    f"Problem:\n\n{problem}\n\n"
+                    "Analyze this problem by:\n"
+                    "1. Identifying the problem type\n"
+                    "2. Listing relevant theorems/techniques\n"
+                    "3. Outlining the solution approach\n\n"
+                    "Start with '**Problem Analysis and Approach**:'"
                 ),
                 'role': 'user'
             },
@@ -42,16 +38,9 @@ def generate_next_step_conversation(problem: str, current_solution: str, next_st
         'conversations': [
             {
                 'content': (
-                    f"Here is a mathematical problem:\n\n{problem}\n\n"
-                    "Your task is to provide the next step in the solution. "
-                    "Make sure your step is detailed and mathematically rigorous.\n\n"
-                    "Guidelines:\n"
-                    "- Provide exactly ONE step\n"
-                    "- Include clear explanations\n"
-                    "- Use LaTeX notation where appropriate\n"
-                    "- Number your step appropriately\n\n"
-                    f"Here are the steps so far:\n\n{current_solution}\n\n"
-                    "Provide the next step:"
+                    f"Problem:\n\n{problem}\n\n"
+                    f"Current solution:\n{current_solution}\n\n"
+                    "Provide the next step with explanation and LaTeX notation."
                 ),
                 'role': 'user'
             },
@@ -68,14 +57,9 @@ def generate_completion_conversation(problem: str, partial_solution: str, comple
         'conversations': [
             {
                 'content': (
-                    f"Here is a mathematical problem:\n\n{problem}\n\n"
-                    "I will show you the beginning of a step-by-step mathematical solution. "
-                    "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
-                    "Important guidelines:\n"
-                    "- Continue the step numbering sequence\n"
-                    "- End with a clear boxed answer using \\boxed{}\n\n"
-                    f"Here is the partial solution:\n\n{partial_solution}\n\n"
-                    "Please complete the remaining steps following the same format:"
+                    f"Problem:\n\n{problem}\n\n"
+                    f"Partial solution:\n{partial_solution}\n\n"
+                    "Complete the solution and end with \\boxed{answer}"
                 ),
                 'role': 'user'
             },
@@ -92,18 +76,11 @@ def generate_full_solution_conversation(problem: str, solution: str) -> Dict:
         'conversations': [
             {
                 'content': (
-                    f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
-                    "Please provide a complete solution following these guidelines:\n"
-                    "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
-                    "   - Problem type and key concepts involved\n"
-                    "   - Relevant theorems and techniques\n"
-                    "   - Overall solution strategy\n\n"
-                    "2. Then provide a detailed step-by-step solution:\n"
-                    "   - Number each step clearly (Step 1, Step 2, etc.)\n"
-                    "   - Show all work and intermediate calculations\n"
-                    "   - Use LaTeX notation for mathematical expressions\n"
-                    "   - Provide justification in [brackets] for key steps\n"
-                    "   - End with final answer in \\boxed{}"
+                    f"Problem:\n\n{problem}\n\n"
+                    "Provide a complete solution:\n"
+                    "1. Start with '**Problem Analysis and Approach**:'\n"
+                    "2. Show step-by-step solution with LaTeX\n"
+                    "3. End with \\boxed{answer}"
                 ),
                 'role': 'user'
             },
@@ -121,13 +98,8 @@ def generate_missing_step_conversation(problem: str, incomplete_solution: str, m
             {
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
-                    "Here is a solution that may be missing important intermediate steps:\n\n"
-                    f"{incomplete_solution}\n\n"
-                    "Your task:\n"
-                    "1. Identify where additional explanation or steps are needed\n"
-                    "2. Generate ONLY the missing step(s) that would make the solution clearer\n"
-                    "3. Make sure the step fits logically between the surrounding steps\n\n"
-                    "Generate ONLY the missing step(s):"
+                    f"Solution with missing steps:\n{incomplete_solution}\n\n"
+                    "Provide ONLY the missing step(s)"
                 ),
                 'role': 'user'
             },
