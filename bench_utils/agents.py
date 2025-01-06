@@ -2,35 +2,12 @@ from typing import Dict, List, Union, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage
 from bench_utils.benchmark_utils import get_model_response
 
-BENCHMARK_SYSTEM_PROMPT = """You are a mathematical problem solver. Your task is to solve mathematical problems step by step.
-
-Guidelines:
-1. Read the problem carefully.
-2. Start with an analysis of the problem.
-3. Show your work clearly with numbered steps.
-4. Use LaTeX notation for mathematical expressions.
-5. Explain your reasoning in [brackets].
-6. End with a final answer in \boxed{}.
-"""
-
-NUMERIC_SOLVER_SYSTEM_PROMPT = """You are a mathematical problem solver focused on numerical answers. Your task is to solve mathematical 
-problems and provide precise numeric solutions.
-
-Guidelines:
-1. Read the problem carefully
-2. Start with an analysis of the problem.
-3. Produce a full solution with numbered steps.
-4. Use LaTeX notation for mathematical expressions.
-5. Explain your reasoning in [brackets].
-6. End with a final numeric answer in \boxed{}.
-"""
 
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     
-    def __init__(self, model, numeric: bool = False):
+    def __init__(self, model):
         self.model = model
-        self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate analysis for a given problem"""
@@ -152,9 +129,8 @@ class MissingStepAgent:
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
-    def __init__(self, model, numeric: bool = False):
+    def __init__(self, model):
         self.model = model
-        self.system_prompt = NUMERIC_SOLVER_SYSTEM_PROMPT if numeric else BENCHMARK_SYSTEM_PROMPT
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
