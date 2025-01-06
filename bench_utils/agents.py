@@ -113,46 +113,36 @@ class CompletionAgent:
 
 
 class MissingStepAgent:
-    """Agent that generates solutions with a missing intermediate step and then adds it"""
+    """Agent that identifies and completes missing steps in mathematical solutions"""
     
     def __init__(self, model):
         self.model = model
         
-    async def generate_with_gap(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Generate a solution deliberately missing an intermediate step"""
-        prompt = [
-            HumanMessage(content=(
-                "You are a mathematical solution expert. Generate a solution but deliberately skip one intermediate step "
-                "(not the first or last step) while maintaining correct step numbering.\n\n"
-                f"Problem:\n\n{problem}\n\n"
-                "Guidelines:\n"
-                "1. Start with a problem analysis section\n"
-                "2. Include numbered steps\n"
-                "3. Skip ONE intermediate step that would make the solution clearer\n"
-                "4. Keep step numbers sequential despite the gap\n"
-                "5. Use LaTeX notation\n"
-                "6. End with \\boxed{} answer\n"
-                "7. Mark where the missing step should go with [Missing Step Here]\n\n"
-                "Generate the solution:"
-            ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
-        return (prompt[0].content, response) if return_prompt else response
+    async def complete_missing_step(self, problem: str, incomplete_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """
+        Identify and generate a missing intermediate step in a mathematical solution.
         
-    async def identify_missing_step(self, problem: str, incomplete_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Identify and generate the missing intermediate step"""
+        Args:
+            problem: The original math problem text
+            incomplete_solution: Solution with a missing or unclear step
+            return_prompt: Whether to return the prompt along with the response
+            
+        Returns:
+            The generated missing step, or a tuple of (prompt, response) if return_prompt is True
+        """
         prompt = [
             HumanMessage(content=(
-                "You are a mathematical solution expert focused on identifying missing logical steps.\n\n"
+                "You are a mathematical solution expert focused on completing missing or unclear steps.\n\n"
                 f"Problem:\n\n{problem}\n\n"
-                "Here is a solution with a missing intermediate step:\n\n"
+                "Here is a solution that may be missing important intermediate steps:\n\n"
                 f"{incomplete_solution}\n\n"
                 "Your task:\n"
-                "1. Identify where the logical gap exists\n"
-                "2. Generate ONLY the missing step that would make the solution clearer\n"
-                "3. Use the same style and numbering as surrounding steps\n"
-                "4. Include full mathematical notation and justification\n\n"
-                "Generate ONLY the missing step:"
+                "1. Identify where additional explanation or steps are needed\n"
+                "2. Generate ONLY the missing step(s) that would make the solution clearer\n"
+                "3. Match the style and notation of the existing solution\n"
+                "4. Include full mathematical notation and justification in [brackets]\n"
+                "5. Make sure the step fits logically between the surrounding steps\n\n"
+                "Generate ONLY the missing step(s):"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
