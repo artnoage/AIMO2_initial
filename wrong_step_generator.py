@@ -106,35 +106,41 @@ class WrongStepGenerator:
         Generate a wrong solution and identify which step causes it to go wrong.
         Returns dict with problem, answer, wrong solution and wrong step info.
         """
-        # Try to generate wrong but valid solutions
+        # Try to generate both correct and wrong solutions
         wrong_solution = None
+        correct_solution = None
         attempts = 0
         
-        while attempts < self.best_of:
+        while (wrong_solution is None or correct_solution is None) and attempts < self.best_of:
             try:
                 attempts += 1
                 solution = await self.solution_agent.generate(problem)
                 
                 # Validate solution structure
-                is_valid, _ = validate_solution(solution)
+                is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
                     continue
                     
-                # Check if solution is wrong
+                # Check if solution is correct/wrong
                 is_correct, _ = await self.verifier.verify(
                     solution,
                     correct_answer,
                     problem
                 )
                 
-                if not is_correct:
+                if is_correct and correct_solution is None:
+                    correct_solution = solution
+                    print(f"✓ Found correct solution on attempt {attempts}")
+                elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
-                    break
+                    print(f"✓ Found wrong solution on attempt {attempts}")
                     
-            except Exception:
+            except Exception as e:
+                print(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
-        if wrong_solution is None:
+        if wrong_solution is None or correct_solution is None:
+            print("❌ Failed to find both correct and wrong solutions")
             return None
             
         # Split wrong solution into steps
@@ -192,7 +198,8 @@ class WrongStepGenerator:
                     'wrong_step_index': wrong_step_index,
                     'wrong_step': steps[wrong_step_index],
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': correct_step  # Save the correct step from the successful completion
+                    'correct_step': correct_step,  # Save the correct step from the successful completion
+                    'correct_solution': correct_solution  # Add the full correct solution
                 }
             
             print(f"✓ Step {i} is valid")
