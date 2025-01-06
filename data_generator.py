@@ -16,21 +16,17 @@ async def process_solution(
     solver: any,
     verifier: any,
     config: BenchmarkConfig
-) -> Optional[Tuple[str, str, float, str]]:
+) -> Optional[Tuple[str, str, str]]:
     """Process example to generate training data for SFT"""
     logs = []
     solution_agent = FullSolutionAgent(solver)
     solution_prompt = None
-    found_solution = False
-    solution_attempt = 0
     final_solution = None
-    total_solution_attempts = 0
     
     attempts = 0
-    while not found_solution and attempts < config.best_of:
+    while attempts < config.best_of:
         attempts += 1
         try:
-            total_solution_attempts += 1
             if solution_prompt is None:
                 solution_prompt, current_solution = await solution_agent.generate(
                     example["problem"], return_prompt=True)
@@ -53,56 +49,29 @@ async def process_solution(
             )
             
             if is_correct:
-                found_solution = True
-                solution_attempt = attempts
                 final_solution = current_solution
                 logs.append(f"✓ Found valid solution on attempt {attempts}")
-                logs.append(f"  Total solution attempts: {total_solution_attempts}")
+                break
                 
         except Exception as e:
             print(f"Error in solution attempt {attempts}: {str(e)}")
             continue
 
-    if not found_solution:
+    if not final_solution:
         return None
 
-    # Print summary of attempts
-    print(f"\nExample completed: Found valid solution in {solution_attempt}/{attempts} attempts")
-    
-    # Calculate solution quality score
-    quality_metrics = analyze_solution_quality(final_solution)
-    quality_score = (
-        quality_metrics['formatting_quality'] / 5.0 +  # Up to 0.2 for formatting
-        min(1.0, quality_metrics['step_count'] / 5.0) * 0.3 +  # Up to 0.3 for steps
-        (0.2 if quality_metrics['has_analysis'] else 0) +  # 0.2 for analysis
-        (0.2 if quality_metrics['has_equations'] else 0) +  # 0.2 for equations
-        (0.1 if quality_metrics['has_therefore'] else 0)  # 0.1 for logical flow
-    )
+    # Print summary
+    print(f"\nExample completed: Found valid solution in {attempts} attempts")
 
-    # Print detailed logs
+    # Add summary to logs
     logs.append("\n" + "="*50)
     logs.append("=== Solution Details ===")
     logs.append("="*50)
+    logs.append(f"\n✓ Found valid solution in {attempts} attempts")
     
-    # Success metrics
-    logs.append(f"\n📊 Success Metrics:")
-    logs.append(f"✓ Found valid solution on attempt: {solution_attempt}/{config.best_of}")
-    logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
-    logs.append(f"✓ Success rate: {(found_solution/attempts)*100:.1f}%")
-
-    # Solution quality metrics
-    logs.append(f"\n📝 Solution Quality:")
-    logs.append(f"✓ Length: {quality_metrics['length']} words")
-    logs.append(f"✓ Steps: {quality_metrics['step_count']}")
-    logs.append(f"✓ Has analysis: {'Yes' if quality_metrics['has_analysis'] else 'No'}")
-    logs.append(f"✓ Has equations: {'Yes' if quality_metrics['has_equations'] else 'No'}")
-    logs.append(f"✓ Format score: {quality_metrics['formatting_quality']}/5")
-    logs.append(f"✓ Overall quality score: {quality_score:.3f}")
-
     return (
         solution_prompt,
         final_solution,
-        quality_score,
         "\n".join(logs)
     )
 
