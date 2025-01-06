@@ -222,13 +222,13 @@ class WrongStepGenerator:
 async def main():
     """Main function for wrong step generation"""
     config = BenchmarkConfig.from_args('Wrong step generation approach')
+    logger = MarkdownLogger()  # Create single logger instance for all examples
     
     async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
         """Process a single example"""
         try:
-            # Initialize solver and logger
+            # Initialize solver
             solver = get_model(ModelOption[config.solver], temp=config.temperature)
-            logger = MarkdownLogger()
             
             # Create generator
             generator = WrongStepGenerator(solver, config.best_of, config.completions)
