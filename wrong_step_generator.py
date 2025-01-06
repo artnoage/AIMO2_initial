@@ -59,42 +59,42 @@ class WrongStepGenerator:
 
         # If we found a successful completion, extract the correct step
         if successful > 0 and correct_completion:
-            print("\nDEBUG: Found successful completion:")
-            print("=" * 50)
-            print(correct_completion)
-            print("=" * 50)
+            self.logs.append("\nDEBUG: Found successful completion:")
+            self.logs.append("=" * 50)
+            self.logs.append(correct_completion)
+            self.logs.append("=" * 50)
             
             # Get all steps from the completion
             completion_steps = self._split_into_steps(correct_completion)
-            print(f"\nDEBUG: Split into {len(completion_steps)} steps:")
+            self.logs.append(f"\nDEBUG: Split into {len(completion_steps)} steps:")
             for i, step in enumerate(completion_steps):
-                print(f"\nStep {i}:")
-                print("-" * 30)
-                print(step)
-                print("-" * 30)
+                self.logs.append(f"\nStep {i}:")
+                self.logs.append("-" * 30)
+                self.logs.append(step)
+                self.logs.append("-" * 30)
             
             # Extract the step at the current index
             if step_index < len(completion_steps):
                 correct_step = completion_steps[step_index]
-                print(f"\nDEBUG: Extracted step {step_index}:")
-                print("-" * 30)
-                print(correct_step)
-                print("-" * 30)
+                self.logs.append(f"\nDEBUG: Extracted step {step_index}:")
+                self.logs.append("-" * 30)
+                self.logs.append(correct_step)
+                self.logs.append("-" * 30)
             else:
                 correct_step = None
-                print(f"\nDEBUG: Step index {step_index} out of bounds (max: {len(completion_steps)-1})")
+                self.logs.append(f"\nDEBUG: Step index {step_index} out of bounds (max: {len(completion_steps)-1})")
                 
             if step_index == 0:
-                print(f"Analysis section: {successful}/{self.completions} completions successful")
+                self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
             else:
-                print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+                self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
             return True, correct_step
 
         # No successful completion found
         if step_index == 0:
-            print(f"Analysis section: {successful}/{self.completions} completions successful")
+            self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
         else:
-            print(f"Step {step_index}: {successful}/{self.completions} completions successful")
+            self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
         return False, None
 
     async def generate(
@@ -130,13 +130,13 @@ class WrongStepGenerator:
                 
                 if is_correct and correct_solution is None:
                     correct_solution = solution
-                    print(f"✓ Found correct solution on attempt {attempts}")
+                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
                 elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
-                    print(f"✓ Found wrong solution on attempt {attempts}")
+                    self.logs.append(f"✓ Found wrong solution on attempt {attempts}")
                     
             except Exception as e:
-                print(f"Error in attempt {attempts}: {str(e)}")
+                self.logs.append(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
         if wrong_solution is None or correct_solution is None:
@@ -218,8 +218,9 @@ async def main():
     async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
         """Process a single example"""
         try:
-            # Initialize solver
+            # Initialize solver and logger
             solver = get_model(ModelOption[config.solver], temp=config.temperature)
+            logger = MarkdownLogger()
             
             # Create generator
             generator = WrongStepGenerator(solver, config.best_of, config.completions)
@@ -227,13 +228,17 @@ async def main():
             # Extract answer
             correct_answer = extract_answer_from_solution(example['solution'])
             if correct_answer is None:
-                print(f"Warning: Could not extract answer from solution for example {running_id}")
+                generator.logs.append(f"Warning: Could not extract answer from solution for example {running_id}")
                 return None
                 
             # Generate wrong step
             result = await generator.generate(example['problem'], correct_answer)
             if result is None:
                 return None
+                
+            # Save logs to markdown file
+            log_file = logger.save_logs(generator.logs, example_id)
+            generator.logs.append(f"\nLogs saved to: {log_file}")
                 
             # Add example ID
             result['id'] = example_id
