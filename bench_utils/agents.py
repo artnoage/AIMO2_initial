@@ -1,5 +1,5 @@
 from typing import Dict, List, Union, Tuple
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from bench_utils.benchmark_utils import get_model_response
 
 
@@ -136,7 +136,6 @@ class FullSolutionAgent:
         """Generate a complete solution with analysis and steps"""
         prompt = [
             HumanMessage(content=(
-                "<|im_start|>user\n"
                 f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
                 "Please provide a complete solution following these guidelines:\n"
                 "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
@@ -149,7 +148,7 @@ class FullSolutionAgent:
                 "   - Use LaTeX notation for mathematical expressions\n"
                 "   - Provide justification in [brackets] for key steps\n"
                 "   - End with final answer in \\boxed{}\n"
-                "<|im_end|>\n"))
+               ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response

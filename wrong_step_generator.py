@@ -79,10 +79,9 @@ class WrongStepGenerator:
                         self.logs.append(completion)
                         self.logs.append("```")
                         # Extract the next step
-                        completion_steps = split_into_steps(completion)
+                        completion_steps = split_into_steps(complete_solution)
                         next_step_index = step_index + 1
-                        if next_step_index < len(completion_steps):
-                            correct_step = completion_steps[next_step_index]
+                        correct_step = completion_steps[next_step_index]
                         break
                     else:
                         self.logs.append(f"Found verified but invalid solution: {validation_reason}")

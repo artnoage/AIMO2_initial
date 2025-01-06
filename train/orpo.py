@@ -18,7 +18,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250105_104755",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250105_104504")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250106_092519")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -106,9 +106,8 @@ def main():
 
     # Save both merged model and LoRA weights
     models_dir = "models"
-    loras_dir = "loras"
     os.makedirs(models_dir, exist_ok=True)
-    os.makedirs(loras_dir, exist_ok=True)
+    
     
     model_output_dir = os.path.join(models_dir, timestamp)
     
