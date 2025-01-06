@@ -3,10 +3,10 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
-from bench_utils.benchmark_config import *
-from bench_utils.benchmark_utils import *
-from bench_utils.agents import *
-from bench_utils.log_handler import MarkdownLogger
+from utils.benchmark_config import *
+from utils.benchmark_utils import *
+from utils.agents import *
+from utils.log_handler import MarkdownLogger
 
 # Configure logging
 logging.basicConfig(

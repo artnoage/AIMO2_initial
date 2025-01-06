@@ -1,6 +1,6 @@
 from typing import Dict, List, Union, Tuple
 from langchain_core.messages import HumanMessage
-from bench_utils.benchmark_utils import get_model_response
+from utils.benchmark_utils import get_model_response
 
 
 class AnalysisAgent:

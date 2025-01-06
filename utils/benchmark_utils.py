@@ -14,8 +14,8 @@ from pathlib import Path
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import HfApi, whoami
-from bench_utils.benchmark_config import BenchmarkConfig, ModelOption
-from bench_utils.progress_tracker import *
+from utils.benchmark_config import BenchmarkConfig, ModelOption
+from utils.progress_tracker import *
 T = TypeVar('T')
 import logging
 from latex2sympy2 import latex2sympy
