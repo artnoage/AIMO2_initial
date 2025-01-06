@@ -86,6 +86,34 @@ def generate_completion_conversation(problem: str, partial_solution: str, comple
         ]
     }
 
+def generate_full_solution_conversation(problem: str, solution: str) -> Dict:
+    """Generate conversation for complete solution"""
+    return {
+        'conversations': [
+            {
+                'content': (
+                    f"Here is a mathematical problem to solve:\n\n{problem}\n\n"
+                    "Please provide a complete solution following these guidelines:\n"
+                    "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
+                    "   - Problem type and key concepts involved\n"
+                    "   - Relevant theorems and techniques\n"
+                    "   - Overall solution strategy\n\n"
+                    "2. Then provide a detailed step-by-step solution:\n"
+                    "   - Number each step clearly (Step 1, Step 2, etc.)\n"
+                    "   - Show all work and intermediate calculations\n"
+                    "   - Use LaTeX notation for mathematical expressions\n"
+                    "   - Provide justification in [brackets] for key steps\n"
+                    "   - End with final answer in \\boxed{}"
+                ),
+                'role': 'user'
+            },
+            {
+                'content': solution,
+                'role': 'assistant'
+            }
+        ]
+    }
+
 def generate_missing_step_conversation(problem: str, incomplete_solution: str, missing_step: str) -> Dict:
     """Generate conversation for identifying and completing missing steps"""
     return {
@@ -252,16 +280,7 @@ async def process_example(
             'id': f"{example_id}_full",
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'conversations': [
-                {
-                    'content': prompt,
-                    'role': 'user'
-                },
-                {
-                    'content': solution,
-                    'role': 'assistant'
-                }
-            ]
+            **generate_full_solution_conversation(example['problem'], solution)
         })
         
         # 3. Step-by-step training data
