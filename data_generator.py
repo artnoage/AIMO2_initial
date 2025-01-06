@@ -132,8 +132,7 @@ async def process_example(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': prompt, 'role': 'user'},
-            'completion': {'content': solution, 'role': 'assistant'},
-            'quality_score': quality_score
+            'completion': {'content': solution, 'role': 'assistant'}
         }
         return [result]
 
