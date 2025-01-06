@@ -66,7 +66,7 @@ class WrongStepGenerator:
             self.logs.append("=" * 50)
             
             # Get all steps from the completion
-            completion_steps = self._split_into_steps(correct_completion)
+            completion_steps = split_into_steps(correct_completion)
             self.logs.append(f"\nDEBUG: Split into {len(completion_steps)} steps:")
             for i, step in enumerate(completion_steps):
                 self.logs.append(f"\nStep {i}:")
