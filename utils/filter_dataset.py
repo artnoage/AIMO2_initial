@@ -6,10 +6,9 @@ from contextlib import contextmanager
 from datasets import load_dataset, Dataset, DatasetDict
 from huggingface_hub import HfApi
 import re 
-import sympy
-from latex2sympy2 import latex2sympy
 from typing import Optional
 from tqdm import tqdm
+from utils.benchmark_utils import extract_numeric_answer
 
 class TimeoutException(Exception): pass
 
@@ -79,28 +78,12 @@ def contains_http(text: str) -> bool:
     return 'http' in text.lower()
 
 def is_numeric_answer(answer: str) -> bool:
-    """Check if the answer represents a number using sympy parsing"""
+    """Check if the answer represents a number using extract_numeric_answer"""
     if not answer or not answer.strip():
         return False
-        
-    # Clean the answer string
-    clean_answer = answer.strip()
-    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
-    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    clean_answer = clean_answer.replace('\\,', '')
     
-    try:
-        with time_limit(10):  # 10 second timeout
-            latex_expr = latex2sympy(clean_answer)
-            expr = sympy.sympify(latex_expr)
-            float(expr.evalf())
-            return True
-    except TimeoutException:
-        # Processing took too long
-        return False
-    except Exception:
-        # Parsing failed
-        return False
+    numeric_value, _ = extract_numeric_answer(answer)
+    return numeric_value is not None
 
 def contains_non_latin(text: str) -> bool:
     """Check if text contains Chinese or Russian characters"""
