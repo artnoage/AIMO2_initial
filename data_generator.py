@@ -11,13 +11,47 @@ from bench_utils.agents import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def generate_next_step_conversation(problem: str, current_solution: str, next_step: str) -> Dict:
+    """Generate conversation for next step prediction"""
+    return {
+        'conversations': [
+            {
+                'content': f"Here is a mathematical problem:\n\n{problem}\n\n"
+                          f"Current solution:\n\n{current_solution}\n\n"
+                          "What is the next step in this solution?",
+                'role': 'user'
+            },
+            {
+                'content': next_step,
+                'role': 'assistant'
+            }
+        ]
+    }
+
+def generate_complete_from_partial(problem: str, partial_solution: str, complete_solution: str) -> Dict:
+    """Generate conversation for completing partial solutions"""
+    return {
+        'conversations': [
+            {
+                'content': f"Here is a mathematical problem:\n\n{problem}\n\n"
+                          f"Here is a partial solution:\n\n{partial_solution}\n\n"
+                          "Please complete this solution.",
+                'role': 'user'
+            },
+            {
+                'content': complete_solution,
+                'role': 'assistant'
+            }
+        ]
+    }
+
 async def process_solution(
     example: Dict,
     solver: any,
     verifier: any,
     config: BenchmarkConfig
-) -> Optional[Tuple[str, str, str]]:
-    """Process example to generate training data for SFT"""
+) -> Optional[List[Dict]]:
+    """Process example to generate multiple training data variants for SFT"""
     logs = []
     solution_agent = FullSolutionAgent(solver)
     solution_prompt = None
