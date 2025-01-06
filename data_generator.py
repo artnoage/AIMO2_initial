@@ -11,14 +11,50 @@ from bench_utils.agents import *
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def generate_analysis_conversation(problem: str, analysis: str) -> Dict:
+    """Generate conversation for problem analysis"""
+    return {
+        'conversations': [
+            {
+                'content': (
+                    f"Here is a mathematical problem:\n\n{problem}\n\n"
+                    "Before solving this problem step-by-step, provide a thorough analysis that:\n"
+                    "1. Categorizes the problem type\n"
+                    "2. Lists the specific theorems and techniques that will be useful\n"
+                    "3. Outlines the general approach to solving it\n\n"
+                    "Important guidelines:\n"
+                    "- Start with '**Problem Analysis and Approach**:'\n"
+                    "- Be specific about which theorems/techniques apply\n"
+                    "- Explain why these approaches are suitable\n"
+                    "- Do NOT provide the actual solution steps"
+                ),
+                'role': 'user'
+            },
+            {
+                'content': analysis,
+                'role': 'assistant'
+            }
+        ]
+    }
+
 def generate_next_step_conversation(problem: str, current_solution: str, next_step: str) -> Dict:
     """Generate conversation for next step prediction"""
     return {
         'conversations': [
             {
-                'content': f"Here is a mathematical problem:\n\n{problem}\n\n"
-                          f"Current solution:\n\n{current_solution}\n\n"
-                          "What is the next step in this solution?",
+                'content': (
+                    f"Here is a mathematical problem:\n\n{problem}\n\n"
+                    "Your task is to provide the next step in the solution. "
+                    "Make sure your step is detailed and mathematically rigorous.\n\n"
+                    "Guidelines:\n"
+                    "- Provide exactly ONE step\n"
+                    "- Include clear explanations\n"
+                    "- Use LaTeX notation where appropriate\n"
+                    "- Include justification in [brackets]\n"
+                    "- Number your step appropriately\n\n"
+                    f"Here are the steps so far:\n\n{current_solution}\n\n"
+                    "Provide the next step:"
+                ),
                 'role': 'user'
             },
             {
@@ -33,15 +69,49 @@ def generate_completion_conversation(problem: str, partial_solution: str, comple
     return {
         'conversations': [
             {
-                'content': f"Here is a mathematical problem:\n\n{problem}\n\n"
-                          f"I will show you the beginning of a step-by-step mathematical solution. "
-                          "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
-                          f"Here is the partial solution:\n\n{partial_solution}\n\n"
-                          "Please complete the remaining steps following the same format:",
+                'content': (
+                    f"Here is a mathematical problem:\n\n{problem}\n\n"
+                    "I will show you the beginning of a step-by-step mathematical solution. "
+                    "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
+                    "Important guidelines:\n"
+                    "- Maintain the same level of detail and explanation as the previous steps\n"
+                    "- Continue the step numbering sequence\n"
+                    "- Use LaTeX notation consistently\n"
+                    "- Provide justification for each step in [brackets]\n"
+                    "- End with a clear boxed answer using \\boxed{}\n\n"
+                    f"Here is the partial solution:\n\n{partial_solution}\n\n"
+                    "Please complete the remaining steps following the same format:"
+                ),
                 'role': 'user'
             },
             {
                 'content': completion,
+                'role': 'assistant'
+            }
+        ]
+    }
+
+def generate_missing_step_conversation(problem: str, incomplete_solution: str, missing_step: str) -> Dict:
+    """Generate conversation for identifying and completing missing steps"""
+    return {
+        'conversations': [
+            {
+                'content': (
+                    f"Problem:\n\n{problem}\n\n"
+                    "Here is a solution that may be missing important intermediate steps:\n\n"
+                    f"{incomplete_solution}\n\n"
+                    "Your task:\n"
+                    "1. Identify where additional explanation or steps are needed\n"
+                    "2. Generate ONLY the missing step(s) that would make the solution clearer\n"
+                    "3. Match the style and notation of the existing solution\n"
+                    "4. Include full mathematical notation and justification in [brackets]\n"
+                    "5. Make sure the step fits logically between the surrounding steps\n\n"
+                    "Generate ONLY the missing step(s):"
+                ),
+                'role': 'user'
+            },
+            {
+                'content': missing_step,
                 'role': 'assistant'
             }
         ]
@@ -165,15 +235,37 @@ async def process_example(
         # Generate all training variants
         results = []
         
-        # 1. Full solution conversation
+        # 1. Analysis conversation
+        analysis_agent = AnalysisAgent(solver)
+        analysis = await analysis_agent.generate(example['problem'])
+        results.append({
+            'id': f"{example_id}_analysis",
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            **generate_analysis_conversation(example['problem'], analysis)
+        })
+        
+        # 2. Full solution conversation
         results.append({
             'id': f"{example_id}_full",
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'conversations': [
                 {
-                    'content': f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
-                              "Please provide a complete solution with analysis and steps.",
+                    'content': (
+                        f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
+                        "Please provide a complete solution following these guidelines:\n"
+                        "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
+                        "   - Problem type and key concepts involved\n"
+                        "   - Relevant theorems and techniques\n"
+                        "   - Overall solution strategy\n\n"
+                        "2. Then provide a detailed step-by-step solution:\n"
+                        "   - Number each step clearly (Step 1, Step 2, etc.)\n"
+                        "   - Show all work and intermediate calculations\n"
+                        "   - Use LaTeX notation for mathematical expressions\n"
+                        "   - Provide justification in [brackets] for key steps\n"
+                        "   - End with final answer in \\boxed{}"
+                    ),
                     'role': 'user'
                 },
                 {
@@ -183,12 +275,13 @@ async def process_example(
             ]
         })
         
-        # 2. Generate step-by-step training data
+        # 3. Generate step-by-step training data
+        next_step_agent = NextStepAgent(solver)
         steps = split_into_steps(solution)
         if len(steps) > 1:
             for i in range(len(steps)-1):
                 current = "\n\n".join(steps[:i+1])
-                next_step = steps[i+1]
+                next_step = await next_step_agent.generate(example['problem'], current)
                 results.append({
                     'id': f"{example_id}_step_{i+1}",
                     'problem': example['problem'],
@@ -196,7 +289,7 @@ async def process_example(
                     **generate_next_step_conversation(example['problem'], current, next_step)
                 })
         
-        # 3. Generate completion training data
+        # 4. Generate completion training data
         completion_agent = CompletionAgent(solver)
         partial_solutions = get_partial_solutions(steps)
         if len(partial_solutions) > 1:
@@ -208,6 +301,19 @@ async def process_example(
                     'problem': example['problem'],
                     'correct_answer': correct_answer,
                     **generate_completion_conversation(example['problem'], partial, completion)
+                })
+                
+        # 5. Generate missing step training data
+        missing_step_agent = MissingStepAgent(solver)
+        if len(steps) > 2:  # Need at least 3 steps to have meaningful missing steps
+            for i in range(1, len(steps)-1):  # Skip first and last steps
+                incomplete = "\n\n".join(steps[:i] + steps[i+1:])  # Remove one step
+                missing_step = await missing_step_agent.complete_missing_step(example['problem'], incomplete)
+                results.append({
+                    'id': f"{example_id}_missing_{i}",
+                    'problem': example['problem'],
+                    'correct_answer': correct_answer,
+                    **generate_missing_step_conversation(example['problem'], incomplete, missing_step)
                 })
         
         return results
