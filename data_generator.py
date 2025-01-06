@@ -18,9 +18,9 @@ def generate_analysis_conversation(problem: str, analysis: str) -> Dict:
                 'content': (
                     "Here is a mathematical problem:\n\n"
                     f"{problem}\n\n"
-                    "Please analyze this problem - describe its type, "
-                    "what theorems and techniques we could use, and how you'd "
-                    "approach solving it. Do not provide the actual solution.\n\n"
+                    "Please analyze this problem - tell me about its type, "
+                    "what theorems and techniques would be useful, and how you'd "
+                    "approach solving it. Don't provide the actual solution yet.\n\n"
                     "Start with '**Problem Analysis and Approach**:'"
                 ),
                 'role': 'user'
@@ -82,9 +82,9 @@ def generate_full_solution_conversation(problem: str, solution: str) -> Dict:
                 'content': (
                     "Here is a mathematical problem:\n\n"
                     f"{problem}\n\n"
-                    "Can you provide a detailed solution? Start with an analysis of the problem, "
-                    "then go through the solution step-by-step using LaTeX notation. "
-                    "Put the final answer in a box using \\boxed{}"
+                    "Could you help me solve this from start to finish? First, let's analyze the problem, "
+                    "then walk through the solution step-by-step using LaTeX notation. "
+                    "Don't forget to put the final answer in a box using \\boxed{}"
                 ),
                 'role': 'user'
             },
