@@ -160,9 +160,12 @@ async def process_example(
         # Print logs before returning result
         print("\n".join(logs))
 
-        # Return consistent format for SFT data with conversation tags
-        result = {
-            'id': example_id,
+        # Generate all training variants
+        results = []
+        
+        # 1. Full solution conversation
+        results.append({
+            'id': f"{example_id}_full",
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'conversations': [
@@ -176,8 +179,35 @@ async def process_example(
                     'role': 'assistant'
                 }
             ]
-        }
-        return [result]
+        })
+        
+        # 2. Generate step-by-step training data
+        steps = split_into_steps(solution)
+        if len(steps) > 1:
+            for i in range(len(steps)-1):
+                current = "\n\n".join(steps[:i+1])
+                next_step = steps[i+1]
+                results.append({
+                    'id': f"{example_id}_step_{i+1}",
+                    'problem': example['problem'],
+                    'correct_answer': correct_answer,
+                    **generate_next_step_conversation(example['problem'], current, next_step)
+                })
+        
+        # 3. Generate completion training data
+        partial_solutions = get_partial_solutions(steps)
+        if len(partial_solutions) > 1:
+            for i in range(len(partial_solutions)-1):
+                partial = partial_solutions[i]
+                complete = solution
+                results.append({
+                    'id': f"{example_id}_complete_{i+1}",
+                    'problem': example['problem'],
+                    'correct_answer': correct_answer,
+                    **generate_complete_from_partial(example['problem'], partial, complete)
+                })
+        
+        return results
 
     except Exception as e:
         processing_time = time.perf_counter() - start_time
