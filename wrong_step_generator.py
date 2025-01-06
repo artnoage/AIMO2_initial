@@ -81,16 +81,17 @@ class WrongStepGenerator:
                 self.logs.append(step)
                 self.logs.append("-" * 30)
             
-            # Extract the step at the current index
-            if step_index < len(completion_steps):
-                correct_step = completion_steps[step_index]
-                self.logs.append(f"\nDEBUG: Extracted step {step_index}:")
+            # Extract the next step (n+1) since we're verifying up to step n
+            next_step_index = step_index + 1
+            if next_step_index < len(completion_steps):
+                correct_step = completion_steps[next_step_index]
+                self.logs.append(f"\nDEBUG: Extracted next step {next_step_index}:")
                 self.logs.append("-" * 30)
                 self.logs.append(correct_step)
                 self.logs.append("-" * 30)
             else:
                 correct_step = None
-                self.logs.append(f"\nDEBUG: Step index {step_index} out of bounds (max: {len(completion_steps)-1})")
+                self.logs.append(f"\nDEBUG: Next step index {next_step_index} out of bounds (max: {len(completion_steps)-1})")
                 
             if step_index == 0:
                 self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
