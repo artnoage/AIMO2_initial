@@ -201,14 +201,9 @@ class WrongStepGenerator:
                 wrong_step_index = i
                 self.logs.append(f"✗ Found wrong step at step {i}")
                 
-                # Extract the corresponding correct step from the correct solution
-                correct_steps = split_into_steps(correct_solution)
-                if i < len(correct_steps):
-                    correct_step = correct_steps[i]
-                    self.logs.append(f"✓ Found corresponding correct step from full solution")
-                else:
-                    self.logs.append("⚠ Warning: Could not find corresponding step in correct solution")
-                    
+                # Use the last known correct step from our iterative verification
+                self.logs.append(f"✓ Using last known correct step from verification process")
+                
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
