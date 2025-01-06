@@ -7,11 +7,6 @@ from transformers import (
     Trainer,
     default_data_collator,
 )
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-)
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
@@ -59,43 +54,15 @@ def main():
     model_name = "artnoage/metastral"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Configure model loading with 8-bit quantization
+    # Load model normally
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        load_in_8bit=True,
         device_map="auto",
         torch_dtype=torch.float16,
     )
     
     if local_rank == 0:
         print("\n=== After Model Load ===")
-        print_gpu_utilization()
-
-    # Prepare model for training
-    model = prepare_model_for_kbit_training(model)
-
-    # Configure LoRA
-    lora_config = LoraConfig(
-        r=64,
-        lora_alpha=64,
-        target_modules=[
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            "gate_proj",
-            "up_proj",
-            "down_proj",
-            "lm_head",
-        ],
-        lora_dropout=0,
-        bias="none",
-    )
-    
-    model = get_peft_model(model, lora_config)
-    
-    if local_rank == 0:
-        print("\n=== After LoRA Configuration ===")
         print_gpu_utilization()
 
     # Setup chat template
