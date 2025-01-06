@@ -80,10 +80,11 @@ def generate_full_solution_conversation(problem: str, solution: str) -> Dict:
         'conversations': [
             {
                 'content': (
-                    f"Problem:\n\n{problem}\n\n"
-                    "Could you help solve this completely? Start by analyzing the problem, "
+                    "Here is a mathematical problem:\n\n"
+                    f"{problem}\n\n"
+                    "Could you help me solve this from start to finish? First, let's analyze the problem, "
                     "then walk me through the solution step-by-step using LaTeX notation. "
-                    "Make sure to put the final answer in a box using \\boxed{}"
+                    "Don't forget to put the final answer in a box using \\boxed{}"
                 ),
                 'role': 'user'
             },
