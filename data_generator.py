@@ -223,18 +223,18 @@ async def process_example(
         logs.append(f"├─ Quality score: {quality_score:.3f}")
         logs.append("="*50)
 
-        # Generate all training variants
+        # Generate all training variants from the valid solution
         results = []
+        steps = split_into_steps(solution)
         
-        # 1. Analysis conversation
-        analysis_agent = AnalysisAgent(solver)
-        analysis = await analysis_agent.generate(example['problem'])
-        results.append({
-            'id': f"{example_id}_analysis",
-            'problem': example['problem'],
-            'correct_answer': correct_answer,
-            **generate_analysis_conversation(example['problem'], analysis)
-        })
+        # 1. Analysis conversation - use first part if it contains analysis
+        if steps and "analysis" in steps[0].lower():
+            results.append({
+                'id': f"{example_id}_analysis",
+                'problem': example['problem'],
+                'correct_answer': correct_answer,
+                **generate_analysis_conversation(example['problem'], steps[0])
+            })
         
         # 2. Full solution conversation
         results.append({
@@ -243,20 +243,7 @@ async def process_example(
             'correct_answer': correct_answer,
             'conversations': [
                 {
-                    'content': (
-                        f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
-                        "Please provide a complete solution following these guidelines:\n"
-                        "1. Start with '**Problem Analysis and Approach**:' section explaining:\n"
-                        "   - Problem type and key concepts involved\n"
-                        "   - Relevant theorems and techniques\n"
-                        "   - Overall solution strategy\n\n"
-                        "2. Then provide a detailed step-by-step solution:\n"
-                        "   - Number each step clearly (Step 1, Step 2, etc.)\n"
-                        "   - Show all work and intermediate calculations\n"
-                        "   - Use LaTeX notation for mathematical expressions\n"
-                        "   - Provide justification in [brackets] for key steps\n"
-                        "   - End with final answer in \\boxed{}"
-                    ),
+                    'content': prompt,
                     'role': 'user'
                 },
                 {
@@ -266,13 +253,11 @@ async def process_example(
             ]
         })
         
-        # 3. Generate step-by-step training data
-        next_step_agent = NextStepAgent(solver)
-        steps = split_into_steps(solution)
+        # 3. Step-by-step training data
         if len(steps) > 1:
             for i in range(len(steps)-1):
                 current = "\n\n".join(steps[:i+1])
-                next_step = await next_step_agent.generate(example['problem'], current)
+                next_step = steps[i+1]  # Use the next step from our valid solution
                 results.append({
                     'id': f"{example_id}_step_{i+1}",
                     'problem': example['problem'],
@@ -280,13 +265,12 @@ async def process_example(
                     **generate_next_step_conversation(example['problem'], current, next_step)
                 })
         
-        # 4. Generate completion training data
-        completion_agent = CompletionAgent(solver)
+        # 4. Completion training data
         partial_solutions = get_partial_solutions(steps)
         if len(partial_solutions) > 1:
             for i in range(len(partial_solutions)-1):
                 partial = partial_solutions[i]
-                completion = await completion_agent.generate(example['problem'], partial)
+                completion = "\n\n".join(steps[i+1:])  # Use remaining steps from our valid solution
                 results.append({
                     'id': f"{example_id}_complete_{i+1}",
                     'problem': example['problem'],
@@ -294,12 +278,11 @@ async def process_example(
                     **generate_completion_conversation(example['problem'], partial, completion)
                 })
                 
-        # 5. Generate missing step training data
-        missing_step_agent = MissingStepAgent(solver)
+        # 5. Missing step training data
         if len(steps) > 2:  # Need at least 3 steps to have meaningful missing steps
             for i in range(1, len(steps)-1):  # Skip first and last steps
                 incomplete = "\n\n".join(steps[:i] + steps[i+1:])  # Remove one step
-                missing_step = await missing_step_agent.complete_missing_step(example['problem'], incomplete)
+                missing_step = steps[i]  # Use the removed step from our valid solution
                 results.append({
                     'id': f"{example_id}_missing_{i}",
                     'problem': example['problem'],
