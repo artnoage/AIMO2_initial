@@ -28,18 +28,20 @@ def generate_next_step_conversation(problem: str, current_solution: str, next_st
         ]
     }
 
-def generate_complete_from_partial(problem: str, partial_solution: str, complete_solution: str) -> Dict:
-    """Generate conversation for completing partial solutions"""
+def generate_completion_conversation(problem: str, partial_solution: str, completion: str) -> Dict:
+    """Generate conversation for solution completion"""
     return {
         'conversations': [
             {
                 'content': f"Here is a mathematical problem:\n\n{problem}\n\n"
-                          f"Here is a partial solution:\n\n{partial_solution}\n\n"
-                          "Please complete this solution.",
+                          f"I will show you the beginning of a step-by-step mathematical solution. "
+                          "Your task is to complete the solution by continuing with the same style and rigor.\n\n"
+                          f"Here is the partial solution:\n\n{partial_solution}\n\n"
+                          "Please complete the remaining steps following the same format:",
                 'role': 'user'
             },
             {
-                'content': complete_solution,
+                'content': completion,
                 'role': 'assistant'
             }
         ]
@@ -195,16 +197,17 @@ async def process_example(
                 })
         
         # 3. Generate completion training data
+        completion_agent = CompletionAgent(solver)
         partial_solutions = get_partial_solutions(steps)
         if len(partial_solutions) > 1:
             for i in range(len(partial_solutions)-1):
                 partial = partial_solutions[i]
-                complete = solution
+                completion = await completion_agent.generate(example['problem'], partial)
                 results.append({
                     'id': f"{example_id}_complete_{i+1}",
                     'problem': example['problem'],
                     'correct_answer': correct_answer,
-                    **generate_complete_from_partial(example['problem'], partial, complete)
+                    **generate_completion_conversation(example['problem'], partial, completion)
                 })
         
         return results
