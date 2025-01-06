@@ -191,6 +191,14 @@ class WrongStepGenerator:
             if not has_correct:
                 wrong_step_index = i
                 print(f"✗ Found wrong step at step {i}")
+                # Get the correct step from the previous successful verification
+                prev_step_index = i - 1
+                _, prev_correct_step = await self._verify_completions(
+                    problem,
+                    partial_solutions[prev_step_index],
+                    correct_answer,
+                    i  # Pass current step index to get the correct version of current step
+                )
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -198,7 +206,7 @@ class WrongStepGenerator:
                     'wrong_step_index': wrong_step_index,
                     'wrong_step': steps[wrong_step_index],
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': correct_step,  # Save the correct step from the successful completion
+                    'correct_step': prev_correct_step,  # Use the correct step from previous verification
                     'correct_solution': correct_solution  # Add the full correct solution
                 }
             
