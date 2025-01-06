@@ -165,7 +165,7 @@ class WrongStepGenerator:
             self.logs.append(f"\nChecking step {i}...")
             
             # Try completions from this partial solution
-            found_verified, found_valid, current_step = await self._verify_completions(
+            found_verified, found_valid, correct_step = await self._verify_completions(
                 problem,
                 partial_solutions[i],
                 correct_answer,
@@ -175,7 +175,7 @@ class WrongStepGenerator:
             if found_valid:
                 self.logs.append(f"✓ Step {i} is valid")
                 # Store this as the correct next step for the next phase
-                last_good_step = current_step
+                last_good_step = correct_step
             elif not found_verified:
                 self.logs.append(f"✗ Found wrong step at step {i}")
                 # When we find a wrong step, use the last_good_step we already have
@@ -183,17 +183,12 @@ class WrongStepGenerator:
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
+                    'correct_solution': correct_solution,
                     'wrong_solution': wrong_solution,
                     'wrong_step_index': i,
                     'wrong_step': steps[i],
                     'partial_solution': partial_solutions[max(0, i - 1)],
-                    'correct_solution': correct_solution,
-                    'correct_step': last_good_step,  # Use existing last_good_step
-                    'wrong_solution': wrong_solution,
-                    'wrong_step_index': i,
-                    'wrong_step': steps[i],
-                    'partial_solution': partial_solutions[max(0, i - 1)]
-                }
+                    'correct_step': last_good_step}
                 
         # If we get here, all steps were valid (shouldn't happen with a wrong solution)
         self.logs.append("✓ All steps are valid")
