@@ -59,8 +59,10 @@ def generate_completion_conversation(problem: str, partial_solution: str, comple
         'conversations': [
             {
                 'content': (
-                    f"Problem:\n\n{problem}\n\n"
-                    f"Partial solution:\n{partial_solution}\n\n"
+                    "Here is a mathematical problem:\n\n"
+                    f"{problem}\n\n"
+                    "We've started solving it and got this far:\n\n"
+                    f"{partial_solution}\n\n"
                     "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
                 ),
                 'role': 'user'
