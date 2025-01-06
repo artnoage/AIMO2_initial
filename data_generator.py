@@ -4,7 +4,6 @@ import logging
 import asyncio
 from typing import Dict, List, Optional, Any, Tuple
 from dotenv import load_dotenv
-from utils.benchmark_config import *
 from utils.benchmark_utils import *
 from utils.agents import *
 
@@ -234,8 +233,8 @@ async def process_example(
         steps = split_into_steps(solution)
         
         # Return empty list if solution has less than 3 steps (including analysis)
-        if len(steps) < 3:
-            logs.append("\n⚠️ Solution has fewer than 3 steps - skipping")
+        if len(steps) < 4:
+            logs.append("\n⚠️ Solution has fewer than 4 steps - skipping")
             print("\n".join(logs))
             return []
             
