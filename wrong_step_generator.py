@@ -287,10 +287,9 @@ async def main():
             # Save comprehensive logs to markdown file
             log_file = logger.save_logs(all_logs, example_id)
             
-            # Add example ID and logs to result
+            # Add example ID to result
             if result:
                 result['id'] = example_id
-                result['logs'] = "\n".join(all_logs)
                 return [result]
             
         except Exception as e:
