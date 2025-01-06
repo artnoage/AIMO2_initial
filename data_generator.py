@@ -144,6 +144,10 @@ async def process_solution(
                 logs.append(f"✗ Invalid solution on attempt {attempts}: {validation_reason}")
                 continue
 
+            # Quietly check for [/INST] token after validation passes
+            if "[/INST]" in current_solution:
+                logs.append(f"⚠️ Note: Solution contains [/INST] token but passed validation")
+
             logs.append(f"✓ Attempt {attempts} passed validation")
 
             # Verify correctness for valid solutions
