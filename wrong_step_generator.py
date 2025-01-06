@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
+from bench_utils.log_handler import MarkdownLogger
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
