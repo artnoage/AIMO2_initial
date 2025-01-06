@@ -68,6 +68,16 @@ class WrongStepGenerator:
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
                         found_valid = True
+                        # Log the successful completion details
+                        self.logs.append("\n=== Valid Completion Found ===")
+                        self.logs.append("Partial solution up to this point:")
+                        self.logs.append("```")
+                        self.logs.append(partial_solution)
+                        self.logs.append("```")
+                        self.logs.append("\nValid completion:")
+                        self.logs.append("```")
+                        self.logs.append(completion)
+                        self.logs.append("```")
                         # Extract the next step
                         completion_steps = split_into_steps(completion)
                         next_step_index = step_index + 1
