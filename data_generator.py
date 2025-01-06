@@ -40,8 +40,9 @@ def generate_next_step_conversation(problem: str, current_solution: str, next_st
                 'content': (
                     "Here is a mathematical problem:\n\n"
                     f"{problem}\n\n"
-                    f"Current solution:\n{current_solution}\n\n"
-                    "What would be the next step? Please explain using LaTeX notation."
+                    "Here's how far we've gotten with the solution:\n\n"
+                    f"{current_solution}\n\n"
+                    "Could you help me with the next step? Please explain it using LaTeX notation."
                 ),
                 'role': 'user'
             },
