@@ -17,10 +17,9 @@ def generate_analysis_conversation(problem: str, analysis: str) -> Dict:
             {
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
-                    "Analyze this problem by:\n"
-                    "1. Identifying the problem type\n"
-                    "2. Listing relevant theorems/techniques\n"
-                    "3. Outlining the solution approach\n\n"
+                    "Please analyze this problem - tell me about its type, "
+                    "what theorems and techniques we could use, and how you'd "
+                    "approach solving it.\n\n"
                     "Start with '**Problem Analysis and Approach**:'"
                 ),
                 'role': 'user'
@@ -40,7 +39,7 @@ def generate_next_step_conversation(problem: str, current_solution: str, next_st
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
                     f"Current solution:\n{current_solution}\n\n"
-                    "Provide the next step with explanation and LaTeX notation."
+                    "What would be the next step? Please explain using LaTeX notation."
                 ),
                 'role': 'user'
             },
@@ -59,7 +58,7 @@ def generate_completion_conversation(problem: str, partial_solution: str, comple
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
                     f"Partial solution:\n{partial_solution}\n\n"
-                    "Complete the solution and end with \\boxed{answer}"
+                    "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
                 ),
                 'role': 'user'
             },
@@ -77,10 +76,9 @@ def generate_full_solution_conversation(problem: str, solution: str) -> Dict:
             {
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
-                    "Provide a complete solution:\n"
-                    "1. Start with '**Problem Analysis and Approach**:'\n"
-                    "2. Show step-by-step solution with LaTeX\n"
-                    "3. End with \\boxed{answer}"
+                    "Could you help solve this completely? Start by analyzing the problem, "
+                    "then walk me through the solution step-by-step using LaTeX notation. "
+                    "Make sure to put the final answer in a box using \\boxed{}"
                 ),
                 'role': 'user'
             },
@@ -99,7 +97,7 @@ def generate_missing_step_conversation(problem: str, incomplete_solution: str, m
                 'content': (
                     f"Problem:\n\n{problem}\n\n"
                     f"Solution with missing steps:\n{incomplete_solution}\n\n"
-                    "Provide ONLY the missing step(s)"
+                    "Could you fill in just the missing step here?"
                 ),
                 'role': 'user'
             },
