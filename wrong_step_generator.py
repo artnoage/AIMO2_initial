@@ -21,38 +21,6 @@ class WrongStepGenerator:
         self.verifier = NumericVerifier()
         self.logs = []
         
-    def _split_into_steps(self, solution: str) -> List[str]:
-        """Split a solution into analysis and numbered steps"""
-        # First split into analysis and steps sections
-        parts = solution.lower().split("step")
-        if not parts:
-            return []
-            
-        steps = []
-        # Add analysis section if present
-        analysis = parts[0]
-        if "analysis" in analysis.lower():
-            steps.append(parts[0])
-            
-        # Process numbered steps
-        for step in parts[1:]:
-            if step.strip():  # Skip empty steps
-                # Reconstruct the step with its prefix
-                full_step = "Step" + step
-                steps.append(full_step)
-                
-        return steps
-        
-    def _get_partial_solutions(self, steps: List[str]) -> List[str]:
-        """Generate partial solutions ending at each step"""
-        partial_solutions = []
-        current = ""
-        
-        for step in steps:
-            current += step + "\n"
-            partial_solutions.append(current)
-            
-        return partial_solutions
         
     async def _verify_completions(
         self,
@@ -170,7 +138,7 @@ class WrongStepGenerator:
             return None
             
         # Split wrong solution into steps
-        steps = self._split_into_steps(wrong_solution)
+        steps = split_into_steps(wrong_solution)
         if not steps:
             print("❌ No steps found in solution - likely incorrect format")
             return None
@@ -180,7 +148,7 @@ class WrongStepGenerator:
             return None
             
         # Get partial solutions
-        partial_solutions = self._get_partial_solutions(steps)
+        partial_solutions = get_partial_solutions(steps)
         
         # Find first step that makes all completions wrong
         wrong_step_index = None

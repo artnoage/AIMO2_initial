@@ -468,6 +468,46 @@ class NumericVerifier:
             
         return is_correct, model_answer
 
+def split_into_steps(solution: str) -> List[str]:
+    """
+    Split a solution into analysis and numbered steps.
+    Returns a list where first element is analysis (if present) followed by steps.
+    """
+    # First split on "Step" keyword
+    parts = solution.split("Step")
+    if not parts:
+        return []
+        
+    steps = []
+    # Process first part (potential analysis)
+    if "analysis" in parts[0].lower():
+        steps.append(parts[0].strip())
+        
+    # Process numbered steps
+    for step in parts[1:]:
+        if step.strip():  # Skip empty steps
+            # Reconstruct the step with its prefix
+            full_step = "Step" + step
+            steps.append(full_step.strip())
+            
+    return steps
+
+def get_partial_solutions(steps: List[str]) -> List[str]:
+    """
+    Generate partial solutions ending at each step.
+    Each partial solution includes all previous steps.
+    """
+    partial_solutions = []
+    current = ""
+    
+    for step in steps:
+        if current:
+            current += "\n\n"  # Add spacing between steps
+        current += step
+        partial_solutions.append(current)
+        
+    return partial_solutions
+
 def calculate_rejected_score(solution: str) -> float:
     """Calculate rejected solution score starting from 0.4 and applying penalties"""
     score = 0.4
