@@ -113,7 +113,7 @@ def get_model(model: ModelOption, temp: float, model_name: Optional[str] = None)
             model=name,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:6000/v1")
+            base_url="http://localhost:8000/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
