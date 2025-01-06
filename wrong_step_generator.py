@@ -204,6 +204,7 @@ class WrongStepGenerator:
                 }
             
             print(f"✓ Step {i} is valid")
+            correct_step = current_step  # Update the last known correct step
             # Continue checking next step since this one is valid
                 
         # If we get here, all steps were valid
