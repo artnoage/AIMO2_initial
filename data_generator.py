@@ -281,7 +281,8 @@ async def process_example(
         # 5. Missing step training data
         if len(steps) > 2:  # Need at least 3 steps to have meaningful missing steps
             for i in range(1, len(steps)-1):  # Skip first and last steps
-                incomplete = "\n\n".join(steps[:i] + steps[i+1:])  # Remove one step
+                # Insert [missing_step] token where the step was removed
+                incomplete = "\n\n".join(steps[:i] + ["[missing_step]"] + steps[i+1:])
                 missing_step = steps[i]  # Use the removed step from our valid solution
                 results.append({
                     'id': f"{example_id}_missing_{i}",
