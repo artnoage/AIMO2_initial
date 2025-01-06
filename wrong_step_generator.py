@@ -158,13 +158,13 @@ class WrongStepGenerator:
         
         # Find first step that makes all completions wrong
         wrong_step_index = None
-        correct_completion = None
+        correct_step = None
         
         print("\n=== Analyzing solution steps ===")
         
         # First check the analysis section (index 0)
         print("\nChecking analysis section...")
-        has_correct, correct_step = await self._verify_completions(
+        has_correct, current_step = await self._verify_completions(
             problem,
             partial_solutions[0],
             correct_answer,
@@ -176,12 +176,13 @@ class WrongStepGenerator:
             return None
             
         print("✓ Analysis section is valid")
+        correct_step = current_step
         
         # Then check numbered steps
         for i in range(1, len(partial_solutions)):
             print(f"\nChecking step {i}...")
             # Try completions
-            has_correct, correct_step = await self._verify_completions(
+            has_correct, current_step = await self._verify_completions(
                 problem,
                 partial_solutions[i],
                 correct_answer,
@@ -191,14 +192,6 @@ class WrongStepGenerator:
             if not has_correct:
                 wrong_step_index = i
                 print(f"✗ Found wrong step at step {i}")
-                # Get the correct step from the previous successful verification
-                prev_step_index = i - 1
-                _, prev_correct_step = await self._verify_completions(
-                    problem,
-                    partial_solutions[prev_step_index],
-                    correct_answer,
-                    i  # Pass current step index to get the correct version of current step
-                )
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -206,7 +199,7 @@ class WrongStepGenerator:
                     'wrong_step_index': wrong_step_index,
                     'wrong_step': steps[wrong_step_index],
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': prev_correct_step,  # Use the correct step from previous verification
+                    'correct_step': correct_step,  # Use the last known correct step
                     'correct_solution': correct_solution  # Add the full correct solution
                 }
             
