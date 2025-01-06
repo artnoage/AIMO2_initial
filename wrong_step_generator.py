@@ -105,13 +105,52 @@ class WrongStepGenerator:
                 self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
             return True, correct_step
 
-        # No successful completion found
+        # Track verification vs validation failures
+        verified_count = 0
+        valid_count = 0
+        
+        for i in range(self.completions):
+            try:
+                completion = await self.completion_agent.generate(
+                    problem,
+                    partial_solution
+                )
+                complete_solution = partial_solution + completion
+                
+                # First verify the completed solution
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    verified_count += 1
+                    # If verified, check if it's valid
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if is_valid:
+                        valid_count += 1
+                        successful += 1
+                        correct_completion = completion
+                        break
+                    else:
+                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
+                        continue
+                    
+            except Exception:
+                continue
+
+        # Log appropriate message based on what we found
         if step_index == 0:
             self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
         else:
             self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
-            self.logs.append(f"Example dropped: Found verified solutions but no valid solutions at step {step_index}")
-            logging.warning(f"Example dropped: Found verified solutions but no valid solutions at step {step_index}")
+            if verified_count == 0:
+                self.logs.append(f"Step {step_index} is wrong: No verified solutions found")
+            elif valid_count == 0:
+                self.logs.append(f"Example dropped: Found {verified_count} verified but no valid solutions at step {step_index}")
+                logging.warning(f"Example dropped: Found {verified_count} verified but no valid solutions at step {step_index}")
+        
         return False, None
 
     async def generate(
