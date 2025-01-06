@@ -126,13 +126,20 @@ async def process_example(
         # Print logs before returning result
         print("\n".join(logs))
 
-        # Return consistent format for SFT data
+        # Return consistent format for SFT data with conversation tags
         result = {
             'id': example_id,
-            'problem': example['problem'],
-            'correct_answer': correct_answer,
-            'prompt': {'content': prompt, 'role': 'user'},
-            'completion': {'content': solution, 'role': 'assistant'}
+            'conversations': [
+                {
+                    'from': 'user',
+                    'value': f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
+                            "Please provide a complete solution with analysis and steps."
+                },
+                {
+                    'from': 'assistant',
+                    'value': solution
+                }
+            ]
         }
         return [result]
 
