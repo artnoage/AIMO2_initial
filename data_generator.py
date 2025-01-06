@@ -101,9 +101,11 @@ def generate_missing_step_conversation(problem: str, incomplete_solution: str, m
         'conversations': [
             {
                 'content': (
-                    f"Problem:\n\n{problem}\n\n"
-                    f"Solution with missing steps:\n{incomplete_solution}\n\n"
-                    "Could you fill in just the missing step here?"
+                    "Here is a mathematical problem:\n\n"
+                    f"{problem}\n\n"
+                    "I have a solution, but it's missing some steps in between:\n\n"
+                    f"{incomplete_solution}\n\n"
+                    "Could you help fill in just the missing step? Use LaTeX notation to explain it clearly."
                 ),
                 'role': 'user'
             },
