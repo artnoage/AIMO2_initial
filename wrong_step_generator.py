@@ -200,6 +200,15 @@ class WrongStepGenerator:
             if not has_correct:
                 wrong_step_index = i
                 self.logs.append(f"✗ Found wrong step at step {i}")
+                
+                # Extract the corresponding correct step from the correct solution
+                correct_steps = split_into_steps(correct_solution)
+                if i < len(correct_steps):
+                    correct_step = correct_steps[i]
+                    self.logs.append(f"✓ Found corresponding correct step from full solution")
+                else:
+                    self.logs.append("⚠ Warning: Could not find corresponding step in correct solution")
+                    
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -207,8 +216,8 @@ class WrongStepGenerator:
                     'wrong_step_index': wrong_step_index,
                     'wrong_step': steps[wrong_step_index],
                     'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': correct_step,  # Use the last known correct step
-                    'correct_solution': correct_solution  # Add the full correct solution
+                    'correct_step': correct_step,
+                    'correct_solution': correct_solution
                 }
             
             self.logs.append(f"✓ Step {i} is valid")
