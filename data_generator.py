@@ -213,7 +213,7 @@ async def process_example(
             return None
 
         prompt, solution, quality_score, solution_logs = result
-        print(solution_logs)  # Print the logs from solution generation
+        logs.append(solution_logs)  # Add solution logs to main logs
 
         # Add final summary to logs
         logs.append("\n" + "="*50)
@@ -222,9 +222,6 @@ async def process_example(
         logs.append(f"├─ Processing time: {processing_time:.2f}s")
         logs.append(f"├─ Quality score: {quality_score:.3f}")
         logs.append("="*50)
-
-        # Print logs before returning result
-        print("\n".join(logs))
 
         # Generate all training variants
         results = []
@@ -309,6 +306,9 @@ async def process_example(
                     'correct_answer': correct_answer,
                     **generate_missing_step_conversation(example['problem'], incomplete, missing_step)
                 })
+        
+        # Print all logs at the end
+        print("\n".join(logs))
         
         return results
 
