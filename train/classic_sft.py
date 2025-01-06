@@ -1,0 +1,156 @@
+from datasets import load_dataset
+import json
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    TrainingArguments,
+    Trainer,
+    default_data_collator,
+)
+from peft import (
+    LoraConfig,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
+import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel
+from datetime import datetime
+import os
+from typing import Dict, Sequence
+import GPUtil
+
+def print_gpu_utilization():
+    GPUs = GPUtil.getGPUs()
+    for gpu in GPUs:
+        print(f'\nGPU ID: {gpu.id} ({gpu.name})')
+        print(f'GPU load: {gpu.load*100:.1f}%')
+        print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
+        print(f'GPU memory free: {gpu.memoryFree}MB')
+    if torch.cuda.is_available():
+        print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
+        print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
+
+def setup_distributed():
+    if 'RANK' not in os.environ:
+        os.environ['RANK'] = '0'
+    if 'LOCAL_RANK' not in os.environ:
+        os.environ['LOCAL_RANK'] = '0'
+    if 'WORLD_SIZE' not in os.environ:
+        os.environ['WORLD_SIZE'] = '1'
+    if 'MASTER_ADDR' not in os.environ:
+        os.environ['MASTER_ADDR'] = 'localhost'
+    if 'MASTER_PORT' not in os.environ:
+        os.environ['MASTER_PORT'] = '29500'
+
+    dist.init_process_group(backend='nccl')
+    torch.cuda.set_device(int(os.environ['LOCAL_RANK']))
+
+def main():
+    # Initialize distributed training
+    setup_distributed()
+    local_rank = int(os.environ['LOCAL_RANK'])
+    
+    if local_rank == 0:
+        print("\n=== Initial GPU State ===")
+        print_gpu_utilization()
+
+    # Load model and tokenizer
+    model_name = "artnoage/metastral"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    # Configure model loading with 8-bit quantization
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        load_in_8bit=True,
+        device_map="auto",
+        torch_dtype=torch.float16,
+    )
+    
+    if local_rank == 0:
+        print("\n=== After Model Load ===")
+        print_gpu_utilization()
+
+    # Prepare model for training
+    model = prepare_model_for_kbit_training(model)
+
+    # Configure LoRA
+    lora_config = LoraConfig(
+        r=64,
+        lora_alpha=64,
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+            "lm_head",
+        ],
+        lora_dropout=0,
+        bias="none",
+    )
+    
+    model = get_peft_model(model, lora_config)
+    
+    if local_rank == 0:
+        print("\n=== After LoRA Configuration ===")
+        print_gpu_utilization()
+
+    # Setup chat template
+    tokenizer.chat_template = "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + '\n' }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + '\n' }}\n{% endif %}\n{% endfor %}\n"
+
+    def formatting_prompts_func(examples):
+        convos = examples["conversations"]
+        texts = [tokenizer.apply_chat_template(convo, tokenize=False) 
+                for convo in convos]
+        return {"text": texts}
+
+    # Load and format dataset
+    dataset = load_dataset("artnoage/sft_full", split="train")
+    
+    if local_rank == 0:
+        print("\nFirst conversation before formatting:")
+        print(json.dumps(dataset[0]["conversations"], indent=2))
+    
+    formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
+    
+    if local_rank == 0:
+        print("\nFirst conversation after formatting:")
+        print(json.dumps(formatted_dataset[0]["text"], indent=2))
+
+    # Create timestamp for output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Training arguments
+    training_args = TrainingArguments(
+        output_dir=f"train_results/classic_{timestamp}",
+        num_train_epochs=2,
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=32,
+        learning_rate=4e-6,
+        logging_steps=1,
+        save_strategy="steps",
+        save_steps=200,
+        fp16=True,
+        optim="adamw_torch",
+        ddp_find_unused_parameters=False,
+    )
+
+    # Initialize trainer
+    trainer = Trainer(
+        model=model,
+        train_dataset=formatted_dataset,
+        args=training_args,
+        data_collator=default_data_collator,
+    )
+
+    # Train the model
+    trainer.train()
+
+    # Clean up distributed training
+    dist.destroy_process_group()
+
+if __name__ == "__main__":
+    main()
