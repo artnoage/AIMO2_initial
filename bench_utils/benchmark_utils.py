@@ -310,7 +310,8 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     # Check for analysis section
     if "analysis" not in solution.lower():
         return False, "Missing analysis section"
-    
+    if "[/INST]" in solution.lower():
+        return False, "Contains [/INST] token"
     # Check analysis length
     analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
     if analysis_parts and len(analysis_parts[0].split()) < 20:
@@ -331,7 +332,7 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     for i, step in enumerate(steps, 1):
         # Check step length
         step_words = len(step.split())
-        if step_words < 18:
+        if step_words < 22:
             return False, f"Step {i} too short ({step_words} words)"
         if step_words > 100:
             return False, f"Step {i} too long ({step_words} words)"
@@ -378,7 +379,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
         return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 18 or word_count > 100:
+    if word_count < 22 or word_count > 100:
         return False
         
     # Check step numbering if expected step is provided
