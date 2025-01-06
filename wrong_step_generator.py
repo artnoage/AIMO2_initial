@@ -1,11 +1,18 @@
 import os
 import asyncio
+import logging
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from bench_utils.benchmark_config import *
 from bench_utils.benchmark_utils import *
 from bench_utils.agents import *
 from bench_utils.log_handler import MarkdownLogger
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'
+)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -141,17 +148,17 @@ class WrongStepGenerator:
                 continue
                 
         if wrong_solution is None or correct_solution is None:
-            print("❌ Failed to find both correct and wrong solutions")
+            logging.error("❌ Failed to find both correct and wrong solutions")
             return None
             
         # Split wrong solution into steps
         steps = split_into_steps(wrong_solution)
         if not steps:
-            print("❌ No steps found in solution - likely incorrect format")
+            logging.error("❌ No steps found in solution - likely incorrect format")
             return None
             
         if len(steps) < 2:  # Need at least analysis + one step
-            print("❌ Not enough steps found (need at least analysis + one step)")
+            logging.error("❌ Not enough steps found (need at least analysis + one step)")
             return None
             
         # Get partial solutions
@@ -246,7 +253,7 @@ async def main():
             return [result]
             
         except Exception as e:
-            print(f"Error processing example {running_id}: {str(e)}")
+            logging.error(f"Error processing example {running_id}: {str(e)}")
             return None
 
     await run_benchmark(
@@ -258,6 +265,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nBenchmark interrupted by user")
+        logging.info("\nBenchmark interrupted by user")
     except Exception as e:
-        print(f"\nBenchmark failed with error: {e}")
+        logging.error(f"\nBenchmark failed with error: {e}")
