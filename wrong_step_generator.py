@@ -202,7 +202,10 @@ class WrongStepGenerator:
                 self.logs.append(f"✗ Found wrong step at step {i}")
                 
                 # Use the last known correct step from our iterative verification
-                self.logs.append(f"✓ Using last known correct step from verification process")
+                self.logs.append(f"✓ Using last known correct step from verification process:")
+                self.logs.append("=" * 50)
+                self.logs.append(correct_step)
+                self.logs.append("=" * 50)
                 
                 return {
                     'problem': problem,
