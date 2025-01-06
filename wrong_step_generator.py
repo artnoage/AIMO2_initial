@@ -36,12 +36,17 @@ class WrongStepGenerator:
         partial_solution: str,
         correct_answer: str,
         step_index: int
-    ) -> Tuple[bool, Optional[str]]:
-        """Try multiple completions of a partial solution to check if any are correct"""
-        successful = 0
-        correct_completion = None
+    ) -> Tuple[bool, bool, Optional[str]]:
+        """Try multiple completions of a partial solution to check if any are correct.
+        Returns:
+            - found_verified: True if any solution verified correctly
+            - found_valid: True if any solution both verified and validated
+            - correct_step: The next correct step if found, None otherwise
+        """
+        found_verified = False
+        found_valid = False
+        correct_step = None
 
-        # First try to get a successful completion
         for i in range(self.completions):
             try:
                 completion = await self.completion_agent.generate(
@@ -58,80 +63,16 @@ class WrongStepGenerator:
                 )
                 
                 if is_correct:
-                    # If verified, also check if it's valid
-                    is_valid, validation_reason = validate_solution(complete_solution)
-                    if is_valid:
-                        successful += 1
-                        correct_completion = completion
-                        break
-                    else:
-                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
-                        continue
-                    
-            except Exception:
-                continue
-
-        # If we found a successful completion, extract the correct step
-        if successful > 0 and correct_completion:
-            self.logs.append("\nDEBUG: Found successful completion:")
-            self.logs.append("=" * 50)
-            self.logs.append(correct_completion)
-            self.logs.append("=" * 50)
-            
-            # Get all steps from the completion
-            completion_steps = split_into_steps(correct_completion)
-            self.logs.append(f"\nDEBUG: Split into {len(completion_steps)} steps:")
-            for i, step in enumerate(completion_steps):
-                self.logs.append(f"\nStep {i}:")
-                self.logs.append("-" * 30)
-                self.logs.append(step)
-                self.logs.append("-" * 30)
-            
-            # Extract the next step (n+1) since we're verifying up to step n
-            next_step_index = step_index + 1
-            if next_step_index < len(completion_steps):
-                correct_step = completion_steps[next_step_index]
-                self.logs.append(f"\nDEBUG: Extracted next step {next_step_index}:")
-                self.logs.append("-" * 30)
-                self.logs.append(correct_step)
-                self.logs.append("-" * 30)
-            else:
-                correct_step = None
-                self.logs.append(f"\nDEBUG: Next step index {next_step_index} out of bounds (max: {len(completion_steps)-1})")
-                
-            if step_index == 0:
-                self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
-            else:
-                self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
-            return True, correct_step
-
-        # Track verification vs validation failures
-        verified_count = 0
-        valid_count = 0
-        
-        for i in range(self.completions):
-            try:
-                completion = await self.completion_agent.generate(
-                    problem,
-                    partial_solution
-                )
-                complete_solution = partial_solution + completion
-                
-                # First verify the completed solution
-                is_correct, _ = await self.verifier.verify(
-                    complete_solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    verified_count += 1
+                    found_verified = True
                     # If verified, check if it's valid
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
-                        valid_count += 1
-                        successful += 1
-                        correct_completion = completion
+                        found_valid = True
+                        # Extract the next step
+                        completion_steps = split_into_steps(completion)
+                        next_step_index = step_index + 1
+                        if next_step_index < len(completion_steps):
+                            correct_step = completion_steps[next_step_index]
                         break
                     else:
                         self.logs.append(f"Found verified but invalid solution: {validation_reason}")
@@ -142,16 +83,15 @@ class WrongStepGenerator:
 
         # Log appropriate message based on what we found
         if step_index == 0:
-            self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
+            self.logs.append(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
         else:
-            self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
-            if verified_count == 0:
+            self.logs.append(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
+            if not found_verified:
                 self.logs.append(f"Step {step_index} is wrong: No verified solutions found")
-            elif valid_count == 0:
-                self.logs.append(f"Example dropped: Found {verified_count} verified but no valid solutions at step {step_index}")
-                logging.warning(f"Example dropped: Found {verified_count} verified but no valid solutions at step {step_index}")
-        
-        return False, None
+            elif not found_valid:
+                self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
+                
+        return found_verified, found_valid, correct_step
 
     async def generate(
         self,
@@ -218,18 +158,18 @@ class WrongStepGenerator:
             self.logs.append(f"\nChecking step {i}...")
             
             # Try completions from this partial solution
-            has_correct, current_step = await self._verify_completions(
+            found_verified, found_valid, current_step = await self._verify_completions(
                 problem,
                 partial_solutions[i],
                 correct_answer,
                 i
             )
             
-            if has_correct:
+            if found_valid:
                 self.logs.append(f"✓ Step {i} is valid")
                 # Store this as the correct next step for the next phase
                 last_good_step = current_step
-            else:
+            elif not found_verified:
                 self.logs.append(f"✗ Found wrong step at step {i}")
                 # When we find a wrong step, use the last_good_step we already have
                 # from the previous phase - don't update it
