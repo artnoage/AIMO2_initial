@@ -201,11 +201,25 @@ class WrongStepGenerator:
                 wrong_step_index = i
                 self.logs.append(f"✗ Found wrong step at step {i}")
                 
-                # Use the last known correct step from our iterative verification
-                self.logs.append(f"✓ Using last known correct step from verification process:")
-                self.logs.append("=" * 50)
-                self.logs.append(correct_step)
-                self.logs.append("=" * 50)
+                # Get the correct step for this specific step number
+                _, specific_correct_step = await self._verify_completions(
+                    problem,
+                    partial_solutions[i-1],  # Use previous partial solution
+                    correct_answer,
+                    i  # Get step i specifically
+                )
+                
+                if specific_correct_step:
+                    correct_step = specific_correct_step
+                    self.logs.append(f"✓ Using correct step {i} from verification:")
+                    self.logs.append("=" * 50)
+                    self.logs.append(correct_step)
+                    self.logs.append("=" * 50)
+                else:
+                    self.logs.append("⚠ Could not get specific correct step, using last known good step:")
+                    self.logs.append("=" * 50)
+                    self.logs.append(correct_step)
+                    self.logs.append("=" * 50)
                 
                 return {
                     'problem': problem,
