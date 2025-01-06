@@ -65,8 +65,8 @@ def main():
         print("\n=== After Model Load ===")
         print_gpu_utilization()
 
-    # Setup chat template
-    tokenizer.chat_template = "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + '\n' }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + '\n' }}\n{% endif %}\n{% endfor %}\n"
+    # Setup Mistral chat template
+    tokenizer.chat_template = "{% for message in messages %}{% if message['role'] == 'user' %}[INST] {{ message['content'] }} [/INST]{% elif message['role'] == 'assistant' %}{{ message['content'] }}{% endif %}{% endfor %}"
 
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
