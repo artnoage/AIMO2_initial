@@ -274,6 +274,9 @@ async def main():
                 all_logs.append(f"✓ Wrong step content:")
                 all_logs.append(result['wrong_step'])
             
+            # Print logs for this example
+            print("\n".join(all_logs))
+            
             # Save comprehensive logs to markdown file
             log_file = logger.save_logs(all_logs, example_id)
             
