@@ -50,7 +50,7 @@ class WrongStepGenerator:
                 )
                 complete_solution = partial_solution + completion
                 
-                # Verify the completed solution
+                # First verify the completed solution
                 is_correct, _ = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
@@ -58,9 +58,15 @@ class WrongStepGenerator:
                 )
                 
                 if is_correct:
-                    successful += 1
-                    correct_completion = completion
-                    break
+                    # If verified, also check if it's valid
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if is_valid:
+                        successful += 1
+                        correct_completion = completion
+                        break
+                    else:
+                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
+                        continue
                     
             except Exception:
                 continue
@@ -104,6 +110,8 @@ class WrongStepGenerator:
             self.logs.append(f"Analysis section: {successful}/{self.completions} completions successful")
         else:
             self.logs.append(f"Step {step_index}: {successful}/{self.completions} completions successful")
+            self.logs.append(f"Example dropped: Found verified solutions but no valid solutions at step {step_index}")
+            logging.warning(f"Example dropped: Found verified solutions but no valid solutions at step {step_index}")
         return False, None
 
     async def generate(
