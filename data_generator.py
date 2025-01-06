@@ -131,13 +131,13 @@ async def process_example(
             'id': example_id,
             'conversations': [
                 {
-                    'from': 'user',
-                    'value': f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
-                            "Please provide a complete solution with analysis and steps."
+                    'content': f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
+                              "Please provide a complete solution with analysis and steps.",
+                    'role': 'user'
                 },
                 {
-                    'from': 'assistant',
-                    'value': solution
+                    'content': solution,
+                    'role': 'assistant'
                 }
             ]
         }
