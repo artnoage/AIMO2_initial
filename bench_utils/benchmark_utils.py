@@ -321,55 +321,16 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if "\\boxed{" not in solution:
         return False, "Missing boxed answer"
         
-    # Split into steps and validate each
+    # Split into steps
     steps = solution.lower().split("step")[1:]  # Skip text before first "step"
     if not steps:
         return False, "No steps found"
-        
-    # Track step numbers found
-    found_numbers = []
-    
+
+    # Validate each step
     for i, step in enumerate(steps, 1):
-        # Check step length
-        step_words = len(step.split())
-        if step_words < 22:
-            return False, f"Step {i} too short ({step_words} words)"
-        if step_words > 100:
-            return False, f"Step {i} too long ({step_words} words)"
-            
-        # Check step numbering
-        number_found = False
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(step)
-            if match:
-                try:
-                    num = int(match.group(1))
-                    found_numbers.append(num)
-                    number_found = True
-                    break
-                except ValueError:
-                    continue
-                    
-        if not number_found:
-            # Look for text-based step indicators as fallback
-            step_indicators = [
-                f"step {i}",
-                f"step{i}",
-                f"({i})",
-                f"{i}."
-            ]
-            if any(indicator in step.lower() for indicator in step_indicators):
-                found_numbers.append(i)
-                number_found = True
-                
-        if not number_found:
-            return False, f"Missing number for step {i}"
-            
-    # Verify sequential step numbers
-    if found_numbers:
-        expected_numbers = list(range(1, len(steps) + 1))
-        if sorted(found_numbers) != expected_numbers:
-            return False, f"Steps not properly numbered. Found {found_numbers}, expected {expected_numbers}"
+        full_step = "Step" + step
+        if not validate_step(full_step, expected_step=i):
+            return False, f"Invalid step {i}"
         
     return True, "Solution valid"
 
