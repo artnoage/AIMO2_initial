@@ -114,12 +114,11 @@ class WrongStepGenerator:
         Generate a wrong solution and identify which step causes it to go wrong.
         Returns dict with problem, answer, wrong solution and wrong step info.
         """
-        # Try to generate both correct and wrong solutions
+        # First generate a wrong solution
         wrong_solution = None
-        correct_solution = None
         attempts = 0
         
-        while (wrong_solution is None or correct_solution is None) and attempts < self.best_of:
+        while wrong_solution is None and attempts < self.best_of:
             try:
                 attempts += 1
                 solution = await self.solution_agent.generate(problem)
@@ -129,17 +128,14 @@ class WrongStepGenerator:
                 if not is_valid:
                     continue
                     
-                # Check if solution is correct/wrong
+                # Check if solution is wrong
                 is_correct, _ = await self.verifier.verify(
                     solution,
                     correct_answer,
                     problem
                 )
                 
-                if is_correct and correct_solution is None:
-                    correct_solution = solution
-                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
-                elif not is_correct and wrong_solution is None:
+                if not is_correct:
                     wrong_solution = solution
                     self.logs.append(f"✓ Found wrong solution on attempt {attempts}")
                     
@@ -147,98 +143,60 @@ class WrongStepGenerator:
                 self.logs.append(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
-        if wrong_solution is None or correct_solution is None:
-            logging.error("❌ Failed to find both correct and wrong solutions")
+        if wrong_solution is None:
+            logging.error("❌ Failed to find wrong solution")
             return None
             
-        # Split wrong solution into steps
-        steps = split_into_steps(wrong_solution)
-        if not steps:
-            logging.error("❌ No steps found in solution - likely incorrect format")
-            return None
+    # Split wrong solution into steps
+    steps = split_into_steps(wrong_solution)
+    if not steps:
+        logging.error("❌ No steps found in solution - likely incorrect format")
+        return None
             
-        if len(steps) < 2:  # Need at least analysis + one step
-            logging.error("❌ Not enough steps found (need at least analysis + one step)")
-            return None
+    if len(steps) < 2:  # Need at least analysis + one step
+        logging.error("❌ Not enough steps found (need at least analysis + one step)")
+        return None
             
-        # Get partial solutions
-        partial_solutions = get_partial_solutions(steps)
+    # Get partial solutions
+    partial_solutions = get_partial_solutions(steps)
         
-        # Find first step that makes all completions wrong
-        wrong_step_index = None
-        correct_step = None
+    # Track the last known good step
+    last_good_step = None
         
-        self.logs.append("\n=== Analyzing solution steps ===")
+    self.logs.append("\n=== Analyzing solution steps ===")
         
-        # First check the analysis section (index 0)
-        self.logs.append("\nChecking analysis section...")
+    # Check each step sequentially
+    for i in range(len(partial_solutions)):
+        self.logs.append(f"\nChecking step {i}...")
+            
+        # Try completions from this partial solution
         has_correct, current_step = await self._verify_completions(
             problem,
-            partial_solutions[0],
+            partial_solutions[i],
             correct_answer,
-            0
+            i
         )
-        
-        if not has_correct:
-            self.logs.append("✗ Found wrong analysis section - skipping example")
-            return None
             
-        self.logs.append("✓ Analysis section is valid")
-        correct_step = current_step
-        
-        # Then check numbered steps
-        for i in range(1, len(partial_solutions)):
-            self.logs.append(f"\nChecking step {i}...")
-            # Try completions
-            has_correct, current_step = await self._verify_completions(
-                problem,
-                partial_solutions[i],
-                correct_answer,
-                i
-            )
-            
-            if not has_correct:
-                wrong_step_index = i
-                self.logs.append(f"✗ Found wrong step at step {i}")
-                
-                # Get the correct step for this specific step number
-                _, specific_correct_step = await self._verify_completions(
-                    problem,
-                    partial_solutions[i-1],  # Use previous partial solution
-                    correct_answer,
-                    i  # Get step i specifically
-                )
-                
-                if specific_correct_step:
-                    correct_step = specific_correct_step
-                    self.logs.append(f"✓ Using correct step {i} from verification:")
-                    self.logs.append("=" * 50)
-                    self.logs.append(correct_step)
-                    self.logs.append("=" * 50)
-                else:
-                    self.logs.append("⚠ Could not get specific correct step, using last known good step:")
-                    self.logs.append("=" * 50)
-                    self.logs.append(correct_step)
-                    self.logs.append("=" * 50)
-                
-                return {
-                    'problem': problem,
-                    'correct_answer': correct_answer,
-                    'wrong_solution': wrong_solution,
-                    'wrong_step_index': wrong_step_index,
-                    'wrong_step': steps[wrong_step_index],
-                    'partial_solution': partial_solutions[max(0, wrong_step_index - 1)],
-                    'correct_step': correct_step,
-                    'correct_solution': correct_solution
-                }
-            
+        if has_correct:
             self.logs.append(f"✓ Step {i} is valid")
-            correct_step = current_step  # Update the last known correct step
-            # Continue checking next step since this one is valid
+            last_good_step = current_step
+        else:
+            self.logs.append(f"✗ Found wrong step at step {i}")
                 
-        # If we get here, all steps were valid
-        self.logs.append("✓ All steps are valid")
-        return None
+            # Return the results with the last known good step
+            return {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'wrong_solution': wrong_solution,
+                'wrong_step_index': i,
+                'wrong_step': steps[i],
+                'partial_solution': partial_solutions[max(0, i - 1)],
+                'correct_step': last_good_step
+            }
+                
+    # If we get here, all steps were valid (shouldn't happen with a wrong solution)
+    self.logs.append("✓ All steps are valid")
+    return None
 
 async def main():
     """Main function for wrong step generation"""
