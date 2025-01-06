@@ -244,13 +244,44 @@ async def main():
             if result is None:
                 return None
                 
-            # Save logs to markdown file
-            log_file = logger.save_logs(generator.logs, example_id)
-            generator.logs.append(f"\nLogs saved to: {log_file}")
+            # Prepare comprehensive logs for this example
+            all_logs = []
+            all_logs.append("\n" + "="*80)
+            all_logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+            all_logs.append("="*80)
+            
+            # Problem details
+            all_logs.append(f"\n📋 Problem:")
+            all_logs.append(f"{example['problem'][:200]}...")
+            all_logs.append(f"\n✓ Expected Answer: {correct_answer}")
+            
+            # Add generator logs
+            all_logs.extend(generator.logs)
+            
+            if result:
+                # Add solution quality metrics
+                all_logs.append("\n📊 Solution Quality:")
+                wrong_quality = analyze_solution_quality(result['wrong_solution'])
+                all_logs.append(f"✓ Wrong solution:")
+                all_logs.append(f"  ├─ Length: {wrong_quality['length']} words")
+                all_logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")
+                all_logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")
+                all_logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")
                 
-            # Add example ID
-            result['id'] = example_id
-            return [result]
+                # Add wrong step details
+                all_logs.append("\n🔍 Wrong Step Details:")
+                all_logs.append(f"✓ Found at step: {result['wrong_step_index']}")
+                all_logs.append(f"✓ Wrong step content:")
+                all_logs.append(result['wrong_step'])
+            
+            # Save comprehensive logs to markdown file
+            log_file = logger.save_logs(all_logs, example_id)
+            
+            # Add example ID and logs to result
+            if result:
+                result['id'] = example_id
+                result['logs'] = "\n".join(all_logs)
+                return [result]
             
         except Exception as e:
             logging.error(f"Error processing example {running_id}: {str(e)}")
