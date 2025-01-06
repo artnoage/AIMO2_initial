@@ -74,8 +74,9 @@ def main():
                 for convo in convos]
         return {"text": texts}
 
-    # Load and format dataset
+    # Load, shuffle and format dataset
     dataset = load_dataset("artnoage/sft_full", split="train")
+    dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
     
     if local_rank == 0:
         print("\nFirst conversation before formatting:")
