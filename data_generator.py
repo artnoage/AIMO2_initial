@@ -133,6 +133,11 @@ async def process_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                 
+            # Check for unwanted tokens first
+            if "[/INST]" in current_solution:
+                logs.append(f"✗ Solution contains [/INST] token on attempt {attempts}")
+                continue
+                
             # Validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
