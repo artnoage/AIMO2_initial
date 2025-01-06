@@ -212,7 +212,7 @@ async def process_example(
         if not result:
             return None
 
-        prompt, solution, quality_score, solution_logs = result
+        prompt, solution, solution_logs = result
         logs.append(solution_logs)  # Add solution logs to main logs
 
         # Add final summary to logs
@@ -220,7 +220,6 @@ async def process_example(
         logs.append("📊 Final Summary:")
         processing_time = time.perf_counter() - start_time
         logs.append(f"├─ Processing time: {processing_time:.2f}s")
-        logs.append(f"├─ Quality score: {quality_score:.3f}")
         logs.append("="*50)
 
         # Generate all training variants from the valid solution
