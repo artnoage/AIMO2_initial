@@ -102,46 +102,12 @@ class WrongStepGenerator:
         Generate both correct and wrong solutions, identify which step causes wrong solution to fail.
         Returns dict with problem, answer, both solutions and wrong step info.
         """
-        # First generate a correct solution as sanity check
+        # Search for both correct and wrong solutions
         correct_solution = None
         wrong_solution = None
         attempts = 0
         
-        # Find a correct solution first
-        while correct_solution is None and attempts < self.best_of:
-            try:
-                attempts += 1
-                solution = await self.solution_agent.generate(problem)
-                
-                # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
-                if not is_valid:
-                    continue
-                    
-                # Check if solution is correct
-                is_correct, _ = await self.verifier.verify(
-                    solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    correct_solution = solution
-                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
-                    
-            except Exception as e:
-                self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
-                continue
-                
-        if correct_solution is None:
-            logging.error("❌ Failed to find correct solution")
-            return None
-            
-        # Reset attempts counter for wrong solution search
-        attempts = 0
-        
-        # Now find a wrong solution
-        while wrong_solution is None and attempts < self.best_of:
+        while (correct_solution is None or wrong_solution is None) and attempts < self.best_of:
             try:
                 attempts += 1
                 solution = await self.solution_agent.generate(problem)
@@ -158,7 +124,10 @@ class WrongStepGenerator:
                     problem
                 )
                 
-                if not is_correct:
+                if is_correct and correct_solution is None:
+                    correct_solution = solution
+                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
+                elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
                     self.logs.append(f"✓ Found wrong solution on attempt {attempts}")
                     
@@ -166,8 +135,11 @@ class WrongStepGenerator:
                 self.logs.append(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
+        if correct_solution is None:
+            logging.error("❌ Failed to find correct solution")
+            return None
         if wrong_solution is None:
-            logging.error("❌ Failed to find wrong solution")
+            logging.error("❌ Failed to find wrong solution") 
             return None
             
         # Split wrong solution into steps
