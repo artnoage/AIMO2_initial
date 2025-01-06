@@ -65,8 +65,8 @@ def main():
         print("\n=== After Model Load ===")
         print_gpu_utilization()
 
-    # Setup Mistral chat template with start/end tokens
-    tokenizer.chat_template = "<s>{% for message in messages %}{% if message['role'] == 'user' %}[INST] {{ message['content'] }} [/INST]{% elif message['role'] == 'assistant' %}{{ message['content'] }}{% endif %}{% endfor %}</s>"
+    # Setup Mistral chat template with start/end tokens and proper spacing
+    tokenizer.chat_template = "<s>[INST] {{ messages[0]['content'] }} [/INST]\n{{ messages[1]['content'] }}</s>"
 
     def formatting_prompts_func(examples):
         convos = examples["conversations"]
