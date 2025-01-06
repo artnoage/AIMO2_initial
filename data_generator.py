@@ -16,10 +16,11 @@ def generate_analysis_conversation(problem: str, analysis: str) -> Dict:
         'conversations': [
             {
                 'content': (
-                    f"Problem:\n\n{problem}\n\n"
+                    "Here is a mathematical problem:\n\n"
+                    f"{problem}\n\n"
                     "Please analyze this problem - tell me about its type, "
                     "what theorems and techniques we could use, and how you'd "
-                    "approach solving it.\n\n"
+                    "approach solving it. Do not provide the actual solution.\n\n"
                     "Start with '**Problem Analysis and Approach**:'"
                 ),
                 'role': 'user'
@@ -37,7 +38,8 @@ def generate_next_step_conversation(problem: str, current_solution: str, next_st
         'conversations': [
             {
                 'content': (
-                    f"Problem:\n\n{problem}\n\n"
+                    "Here is a mathematical problem:\n\n"
+                    f"{problem}\n\n"
                     f"Current solution:\n{current_solution}\n\n"
                     "What would be the next step? Please explain using LaTeX notation."
                 ),
