@@ -112,6 +112,53 @@ class CompletionAgent:
         return (prompt[0].content, response) if return_prompt else response
 
 
+class MissingStepAgent:
+    """Agent that generates solutions with a missing intermediate step and then adds it"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate_with_gap(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a solution deliberately missing an intermediate step"""
+        prompt = [
+            HumanMessage(content=(
+                "You are a mathematical solution expert. Generate a solution but deliberately skip one intermediate step "
+                "(not the first or last step) while maintaining correct step numbering.\n\n"
+                f"Problem:\n\n{problem}\n\n"
+                "Guidelines:\n"
+                "1. Start with a problem analysis section\n"
+                "2. Include numbered steps\n"
+                "3. Skip ONE intermediate step that would make the solution clearer\n"
+                "4. Keep step numbers sequential despite the gap\n"
+                "5. Use LaTeX notation\n"
+                "6. End with \\boxed{} answer\n"
+                "7. Mark where the missing step should go with [Missing Step Here]\n\n"
+                "Generate the solution:"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (prompt[0].content, response) if return_prompt else response
+        
+    async def identify_missing_step(self, problem: str, incomplete_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Identify and generate the missing intermediate step"""
+        prompt = [
+            HumanMessage(content=(
+                "You are a mathematical solution expert focused on identifying missing logical steps.\n\n"
+                f"Problem:\n\n{problem}\n\n"
+                "Here is a solution with a missing intermediate step:\n\n"
+                f"{incomplete_solution}\n\n"
+                "Your task:\n"
+                "1. Identify where the logical gap exists\n"
+                "2. Generate ONLY the missing step that would make the solution clearer\n"
+                "3. Use the same style and numbering as surrounding steps\n"
+                "4. Include full mathematical notation and justification\n\n"
+                "Generate ONLY the missing step:"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (prompt[0].content, response) if return_prompt else response
+
+
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
