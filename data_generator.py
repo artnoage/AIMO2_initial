@@ -150,7 +150,7 @@ async def process_solution(
             
             if is_correct:
                 final_solution = current_solution
-                logs.append(f"✓ Found valid solution on attempt {attempts}")
+                logs.append(f"✓ Found valid and correct solution on attempt {attempts}")
                 break
                 
         except Exception as e:
@@ -160,8 +160,6 @@ async def process_solution(
     if not final_solution:
         return None
 
-    # Print summary
-    print(f"\nExample completed: Found valid solution in {attempts} attempts")
 
     # Add summary to logs
     logs.append("\n" + "="*50)
