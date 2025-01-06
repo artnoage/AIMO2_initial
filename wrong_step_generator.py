@@ -161,10 +161,10 @@ class WrongStepGenerator:
         wrong_step_index = None
         correct_step = None
         
-        print("\n=== Analyzing solution steps ===")
+        self.logs.append("\n=== Analyzing solution steps ===")
         
         # First check the analysis section (index 0)
-        print("\nChecking analysis section...")
+        self.logs.append("\nChecking analysis section...")
         has_correct, current_step = await self._verify_completions(
             problem,
             partial_solutions[0],
@@ -173,15 +173,15 @@ class WrongStepGenerator:
         )
         
         if not has_correct:
-            print("✗ Found wrong analysis section - skipping example")
+            self.logs.append("✗ Found wrong analysis section - skipping example")
             return None
             
-        print("✓ Analysis section is valid")
+        self.logs.append("✓ Analysis section is valid")
         correct_step = current_step
         
         # Then check numbered steps
         for i in range(1, len(partial_solutions)):
-            print(f"\nChecking step {i}...")
+            self.logs.append(f"\nChecking step {i}...")
             # Try completions
             has_correct, current_step = await self._verify_completions(
                 problem,
@@ -192,7 +192,7 @@ class WrongStepGenerator:
             
             if not has_correct:
                 wrong_step_index = i
-                print(f"✗ Found wrong step at step {i}")
+                self.logs.append(f"✗ Found wrong step at step {i}")
                 return {
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -204,12 +204,12 @@ class WrongStepGenerator:
                     'correct_solution': correct_solution  # Add the full correct solution
                 }
             
-            print(f"✓ Step {i} is valid")
+            self.logs.append(f"✓ Step {i} is valid")
             correct_step = current_step  # Update the last known correct step
             # Continue checking next step since this one is valid
                 
         # If we get here, all steps were valid
-        print("✓ All steps are valid")
+        self.logs.append("✓ All steps are valid")
         return None
 
 async def main():
