@@ -129,6 +129,8 @@ async def process_example(
         # Return consistent format for SFT data with conversation tags
         result = {
             'id': example_id,
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
             'conversations': [
                 {
                     'content': f"Here is a mathematical problem to solve:\n\n{example['problem']}\n\n"
