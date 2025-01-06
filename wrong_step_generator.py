@@ -189,6 +189,12 @@ class WrongStepGenerator:
                 i
             )
             
+            # Print verification results and correct step
+            if correct_step:
+                print(f"Step {i} verification: verified={found_verified}, valid={found_valid}, correct_step={correct_step}")
+            else:
+                print(f"Step {i} verification: verified={found_verified}, valid={found_valid}, but correct step is null")
+            
             if found_valid:
                 self.logs.append(f"✓ Step {i} is valid")
                 last_good_step = correct_step
