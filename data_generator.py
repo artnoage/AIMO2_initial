@@ -233,6 +233,12 @@ async def process_example(
         results = []
         steps = split_into_steps(solution)
         
+        # Return empty list if solution has less than 3 steps (including analysis)
+        if len(steps) < 3:
+            logs.append("\n⚠️ Solution has fewer than 3 steps - skipping")
+            print("\n".join(logs))
+            return []
+            
         # 1. Analysis conversation - use first part if it contains analysis
         if steps and "analysis" in steps[0].lower():
             results.append({
