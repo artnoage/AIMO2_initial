@@ -82,8 +82,11 @@ def is_numeric_answer(answer: str) -> bool:
     if not answer or not answer.strip():
         return False
     
-    numeric_value, _ = extract_numeric_answer(answer)
-    return numeric_value is not None
+    try:
+        numeric_value, _ = extract_numeric_answer(answer)
+        return numeric_value is not None
+    except Exception:
+        return False
 
 def contains_non_latin(text: str) -> bool:
     """Check if text contains Chinese or Russian characters"""
