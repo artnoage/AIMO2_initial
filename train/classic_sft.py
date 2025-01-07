@@ -7,6 +7,7 @@ from transformers import (
     Trainer,
     default_data_collator,
 )
+from accelerate import dispatch_model, infer_auto_device_map
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
@@ -54,18 +55,12 @@ def main():
     model_name = "artnoage/metastral"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Load model for distributed training
+    # Load model with automatic device mapping
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.float16,
-    )
-    
-    # Move model to correct device and wrap in DDP
-    model = model.to(f'cuda:{local_rank}')
-    model = DistributedDataParallel(
-        model,
-        device_ids=[local_rank],
-        output_device=local_rank
+        device_map="auto",  # This enables model parallelism
+        max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
     )
     
     if local_rank == 0:
@@ -106,11 +101,12 @@ def main():
         gradient_accumulation_steps=32,
         learning_rate=4e-6,
         logging_steps=1,
-        save_strategy="steps",
+        save_strategy="steps", 
         save_steps=200,
         fp16=True,
         optim="adamw_torch",
         ddp_find_unused_parameters=False,
+        gradient_checkpointing=True,  # Enable gradient checkpointing to save memory
     )
 
     # Initialize trainer
