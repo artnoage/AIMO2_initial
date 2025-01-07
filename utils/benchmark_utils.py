@@ -3,21 +3,18 @@ import os
 import asyncio
 import json
 import signal
-from glob import glob
 import sympy
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from langchain_openai import ChatOpenAI
-from pathlib import Path
 from tqdm import tqdm
 from datasets import load_dataset
-from huggingface_hub import HfApi, whoami
-from utils.benchmark_config import BenchmarkConfig, ModelOption
+from huggingface_hub import whoami
+from utils.benchmark_config import *
 from utils.progress_tracker import *
 T = TypeVar('T')
-import logging
 from latex2sympy2 import latex2sympy
 
 
@@ -138,13 +135,11 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
                     retry_count += 1
                     if retry_count == max_retries:
                         raise
-                    #print(f"Timeout error. Retrying... ({retry_count}/{max_retries})")
                     await asyncio.sleep(1)
                 except Exception as e:
                     retry_count += 1
                     if retry_count == max_retries:
                         raise
-                    #print(f"Error: Other error. Retrying... ({retry_count}/{max_retries})")
                     await asyncio.sleep(1)
             raise Exception(f"Failed after {max_retries} retries")
         return wrapper
@@ -385,28 +380,6 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     step_count = resp.lower().count("step")
     return step_count <= 1
 
-def analyze_solution_quality(solution: str) -> Dict[str, Any]:
-    """Analyze various quality metrics of a solution"""
-    explanation_patterns = r'because|since|as\s+|explain|due\s+to|results?\s+in|leads?\s+to'
-    logical_patterns = r'therefore|thus|hence|consequently|so|accordingly'
-    
-    return {
-        'length': len(solution.split()),
-        'has_analysis': bool(re.search(r'analysis|approach|strategy', solution.lower())),
-        'step_count': len(re.findall(r'step\s+\d+', solution.lower())),
-        'has_boxed': '\\boxed{' in solution,
-        'has_equations': bool(re.search(r'\$.*\$', solution)),
-        'has_therefore': bool(re.search(logical_patterns, solution.lower())),
-        'has_explanation': bool(re.search(explanation_patterns, solution.lower())),
-        'formatting_quality': sum([
-            '\\boxed{' in solution,
-            bool(re.search(r'\$.*\$', solution)),
-            bool(re.findall(r'step\s+\d+', solution.lower())),
-            bool(re.search(logical_patterns, solution.lower())),
-            bool(re.search(explanation_patterns, solution.lower()))
-        ])
-    }
-
 class NumericVerifier:
     def __init__(self, tolerance: float = 1e-6):
         self.tolerance = tolerance
@@ -472,60 +445,6 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
         
     return partial_solutions
 
-def calculate_rejected_score(solution: str) -> float:
-    """Calculate rejected solution score starting from 0.4 and applying penalties"""
-    score = 0.4
-    
-    # Penalty for no boxed answer
-    if '\\boxed{' not in solution:
-        score -= 0.2
-        
-    # Penalty for short solutions
-    if len(solution.split()) < 80:
-        score -= 0.1
-        
-    # Penalty for invalid analysis
-    if not validate_analysis(solution):
-        score -= 0.1
-        
-    # Penalty for incorrect step numbering
-    steps = solution.lower().split("step")
-    if len(steps) > 1:  # Only check if there are steps
-        found_numbers = []
-        missing_numbers = 0
-        
-        for step in steps[1:]:  # Skip text before first "step"
-            number_found = False
-            for pattern in STEP_NUMBER_PATTERNS:
-                match = pattern.search(step)
-                if match:
-                    found_numbers.append(int(match.group(1)))
-                    number_found = True
-                    break
-            if not number_found:
-                missing_numbers += 1
-                logging.debug(f"Missing step number in: {step[:50]}...")
-        
-        # Check if numbers are sequential starting from 1
-        expected_sequence = list(range(1, len(steps)))
-        
-        # Calculate penalties
-        if missing_numbers > 0:
-            penalty = min(0.1, 0.02 * missing_numbers)
-            score -= penalty
-            logging.debug(f"Applied penalty {penalty} for {missing_numbers} missing step numbers")
-            
-        if found_numbers:
-            # Check sequence correctness
-            wrong_numbers = sum(1 for a, b in zip(found_numbers, expected_sequence) if a != b)
-            if wrong_numbers > 0:
-                penalty = min(0.1, 0.02 * wrong_numbers)
-                score -= penalty
-                logging.debug(f"Applied penalty {penalty} for {wrong_numbers} incorrect step numbers")
-            
-    return max(0.0, score)  # Ensure non-negative score
-
-
 async def run_benchmark(
     config: BenchmarkConfig,
     process_example_func: Callable
@@ -554,7 +473,7 @@ async def run_benchmark(
             dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
         else:  # filtered
             username = whoami()["name"]
-            dataset = load_dataset(f"{username}/Olympiads", split=config.split)
+            dataset = load_dataset(f"{username}/Numina", split=config.split)
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')

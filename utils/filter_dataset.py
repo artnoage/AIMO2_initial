@@ -8,7 +8,7 @@ from huggingface_hub import HfApi
 import re 
 from typing import Optional
 from tqdm import tqdm
-from benchmark_utils import extract_numeric_answer
+from utils.benchmark_utils import *
 
 class TimeoutException(Exception): pass
 

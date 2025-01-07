@@ -88,7 +88,7 @@ def main():
         optim = "adafactor",
         seed=42,
         bf16=True,
-        weight_decay=0.1,
+        weight_decay=0.01,
         lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.1)

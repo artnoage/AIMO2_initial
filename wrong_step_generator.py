@@ -265,12 +265,7 @@ async def main():
             if result:
                 # Add solution quality metrics
                 all_logs.append("\n📊 Solution Quality:")
-                wrong_quality = analyze_solution_quality(result['wrong_solution'])
-                all_logs.append(f"✓ Wrong solution:")
-                all_logs.append(f"  ├─ Length: {wrong_quality['length']} words")
-                all_logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")
-                all_logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")
-                all_logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")
+                
                 
                 # Add wrong step details
                 all_logs.append("\n🔍 Wrong Step Details:")

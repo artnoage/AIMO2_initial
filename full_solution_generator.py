@@ -85,7 +85,7 @@ async def process_full_solution(
     if correct_attempt == 1:
         chosen_score = min(1.0, chosen_score + 0.1)
 
-    rejected_score = calculate_rejected_score(wrong_solution)
+    rejected_score = 0
 
     # Print detailed logs
     logs.append("\n" + "="*50)
@@ -101,22 +101,7 @@ async def process_full_solution(
     logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")
     logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
 
-    # Solution quality metrics
-    logs.append(f"\n📝 Solution Quality:")
-    correct_quality = analyze_solution_quality(correct_solution)
-    wrong_quality = analyze_solution_quality(wrong_solution)
-                                                                                                    
-    logs.append(f"✓ Correct solution:")                                                            
-    logs.append(f"  ├─ Length: {correct_quality['length']} words")                                 
-    logs.append(f"  ├─ Steps: {correct_quality['step_count']}")                                    
-    logs.append(f"  ├─ Has equations: {'Yes' if correct_quality['has_equations'] else 'No'}")      
-    logs.append(f"  └─ Format score: {correct_quality['formatting_quality']}/5")                   
-                                                                                                
-    logs.append(f"✓ Wrong solution:")                                                              
-    logs.append(f"  ├─ Length: {wrong_quality['length']} words")                                   
-    logs.append(f"  ├─ Steps: {wrong_quality['step_count']}")                                      
-    logs.append(f"  ├─ Has equations: {'Yes' if wrong_quality['has_equations'] else 'No'}")        
-    logs.append(f"  └─ Format score: {wrong_quality['formatting_quality']}/5")                     
+                   
                                                                                                 
     # Scoring details                                                                              
     logs.append(f"\n💯 Scoring Details:")                                                          

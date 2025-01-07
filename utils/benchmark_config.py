@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 from argparse import ArgumentParser
 from enum import Enum
-from typing import Optional
 
 
 class ModelOption(Enum):
@@ -41,7 +40,7 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 40
+    best_of: int = 15
     completions: int = 10
     
     # Verification settings
@@ -80,7 +79,7 @@ class BenchmarkConfig:
         # Execution arguments
         parser.add_argument('--max-concurrent', type=int, default=256,
                           help='Maximum number of concurrent problems (default: 64)')
-        parser.add_argument('--best-of', type=int, default=40,
+        parser.add_argument('--best-of', type=int, default=15,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--completions', type=int, default=30,
                           help='Number of completions to try per path (default: 15)')
