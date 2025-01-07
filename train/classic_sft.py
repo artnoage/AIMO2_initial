@@ -90,7 +90,7 @@ def main():
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
-            max_length=4096,
+            max_length=2048,
             padding="max_length",  # Changed to max_length
             return_tensors=None,
         )
