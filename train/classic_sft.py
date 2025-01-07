@@ -39,7 +39,7 @@ def main():
         model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",  # This enables model parallelism
-        use_cache=False,  # Required for gradient checkpointing
+        use_cache=True,  # Required for gradient checkpointing
         max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
     )
     
@@ -82,7 +82,7 @@ def main():
         save_steps=200,
         bf16=True,  # Use bfloat16 instead of fp16
         optim="adamw_torch",
-        gradient_checkpointing=True,  # Enable gradient checkpointing to save memory
+        gradient_checkpointing=False,  # Enable gradient checkpointing to save memory
     )
 
     # Tokenize the dataset
