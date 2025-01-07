@@ -89,7 +89,7 @@ def main():
         return tokenizer(
             examples["text"],
             truncation=True,
-            max_length=2048,
+            max_length=4096,
             padding=False,
             return_tensors=None,
         )
