@@ -101,8 +101,8 @@ def main():
     # Training arguments
     training_args = TrainingArguments(
         output_dir=f"train_results/classic_{timestamp}",
-        num_train_epochs=2,
-        per_device_train_batch_size=4,
+        num_train_epochs=1,
+        per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         learning_rate=4e-6,
         logging_steps=1,
