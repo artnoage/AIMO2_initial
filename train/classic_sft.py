@@ -86,13 +86,15 @@ def main():
 
     # Tokenize the dataset
     def tokenize_function(examples):
-        return tokenizer(
+        result = tokenizer(
             examples["text"],
             truncation=True,
             max_length=4096,
             padding=False,
             return_tensors=None,
         )
+        result["labels"] = result["input_ids"].copy()
+        return result
 
     # Tokenize the dataset
     tokenized_dataset = formatted_dataset.map(
