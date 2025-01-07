@@ -54,11 +54,18 @@ def main():
     model_name = "artnoage/metastral"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Load model normally
+    # Load model for distributed training
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        device_map="auto",
         torch_dtype=torch.float16,
+    )
+    
+    # Move model to correct device and wrap in DDP
+    model = model.to(f'cuda:{local_rank}')
+    model = DistributedDataParallel(
+        model,
+        device_ids=[local_rank],
+        output_device=local_rank
     )
     
     if local_rank == 0:
