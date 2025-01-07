@@ -9,8 +9,6 @@ from transformers import (
 )
 from accelerate import dispatch_model, infer_auto_device_map
 import torch
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
 from datetime import datetime
 import os
 from typing import Dict, Sequence
@@ -27,29 +25,10 @@ def print_gpu_utilization():
         print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
         print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
 
-def setup_distributed():
-    if 'RANK' not in os.environ:
-        os.environ['RANK'] = '0'
-    if 'LOCAL_RANK' not in os.environ:
-        os.environ['LOCAL_RANK'] = '0'
-    if 'WORLD_SIZE' not in os.environ:
-        os.environ['WORLD_SIZE'] = '1'
-    if 'MASTER_ADDR' not in os.environ:
-        os.environ['MASTER_ADDR'] = 'localhost'
-    if 'MASTER_PORT' not in os.environ:
-        os.environ['MASTER_PORT'] = '29500'
-
-    dist.init_process_group(backend='nccl')
-    torch.cuda.set_device(int(os.environ['LOCAL_RANK']))
 
 def main():
-    # Initialize distributed training
-    setup_distributed()
-    local_rank = int(os.environ['LOCAL_RANK'])
-    
-    if local_rank == 0:
-        print("\n=== Initial GPU State ===")
-        print_gpu_utilization()
+    print("\n=== Initial GPU State ===")
+    print_gpu_utilization()
 
     # Load model and tokenizer
     model_name = "artnoage/metastral"
@@ -63,8 +42,7 @@ def main():
         max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
     )
     
-    if local_rank == 0:
-        print("\n=== After Model Load ===")
+    print("\n=== After Model Load ===")
         print_gpu_utilization()
 
     # Setup Mistral chat template with start/end tokens and proper spacing
@@ -80,14 +58,12 @@ def main():
     dataset = load_dataset("Metaskepsis/sft", split="train")
     dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
     
-    if local_rank == 0:
-        print("\nFirst conversation before formatting:")
+    print("\nFirst conversation before formatting:")
         print(json.dumps(dataset[0]["conversations"], indent=2))
     
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
-    if local_rank == 0:
-        print("\nFirst conversation after formatting:")
+    print("\nFirst conversation after formatting:")
         print(json.dumps(formatted_dataset[0]["text"], indent=2))
 
     # Create timestamp for output directory
@@ -105,7 +81,6 @@ def main():
         save_steps=200,
         fp16=True,
         optim="adamw_torch",
-        ddp_find_unused_parameters=False,
         gradient_checkpointing=True,  # Enable gradient checkpointing to save memory
     )
 
@@ -120,8 +95,6 @@ def main():
     # Train the model
     trainer.train()
 
-    # Clean up distributed training
-    dist.destroy_process_group()
 
 if __name__ == "__main__":
     main()
