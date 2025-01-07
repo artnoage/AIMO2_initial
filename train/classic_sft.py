@@ -70,18 +70,14 @@ def main():
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=1,
-        per_device_train_batch_size=1,  # Batch size per device
-        gradient_accumulation_steps=32,  # Accumulate gradients
-        learning_rate=4e-6,
+        per_device_train_batch_size=1,
         logging_steps=10,
         save_strategy="steps",
         save_steps=200,
-        bf16=True,  # Use bfloat16 for better performance
-        gradient_checkpointing=False,  # Disable gradient checkpointing when using ZeRO-2
-        deepspeed="ds_config.json",  # DeepSpeed config
+        bf16=True,
         tf32=True,
-        weight_decay=0.01,
-        warmup_steps=1000
+        deepspeed="ds_config.json",
+        ddp_find_unused_parameters=False
     )
 
     # Trainer setup
