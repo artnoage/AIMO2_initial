@@ -81,7 +81,9 @@ def main():
         bf16=True,
         tf32=True,
         deepspeed="ds_config.json",
-        ddp_find_unused_parameters=False
+        ddp_find_unused_parameters=False,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False}
     )
 
     # Trainer setup

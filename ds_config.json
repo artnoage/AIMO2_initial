@@ -12,7 +12,13 @@
     "reduce_scatter": true,
     "reduce_bucket_size": 5e8,
     "overlap_comm": true,
-    "contiguous_gradients": true
+    "contiguous_gradients": true,
+    "round_robin_gradients": true,
+    "stage3_gather_16bit_weights_on_model_save": true,
+    "stage3_max_live_parameters": 1e9,
+    "stage3_max_reuse_distance": 1e9,
+    "stage3_prefetch_bucket_size": 5e8,
+    "stage3_param_persistence_threshold": 1e6
   },
   "optimizer": {
     "type": "AdamW",
