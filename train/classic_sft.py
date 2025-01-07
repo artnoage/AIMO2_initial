@@ -7,10 +7,8 @@ from transformers import (
     Trainer,
     default_data_collator,
 )
-from accelerate import dispatch_model, infer_auto_device_map
 import torch
 from datetime import datetime
-import os
 from typing import Dict, Sequence
 import GPUtil
 
