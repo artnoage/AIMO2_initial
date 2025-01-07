@@ -75,7 +75,7 @@ def main():
         return {"text": texts}
 
     # Load, shuffle and format dataset
-    dataset = load_dataset("artnoage/sft_full", split="train")
+    dataset = load_dataset("Metaskepsis/sft", split="train")
     dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
     
     if local_rank == 0:
@@ -109,7 +109,7 @@ def main():
     # Initialize trainer
     trainer = Trainer(
         model=model,
-        train_dataset=formatted_dataset,
+        train_dataset=formatted_dataset["text"],
         args=training_args,
         data_collator=default_data_collator,
     )
