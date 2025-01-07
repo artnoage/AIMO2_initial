@@ -77,7 +77,7 @@ def main():
         save_strategy="steps",
         save_steps=200,
         bf16=True,  # Use bfloat16 for better performance
-        gradient_checkpointing=True,
+        gradient_checkpointing=False,  # Disable gradient checkpointing when using ZeRO-2
         deepspeed="ds_config.json",  # DeepSpeed config
         tf32=True,
         weight_decay=0.01,
