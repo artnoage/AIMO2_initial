@@ -32,11 +32,13 @@ def main():
     model_name = "artnoage/metastral"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Load model for distributed training
+    # Load model with manual device mapping for 4 GPUs
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
+        device_map="auto",
         use_cache=False,  # Required for gradient checkpointing
+        max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
     )
     
     print("\n=== After Model Load ===")
@@ -70,8 +72,8 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/classic_{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=4,  # Increased from 1 to 4
-        gradient_accumulation_steps=8,   # Reduced from 32 to maintain similar total batch size
+        per_device_train_batch_size=2,  # Reduced to handle memory constraints
+        gradient_accumulation_steps=16,  # Increased to maintain effective batch size
         learning_rate=4e-6,
         logging_steps=1,
         save_strategy="steps", 
@@ -90,7 +92,7 @@ def main():
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
-            max_length=2048,
+            max_length=1024,  # Reduced sequence length for better memory efficiency
             padding="max_length",  # Changed to max_length
             return_tensors=None,
         )
