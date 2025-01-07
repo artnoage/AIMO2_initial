@@ -34,13 +34,11 @@ def main():
     model_name = "artnoage/metastral"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     
-    # Load model with automatic device mapping
+    # Load model for distributed training
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto",  # This enables model parallelism
-        use_cache=True,  # Required for gradient checkpointing
-        max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
+        use_cache=False,  # Required for gradient checkpointing
     )
     
     print("\n=== After Model Load ===")
