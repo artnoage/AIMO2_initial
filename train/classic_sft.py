@@ -5,7 +5,9 @@ from transformers import (
     TrainingArguments,
     Trainer,
     default_data_collator,
+    AdafactorSchedule,
 )
+from transformers.optimization import Adafactor
 import torch
 from datetime import datetime
 from pathlib import Path
@@ -72,9 +74,7 @@ def main():
         num_train_epochs=1,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
-        learning_rate=4e-6,
         weight_decay=0.01,
-        warmup_steps=1000,
         logging_steps=10,
         save_strategy="steps",
         save_steps=200,
@@ -86,12 +86,25 @@ def main():
         gradient_checkpointing_kwargs={"use_reentrant": False}
     )
 
+    # Initialize Adafactor optimizer
+    optimizer = Adafactor(
+        model.parameters(),
+        scale_parameter=True,
+        relative_step=True,
+        warmup_init=True,
+        clip_threshold=1.0
+    )
+    
+    # Use Adafactor's built-in learning rate scheduling
+    lr_scheduler = AdafactorSchedule(optimizer)
+
     # Trainer setup
     trainer = Trainer(
         model=model,
         train_dataset=tokenized_dataset,
         args=training_args,
         data_collator=default_data_collator,
+        optimizers=(optimizer, lr_scheduler)
     )
 
     # Train the model

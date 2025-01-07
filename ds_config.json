@@ -21,12 +21,17 @@
     "stage3_param_persistence_threshold": 1e6
   },
   "optimizer": {
-    "type": "AdamW",
+    "type": "Adafactor",
     "params": {
       "lr": "auto",
-      "betas": [0.9, 0.999],
-      "eps": 1e-8,
-      "weight_decay": "auto"
+      "eps": [1e-30, 1e-3],
+      "clip_threshold": 1.0,
+      "decay_rate": -0.8,
+      "beta1": None,
+      "weight_decay": "auto",
+      "scale_parameter": True,
+      "relative_step": True,
+      "warmup_init": True
     }
   },
   "scheduler": {
