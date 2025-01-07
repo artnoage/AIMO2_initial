@@ -91,9 +91,14 @@ def main():
             examples["text"],
             truncation=True,
             max_length=4096,
-            padding=True,  # Enable padding
+            padding=True,
             return_tensors=None,
         )
+        
+        # Set up labels for causal language modeling
+        tokenized["labels"] = [
+            input_ids.copy() for input_ids in tokenized["input_ids"]
+        ]
         
         # Print first example for debugging
         if len(examples["text"]) > 0:
