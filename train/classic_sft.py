@@ -1,5 +1,4 @@
-from datasets import load_dataset
-import json
+from datasets import load_dataset 
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -8,118 +7,84 @@ from transformers import (
     default_data_collator,
 )
 import torch
-import torch.distributed as dist
 from datetime import datetime
-from typing import Dict, Sequence
-import GPUtil
-import os
-
-def print_gpu_utilization():
-    GPUs = GPUtil.getGPUs()
-    for gpu in GPUs:
-        print(f'\nGPU ID: {gpu.id} ({gpu.name})')
-        print(f'GPU load: {gpu.load*100:.1f}%')
-        print(f'GPU memory: {gpu.memoryUsed}MB / {gpu.memoryTotal}MB')
-        print(f'GPU memory free: {gpu.memoryFree}MB')
-    if torch.cuda.is_available():
-        print(f'\nPyTorch GPU memory allocated: {torch.cuda.memory_allocated()/1024**2:.1f}MB')
-        print(f'PyTorch GPU memory reserved: {torch.cuda.memory_reserved()/1024**2:.1f}MB')
+from pathlib import Path
 
 
 def main():
-    # Initialize distributed training
-    if int(os.environ.get("WORLD_SIZE", 1)) > 1:
-        dist.init_process_group(backend="nccl")
-        local_rank = int(os.environ["LOCAL_RANK"])
-        torch.cuda.set_device(local_rank)
+    # Print initial GPU state
     
-    print("\n=== Initial GPU State ===")
-    print_gpu_utilization()
 
     # Load model and tokenizer
-    model_name = "artnoage/metastral"
+    model_name = "mistralai/Mathstral-7B-v0.1"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    
-    # Load model with manual device mapping for 4 GPUs
+
+    # Load model with DeepSpeed (no device_map)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto",
         use_cache=False,  # Required for gradient checkpointing
-        max_memory={i: f"{int(torch.cuda.get_device_properties(i).total_memory * 0.85 / 1024**3)}GiB" for i in range(torch.cuda.device_count())},
     )
-    
-    print("\n=== After Model Load ===")
-    print_gpu_utilization()
 
-    # Setup Mistral chat template with start/end tokens and proper spacing
-    tokenizer.chat_template = "<s>[INST] {{ messages[0]['content'] }} [/INST]\n{{ messages[1]['content'] }}</s>"
 
+    # Add padding token
+    new_pad_token = "[control_748]"
+    tokenizer.add_special_tokens({"pad_token": new_pad_token})
+    model.resize_token_embeddings(len(tokenizer))
+    model.config.pad_token_id = tokenizer.pad_token_id
+
+    # Dataset preparation
     def formatting_prompts_func(examples):
-        convos = examples["conversations"]
-        texts = [tokenizer.apply_chat_template(convo, tokenize=False) 
-                for convo in convos]
+        texts = [f"<s>[INST] {conv[0]['content']} [/INST]\n{conv[1]['content']}</s>"
+                 for conv in examples["conversations"]]
         return {"text": texts}
 
-    # Load, shuffle and format dataset
     dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
-    
-    print("\nFirst conversation before formatting:")
-    print(json.dumps(dataset[0]["conversations"], indent=2))
-    
+    dataset = dataset.shuffle(seed=42)
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
-    
-    print("\nFirst conversation after formatting:")
-    print(json.dumps(formatted_dataset[0]["text"], indent=2))
 
-    # Create timestamp for output directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Training arguments
-    training_args = TrainingArguments(
-        output_dir=f"train_results/classic_{timestamp}",
-        num_train_epochs=1,
-        per_device_train_batch_size=2,  # Reduced to handle memory constraints
-        gradient_accumulation_steps=16,  # Increased to maintain effective batch size
-        learning_rate=4e-6,
-        logging_steps=1,
-        save_strategy="steps", 
-        save_steps=200,
-        bf16=True,
-        optim="adamw_torch",
-        gradient_checkpointing=True,     # Enable to save memory
-        ddp_find_unused_parameters=False,# Optimize distributed training
-        tf32=True,                      # Enable TF32 for better performance
-        ddp_backend="nccl",             # Use NCCL backend for distributed training
-    )
-
-    # Tokenize the dataset
+    # Tokenization function
     def tokenize_function(examples):
-        # Tokenize the texts with padding to max length
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
-            max_length=1024,  # Reduced sequence length for better memory efficiency
-            padding="max_length",  # Changed to max_length
-            return_tensors=None,
+            max_length=4096,
+            padding="max_length",
+            return_tensors=None
         )
-        
-        # Set up labels for causal language modeling
-        tokenized["labels"] = [
-            input_ids.copy() for input_ids in tokenized["input_ids"]
-        ]
-        
+        tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
 
-    # Tokenize the dataset
     tokenized_dataset = formatted_dataset.map(
         tokenize_function,
         batched=True,
-        remove_columns=formatted_dataset.column_names,
+        remove_columns=formatted_dataset.column_names
     )
 
-    # Initialize trainer
+    # Create output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = Path(f"train_results/classic_{timestamp}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Training arguments
+    training_args = TrainingArguments(
+        output_dir=str(output_dir),
+        num_train_epochs=1,
+        per_device_train_batch_size=1,  # Batch size per device
+        gradient_accumulation_steps=32,  # Accumulate gradients
+        learning_rate=4e-6,
+        logging_steps=10,
+        save_strategy="steps",
+        save_steps=200,
+        bf16=True,  # Use bfloat16 for better performance
+        gradient_checkpointing=True,
+        deepspeed="ds_config.json",  # DeepSpeed config
+        tf32=True,
+        weight_decay=0.01,
+        warmup_steps=1000
+    )
+
+    # Trainer setup
     trainer = Trainer(
         model=model,
         train_dataset=tokenized_dataset,
@@ -129,7 +94,6 @@ def main():
 
     # Train the model
     trainer.train()
-
 
 if __name__ == "__main__":
     main()
