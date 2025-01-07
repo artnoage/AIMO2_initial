@@ -100,14 +100,6 @@ def main():
             input_ids.copy() for input_ids in tokenized["input_ids"]
         ]
         
-        # Print first example for debugging
-        if len(examples["text"]) > 0:
-            print("\nFirst tokenized example:")
-            print(f"Keys available: {tokenized.keys()}")
-            for k, v in tokenized.items():
-                if isinstance(v, list) and len(v) > 0:
-                    print(f"{k} shape: {len(v[0])}")
-        
         return tokenized
 
     # Tokenize the dataset
