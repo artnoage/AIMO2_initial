@@ -87,7 +87,7 @@ def main():
     # Initialize trainer
     trainer = Trainer(
         model=model,
-        train_dataset=formatted_dataset,
+        train_dataset=formatted_dataset["text"],
         args=training_args,
         data_collator=default_data_collator,
         tokenizer=tokenizer,  # Add tokenizer for automatic tokenization
