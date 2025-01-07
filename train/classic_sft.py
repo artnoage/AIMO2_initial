@@ -86,12 +86,12 @@ def main():
 
     # Tokenize the dataset
     def tokenize_function(examples):
-        # Tokenize the texts
+        # Tokenize the texts with padding to max length
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
             max_length=4096,
-            padding=True,
+            padding="max_length",  # Changed to max_length
             return_tensors=None,
         )
         
