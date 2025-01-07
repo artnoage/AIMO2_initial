@@ -74,15 +74,18 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/classic_{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=32,
+        per_device_train_batch_size=4,  # Increased from 1 to 4
+        gradient_accumulation_steps=8,   # Reduced from 32 to maintain similar total batch size
         learning_rate=4e-6,
         logging_steps=1,
         save_strategy="steps", 
         save_steps=200,
-        bf16=True,  # Use bfloat16 instead of fp16
+        bf16=True,
         optim="adamw_torch",
-        gradient_checkpointing=False,  # Enable gradient checkpointing to save memory
+        gradient_checkpointing=True,     # Enable to save memory
+        ddp_find_unused_parameters=False,# Optimize distributed training
+        tf32=True,                      # Enable TF32 for better performance
+        ddp_backend="nccl",             # Use NCCL backend for distributed training
     )
 
     # Tokenize the dataset
