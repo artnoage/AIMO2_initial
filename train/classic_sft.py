@@ -86,15 +86,24 @@ def main():
 
     # Tokenize the dataset
     def tokenize_function(examples):
-        result = tokenizer(
+        # Tokenize the texts
+        tokenized = tokenizer(
             examples["text"],
             truncation=True,
             max_length=4096,
-            padding=False,
+            padding=True,  # Enable padding
             return_tensors=None,
         )
-        result["labels"] = result["input_ids"].copy()
-        return result
+        
+        # Print first example for debugging
+        if len(examples["text"]) > 0:
+            print("\nFirst tokenized example:")
+            print(f"Keys available: {tokenized.keys()}")
+            for k, v in tokenized.items():
+                if isinstance(v, list) and len(v) > 0:
+                    print(f"{k} shape: {len(v[0])}")
+        
+        return tokenized
 
     # Tokenize the dataset
     tokenized_dataset = formatted_dataset.map(
