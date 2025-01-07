@@ -43,7 +43,7 @@ def main():
     )
     
     print("\n=== After Model Load ===")
-        print_gpu_utilization()
+    print_gpu_utilization()
 
     # Setup Mistral chat template with start/end tokens and proper spacing
     tokenizer.chat_template = "<s>[INST] {{ messages[0]['content'] }} [/INST]\n{{ messages[1]['content'] }}</s>"
@@ -59,12 +59,12 @@ def main():
     dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
     
     print("\nFirst conversation before formatting:")
-        print(json.dumps(dataset[0]["conversations"], indent=2))
+    print(json.dumps(dataset[0]["conversations"], indent=2))
     
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     
     print("\nFirst conversation after formatting:")
-        print(json.dumps(formatted_dataset[0]["text"], indent=2))
+    print(json.dumps(formatted_dataset[0]["text"], indent=2))
 
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
