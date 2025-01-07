@@ -8,9 +8,11 @@ from transformers import (
     default_data_collator,
 )
 import torch
+import torch.distributed as dist
 from datetime import datetime
 from typing import Dict, Sequence
 import GPUtil
+import os
 
 def print_gpu_utilization():
     GPUs = GPUtil.getGPUs()
@@ -25,6 +27,12 @@ def print_gpu_utilization():
 
 
 def main():
+    # Initialize distributed training
+    if int(os.environ.get("WORLD_SIZE", 1)) > 1:
+        dist.init_process_group(backend="nccl")
+        local_rank = int(os.environ["LOCAL_RANK"])
+        torch.cuda.set_device(local_rank)
+    
     print("\n=== Initial GPU State ===")
     print_gpu_utilization()
 
