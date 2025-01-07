@@ -5,7 +5,6 @@ from transformers import (
     TrainingArguments,
     Trainer,
     default_data_collator,
-    AdafactorSchedule,
 )
 from transformers.optimization import Adafactor
 import torch
@@ -86,7 +85,7 @@ def main():
         gradient_checkpointing_kwargs={"use_reentrant": False}
     )
 
-    # Initialize Adafactor optimizer
+    # Initialize Adafactor optimizer with built-in scheduling
     optimizer = Adafactor(
         model.parameters(),
         scale_parameter=True,
@@ -94,17 +93,14 @@ def main():
         warmup_init=True,
         clip_threshold=1.0
     )
-    
-    # Use Adafactor's built-in learning rate scheduling
-    lr_scheduler = AdafactorSchedule(optimizer)
 
-    # Trainer setup
+    # Trainer setup with just the optimizer
     trainer = Trainer(
         model=model,
         train_dataset=tokenized_dataset,
         args=training_args,
         data_collator=default_data_collator,
-        optimizers=(optimizer, lr_scheduler)
+        optimizers=(optimizer, None)  # Let Adafactor handle its own scheduling
     )
 
     # Train the model
