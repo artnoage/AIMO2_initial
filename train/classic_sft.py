@@ -84,10 +84,27 @@ def main():
         gradient_checkpointing=True,  # Enable gradient checkpointing to save memory
     )
 
+    # Tokenize the dataset
+    def tokenize_function(examples):
+        return tokenizer(
+            examples["text"],
+            truncation=True,
+            max_length=2048,
+            padding=False,
+            return_tensors=None,
+        )
+
+    # Tokenize the dataset
+    tokenized_dataset = formatted_dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=formatted_dataset.column_names,
+    )
+
     # Initialize trainer
     trainer = Trainer(
         model=model,
-        train_dataset=formatted_dataset["text"],
+        train_dataset=tokenized_dataset,
         args=training_args,
         data_collator=default_data_collator,
     )
