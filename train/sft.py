@@ -16,10 +16,9 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250106_092733",
         max_seq_length=4096,
-        load_in_4bit=False,
-        is_trainable=True)
+        load_in_4bit=False)
         
 
     # Configure LoRA
@@ -59,13 +58,13 @@ def main():
     dataset = dataset.select(range(half_size, len(dataset)))  # Take second half
 
     # Print original format
-    print("\nFirst conversation before formatting:")
-    print(json.dumps(dataset[0]["conversations"], indent=2))
+    #print("\nFirst conversation before formatting:")
+    #print(json.dumps(dataset[0]["conversations"], indent=2))
     
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
-    print("\nFirst conversation after formatting:")
-    print(json.dumps(formatted_dataset[0]["text"], indent=2))
+    #print("\nFirst conversation after formatting:")
+    #print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
@@ -92,8 +91,9 @@ def main():
         tokenizer=tokenizer,
         args=training_args)
 
+
     # Train the model
-    trainer.train()
+    trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000")
 
 if __name__ == "__main__":
     main()
