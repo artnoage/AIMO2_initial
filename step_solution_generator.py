@@ -34,7 +34,7 @@ class ListGenerator:
         successful = 0
         good_completion = None
         bad_completion = None
-        worst_failure_type = 0  # 0: no failure, 1: wrong answer, 2: invalid solution, 3: invalid completion
+        worst_failure_score = 0  # Accumulate failures: +1 wrong answer, +2 invalid solution, +4 invalid completion
         
         for _ in range(self.completions):
             try:
@@ -44,21 +44,17 @@ class ListGenerator:
                 )
                 complete_solution = current_solution + completion
                 
+                failure_score = 0
+                
                 # First validate the completion itself
                 is_valid_completion, _ = validate_completion(current_solution, completion)
                 if not is_valid_completion:
-                    if worst_failure_type <= 3:
-                        worst_failure_type = 3
-                        bad_completion = completion
-                    continue
+                    failure_score += 4
                 
                 # Then validate the complete solution
                 is_valid_solution, _ = validate_solution(complete_solution)
                 if not is_valid_solution:
-                    if worst_failure_type <= 2:
-                        worst_failure_type = 2
-                        bad_completion = completion
-                    continue
+                    failure_score += 2
                 
                 # Finally verify the answer
                 is_correct, answer = await self.verifier.verify(
@@ -68,12 +64,20 @@ class ListGenerator:
                 )
                 
                 if is_correct:
-                    successful += 1
-                    if good_completion is None:
-                        good_completion = completion
-                elif worst_failure_type <= 1:
-                    worst_failure_type = 1
+                    if failure_score == 0:  # Only store good completions if they pass all checks
+                        successful += 1
+                        if good_completion is None:
+                            good_completion = completion
+                else:
+                    failure_score += 1
+                
+                # Update bad completion if this one is worse
+                if failure_score > worst_failure_score:
+                    worst_failure_score = failure_score
                     bad_completion = completion
+                
+                if failure_score > 0:
+                    continue  # Skip any completion with failures
                     
             except Exception:
                 successful += 0  # Explicitly count failed attempts
