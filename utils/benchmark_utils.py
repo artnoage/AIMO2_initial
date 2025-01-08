@@ -101,7 +101,7 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
     
     Args:
         config: The benchmark configuration
-        role: The role of the model (e.g. "solver")
+        role: The role of the model (e.g. "solver", "verifier", etc.)
     """
     model = ModelOption[getattr(config, role)]
     name = model.value

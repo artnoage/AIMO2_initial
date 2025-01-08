@@ -232,7 +232,7 @@ async def main():
         """Process a single example"""
         try:
             # Initialize solver
-            solver = get_model(config)
+            solver = get_model(config, role="solver")
             
             # Create generator
             generator = WrongStepGenerator(solver, config.best_of, config.completions)
