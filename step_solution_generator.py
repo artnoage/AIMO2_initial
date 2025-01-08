@@ -293,7 +293,7 @@ async def main():
         """Process a single example using list generation"""
         try:
             # Initialize solver
-            solver = get_model(ModelOption[config.solver], temp=config.temperature)
+            solver = get_model(config, role="solver")
             
             # Create list generator
             generator = ListGenerator(solver, config.best_of, config.completions)

@@ -1,5 +1,5 @@
 from datasets import load_dataset
-import json
+import os
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250106_092733",
+        model_name="mistralai/Mathstral-7B-v0.1",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -93,7 +93,17 @@ def main():
 
 
     # Train the model
-    trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000")
+    trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250108_110648/checkpoint-10392")
+    models_dir = "models"
+    os.makedirs(models_dir, exist_ok=True)
+    
+    
+    model_output_dir = os.path.join(models_dir, timestamp)
+    
+    # Save the merged model
+    model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+    print(f"Merged model saved to {model_output_dir}")
+
 
 if __name__ == "__main__":
     main()

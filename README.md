@@ -31,7 +31,7 @@ tags:
 metrics:
   - name: filtered_ratio
     type: ratio 
-    value: 0.564
+    value: 0.478
     description: Ratio of filtered dataset size to original dataset size
 ---
 
@@ -41,8 +41,8 @@ Filtered NuminaMath-CoT dataset containing only olympiads problems with valid an
 
 ## Dataset Information
 - Split: train
-- Original size: 773755
-- Filtered size: 436201
+- Original size: 649311
+- Filtered size: 310163
 - Source: olympiads
 - All examples contain valid boxed answers
 

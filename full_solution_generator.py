@@ -141,7 +141,7 @@ async def process_example(
             return None                                                                            
                                                                                                     
          # Initialize models and verifier                                                           
-        solver = get_model(ModelOption[config.solver], temp=config.temperature)                    
+        solver = get_model(config, role="solver")                    
         verifier = NumericVerifier(tolerance=config.tolerance)                                     
                                                                                                     
         logs.append("\n" + "="*80)                                                                 

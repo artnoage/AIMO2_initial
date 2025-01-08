@@ -3,12 +3,17 @@ import json
 import argparse
 import signal
 from contextlib import contextmanager
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import load_dataset, load_from_disk, Dataset, DatasetDict
 from huggingface_hub import HfApi
 import re 
 from typing import Optional
 from tqdm import tqdm
-from utils.benchmark_utils import *
+from latex2sympy2 import latex2sympy
+import sympy
+from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
+# Convert to Hugging Face dataset format with explicit schema
+from datasets import Features, Value
+
 
 class TimeoutException(Exception): pass
 
@@ -23,6 +28,71 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
+
+def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
+    """
+    Extract numeric value from a LaTeX answer string.
+    First tries to evaluate using sympy, then falls back to direct float conversion.
+    Returns float if found, None otherwise.
+    """
+    if not answer:
+        return None, "No answer provided" if debug else (None, None)
+        
+    # Clean the answer string
+    clean_answer = answer.strip()
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
+    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    clean_answer = clean_answer.replace('\\,', '')
+    clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
+    
+    # Only split on = or \approx if there's a single term before it
+    def has_single_term(text: str) -> bool:
+        """Check if text has only a single term (no operators outside brackets)"""
+        bracket_level = 0
+        for char in text:
+            if char == '{':
+                bracket_level += 1
+            elif char == '}':
+                bracket_level -= 1
+            elif bracket_level == 0 and char in '+-*/^':
+                return False
+        return True
+
+    # Handle = and \approx separately
+    if '=' in clean_answer:
+        eq_pos = clean_answer.rfind('=')
+        before_eq = clean_answer[:eq_pos].strip()
+        if has_single_term(before_eq):
+            clean_answer = clean_answer[eq_pos + 1:].strip()
+    
+    if '\\approx' in clean_answer:
+        approx_pos = clean_answer.rfind('\\approx')
+        before_approx = clean_answer[:approx_pos].strip()
+        if has_single_term(before_approx):
+            clean_answer = clean_answer[approx_pos + 8:].strip()
+                
+    if not clean_answer:
+        return None, "Empty answer after cleaning" if debug else (None, None)
+    try:
+        with time_limit(10):  # 10 second timeout
+            # Parse LaTeX to sympy-compatible format
+            latex_expr = latex2sympy(clean_answer)
+            # Convert to sympy expression and evaluate
+            expr = sympy.sympify(latex_expr)
+            # Handle both single values and lists/matrices
+            if hasattr(expr, 'evalf'):
+                result = float(expr.evalf())
+            elif isinstance(expr, list):
+                # Take first element if it's a list/matrix
+                result = float(expr[0].evalf())
+            else:
+                result = float(expr)
+            return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
+    except TimeoutException:
+        return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
+    except (sympy.SympifyError, TypeError, ValueError) as e:
+        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None)
+    
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
     Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
@@ -266,8 +336,7 @@ def main():
     print(f"\nFinal dataset size: {stats['final']}")
     print(f"Total reduction: {((stats['original'] - stats['final'])/stats['original'])*100:.1f}%")
 
-    # Convert to Hugging Face dataset format with explicit schema
-    from datasets import Features, Value
+
     
     features = Features({
         'id': Value('int64'),

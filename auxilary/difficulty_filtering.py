@@ -18,7 +18,7 @@ def filter_by_success_rate(data: List[Dict], threshold: float, above: bool) -> L
             print(f"Warning: Entry missing success_rate field: {entry}")
             continue
             
-        success_rate = entry['success_rate']
+        success_rate = entry['success_rate']/100
         if above and success_rate >= threshold:
             filtered_data.append(entry)
         elif not above and success_rate < threshold:
