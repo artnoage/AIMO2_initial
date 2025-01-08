@@ -108,8 +108,12 @@ async def process_full_solution(
     logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")                                    
     logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")                                
     logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")                      
-    logs.append(
-        f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
+    if rejected_score != 0:
+        logs.append(
+            f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
+    else:
+        logs.append(
+            f"✓ Relative improvement: N/A (rejected score is 0)")
                                                                                                     
     return (
         bifurcation_prompt,
