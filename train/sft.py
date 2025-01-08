@@ -16,7 +16,7 @@ def main():
 
     # Load the model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000",
+        model_name="train_results/20250107_114329/checkpoint-9000",
         max_seq_length=4096,
         load_in_4bit=False)
         
