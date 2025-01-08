@@ -327,6 +327,8 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         return False, "Contains [/INST] token"
     if "INST]" in solution.lower():
         return False, "Contains [/INST] token"
+    if "[…]" in solution.lower():   
+        return False, "Skips steps"
     # Check analysis length
     analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
     if analysis_parts and len(analysis_parts[0].split()) < 20:
