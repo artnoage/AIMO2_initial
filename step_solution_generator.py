@@ -26,28 +26,56 @@ class ListGenerator:
         problem: str,
         current_solution: str,
         correct_answer: str
-    ) -> float:
-        """Score a partial solution by attempting completions"""
+    ) -> Tuple[float, Optional[str], Optional[str]]:
+        """
+        Score a partial solution by attempting completions.
+        Returns (score, good_solution, bad_solution).
+        """
         successful = 0
+        good_solution = None
+        bad_solution = None
         
         for _ in range(self.completions):
             try:
-                complete_solution = current_solution + await self.completion_agent.generate(
+                completion = await self.completion_agent.generate(
                     problem,
                     current_solution
                 )
+                complete_solution = current_solution + completion
+                
+                # First validate the completion itself
+                is_valid_completion, _ = validate_completion(current_solution, completion)
+                if not is_valid_completion:
+                    if bad_solution is None:
+                        bad_solution = complete_solution
+                    continue
+                
+                # Then validate the complete solution
+                is_valid_solution, _ = validate_solution(complete_solution)
+                if not is_valid_solution:
+                    if bad_solution is None:
+                        bad_solution = complete_solution
+                    continue
+                
+                # Finally verify the answer
                 is_correct, answer = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
                     problem
                 )
+                
                 if is_correct:
                     successful += 1
+                    if good_solution is None:
+                        good_solution = complete_solution
+                elif bad_solution is None:
+                    bad_solution = complete_solution
+                    
             except Exception:
                 successful += 0  # Explicitly count failed attempts
         
         final_score = successful / self.completions
-        return final_score
+        return final_score, good_solution, bad_solution
 
     async def generate(
         self,
@@ -85,20 +113,24 @@ class ListGenerator:
                 
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
-                    score = await self._score_with_completions(
+                    score, good_sol, bad_sol = await self._score_with_completions(
                         problem,
                         analysis,
                         correct_answer
                     )
                     analyses.append((analysis, score))
                     
-                    # Update best and worst scores
+                    # Update best and worst scores/solutions
                     if score > best_score:
                         best_score = score
                         best_analysis = analysis
+                        if good_sol:
+                            best_analysis = good_sol
                     if score < worst_score:
                         worst_score = score
                         worst_analysis = analysis
+                        if bad_sol:
+                            worst_analysis = bad_sol
                     
                     # Check for perfect and zero scores
                     has_perfect = any(a[1] == 1.0 for a in analyses)
@@ -199,20 +231,24 @@ class ListGenerator:
                     # Score step if no answer yet
                     is_valid = validate_step(step, expected_step=step_num)
                     if is_valid:
-                        score = await self._score_with_completions(
+                        score, good_sol, bad_sol = await self._score_with_completions(
                             problem,
                             test_solution,
                             correct_answer
                         )
                         steps.append((step, score))
                         
-                        # Update best and worst steps
+                        # Update best and worst steps/solutions
                         if score > best_step_score:
                             best_step_score = score
                             best_step = step
+                            if good_sol:
+                                best_step = good_sol[len(current_solution):]  # Extract just the completion part
                         if score < worst_step_score:
                             worst_step_score = score
                             worst_step = step
+                            if bad_sol:
+                                worst_step = bad_sol[len(current_solution):]  # Extract just the completion part
                             
                         # Check for perfect or zero score
                         if score == 1.0:
