@@ -14,11 +14,18 @@ def main():
 
     
 
-    # Load the model from checkpoint
+    # Load base model first
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="train_results/20250107_114329/checkpoint-9000",
+        model_name="mistralai/Mistral-7B-v0.1",
         max_seq_length=4096,
         load_in_4bit=False)
+
+    # Load checkpoint
+    model = FastLanguageModel.from_pretrained(
+        model_name="train_results/20250107_114329/checkpoint-9000",
+        max_seq_length=4096,
+        load_in_4bit=False,
+        is_trainable=True)
         
 
     # Configure LoRA
