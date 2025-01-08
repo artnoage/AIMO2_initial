@@ -28,6 +28,7 @@ class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
     # Solver settings
     solver: str
+    port: int = 8000
     temperature: float = 0.9
     
     # Dataset settings
@@ -60,6 +61,8 @@ class BenchmarkConfig:
         parser.add_argument('--solver', type=str, 
                           choices=[model.name for model in ModelOption],
                           default='LOCAL', help='Model to use for solving problems')
+        parser.add_argument('--port', type=int, default=8000,
+                          help='Port for local model server (default: 8000)')
         parser.add_argument('--temperature', type=float, default=0.9,
                           help='Temperature for model generation (default: 0.9)')
                           

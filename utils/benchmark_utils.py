@@ -93,7 +93,7 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
-def get_model(model: ModelOption, temp: float, model_name: Optional[str] = None):
+def get_model(model: ModelOption, temp: float, config: BenchmarkConfig, model_name: Optional[str] = None):
     """
     Initialize the ChatOpenAI model based on the selected ModelOption.
     For LOCAL models, it connects to a local endpoint and uses provided model name if any.
@@ -110,7 +110,7 @@ def get_model(model: ModelOption, temp: float, model_name: Optional[str] = None)
             model=name,
             temperature=temp,
             api_key="EMPTY",
-            base_url="http://localhost:8000/v1")
+            base_url=f"http://localhost:{config.port}/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
