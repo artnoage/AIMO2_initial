@@ -75,9 +75,6 @@ class ListGenerator:
                 if failure_score > worst_failure_score:
                     worst_failure_score = failure_score
                     bad_completion = completion
-                
-                if failure_score > 0:
-                    continue  # Skip any completion with failures
                     
             except Exception:
                 successful += 0  # Explicitly count failed attempts
