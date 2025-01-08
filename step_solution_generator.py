@@ -29,11 +29,12 @@ class ListGenerator:
     ) -> Tuple[float, Optional[str], Optional[str]]:
         """
         Score a partial solution by attempting completions.
-        Returns (score, good_solution, bad_solution).
+        Returns (score, good_completion, bad_completion).
         """
         successful = 0
-        good_solution = None
-        bad_solution = None
+        good_completion = None
+        bad_completion = None
+        worst_failure_type = 0  # 0: no failure, 1: wrong answer, 2: invalid solution, 3: invalid completion
         
         for _ in range(self.completions):
             try:
@@ -46,15 +47,17 @@ class ListGenerator:
                 # First validate the completion itself
                 is_valid_completion, _ = validate_completion(current_solution, completion)
                 if not is_valid_completion:
-                    if bad_solution is None:
-                        bad_solution = complete_solution
+                    if worst_failure_type <= 3:
+                        worst_failure_type = 3
+                        bad_completion = completion
                     continue
                 
                 # Then validate the complete solution
                 is_valid_solution, _ = validate_solution(complete_solution)
                 if not is_valid_solution:
-                    if bad_solution is None:
-                        bad_solution = complete_solution
+                    if worst_failure_type <= 2:
+                        worst_failure_type = 2
+                        bad_completion = completion
                     continue
                 
                 # Finally verify the answer
@@ -66,16 +69,17 @@ class ListGenerator:
                 
                 if is_correct:
                     successful += 1
-                    if good_solution is None:
-                        good_solution = complete_solution
-                elif bad_solution is None:
-                    bad_solution = complete_solution
+                    if good_completion is None:
+                        good_completion = completion
+                elif worst_failure_type <= 1:
+                    worst_failure_type = 1
+                    bad_completion = completion
                     
             except Exception:
                 successful += 0  # Explicitly count failed attempts
         
         final_score = successful / self.completions
-        return final_score, good_solution, bad_solution
+        return final_score, good_completion, bad_completion
 
     async def generate(
         self,
