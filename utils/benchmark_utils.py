@@ -161,13 +161,29 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     clean_answer = clean_answer.replace('\\,', '')
     clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
     
-    # Keep only what comes after the last = or \approx if present
+    # Only split on = or \approx if there's a single term before it
     if '=' in clean_answer or '\\approx' in clean_answer:
         last_eq = clean_answer.rfind('=')
         last_approx = clean_answer.rfind('\\approx')
         split_point = max(last_eq, last_approx)
         if split_point != -1:
-            clean_answer = clean_answer[split_point + (2 if last_eq > last_approx else 8):].strip()
+            before_eq = clean_answer[:split_point].strip()
+            # Check if there's only one term before the equality
+            # by looking for operators +,-,*,/,^ outside of {} brackets
+            bracket_level = 0
+            has_operator = False
+            for char in before_eq:
+                if char == '{':
+                    bracket_level += 1
+                elif char == '}':
+                    bracket_level -= 1
+                elif bracket_level == 0 and char in '+-*/^':
+                    has_operator = True
+                    break
+            
+            if not has_operator:
+                clean_answer = clean_answer[split_point + (2 if last_eq > last_approx else 8):].strip()
+                
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
