@@ -14,15 +14,9 @@ def main():
 
     
 
-    # Load base model first
+    # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mistral-7B-v0.1",
-        max_seq_length=4096,
-        load_in_4bit=False)
-
-    # Load checkpoint
-    model = FastLanguageModel.from_pretrained(
-        model_name="train_results/20250107_114329/checkpoint-9000",
+        model_name="/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000",
         max_seq_length=4096,
         load_in_4bit=False,
         is_trainable=True)
