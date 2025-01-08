@@ -485,13 +485,10 @@ async def run_benchmark(
             return
 
     try:
-        if config.dataset == 'original':
-            dataset = load_dataset("AI-MO/NuminaMath-CoT", split=config.split)
-        elif config.dataset == 'aime':
-            dataset = load_dataset("AI-MO/aimo-validation-aime", split=config.split)
-        else:  # filtered
-            username = whoami()["name"]
-            dataset = load_dataset(f"{username}/Numina", split=config.split)
+        if config.dataset == 'Metaskepsis/Numina':  # Default option
+            dataset = load_dataset("Metaskepsis/Numina", split=config.split)
+        else:  # Custom dataset name
+            dataset = load_dataset(config.dataset, split=config.split)
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')

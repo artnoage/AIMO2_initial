@@ -65,8 +65,8 @@ class BenchmarkConfig:
                           
         # Dataset arguments
         parser.add_argument('--dataset', type=str,
-                          choices=['original', 'filtered', 'aime'],
-                          default='filtered', help='Dataset to use')
+                          default='Metaskepsis/Numina',
+                          help='HuggingFace dataset to use (default: Metaskepsis/Numina)')
         parser.add_argument('--split', type=str, default='train',
                           help='Dataset split to use (train/validation/test)')
         parser.add_argument('--source', type=str, default='all',
