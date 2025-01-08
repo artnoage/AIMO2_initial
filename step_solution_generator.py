@@ -132,7 +132,7 @@ class ListGenerator:
                 
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
-                    score, good_sol, bad_sol = await self._score_with_completions(
+                    score, good_completion, bad_completion = await self._score_with_completions(
                         problem,
                         analysis,
                         correct_answer
@@ -143,13 +143,9 @@ class ListGenerator:
                     if score > best_score:
                         best_score = score
                         best_analysis = analysis
-                        if good_sol:
-                            best_analysis = good_sol
                     if score < worst_score:
                         worst_score = score
                         worst_analysis = analysis
-                        if bad_sol:
-                            worst_analysis = bad_sol
                     
                     # Check for perfect and zero scores
                     has_perfect = any(a[1] == 1.0 for a in analyses)
