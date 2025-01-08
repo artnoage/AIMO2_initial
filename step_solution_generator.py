@@ -249,7 +249,7 @@ class ListGenerator:
                     # Score step if no answer yet
                     is_valid = validate_step(step, expected_step=step_num)
                     if is_valid:
-                        score, good_sol, bad_sol = await self._score_with_completions(
+                        score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                             problem,
                             test_solution,
                             correct_answer
