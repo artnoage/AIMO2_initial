@@ -108,29 +108,11 @@ def main():
         if not args.path.exists():
             raise FileNotFoundError(f"Path does not exist: {args.path}")
 
-        try:
-            # Detect and validate dataset type
-            dataset_type = detect_dataset_type(args.path)
-            
-            if args.upload_only and dataset_type != 'arrow':
-                raise ValueError("--upload-only requires an Arrow dataset directory")
-            elif not args.upload_only and dataset_type != 'json':
-                raise ValueError("JSON file required when not using --upload-only")
-
-            # Handle dataset
-            if args.upload_only:
-                # Load existing Arrow dataset
-                print(f"Loading Arrow dataset from {args.path}...")
-                dataset = load_from_disk(str(args.path))
-                print("Dataset loaded successfully")
-            else:
-                # Process JSON to Arrow dataset
-                print(f"Loading JSON dataset from {args.path}...")
-                data = load_json_dataset(args.path)
-                print("Converting to HuggingFace dataset format...")
-                dataset = convert_to_hf_dataset(data)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                print(f"Dataset saved locally in Arrow format at 'local_datasets/{timestamp}'")
+        # Validate and load Arrow dataset
+        validate_arrow_dataset(args.path)
+        print(f"Loading Arrow dataset from {args.path}...")
+        dataset = load_from_disk(str(args.path))
+        print("Dataset loaded successfully")
         except Exception as e:
             print(f"Error processing dataset: {str(e)}")
             raise
