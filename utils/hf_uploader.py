@@ -108,28 +108,21 @@ def main():
         if not args.path.exists():
             raise FileNotFoundError(f"Path does not exist: {args.path}")
 
-        # Validate and load Arrow dataset
-        validate_arrow_dataset(args.path)
-        print(f"Loading Arrow dataset from {args.path}...")
-        dataset = load_from_disk(str(args.path))
-        print("Dataset loaded successfully")
+        try:
+            # Validate and load Arrow dataset
+            validate_arrow_dataset(args.path)
+            print(f"Loading Arrow dataset from {args.path}...")
+            dataset = load_from_disk(str(args.path))
+            print("Dataset loaded successfully")
+            
+            # Upload dataset
+            upload_dataset_to_hub(dataset, args.repo_name)
+            print(f"Dataset successfully uploaded to {args.repo_name}")
         except Exception as e:
             print(f"Error processing dataset: {str(e)}")
             raise
-            
-        if not args.only_data or args.upload_only:
-            if not args.repo_name:
-                raise ValueError("--repo_name is required when not using --only-data")
-            upload_dataset_to_hub(dataset, args.repo_name)
-            print(f"Dataset successfully uploaded to {args.repo_name}")
     
     else:  # model
-        # Check for incorrect usage of dataset flags
-        if args.only_data:
-            print("Warning: --only-data flag is ignored for model uploads")
-        if args.upload_only:
-            print("Warning: --upload-only flag is ignored for model uploads")
-            
         if not args.repo_name:
             raise ValueError("--repo_name is required for model uploads")
             
