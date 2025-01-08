@@ -80,6 +80,20 @@ class ListGenerator:
                 successful += 0  # Explicitly count failed attempts
         
         final_score = successful / self.completions
+
+        # If both completions are None, create an additional result using completion agent prompt
+        if good_completion is None and bad_completion is None:
+            try:
+                completion_prompt = await self.completion_agent.generate(
+                    problem,
+                    current_solution,
+                    return_prompt=True
+                )
+                # Return the prompt as both good and bad completion with scores 1 and 0
+                return final_score, completion_prompt[0].content, completion_prompt[0].content
+            except Exception:
+                pass
+
         return final_score, good_completion, bad_completion
 
     async def generate(
