@@ -16,7 +16,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250106_092733",
         max_seq_length=4096,
         load_in_4bit=False)
         
