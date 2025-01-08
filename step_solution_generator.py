@@ -261,13 +261,9 @@ class ListGenerator:
                         if score > best_step_score:
                             best_step_score = score
                             best_step = step
-                            if good_sol:
-                                best_step = good_sol[len(current_solution):]  # Extract just the completion part
                         if score < worst_step_score:
                             worst_step_score = score
                             worst_step = step
-                            if bad_sol:
-                                worst_step = bad_sol[len(current_solution):]  # Extract just the completion part
                             
                         # Check for perfect or zero score
                         if score == 1.0:
