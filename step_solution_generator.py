@@ -207,6 +207,9 @@ class ListGenerator:
             worst_step = None
             best_step_score = 0.0
             worst_step_score = float('inf')
+            best_completion = None
+            worst_completion = None 
+            completion_prompt = None
             
             # Generate and score steps
             has_perfect = False
@@ -260,9 +263,12 @@ class ListGenerator:
                         if score > best_step_score:
                             best_step_score = score
                             best_step = step
+                            best_completion = good_completion
                         if score < worst_step_score:
                             worst_step_score = score
                             worst_step = step
+                            worst_completion = bad_completion
+                            completion_prompt = completion_prompt
                             
                         # Check for perfect or zero score
                         if score == 1.0:
@@ -307,6 +313,7 @@ class ListGenerator:
                 best_step_score > 0 and best_step != worst_step):
                 # Update rejected part solution with current solution plus worst step
                 rejected_part_solution = current_solution + worst_step
+                # Append step results
                 results.append({
                     'problem': problem,
                     'correct_answer': correct_answer,
@@ -317,6 +324,19 @@ class ListGenerator:
                     'score_rejected': worst_step_score,
                     'rejected_part_solution': rejected_part_solution
                 })
+                
+                # Append completion results if we have them
+                if best_completion and worst_completion and completion_prompt:
+                    results.append({
+                        'problem': problem,
+                        'correct_answer': correct_answer,
+                        'prompt': {'content': completion_prompt, 'role': 'user'},
+                        'chosen': {'content': best_completion, 'role': 'assistant'},
+                        'rejected': {'content': worst_completion, 'role': 'assistant'},
+                        'score_chosen': best_step_score,
+                        'score_rejected': worst_step_score,
+                        'rejected_part_solution': rejected_part_solution
+                    })
             
             # Use best step and continue
             current_solution += steps[-1][0]
