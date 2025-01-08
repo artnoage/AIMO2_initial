@@ -93,18 +93,20 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
-def get_model(model: ModelOption, temp: float, config: BenchmarkConfig, model_name: Optional[str] = None):
+def get_model(config: BenchmarkConfig, role: str = "solver"):
     """
-    Initialize the ChatOpenAI model based on the selected ModelOption.
-    For LOCAL models, it connects to a local endpoint and uses provided model name if any.
+    Initialize the ChatOpenAI model based on configuration.
+    For LOCAL models, it connects to a local endpoint.
     For other models, it uses the OpenRouter API.
     
     Args:
-        model: The model option to use
-        temp: Temperature for generation
-        model_name: Optional model name to use instead of model.value
+        config: The benchmark configuration
+        role: The role of the model (e.g. "solver")
     """
-    name = model_name if model_name else model.value
+    model = ModelOption[getattr(config, role)]
+    name = model.value
+    temp = getattr(config, "temperature", 0.9)
+    
     if model == ModelOption.LOCAL:
         return CustomChat(
             model=name,

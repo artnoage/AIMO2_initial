@@ -20,7 +20,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
-        solver = get_model(ModelOption[config.solver], temp=config.temperature)
+        solver = get_model(config)
         solution_agent = FullSolutionAgent(solver)
         solutions = []
         correct_count = 0
