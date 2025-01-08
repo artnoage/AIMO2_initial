@@ -26,10 +26,10 @@ class ListGenerator:
         problem: str,
         current_solution: str,
         correct_answer: str
-    ) -> Tuple[float, Optional[str], Optional[str]]:
+    ) -> Tuple[float, Optional[str], Optional[str], Optional[str]]:
         """
         Score a partial solution by attempting completions.
-        Returns (score, good_completion, bad_completion).
+        Returns (score, good_completion, bad_completion, completion_prompt).
         """
         successful = 0
         good_completion = None
@@ -38,10 +38,13 @@ class ListGenerator:
         
         for _ in range(self.completions):
             try:
-                completion = await self.completion_agent.generate(
+                completion_result = await self.completion_agent.generate(
                     problem,
-                    current_solution
+                    current_solution,
+                    return_prompt=True
                 )
+                completion = completion_result[1]  # Get just the completion response
+                completion_prompt = completion_result[0].content  # Store the prompt
                 complete_solution = current_solution + completion
                 
                 failure_score = 0
@@ -94,7 +97,7 @@ class ListGenerator:
             except Exception:
                 pass
 
-        return final_score, good_completion, bad_completion
+        return final_score, good_completion, bad_completion, completion_prompt
 
     async def generate(
         self,
@@ -132,7 +135,7 @@ class ListGenerator:
                 
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
-                    score, good_completion, bad_completion = await self._score_with_completions(
+                    score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                         problem,
                         analysis,
                         correct_answer
