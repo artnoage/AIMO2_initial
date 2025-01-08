@@ -353,6 +353,48 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         
     return True, "Solution valid"
 
+def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
+    """
+    Validate if a completion properly continues from a partial solution.
+    
+    Args:
+        partial_solution: The solution up to a certain point
+        completion: The proposed completion of the solution
+        
+    Returns:
+        Tuple[bool, str]: (is_valid, reason)
+    """
+    # Check for invalid tokens
+    if "[/INST]" in completion or "[...]" in completion:
+        return False, "Contains invalid tokens ([/INST] or [...])"
+        
+    # Get the last step number from partial solution
+    parts = partial_solution.split("Step")
+    last_step = 0
+    for part in parts[1:]:  # Skip first split which is before "Step"
+        for pattern in STEP_NUMBER_PATTERNS:
+            match = pattern.search(part)
+            if match:
+                try:
+                    num = int(match.group(1))
+                    last_step = max(last_step, num)
+                except ValueError:
+                    continue
+                    
+    # Split completion into steps
+    completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
+    if not completion_steps:
+        return False, "Completion contains no steps"
+        
+    # Validate each step in completion
+    for i, step in enumerate(completion_steps, 1):
+        expected_step_num = last_step + i
+        full_step = "Step" + step
+        if not validate_step(full_step, expected_step=expected_step_num):
+            return False, f"Invalid step {expected_step_num} in completion"
+            
+    return True, "Valid completion"
+
 def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
     if "[/INST]" in resp:
