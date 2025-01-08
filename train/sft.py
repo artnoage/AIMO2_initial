@@ -14,9 +14,9 @@ def main():
 
     
 
-    # Load the model
+    # Load the model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250106_092733",
+        model_name="/Home/stat/laschos/AIMO2_initial/train_results/20250107_123942/checkpoint-8000",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -51,9 +51,11 @@ def main():
         return {"text": texts}
 
 
-     # Load, shuffle and format dataset
+    # Load dataset and get second half
     dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = dataset.shuffle(seed=42)  # Add deterministic shuffling
+    dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
+    half_size = len(dataset) // 2
+    dataset = dataset.select(range(half_size, len(dataset)))  # Take second half
 
     # Print original format
     print("\nFirst conversation before formatting:")
