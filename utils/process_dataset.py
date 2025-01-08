@@ -108,7 +108,11 @@ def is_multiple_choice(problem: str) -> bool:
 def main():
     # Initialize Hugging Face API
     api = HfApi()
-    parser = argparse.ArgumentParser(description='Filter NuminaMath-CoT dataset for olympiads with valid answers')
+    parser = argparse.ArgumentParser(description='Process dataset for olympiads with valid answers')
+    parser.add_argument('--dataset', type=str, required=True,
+                       help='Dataset name (e.g. "AI-MO/NuminaMath-CoT") or path to local dataset')
+    parser.add_argument('--local', action='store_true', default=False,
+                       help='Load dataset from local disk instead of Hugging Face Hub')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -130,7 +134,12 @@ def main():
     
     # Load the dataset
     try:
-        dataset = load_dataset("AI-MO/NuminaMath-CoT", split=args.split)
+        if args.local:
+            print(f"Loading local dataset from {args.dataset}...")
+            dataset = load_from_disk(args.dataset)[args.split]
+        else:
+            print(f"Loading dataset {args.dataset} from Hugging Face Hub...")
+            dataset = load_dataset(args.dataset, split=args.split)
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
