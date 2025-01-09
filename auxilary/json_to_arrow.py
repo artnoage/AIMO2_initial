@@ -14,35 +14,48 @@ def load_json_data(json_path: str) -> Dict[str, Any]:
     return data
 
 def create_arrow_dataset(data: list) -> Dataset:
-    """Convert JSON data to Arrow dataset with schema"""
+    """Convert JSON data to Arrow dataset with automatic schema inference"""
     
-    # Infer features from first item
     if not data:
         raise ValueError("Empty dataset")
-        
-    # Define explicit schema for required training fields
-    features = {
-        'prompt': Value('string'),
-        'chosen': Value('string'),
-        'rejected': Value('string'),
-        'score_chosen': Value('float64'),
-        'score_rejected': Value('float64')
-    }
+
+    # Automatically infer types from the first item
+    first_item = data[0]
+    features = {}
     
-    # Validate all entries have required fields
-    for i, item in enumerate(data):
-        missing = [field for field in features.keys() if field not in item]
-        if missing:
-            raise ValueError(f"Entry {i} is missing required fields: {missing}")
-        
-        # Ensure scores are numeric
-        for score_field in ['score_chosen', 'score_rejected']:
-            if not isinstance(item[score_field], (int, float)):
-                raise ValueError(f"Entry {i}: {score_field} must be numeric, got {type(item[score_field])}")
+    def infer_type(value):
+        if isinstance(value, bool):
+            return Value('bool')
+        elif isinstance(value, int):
+            return Value('int64')
+        elif isinstance(value, float):
+            return Value('float64')
+        elif isinstance(value, str):
+            return Value('string')
+        elif isinstance(value, list):
+            return Value('string') if all(isinstance(x, str) for x in value) else Value('string')
+        else:
+            return Value('string')
     
-    # Create dataset with schema
+    # Build schema from all fields in the data
+    for item in data:
+        for key, value in item.items():
+            if key not in features:
+                features[key] = infer_type(value)
+    
+    # Check if this might be ORPO training data and validate if so
+    orpo_fields = {'prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected'}
+    if orpo_fields.issubset(features.keys()):
+        print("Detected ORPO training data format, validating fields...")
+        for i, item in enumerate(data):
+            # Ensure scores are numeric
+            for score_field in ['score_chosen', 'score_rejected']:
+                if not isinstance(item[score_field], (int, float)):
+                    raise ValueError(f"Entry {i}: {score_field} must be numeric for ORPO training, got {type(item[score_field])}")
+    
+    # Create dataset with inferred schema
     return Dataset.from_dict(
-        {k: [item[k] for item in data] for k in features.keys()},
+        {k: [item.get(k) for item in data] for k in features.keys()},
         features=Features(features)
     )
 
