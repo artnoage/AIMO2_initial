@@ -80,7 +80,8 @@ class ListGenerator:
                     worst_failure_score = failure_score
                     bad_completion = completion
                     
-            except Exception:
+            except Exception as e:
+                print(f"Completion scoring failed with error: {str(e)}")
                 successful += 0  # Explicitly count failed attempts
         
         final_score = successful / self.completions
