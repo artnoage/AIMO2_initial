@@ -17,10 +17,6 @@ from utils.progress_tracker import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
 
-
-
-
-
 class TimeoutException(Exception): pass
 
 class CustomChat:
