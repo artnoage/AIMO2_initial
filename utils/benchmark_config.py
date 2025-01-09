@@ -11,7 +11,7 @@ class ModelOption(Enum):
     with either OpenRouter API, SambaNova API, or local deployment.
     """
     CLAUDE = "anthropic/claude-3.5-sonnet"
-    GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
+    GEMINI_PRO_FREE = "google/gemini-2.0-flash-thinking-exp:free"
     GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
     GEMINI_FLASH="google/gemini-flash-1.5"
@@ -23,6 +23,7 @@ class ModelOption(Enum):
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
+
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
