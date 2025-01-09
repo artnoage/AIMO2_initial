@@ -56,13 +56,7 @@ class WrongStepGenerator:
                 )
                 complete_solution = partial_solution + completion
                 
-                # First validate the completion itself
-                is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
-                if not is_valid_completion:
-                    self.logs.append(f"Invalid completion: {completion_reason}")
-                    continue
-
-                # Then verify if the answer is correct
+                # First verify if the answer is correct
                 is_correct, _ = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
@@ -71,7 +65,13 @@ class WrongStepGenerator:
                 
                 if is_correct:
                     found_verified = True
-                    # If verified, check if the complete solution is valid
+                    # Validate the completion itself
+                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
+                    if not is_valid_completion:
+                        self.logs.append(f"Invalid completion: {completion_reason}")
+                        continue
+                        
+                    # Then check if the complete solution is valid
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
                         found_valid = True
