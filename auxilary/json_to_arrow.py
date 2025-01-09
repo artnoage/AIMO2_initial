@@ -14,50 +14,12 @@ def load_json_data(json_path: str) -> List[Dict[str, Any]]:
     return data
 
 def create_arrow_dataset(data: List[Dict[str, Any]]) -> Dataset:
-    """Convert JSON data to ORPO-formatted Arrow dataset"""
-    
+    """Convert JSON data to Arrow dataset"""
     if not data:
         raise ValueError("Empty dataset")
-
-    # Define ORPO schema
-    features = Features({
-        'prompt': Value('string'),
-        'chosen': Value('string'),
-        'rejected': Value('string'),
-        'score_chosen': Value('float64'),
-        'score_rejected': Value('float64')
-    })
     
-    # Extract and validate ORPO fields
-    processed_data = []
-    for i, item in enumerate(data):
-        try:
-            # Extract content from dict fields if present
-            processed_item = {
-                'prompt': str(item['prompt']['content'] if isinstance(item['prompt'], dict) else item['prompt']),
-                'chosen': str(item['chosen']['content'] if isinstance(item['chosen'], dict) else item['chosen']),
-                'rejected': str(item['rejected']['content'] if isinstance(item['rejected'], dict) else item['rejected']),
-                'score_chosen': float(item['score_chosen']),
-                'score_rejected': float(item['score_rejected'])
-            }
-            processed_data.append(processed_item)
-        except KeyError as e:
-            raise ValueError(f"Entry {i}: Missing required field {e}")
-        except (ValueError, TypeError) as e:
-            raise ValueError(f"Entry {i}: Invalid value format - {str(e)}")
-    
-    # Create dataset with ORPO schema
-    dataset = Dataset.from_list(processed_data, features=features)
-    
-    # Add ORPO-specific metadata
-    dataset = dataset.cast_column('score_chosen', Value('float64'))
-    dataset = dataset.cast_column('score_rejected', Value('float64'))
-    
-    # Add dataset info
-    dataset.info.description = "ORPO training dataset"
-    dataset.info.license = "Unknown"
-    dataset.info.version = "1.0.0"
-    dataset.info.features = features
+    # Simply convert the data as-is
+    dataset = Dataset.from_list(data)
     
     return dataset
 
