@@ -41,43 +41,41 @@ def main():
     print(f"\nChecking file: {json_file}")
     try:
         with open(json_file, 'r', encoding='utf-8') as f:
-                try:
-                    # Try to parse the whole file first
-                    data = json.load(f)
-                    
-                    # Ensure data is a list of entries
-                    if not isinstance(data, list):
-                        data = [data]  # Convert single entry to list
-                    
-                    file_entries = len(data)
-                    print(f"Processing {file_entries} entries in file")
-                    
-                    # Process each entry
-                    for i, entry in enumerate(data):
-                        if not isinstance(entry, dict):
-                            print(f"Entry {i} is not a dictionary: {type(entry)}")
-                            total_errors += 1
-                            continue
-                            
-                        errors = validate_entry(entry, i)
-                        if errors:
-                            print(f"\nErrors in entry {i}:")
-                            for error in errors:
-                                print(f"  - {error}")
-                            total_errors += len(errors)
-                        total_entries += 1
+            try:
+                # Try to parse the whole file first
+                data = json.load(f)
+                
+                # Ensure data is a list of entries
+                if not isinstance(data, list):
+                    data = [data]  # Convert single entry to list
+                
+                file_entries = len(data)
+                print(f"Processing {file_entries} entries in file")
+                
+                # Process each entry
+                for i, entry in enumerate(data):
+                    if not isinstance(entry, dict):
+                        print(f"Entry {i} is not a dictionary: {type(entry)}")
+                        total_errors += 1
+                        continue
                         
-                        # Print progress for large files
-                        if (i + 1) % 1000 == 0:
-                            print(f"Processed {i + 1}/{file_entries} entries...")
-                        
-                except json.JSONDecodeError as e:
-                    print(f"Invalid JSON in {json_file}: {str(e)}")
-                    total_errors += 1
+                    errors = validate_entry(entry, i)
+                    if errors:
+                        print(f"\nErrors in entry {i}:")
+                        for error in errors:
+                            print(f"  - {error}")
+                        total_errors += len(errors)
+                    total_entries += 1
                     
-        except Exception as e:
-            print(f"Error reading file {json_file}: {str(e)}")
-            total_errors += 1
+                    # Print progress for large files
+                    if (i + 1) % 1000 == 0:
+                        print(f"Processed {i + 1}/{file_entries} entries...")
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in {json_file}: {str(e)}")
+                total_errors += 1
+    except Exception as e:
+        print(f"Error reading file {json_file}: {str(e)}")
+        total_errors += 1
     
     print(f"\nValidation complete!")
     print(f"Total entries checked: {total_entries}")
