@@ -40,7 +40,12 @@ class JudgeWrongStepGenerator:
         step_match = re.search(r'Step\s+(\d+)', judge_response)
         if step_match:
             try:
-                return int(step_match.group(1))
+                step_num = int(step_match.group(1))
+                # Validate non-negative
+                if step_num < 0:
+                    self.logs.append(f"Judge predicted invalid negative step number: {step_num}")
+                    return None
+                return step_num
             except ValueError:
                 return None
         return None
@@ -215,10 +220,11 @@ class JudgeWrongStepGenerator:
         print(judge_response)
         # Store judge's prediction and use it as starting point
         
-        # If judge didn't identify a specific step or predicted beyond solution length,
+        # If judge didn't identify a valid step number or predicted beyond solution length,
         # start from the middle as a reasonable default
-        if self.judge_prediction is None or self.judge_prediction >= num_steps:
-            self.logs.append("Judge didn't identify specific step, starting from middle")
+        if (self.judge_prediction is None or 
+            self.judge_prediction >= num_steps):
+            self.logs.append("Judge didn't identify valid step number, starting from middle")
             current_step = num_steps // 2
         else:
             current_step = self.judge_prediction
