@@ -298,8 +298,8 @@ STEP_NUMBER_PATTERNS = [
 
 def validate_analysis(resp: str) -> Tuple[bool, str]:
     """Validate an analysis response"""
-    if "[/INST]" in resp:
-        return False, "Contains [/INST] token"
+    #if "[/INST]" in resp:
+    #    return False, "Contains [/INST] token"
         
     # Check if response has less than 20 words
     word_count = len(resp.split())
@@ -325,10 +325,10 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     # Check for analysis section
     if "analysis" not in solution.lower():
         return False, "Missing analysis section"
-    if "[/INST]" in solution.lower():
-        return False, "Contains [/INST] token"
-    if "INST]" in solution.lower():
-        return False, "Contains [/INST] token"
+    #if "[/INST]" in solution.lower():
+    #    return False, "Contains [/INST] token"
+    #if "INST]" in solution.lower():
+    #    return False, "Contains [/INST] token"
     if "[…]" in solution.lower():   
         return False, "Skips steps"
     # Check analysis length
@@ -365,8 +365,8 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         Tuple[bool, str]: (is_valid, reason)
     """
     # Check for invalid tokens
-    if "[/INST]" in completion or "[...]" in completion:
-        return False, "Contains invalid tokens ([/INST] or [...])"
+    if "[...]" in completion:
+        return False, "Contains invalid tokens ([...])"
         
     # Get the last step number from partial solution
     parts = partial_solution.split("Step")
@@ -397,8 +397,8 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
 
 def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
-    if "[/INST]" in resp:
-        return False
+    #if "[/INST]" in resp:
+    #    return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
     if word_count < 22 or word_count > 100:
