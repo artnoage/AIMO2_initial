@@ -469,6 +469,10 @@ class NumericVerifier:
             
         return is_correct, model_answer
 
+def remove_inst_tokens(text: str) -> str:
+    """Remove all occurrences of [/INST] from the text"""
+    return text.replace("[/INST]", "")
+
 def split_into_steps(solution: str) -> List[str]:
     """
     Split a solution into analysis and numbered steps.
