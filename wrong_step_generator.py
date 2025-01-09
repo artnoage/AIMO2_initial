@@ -51,13 +51,22 @@ class WrongStepGenerator:
         correct_step = None
         correct_completion = None
         last_good_completion = None
+        completion_prompt = None
 
         for i in range(self.completions):
             try:
-                completion = await self.completion_agent.generate(
-                    problem,
-                    partial_solution
-                )
+                if completion_prompt is None:
+                    prompt, completion = await self.completion_agent.generate(
+                        problem,
+                        partial_solution,
+                        return_prompt=True
+                    )
+                    completion_prompt = prompt
+                else:
+                    completion = await self.completion_agent.generate(
+                        problem,
+                        partial_solution
+                    )
                 complete_solution = partial_solution + completion
                 
                 # First verify if the answer is correct
@@ -114,7 +123,7 @@ class WrongStepGenerator:
             elif not found_valid:
                 self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
                 
-        return found_verified, found_valid, correct_step, correct_completion, last_good_completion
+        return found_verified, found_valid, correct_step, correct_completion, last_good_completion, completion_prompt
 
     async def generate(
         self,
@@ -202,7 +211,7 @@ class WrongStepGenerator:
         while True:
             self.logs.append(f"\nChecking step {current_step}...")
             
-            found_verified, found_valid, correct_step, correct_completion, last_good_completion = await self._verify_completions(
+            found_verified, found_valid, correct_step, correct_completion, last_good_completion, saved_completion_prompt = await self._verify_completions(
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
@@ -290,15 +299,10 @@ class WrongStepGenerator:
         })
 
         # Third entry: completion comparison
-        completion_prompt = await self.completion_agent.generate(
-            problem,
-            partial_solutions[wrong_step_index],
-            return_prompt=True
-        )
         results.append({
             'problem': problem,
             'correct_answer': correct_answer,
-            'prompt': {'content': completion_prompt[0], 'role': 'user'},
+            'prompt': {'content': saved_completion_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(last_good_completion) if last_good_completion else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
