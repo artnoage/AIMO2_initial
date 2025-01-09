@@ -135,10 +135,13 @@ class WrongStepGenerator:
                 if solution_prompt is None:
                     prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                     solution_prompt = prompt
-                    solution = remove_inst_tokens(solution)
+                    solution = remove_inst_tokens(solution) if solution else None
                 else:
                     solution = await self.solution_agent.generate(problem)
-                    solution = remove_inst_tokens(solution)
+                    solution = remove_inst_tokens(solution) if solution else None
+                
+                if solution is None:
+                    continue
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
@@ -262,7 +265,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_solution) if correct_solution else "", 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
@@ -278,7 +281,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': step_prompt[0], 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(last_good_step) if last_good_step else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
@@ -294,7 +297,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': completion_prompt[0], 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_completion), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_completion) if correct_completion else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
