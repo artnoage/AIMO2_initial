@@ -67,12 +67,10 @@ class ListGenerator:
                 is_valid_completion, completion_reason = validate_completion(current_solution, completion)
                 if not is_valid_completion:
                     failure_score += 4
-                    print(completion_reason)
                     
                 is_valid_solution, completion_reason = validate_solution(complete_solution)
                 if not is_valid_solution:
                     failure_score += 2
-                    print(completion_reason)
                 
                 # Store good completion only if all validations pass
                 if is_correct and failure_score == 0 and good_completion is None:
@@ -135,9 +133,10 @@ class ListGenerator:
                         return_prompt=True
                     )
                     analysis_prompt = prompt
+                    analysis = remove_inst_tokens(analysis)
                 else:
                     analysis = await self.analysis_agent.generate(problem)
-                
+                    analysis = remove_inst_tokens(analysis)
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
                     score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
@@ -203,7 +202,6 @@ class ListGenerator:
         # Use best analysis as starting point
         current_solution = analyses[-1][0]
         step_num = 1
-        print(current_solution)
         while True:
             steps = []
             step_prompt = None
@@ -229,7 +227,6 @@ class ListGenerator:
                         )
                         step_prompt = prompt
                         step = remove_inst_tokens(step)
-                        print(step)
                     else:
                         step = await self.step_agent.generate(
                             problem,
@@ -256,14 +253,12 @@ class ListGenerator:
                             
                     # Score step if no answer yet
                     is_valid = validate_step(step, expected_step=step_num)
-                    print(is_valid)
                     if is_valid:
                         score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                             problem,
                             test_solution,
                             correct_answer
                         )
-                        print(score)
                         steps.append((step, score))
                         
                         # Update best and worst steps/solutions
