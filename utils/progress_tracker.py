@@ -285,5 +285,18 @@ class ProgressTracker:
             )
             stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
 
+        # Add judge accuracy statistics if available
+        if self._has_field(self.results, 'judge_was_correct'):
+            judge_predictions = [r['judge_was_correct'] for r in self.results if 'judge_was_correct' in r]
+            correct_predictions = sum(1 for x in judge_predictions if x)
+            total_predictions = len(judge_predictions)
+            
+            if total_predictions > 0:
+                stats_str += (
+                    f"\nJudge Performance:\n"
+                    f"- Correct predictions: {correct_predictions}/{total_predictions} "
+                    f"({correct_predictions/total_predictions*100:.1f}%)\n"
+                )
+
         print(stats_str)
         self._save_progress_stats(stats_str)
