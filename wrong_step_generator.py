@@ -49,7 +49,6 @@ class WrongStepGenerator:
         found_verified = False 
         found_valid = False
         correct_step = None
-        correct_completion = None
         last_good_completion = None
         completion_prompt = None
 
@@ -103,7 +102,6 @@ class WrongStepGenerator:
                         next_step_index = step_index + 1
                         correct_step = completion_steps[next_step_index]
                         # Store the successful completion
-                        correct_completion = completion
                         last_good_completion = complete_solution
                         break
                     else:
@@ -123,7 +121,7 @@ class WrongStepGenerator:
             elif not found_valid:
                 self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
                 
-        return found_verified, found_valid, correct_step, correct_completion, last_good_completion, completion_prompt
+        return found_verified, found_valid, correct_step, last_good_completion, completion_prompt
 
     async def generate(
         self,
@@ -211,7 +209,7 @@ class WrongStepGenerator:
         while True:
             self.logs.append(f"\nChecking step {current_step}...")
             
-            found_verified, found_valid, correct_step, correct_completion, last_good_completion, saved_completion_prompt = await self._verify_completions(
+            found_verified, found_valid, correct_step, last_good_completion, saved_completion_prompt = await self._verify_completions(
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
