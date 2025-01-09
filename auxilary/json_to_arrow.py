@@ -44,7 +44,7 @@ def main():
     
     # Create timestamp-based output directory
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = os.path.join('local_dataset', timestamp)
+    output_dir = os.path.join('local_datasets', timestamp)
     os.makedirs(output_dir, exist_ok=True)
     
     try:
