@@ -65,10 +65,11 @@ class ListGenerator:
                     correct_answer,
                     problem
                 )
-                
+                print(failure_score)
                 if is_correct:
                     if failure_score == 0:  # Only store good completions if they pass all checks
                         successful += 1
+                        print("hey")
                         if good_completion is None:
                             good_completion = completion
                 else:
@@ -135,11 +136,13 @@ class ListGenerator:
                 
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
+                    print("Is valid")
                     score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                         problem,
                         analysis,
                         correct_answer
                     )
+                    print("score is", score)
                     analyses.append((analysis, score))
                     
                     # Update best and worst scores/solutions
@@ -158,7 +161,8 @@ class ListGenerator:
                     if has_perfect and has_zero:
                         logs.append(f"\n✓ Early stop in analysis: Found both perfect (1.0) and zero scoring analyses")
                         continue
-                        
+                else :
+                    print("is not valid")        
             except Exception:
                 continue
                 
