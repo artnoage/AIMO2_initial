@@ -48,15 +48,23 @@ def main():
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
     dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_164830")
     def formatting_func(example):
-        example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
-        example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
-        example["rejected"] = tokenizer.apply_chat_template([example["rejected"]], tokenize=False)
-        example["chosen"] = _strip_prefix(example["chosen"], "<s>")
-        example["rejected"] = _strip_prefix(example["rejected"], "<s>")
-        # Ensure scores are present
-        if "score_chosen" not in example or "score_rejected" not in example:
-            raise ValueError("Dataset must include score_chosen and score_rejected fields")
-        return example
+        # Only keep the required fields
+        required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected']
+        filtered_example = {k: example[k] for k in required_fields if k in example}
+        
+        # Apply formatting
+        filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]], tokenize=False)
+        filtered_example["chosen"] = tokenizer.apply_chat_template([filtered_example["chosen"]], tokenize=False)
+        filtered_example["rejected"] = tokenizer.apply_chat_template([filtered_example["rejected"]], tokenize=False)
+        filtered_example["chosen"] = _strip_prefix(filtered_example["chosen"], "<s>")
+        filtered_example["rejected"] = _strip_prefix(filtered_example["rejected"], "<s>")
+        
+        # Ensure all required fields are present
+        missing_fields = [f for f in required_fields if f not in filtered_example]
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
+            
+        return filtered_example
     # Load and format dataset
     formatted_dataset = dataset.map(
         formatting_func,
