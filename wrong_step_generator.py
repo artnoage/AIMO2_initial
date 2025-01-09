@@ -106,20 +106,27 @@ class WrongStepGenerator:
         self,
         problem: str,
         correct_answer: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[List[Dict[str, Any]]]:
         """
         Generate both correct and wrong solutions, identify which step causes wrong solution to fail.
-        Returns dict with problem, answer, both solutions and wrong step info.
+        Returns list of dicts with prompts and solutions/steps for ORPO training.
         """
         # Search for both correct and wrong solutions
         correct_solution = None
         wrong_solution = None
+        solution_prompt = None
         attempts = 0
         
         while (correct_solution is None or wrong_solution is None) and attempts < self.best_of:
             try:
                 attempts += 1
-                solution = await self.solution_agent.generate(problem)
+                if solution_prompt is None:
+                    prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+                    solution_prompt = prompt
+                    solution = remove_inst_tokens(solution)
+                else:
+                    solution = await self.solution_agent.generate(problem)
+                    solution = remove_inst_tokens(solution)
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
