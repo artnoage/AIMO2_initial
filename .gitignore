@@ -20,3 +20,4 @@ _unsloth_sentencepiece_temp
 loras/
 local_datasets/
 merger/
+logs/

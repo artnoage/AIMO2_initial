@@ -99,10 +99,7 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
         config: The benchmark configuration
         role: The role of the model (e.g. "solver", "judge", etc.)
     """
-    if role == "judge" and config.judge:
-        model = ModelOption[config.judge]
-    else:
-        model = ModelOption[getattr(config, role)]
+    model = ModelOption[getattr(config, role)]
     
     name = model.value
     temp = config.judge_temp if role == "judge" else config.temperature

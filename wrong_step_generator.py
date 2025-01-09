@@ -197,7 +197,7 @@ class WrongStepGenerator:
             return None
             
         # Start with a random step
-        current_step = random.randint(0, num_steps - 1)
+        current_step = num_steps // 2
         going_up = None  # Direction flag: None=initial, True=up, False=down
         last_bad_step = None
         last_good_step = None

@@ -8,7 +8,6 @@ from transformers import logging
 from unsloth import is_bfloat16_supported
 from datetime import datetime
 
-
 def main():
     logging.set_verbosity_info()
 
@@ -91,7 +90,7 @@ def main():
         tokenizer=tokenizer,
         args=training_args)
 
-
+    #exit()
     # Train the model
     trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250108_110648/checkpoint-10392")
     models_dir = "models"

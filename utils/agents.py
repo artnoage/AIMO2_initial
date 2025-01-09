@@ -136,7 +136,7 @@ class JudgeAgent:
                 "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Proposed Solution:\n{solution}\n\n"
-                "Please carefully analyze this solution step by step. "
+                "Please carefully read this solution step by step. "
                 "If you find any errors, identify the FIRST step where something goes wrong "
                 "and explain the error. If the solution is completely correct, say so.\n\n"
                 "Format your response as:\n"

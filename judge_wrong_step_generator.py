@@ -217,7 +217,10 @@ class JudgeWrongStepGenerator:
         # Ask judge to identify the first wrong step
         judge_response = await self.judge_agent.find_first_wrong_step(problem, wrong_solution)
         self.judge_prediction = self._extract_step_number(judge_response)
-        print(judge_response)
+        self.logs.append("\n\nThis is the judges repsonse\n\n")
+        self.logs.append(judge_response)
+        self.logs.append("\n\nThis is the judges \n\n")
+        self.logs.append(str(self.judge_prediction))
         # Store judge's prediction and use it as starting point
         
         # If judge didn't identify a valid step number or predicted beyond solution length,
@@ -236,7 +239,8 @@ class JudgeWrongStepGenerator:
         wrong_step_index = None
         saved_good_completion = None
         saved_completion_prompt = None
-        
+        self.judge_was_correct=None
+
         self.logs.append("\n=== Analyzing solution steps ===")
         self.logs.append(f"Starting analysis at step {current_step}")
         

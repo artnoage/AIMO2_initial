@@ -10,7 +10,7 @@ class ModelOption(Enum):
     Each enum value corresponds to a specific model endpoint that can be used
     with either OpenRouter API, SambaNova API, or local deployment.
     """
-    CLAUDE = "anthropic/claude-3.5-sonnet:beta"
+    CLAUDE = "anthropic/claude-3.5-sonnet"
     GEMINI_PRO_FREE = "google/gemini-pro-1.5-exp"
     GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
@@ -19,16 +19,16 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20250108_182212"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20250109_170918"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
-
+    DEEP="deepseek/deepseek-chat"
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
     # Model settings
     solver: str
-    judge: str = None  # If None, uses same as solver
+    judge: str   # If None, uses same as solver
     port: int = 8000
     temperature: float = 0.9
     judge_temp: float = 0.0
@@ -65,7 +65,7 @@ class BenchmarkConfig:
                           default='LOCAL', help='Model to use for solving problems')
         parser.add_argument('--judge', type=str,
                           choices=[model.name for model in ModelOption],
-                          help='Model to use for judging (default: same as solver)')
+                          default='LOCAL', help='Model to use for judging problems')
         parser.add_argument('--port', type=int, default=8000,
                           help='Port for local model server (default: 8000)')
         parser.add_argument('--temperature', type=float, default=0.9,
