@@ -249,6 +249,7 @@ class WrongStepGenerator:
                 if going_up is None:
                     # First check was bad, go down to find last good step
                     going_up = False
+                    wrong_step_index = current_step  # Save first bad step found
                 elif going_up:
                     # We were going up and found a bad step
                     # The wrong step must be here
