@@ -46,10 +46,11 @@ class WrongStepGenerator:
             - correct_step: The next correct step if found, None otherwise
             - correct_completion: The full valid completion if found, None otherwise
         """
-        found_verified = False
+        found_verified = False 
         found_valid = False
         correct_step = None
         correct_completion = None
+        last_good_completion = None
 
         for i in range(self.completions):
             try:
@@ -94,6 +95,7 @@ class WrongStepGenerator:
                         correct_step = completion_steps[next_step_index]
                         # Store the successful completion
                         correct_completion = completion
+                        last_good_completion = complete_solution
                         break
                     else:
                         self.logs.append(f"Found verified but invalid solution: {validation_reason}")
@@ -112,7 +114,7 @@ class WrongStepGenerator:
             elif not found_valid:
                 self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
                 
-        return found_verified, found_valid, correct_step, correct_completion
+        return found_verified, found_valid, correct_step, correct_completion, last_good_completion
 
     async def generate(
         self,
@@ -200,7 +202,7 @@ class WrongStepGenerator:
         while True:
             self.logs.append(f"\nChecking step {current_step}...")
             
-            found_verified, found_valid, correct_step, correct_completion = await self._verify_completions(
+            found_verified, found_valid, correct_step, correct_completion, last_good_completion = await self._verify_completions(
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
@@ -297,7 +299,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': completion_prompt[0], 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_completion) if correct_completion else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(last_good_completion) if last_good_completion else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
