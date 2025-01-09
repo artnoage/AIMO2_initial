@@ -49,7 +49,7 @@ class WrongStepGenerator:
         found_verified = False 
         found_valid = False
         correct_step = None
-        last_good_completion = None
+        good_completion = None
         completion_prompt = None
 
         for i in range(self.completions):
@@ -102,7 +102,7 @@ class WrongStepGenerator:
                         next_step_index = step_index + 1
                         correct_step = completion_steps[next_step_index]
                         # Store the successful completion
-                        last_good_completion = complete_solution
+                        good_completion = completion
                         break
                     else:
                         self.logs.append(f"Found verified but invalid solution: {validation_reason}")
@@ -121,7 +121,7 @@ class WrongStepGenerator:
             elif not found_valid:
                 self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
                 
-        return found_verified, found_valid, correct_step, last_good_completion, completion_prompt
+        return found_verified, found_valid, correct_step, good_completion, completion_prompt
 
     async def generate(
         self,
@@ -209,7 +209,7 @@ class WrongStepGenerator:
         while True:
             self.logs.append(f"\nChecking step {current_step}...")
             
-            found_verified, found_valid, correct_step, last_good_completion, saved_completion_prompt = await self._verify_completions(
+            found_verified, found_valid, correct_step, good_completion, saved_completion_prompt = await self._verify_completions(
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
@@ -301,7 +301,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(last_good_completion) if last_good_completion else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(good_completion) if good_completion else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
