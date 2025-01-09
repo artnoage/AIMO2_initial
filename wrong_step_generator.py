@@ -296,12 +296,11 @@ async def main():
                 # Add solution quality metrics
                 all_logs.append("\n📊 Solution Quality:")
                 
-                
-                # Add wrong step details
-                all_logs.append("\n🔍 Wrong Step Details:")
-                all_logs.append(f"✓ Found at step: {result['wrong_step_index']}")
-                all_logs.append(f"✓ Wrong step content:")
-                all_logs.append(result['wrong_step'])
+                # Add details about the generated solutions
+                all_logs.append("\n🔍 Generated Solutions:")
+                for entry in result:
+                    all_logs.append(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
+                    all_logs.append(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
             
             # Print logs for this example
             print("\n".join(all_logs))
