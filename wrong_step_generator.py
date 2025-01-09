@@ -224,7 +224,7 @@ class WrongStepGenerator:
                     'problem': problem,
                     'correct_answer': correct_answer,
                     'prompt': {'content': solution_prompt, 'role': 'user'},
-                    'chosen': {'content': correct_solution, 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
                     'rejected': {'content': wrong_solution, 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
@@ -240,7 +240,7 @@ class WrongStepGenerator:
                     'problem': problem,
                     'correct_answer': correct_answer,
                     'prompt': {'content': step_prompt[0], 'role': 'user'},
-                    'chosen': {'content': last_good_step, 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
                     'rejected': {'content': steps[i], 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
