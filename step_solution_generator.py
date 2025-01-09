@@ -47,32 +47,36 @@ class ListGenerator:
                 completion_prompt = completion_result[0]  # Store the prompt
                 complete_solution = current_solution + completion
                 
-                failure_score = 0
-                
-                # First validate the completion itself
-                is_valid_completion, completion_reason = validate_completion(current_solution, completion)
-                if not is_valid_completion:
-                    failure_score += 4
-                    print(completion_reason)               
-                # Then validate the complete solution
-                is_valid_solution, completion_reason = validate_solution(complete_solution)
-                if not is_valid_solution:
-                    failure_score += 2
-                    print(completion_reason)
-                
-                # Finally verify the answer
+                # First verify if the answer is correct
                 is_correct, answer = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
                     problem
                 )
+                
+                # Increment success count just based on correct answer
                 if is_correct:
-                    if failure_score == 0:  # Only store good completions if they pass all checks
-                        successful += 1
-                        if good_completion is None:
-                            good_completion = completion
-                else:
+                    successful += 1
+                    
+                # Now check validations for storing good_completion
+                failure_score = 0
+                if not is_correct:
                     failure_score += 1
+                    
+                # Validate the completion and solution only for storing good_completion
+                is_valid_completion, completion_reason = validate_completion(current_solution, completion)
+                if not is_valid_completion:
+                    failure_score += 4
+                    print(completion_reason)
+                    
+                is_valid_solution, completion_reason = validate_solution(complete_solution)
+                if not is_valid_solution:
+                    failure_score += 2
+                    print(completion_reason)
+                
+                # Store good completion only if all validations pass
+                if is_correct and failure_score == 0 and good_completion is None:
+                    good_completion = completion
                 
                 # Update bad completion if this one is worse
                 if failure_score > worst_failure_score:
