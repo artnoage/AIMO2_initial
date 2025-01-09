@@ -26,7 +26,7 @@ def validate_entry(entry: Dict[str, Any], index: int) -> List[str]:
     return errors
 
 def main():
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_162345"
+    dataset_path = "clean.json"
     json_files = glob.glob(os.path.join(dataset_path, "**/*.json"), recursive=True)
     
     if not json_files:
