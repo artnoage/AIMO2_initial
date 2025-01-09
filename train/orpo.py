@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_164830")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_165432")
     def formatting_func(example):
         # Only keep the required fields
         required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected']
