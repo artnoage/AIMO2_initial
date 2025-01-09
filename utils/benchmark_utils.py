@@ -4,11 +4,11 @@ import asyncio
 import json
 import signal
 import sympy
+import requests
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
-from langchain_openai import ChatOpenAI
 from tqdm import tqdm
 from datasets import load_dataset
 from huggingface_hub import whoami
@@ -18,6 +18,63 @@ T = TypeVar('T')
 from latex2sympy2 import latex2sympy
 
 class TimeoutException(Exception): pass
+
+class OpenRouterChat:
+    """Chat model that makes direct requests to OpenRouter API"""
+    
+    def __init__(
+        self,
+        model: str,
+        temperature: float = 0,
+        api_key: str = None
+    ):
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+        self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+
+    async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
+        """Async call to OpenRouter chat completion endpoint"""
+        max_tokens = kwargs.get("max_tokens", None)
+        
+        # Handle different prompt types
+        if hasattr(prompt, 'content'):  # LangChain message object
+            messages = [{"role": "user", "content": prompt.content}]
+        elif isinstance(prompt, list):  # List of messages
+            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
+        else:  # String or other
+            messages = [{"role": "user", "content": str(prompt)}]
+            
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self.base_url,
+                    json=payload,
+                    headers=headers
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError(f"Error from OpenRouter API: {await response.text()}")
+                    
+                    result = await response.json()
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    })()
+            except Exception as e:
+                print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
+                raise
 
 class CustomChat:
     """Simple chat model that makes direct requests to server"""
@@ -115,11 +172,10 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
         if not openrouter_api_key:
             raise ValueError("OPENROUTER_API_KEY is not set in the environment variables.")
         
-        return ChatOpenAI(
+        return OpenRouterChat(
             model=name,
             temperature=temp,
-            openai_api_key=openrouter_api_key,
-            openai_api_base="https://openrouter.ai/api/v1")
+            api_key=openrouter_api_key)
 
 
 def async_retry(max_retries: int = 3, timeout: int = 300):
