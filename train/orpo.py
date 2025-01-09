@@ -18,7 +18,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250105_104755",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250108_182212",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250106_092519")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_164830")
     def formatting_func(example):
         example["prompt"] = tokenizer.apply_chat_template([example["prompt"]], tokenize=False)
         example["chosen"] = tokenizer.apply_chat_template([example["chosen"]], tokenize=False)
@@ -69,7 +69,7 @@ def main():
     shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
     #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2,shuffled_dataset3])
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
 
     # Create timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
