@@ -302,7 +302,7 @@ class WrongStepGenerator:
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-            'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
+            'rejected': {'content': ''.join(steps[wrong_step_index:]), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
