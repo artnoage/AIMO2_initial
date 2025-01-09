@@ -349,7 +349,15 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     for i, step in enumerate(steps, 1):
         full_step = "Step" + step
         if not validate_step(full_step, expected_step=i):
-            return False, f"Invalid step {i}"
+            word_count = len(full_step.split())
+            step_error = ""
+            if word_count < 22:
+                step_error = f"Step {i} too short ({word_count} words < 22)"
+            elif word_count > 100:
+                step_error = f"Step {i} too long ({word_count} words > 100)"
+            else:
+                step_error = f"Step {i} invalid format or numbering"
+            return False, step_error
         
     return True, "Solution valid"
 
