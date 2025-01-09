@@ -1,7 +1,7 @@
 import json
 import os
+import sys
 from typing import Dict, Any, List
-import glob
 
 def validate_entry(entry: Dict[str, Any], index: int) -> List[str]:
     """Validate a single dataset entry and return list of errors if any."""
@@ -26,20 +26,21 @@ def validate_entry(entry: Dict[str, Any], index: int) -> List[str]:
     return errors
 
 def main():
-    dataset_path = "clean.json"
-    json_files = glob.glob(os.path.join(dataset_path, "**/*.json"), recursive=True)
-    
-    if not json_files:
-        print(f"No JSON files found in {dataset_path}")
-        return
+    if len(sys.argv) != 2:
+        print("Usage: python validate_dataset.py <path_to_json_file>")
+        sys.exit(1)
+        
+    json_file = sys.argv[1]
+    if not os.path.exists(json_file):
+        print(f"Error: File '{json_file}' not found")
+        sys.exit(1)
     
     total_entries = 0
     total_errors = 0
     
-    for json_file in json_files:
-        print(f"\nChecking file: {json_file}")
-        try:
-            with open(json_file, 'r', encoding='utf-8') as f:
+    print(f"\nChecking file: {json_file}")
+    try:
+        with open(json_file, 'r', encoding='utf-8') as f:
                 try:
                     # Try to parse the whole file first
                     data = json.load(f)
