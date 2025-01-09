@@ -44,7 +44,7 @@ class ListGenerator:
                     return_prompt=True
                 )
                 completion = completion_result[1]  # Get just the completion response
-                completion_prompt = completion_result[0].content  # Store the prompt
+                completion_prompt = completion_result[0]  # Store the prompt
                 complete_solution = current_solution + completion
                 
                 failure_score = 0
@@ -95,7 +95,7 @@ class ListGenerator:
                     return_prompt=True
                 )
                 # Return the prompt as both good and bad completion with scores 1 and 0
-                return final_score, completion_prompt[0].content, completion_prompt[0].content
+                return final_score, completion_prompt[0], completion_prompt[0]
             except Exception:
                 pass
 
