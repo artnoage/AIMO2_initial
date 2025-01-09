@@ -65,11 +65,9 @@ class ListGenerator:
                     correct_answer,
                     problem
                 )
-                print(failure_score)
                 if is_correct:
                     if failure_score == 0:  # Only store good completions if they pass all checks
                         successful += 1
-                        print("hey")
                         if good_completion is None:
                             good_completion = completion
                 else:
@@ -137,13 +135,11 @@ class ListGenerator:
                 
                 is_valid, reason = validate_analysis(analysis)
                 if is_valid:
-                    print("Is valid")
                     score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                         problem,
                         analysis,
                         correct_answer
                     )
-                    print("score is", score)
                     analyses.append((analysis, score))
                     
                     # Update best and worst scores/solutions
@@ -161,9 +157,7 @@ class ListGenerator:
                     # Break out of for loop if we have both
                     if has_perfect and has_zero:
                         logs.append(f"\n✓ Early stop in analysis: Found both perfect (1.0) and zero scoring analyses")
-                        continue
-                else :
-                    print("is not valid")        
+                        continue        
             except Exception:
                 continue
                 
@@ -204,7 +198,7 @@ class ListGenerator:
         # Use best analysis as starting point
         current_solution = analyses[-1][0]
         step_num = 1
-        
+        print(current_solution)
         while True:
             steps = []
             step_prompt = None
@@ -229,6 +223,7 @@ class ListGenerator:
                             return_prompt=True
                         )
                         step_prompt = prompt
+                        print(step)
                     else:
                         step = await self.step_agent.generate(
                             problem,
@@ -236,7 +231,7 @@ class ListGenerator:
                         )
                     
                     test_solution = current_solution + step
-                    
+                    print(test_solution)
                     # Check if step contains answer
                     answer = extract_answer_from_solution(test_solution)
                     if answer is not None:
@@ -248,7 +243,7 @@ class ListGenerator:
                         )
                         # Also validate the complete solution
                         is_valid, _ = validate_solution(test_solution)
-                        
+                        print(is_valid)
                         if is_correct and is_valid:  # Both correct answer and valid solution
                             steps.append((step, 1.0))
                             has_perfect = True
@@ -256,12 +251,14 @@ class ListGenerator:
                             
                     # Score step if no answer yet
                     is_valid = validate_step(step, expected_step=step_num)
+                    print(is_valid)
                     if is_valid:
                         score, good_completion, bad_completion, completion_prompt = await self._score_with_completions(
                             problem,
                             test_solution,
                             correct_answer
                         )
+                        print(score)
                         steps.append((step, score))
                         
                         # Update best and worst steps/solutions
