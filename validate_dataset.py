@@ -45,29 +45,32 @@ def main():
                     data = json.load(f)
                     
                     # Handle different data structures
-                    entries_to_check = []
                     if isinstance(data, list):
-                        entries_to_check = enumerate(data)
-                        file_entry_count = len(data)
+                        print(f"Found {len(data)} entries in file")
+                        for i, entry in enumerate(data):
+                            if not isinstance(entry, dict):
+                                print(f"Entry {i} is not a dictionary: {type(entry)}")
+                                total_errors += 1
+                                continue
+                            errors = validate_entry(entry, i)
+                            if errors:
+                                print(f"\nErrors in entry {i}:")
+                                for error in errors:
+                                    print(f"  - {error}")
+                                total_errors += len(errors)
+                            total_entries += 1
                     elif isinstance(data, dict):
-                        entries_to_check = [(0, data)]
-                        file_entry_count = 1
-                    else:
-                        print(f"Unexpected data type in {json_file}: {type(data)}")
-                        continue
-
-                    print(f"Found {file_entry_count} entries in file")
-                    
-                    for i, entry in entries_to_check:
-                        errors = validate_entry(entry, i)
+                        print("Found 1 entry in file (single dictionary)")
+                        errors = validate_entry(data, 0)
                         if errors:
-                            print(f"\nErrors in entry {i}:")
+                            print("\nErrors in entry:")
                             for error in errors:
                                 print(f"  - {error}")
                             total_errors += len(errors)
                         total_entries += 1
                     else:
                         print(f"Unexpected data type in {json_file}: {type(data)}")
+                        total_errors += 1
                         
                 except json.JSONDecodeError as e:
                     print(f"Invalid JSON in {json_file}: {str(e)}")
