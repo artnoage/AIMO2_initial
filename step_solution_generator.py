@@ -50,14 +50,15 @@ class ListGenerator:
                 failure_score = 0
                 
                 # First validate the completion itself
-                is_valid_completion, _ = validate_completion(current_solution, completion)
+                is_valid_completion, completion_reason = validate_completion(current_solution, completion)
                 if not is_valid_completion:
                     failure_score += 4
-                
+                    print(completion_reason)               
                 # Then validate the complete solution
-                is_valid_solution, _ = validate_solution(complete_solution)
+                is_valid_solution, completion_reason = validate_solution(complete_solution)
                 if not is_valid_solution:
                     failure_score += 2
+                    print(completion_reason)
                 
                 # Finally verify the answer
                 is_correct, answer = await self.verifier.verify(
@@ -233,7 +234,6 @@ class ListGenerator:
                         step = remove_inst_tokens(step)
                     
                     test_solution = current_solution + step
-                    print(test_solution)
                     # Check if step contains answer
                     answer = extract_answer_from_solution(test_solution)
                     if answer is not None:
@@ -245,7 +245,6 @@ class ListGenerator:
                         )
                         # Also validate the complete solution
                         is_valid, _ = validate_solution(test_solution)
-                        print(is_valid)
                         if is_correct and is_valid:  # Both correct answer and valid solution
                             steps.append((step, 1.0))
                             has_perfect = True
