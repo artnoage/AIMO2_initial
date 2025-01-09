@@ -213,10 +213,14 @@ class JudgeWrongStepGenerator:
         judge_response = await self.judge_agent.find_first_wrong_step(problem, wrong_solution)
         step_number = self._extract_step_number(judge_response)
         
-        # If judge didn't identify a specific step, choose randomly
+        # Store judge's prediction and use it as starting point
+        self.judge_prediction = step_number
+        
+        # If judge didn't identify a specific step or predicted beyond solution length,
+        # start from the middle as a reasonable default
         if step_number is None or step_number >= num_steps:
-            self.logs.append("Judge didn't identify specific step, choosing randomly")
-            current_step = random.randint(0, num_steps - 1)
+            self.logs.append("Judge didn't identify specific step, starting from middle")
+            current_step = num_steps // 2
         else:
             current_step = step_number
             self.logs.append(f"Judge identified step {current_step} as first error")
@@ -290,6 +294,14 @@ class JudgeWrongStepGenerator:
             logging.error("❌ Failed to identify wrong step")
             return None
             
+        # Validate judge's prediction
+        if self.judge_prediction is not None:
+            self.judge_was_correct = (wrong_step_index == self.judge_prediction)
+            self.logs.append("\n=== Judge Accuracy ===")
+            self.logs.append(f"Judge predicted first wrong step: {self.judge_prediction}")
+            self.logs.append(f"Actual first wrong step: {wrong_step_index}")
+            self.logs.append(f"Judge was {'correct' if self.judge_was_correct else 'incorrect'}")
+            
         # Create entries for ORPO training
         results = []
         
@@ -328,7 +340,10 @@ class JudgeWrongStepGenerator:
             'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
             'rejected': {'content': ''.join(steps[wrong_step_index:]), 'role': 'assistant'},
             'score_chosen': 1.0,
-            'score_rejected': 0.0
+            'score_rejected': 0.0,
+            'judge_prediction': self.judge_prediction,
+            'actual_wrong_step': wrong_step_index,
+            'judge_was_correct': self.judge_was_correct
         })
         
         return results
