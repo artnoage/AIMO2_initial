@@ -44,22 +44,24 @@ def main():
                     # Try to parse the whole file first
                     data = json.load(f)
                     
-                    # If it's a list, check each entry
+                    # Handle different data structures
+                    entries_to_check = []
                     if isinstance(data, list):
-                        for i, entry in enumerate(data):
-                            errors = validate_entry(entry, i)
-                            if errors:
-                                print(f"\nErrors in entry {i}:")
-                                for error in errors:
-                                    print(f"  - {error}")
-                                total_errors += len(errors)
-                            total_entries += 1
-                    
-                    # If it's a dict, check if it's a single entry
+                        entries_to_check = enumerate(data)
+                        file_entry_count = len(data)
                     elif isinstance(data, dict):
-                        errors = validate_entry(data, 0)
+                        entries_to_check = [(0, data)]
+                        file_entry_count = 1
+                    else:
+                        print(f"Unexpected data type in {json_file}: {type(data)}")
+                        continue
+
+                    print(f"Found {file_entry_count} entries in file")
+                    
+                    for i, entry in entries_to_check:
+                        errors = validate_entry(entry, i)
                         if errors:
-                            print("\nErrors in entry:")
+                            print(f"\nErrors in entry {i}:")
                             for error in errors:
                                 print(f"  - {error}")
                             total_errors += len(errors)
