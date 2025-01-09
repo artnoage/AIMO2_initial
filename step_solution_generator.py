@@ -19,6 +19,7 @@ class ListGenerator:
         self.analysis_agent = AnalysisAgent(solver)
         self.step_agent = NextStepAgent(solver)
         self.completion_agent = CompletionAgent(solver)
+        self.solution_agent = FullSolutionAgent(solver)
         self.verifier = NumericVerifier()
 
     async def _score_with_completions(
