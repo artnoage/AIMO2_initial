@@ -512,8 +512,10 @@ class NumericVerifier:
         return is_correct, model_answer
 
 def remove_inst_tokens(text: str) -> str:
-    """Remove all occurrences of [/INST] from the text"""
-    return text.replace("[/INST]", "")
+    """Remove all occurrences of [/INST] and [control_655] from the text"""
+    text = text.replace("[/INST]", "")
+    text = text.replace("[control_655]", "")
+    return text
 
 def split_into_steps(solution: str) -> List[str]:
     """
