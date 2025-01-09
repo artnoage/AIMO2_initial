@@ -82,9 +82,10 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
             # Handle both single values and lists/matrices
             if hasattr(expr, 'evalf'):
                 result = float(expr.evalf())
-            elif isinstance(expr, list):
-                # Take first element if it's a list/matrix
-                result = float(expr[0].evalf())
+            elif isinstance(expr, list) or isinstance(expr, tuple) or (
+                hasattr(expr, 'is_Matrix') and expr.is_Matrix
+            ):
+                return (None, f"Rejected list/matrix answer: {expr}") if debug else (None, None)
             else:
                 result = float(expr)
             return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
