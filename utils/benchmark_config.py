@@ -41,8 +41,8 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 15
-    completions: int = 10
+    best_of: int = 8
+    completions: int = 30
     
     # Verification settings
     tolerance: float = 1e-6  # Tolerance for numeric answer comparison

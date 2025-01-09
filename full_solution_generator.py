@@ -117,7 +117,7 @@ async def process_full_solution(
                                                                                                     
     return (
         bifurcation_prompt,
-        correct_solution,
+        remove_inst_tokens(correct_solution),
         wrong_solution,
         chosen_score,
         rejected_score,

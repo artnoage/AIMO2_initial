@@ -211,26 +211,20 @@ class WrongStepGenerator:
         while True:
             self.logs.append(f"\nChecking step {current_step}...")
             
-            found_verified, found_valid, correct_step, good_completion, saved_completion_prompt = await self._verify_completions(
+            found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
                 current_step
             )
-            
-            # Print verification results
-            if correct_step:
-                print(f"Step {current_step} verification: verified={found_verified}, valid={found_valid}, correct_step={correct_step}")
-            else:
-                print(f"Step {current_step} verification: verified={found_verified}, valid={found_valid}, but correct step is null")
-            
+            if found_verified and not found_valid:
+                return None
+
             if found_valid:
                 self.logs.append(f"✓ Step {current_step} is valid")
                 last_good_step = correct_step
-                # Save the good completion and prompt if we don't have one yet
-                if saved_good_completion is None:
-                    saved_good_completion = good_completion
-                    saved_completion_prompt = completion_prompt
+                saved_good_completion = good_completion
+                saved_completion_prompt = completion_prompt
                 
                 if going_up is None:
                     # First check was good, go up to find potential wrong step
@@ -280,7 +274,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution) if correct_solution else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
@@ -296,7 +290,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': step_prompt[0], 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(last_good_step) if last_good_step else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
@@ -307,7 +301,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(saved_good_completion) if saved_good_completion else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
