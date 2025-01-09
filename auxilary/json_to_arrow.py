@@ -3,9 +3,9 @@ import os
 from datetime import datetime
 import argparse
 from datasets import Dataset, Features, Value
-from typing import Dict, Any
+from typing import Dict, Any, List
 
-def load_json_data(json_path: str) -> Dict[str, Any]:
+def load_json_data(json_path: str) -> List[Dict[str, Any]]:
     """Load data from JSON file"""
     with open(json_path, 'r') as f:
         data = json.load(f)
@@ -13,54 +13,55 @@ def load_json_data(json_path: str) -> Dict[str, Any]:
         raise ValueError("JSON file must contain an array of objects")
     return data
 
-def create_arrow_dataset(data: list) -> Dataset:
-    """Convert JSON data to Arrow dataset with automatic schema inference"""
+def create_arrow_dataset(data: List[Dict[str, Any]]) -> Dataset:
+    """Convert JSON data to ORPO-formatted Arrow dataset"""
     
     if not data:
         raise ValueError("Empty dataset")
 
-    # Automatically infer types from the first item
-    first_item = data[0]
-    features = {}
+    # Define ORPO schema
+    features = Features({
+        'prompt': Value('string'),
+        'chosen': Value('string'),
+        'rejected': Value('string'),
+        'score_chosen': Value('float64'),
+        'score_rejected': Value('float64')
+    })
     
-    def infer_type(value):
-        if isinstance(value, bool):
-            return Value('bool')
-        elif isinstance(value, int):
-            return Value('int64')
-        elif isinstance(value, float):
-            return Value('float64')
-        elif isinstance(value, str):
-            return Value('string')
-        elif isinstance(value, list):
-            return Value('string') if all(isinstance(x, str) for x in value) else Value('string')
-        else:
-            return Value('string')
+    # Extract and validate ORPO fields
+    processed_data = []
+    for i, item in enumerate(data):
+        try:
+            processed_item = {
+                'prompt': str(item['prompt']),
+                'chosen': str(item['chosen']),
+                'rejected': str(item['rejected']),
+                'score_chosen': float(item['score_chosen']),
+                'score_rejected': float(item['score_rejected'])
+            }
+            processed_data.append(processed_item)
+        except KeyError as e:
+            raise ValueError(f"Entry {i}: Missing required field {e}")
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Entry {i}: Invalid value format - {str(e)}")
     
-    # Build schema from all fields in the data
-    for item in data:
-        for key, value in item.items():
-            if key not in features:
-                features[key] = infer_type(value)
+    # Create dataset with ORPO schema
+    dataset = Dataset.from_list(processed_data, features=features)
     
-    # Check if this might be ORPO training data and validate if so
-    orpo_fields = {'prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected'}
-    if orpo_fields.issubset(features.keys()):
-        print("Detected ORPO training data format, validating fields...")
-        for i, item in enumerate(data):
-            # Ensure scores are numeric
-            for score_field in ['score_chosen', 'score_rejected']:
-                if not isinstance(item[score_field], (int, float)):
-                    raise ValueError(f"Entry {i}: {score_field} must be numeric for ORPO training, got {type(item[score_field])}")
+    # Add ORPO-specific metadata
+    dataset = dataset.cast_column('score_chosen', Value('float64'))
+    dataset = dataset.cast_column('score_rejected', Value('float64'))
     
-    # Create dataset with inferred schema
-    return Dataset.from_dict(
-        {k: [item.get(k) for item in data] for k in features.keys()},
-        features=Features(features)
-    )
+    # Add dataset info
+    dataset.info.description = "ORPO training dataset"
+    dataset.info.license = "Unknown"
+    dataset.info.version = "1.0.0"
+    dataset.info.features = features
+    
+    return dataset
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert JSON to Arrow dataset')
+    parser = argparse.ArgumentParser(description='Convert JSON to ORPO Arrow dataset')
     parser.add_argument('json_file', help='Input JSON file to convert')
     args = parser.parse_args()
     
@@ -74,19 +75,35 @@ def main():
         print(f"Loading data from {args.json_file}...")
         data = load_json_data(args.json_file)
         
-        print("Converting to Arrow dataset...")
+        print("Converting to ORPO Arrow dataset...")
         dataset = create_arrow_dataset(data)
         
         # Save dataset
         print(f"Saving dataset to {output_dir}...")
         dataset.save_to_disk(output_dir)
         
-        # Create dataset info
+        # Create detailed dataset info
         dataset_info = {
             "num_examples": len(dataset),
-            "features": dataset.features,
+            "features": {
+                name: feature.dtype for name, feature in dataset.features.items()
+            },
             "timestamp": timestamp,
-            "source_file": args.json_file
+            "source_file": args.json_file,
+            "format": "ORPO",
+            "version": "1.0.0",
+            "score_ranges": {
+                "chosen": {
+                    "min": float(min(dataset['score_chosen'])),
+                    "max": float(max(dataset['score_chosen'])),
+                    "mean": float(sum(dataset['score_chosen']) / len(dataset))
+                },
+                "rejected": {
+                    "min": float(min(dataset['score_rejected'])),
+                    "max": float(max(dataset['score_rejected'])),
+                    "mean": float(sum(dataset['score_rejected']) / len(dataset))
+                }
+            }
         }
         
         # Save dataset info
@@ -96,6 +113,13 @@ def main():
             
         print(f"\nSuccessfully converted {len(dataset)} examples")
         print(f"Dataset saved to: {output_dir}")
+        print("\nScore Statistics:")
+        print(f"Chosen scores: min={dataset_info['score_ranges']['chosen']['min']:.3f}, "
+              f"max={dataset_info['score_ranges']['chosen']['max']:.3f}, "
+              f"mean={dataset_info['score_ranges']['chosen']['mean']:.3f}")
+        print(f"Rejected scores: min={dataset_info['score_ranges']['rejected']['min']:.3f}, "
+              f"max={dataset_info['score_ranges']['rejected']['max']:.3f}, "
+              f"mean={dataset_info['score_ranges']['rejected']['mean']:.3f}")
         
     except Exception as e:
         print(f"Error: {str(e)}")
