@@ -23,7 +23,7 @@ class ModelOption(Enum):
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
-
+    QWEN="qwen/qwq-32b-preview"
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
@@ -44,7 +44,7 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 8
+    best_of: int = 15
     completions: int = 30
     
     # Verification settings
