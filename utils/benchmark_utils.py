@@ -291,9 +291,11 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 
 STEP_NUMBER_PATTERNS = [
-    re.compile(r'^.{0,2}(\d+)[:\)]'),  # Removed dot from pattern
-    re.compile(r'^.{0,2}\((\d+)\)'),
-    re.compile(r'^.{0,2}(\d+)\s')
+    re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
+    re.compile(r'^.*?(\d+)[:.)](?:\s|$)'),   # Match "N." or "N)" at start
+    re.compile(r'^\s*(\d+)\.\s'),            # Match "N. " at start
+    re.compile(r'^\s*\((\d+)\)\s'),          # Match "(N) " at start
+    re.compile(r'^\s*Step\s*(\d+)$')         # Match just "Step N" at end of line
 ]
 
 def validate_analysis(resp: str) -> Tuple[bool, str]:
