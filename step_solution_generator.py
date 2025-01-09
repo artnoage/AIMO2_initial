@@ -223,12 +223,14 @@ class ListGenerator:
                             return_prompt=True
                         )
                         step_prompt = prompt
+                        step = remove_inst_tokens(step)
                         print(step)
                     else:
                         step = await self.step_agent.generate(
                             problem,
                             current_solution
                         )
+                        step = remove_inst_tokens(step)
                     
                     test_solution = current_solution + step
                     print(test_solution)
