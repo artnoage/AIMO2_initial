@@ -118,3 +118,32 @@ class FullSolutionAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
+
+
+class JudgeAgent:
+    """Agent that evaluates mathematical solutions and identifies the first wrong step"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def find_first_wrong_step(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """
+        Analyze a solution and identify the first step that contains an error.
+        Returns the step number and explanation of the error.
+        """
+        prompt = [
+            HumanMessage(content=(
+                "Here is a mathematical problem and a proposed solution:\n\n"
+                f"Problem:\n{problem}\n\n"
+                f"Proposed Solution:\n{solution}\n\n"
+                "Please carefully analyze this solution step by step. "
+                "If you find any errors, identify the FIRST step where something goes wrong "
+                "and explain the error. If the solution is completely correct, say so.\n\n"
+                "Format your response as:\n"
+                "First error in Step X: <explanation>\n"
+                "or\n"
+                "Solution is correct"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (prompt[0].content, response) if return_prompt else response

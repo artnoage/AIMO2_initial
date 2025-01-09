@@ -101,11 +101,15 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
     
     Args:
         config: The benchmark configuration
-        role: The role of the model (e.g. "solver", "verifier", etc.)
+        role: The role of the model (e.g. "solver", "judge", etc.)
     """
-    model = ModelOption[getattr(config, role)]
+    if role == "judge" and config.judge:
+        model = ModelOption[config.judge]
+    else:
+        model = ModelOption[getattr(config, role)]
+    
     name = model.value
-    temp = getattr(config, "temperature", 0.9)
+    temp = config.judge_temp if role == "judge" else config.temperature
     
     if model == ModelOption.LOCAL:
         return CustomChat(
