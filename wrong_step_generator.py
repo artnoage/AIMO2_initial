@@ -202,6 +202,8 @@ class WrongStepGenerator:
         last_bad_step = None
         last_good_step = None
         wrong_step_index = None
+        saved_good_completion = None
+        saved_completion_prompt = None
         
         self.logs.append("\n=== Analyzing solution steps ===")
         self.logs.append(f"Starting analysis at step {current_step}")
@@ -225,6 +227,10 @@ class WrongStepGenerator:
             if found_valid:
                 self.logs.append(f"✓ Step {current_step} is valid")
                 last_good_step = correct_step
+                # Save the good completion and prompt if we don't have one yet
+                if saved_good_completion is None:
+                    saved_good_completion = good_completion
+                    saved_completion_prompt = completion_prompt
                 
                 if going_up is None:
                     # First check was good, go up to find potential wrong step
@@ -301,7 +307,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(good_completion) if good_completion else "", 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(saved_good_completion) if saved_good_completion else "", 'role': 'assistant'},
             'rejected': {'content': steps[wrong_step_index:], 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
