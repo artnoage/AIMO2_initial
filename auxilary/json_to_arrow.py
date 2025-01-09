@@ -20,20 +20,29 @@ def create_arrow_dataset(data: list) -> Dataset:
     if not data:
         raise ValueError("Empty dataset")
         
-    sample = data[0]
-    features = {}
+    # Define explicit schema for required training fields
+    features = {
+        'prompt': Value('string'),
+        'chosen': Value('string'),
+        'rejected': Value('string'),
+        'score_chosen': Value('float64'),
+        'score_rejected': Value('float64')
+    }
     
-    for key, value in sample.items():
-        if isinstance(value, (int, bool)):
-            features[key] = Value('int64')
-        elif isinstance(value, float):
-            features[key] = Value('float64')
-        else:
-            features[key] = Value('string')
+    # Validate all entries have required fields
+    for i, item in enumerate(data):
+        missing = [field for field in features.keys() if field not in item]
+        if missing:
+            raise ValueError(f"Entry {i} is missing required fields: {missing}")
+        
+        # Ensure scores are numeric
+        for score_field in ['score_chosen', 'score_rejected']:
+            if not isinstance(item[score_field], (int, float)):
+                raise ValueError(f"Entry {i}: {score_field} must be numeric, got {type(item[score_field])}")
     
     # Create dataset with schema
     return Dataset.from_dict(
-        {k: [item.get(k) for item in data] for k in features.keys()},
+        {k: [item[k] for item in data] for k in features.keys()},
         features=Features(features)
     )
 
