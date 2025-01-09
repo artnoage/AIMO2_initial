@@ -32,10 +32,11 @@ def create_arrow_dataset(data: List[Dict[str, Any]]) -> Dataset:
     processed_data = []
     for i, item in enumerate(data):
         try:
+            # Extract content from dict fields if present
             processed_item = {
-                'prompt': str(item['prompt']),
-                'chosen': str(item['chosen']),
-                'rejected': str(item['rejected']),
+                'prompt': str(item['prompt']['content'] if isinstance(item['prompt'], dict) else item['prompt']),
+                'chosen': str(item['chosen']['content'] if isinstance(item['chosen'], dict) else item['chosen']),
+                'rejected': str(item['rejected']['content'] if isinstance(item['rejected'], dict) else item['rejected']),
                 'score_chosen': float(item['score_chosen']),
                 'score_rejected': float(item['score_rejected'])
             }

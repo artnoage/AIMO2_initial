@@ -53,9 +53,9 @@ def main():
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
         # Apply formatting
-        filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]["content"] if isinstance(filtered_example["prompt"], dict) else filtered_example["prompt"]], tokenize=False)
-        filtered_example["chosen"] = tokenizer.apply_chat_template([filtered_example["chosen"]["content"] if isinstance(filtered_example["chosen"], dict) else filtered_example["chosen"]], tokenize=False)
-        filtered_example["rejected"] = tokenizer.apply_chat_template([filtered_example["rejected"]["content"] if isinstance(filtered_example["rejected"], dict) else filtered_example["rejected"]], tokenize=False)
+        filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]], tokenize=False)
+        filtered_example["chosen"] = tokenizer.apply_chat_template([filtered_example["chosen"]], tokenize=False)
+        filtered_example["rejected"] = tokenizer.apply_chat_template([filtered_example["rejected"]], tokenize=False)
         filtered_example["chosen"] = _strip_prefix(filtered_example["chosen"], "<s>")
         filtered_example["rejected"] = _strip_prefix(filtered_example["rejected"], "<s>")
         
