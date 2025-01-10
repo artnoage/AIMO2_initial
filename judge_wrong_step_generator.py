@@ -3,6 +3,7 @@ import asyncio
 import logging
 import random
 import re
+from random import choice
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import *
@@ -363,6 +364,14 @@ class JudgeWrongStepGenerator:
                 'correct_answer': correct_answer,
                 'prompt': {'content': f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{problem}\n\nProposed Solution:\n{wrong_solution}\n\nPlease carefully read this solution step by step. If you find any errors, identify the FIRST step where something goes wrong and explain the error. If the solution is completely correct, say so.", 'role': 'user'},
                 'response': {'content': judge_response, 'role': 'assistant'},
+                'score': 1.0
+            },
+            # Fifth entry: SFT for solution comparison with randomized order
+            {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'prompt': {'content': f"Here is a mathematical problem and two proposed solutions:\n\nProblem:\n{problem}\n\n{'Solution A' if choice([True, False]) else 'Solution B'}:\n{correct_solution}\n\n{'Solution B' if choice([True, False]) else 'Solution A'}:\n{wrong_solution}\n\nWhich solution do you prefer and why? Start your response with either 'I prefer Solution A because' or 'I prefer Solution B because'", 'role': 'user'},
+                'response': {'content': f"I prefer {'Solution A' if correct_solution in prompt['content'].split('Solution A:')[1].split('Solution B:')[0] else 'Solution B'} because it correctly solves the problem step by step and arrives at the right answer. The other solution contains errors in its reasoning.", 'role': 'assistant'},
                 'score': 1.0
             }
         ]
