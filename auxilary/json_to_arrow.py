@@ -48,9 +48,7 @@ def main():
         # Create detailed dataset info
         dataset_info = {
             "num_examples": len(dataset),
-            "features": {
-                name: feature.dtype for name, feature in dataset.features.items()
-            },
+            "features": str(dataset.features),  # Convert features to string representation
             "timestamp": timestamp,
             "source_file": args.json_file,
             "format": "ORPO",
