@@ -248,20 +248,6 @@ class JudgeWrongStepGenerator:
         current_step = self.judge_prediction
         self.logs.append(f"Judge identified step {current_step} as first error")
             
-        # Verify the step the judge predicted
-        self.logs.append("\n=== Verifying judge's prediction ===")
-        self.logs.append(f"Checking step {current_step}...")
-        
-        found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
-            problem,
-            partial_solutions[current_step],
-            correct_answer,
-            current_step
-        )
-        
-        if found_verified and not found_valid:
-            return None
-            
         # For the judge to be correct:
         # 1. The previous step must be completable correctly
         # 2. The predicted step must not be completable correctly
