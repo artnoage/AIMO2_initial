@@ -329,10 +329,10 @@ class JudgeWrongStepGenerator:
         
         # Create combined solution
         combined_solution = (
-            f"{wrong_solution_partial}" + "\n\n" +
-            f"Error Explanation: {judge_explanation}" + "\n\n" +
-            f"Correct continuation:" + "\n" +
-            f"{'\n'.join(completion_steps)}"
+            f"{wrong_solution_partial}\n\n"
+            "Error Explanation: " + f"{judge_explanation}\n\n"
+            "Correct continuation:\n" + 
+            '\n'.join(completion_steps)
         )
         
         # Create entries for ORPO training
