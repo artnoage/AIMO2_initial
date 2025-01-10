@@ -18,8 +18,12 @@ def create_arrow_dataset(data: List[Dict[str, Any]]) -> Dataset:
     if not data:
         raise ValueError("Empty dataset")
     
-    # Simply convert the data as-is
-    dataset = Dataset.from_list(data)
+    # Convert to Dataset using from_dict with proper column organization
+    dataset_dict = {
+        key: [example[key] for example in data]
+        for key in data[0].keys()
+    }
+    dataset = Dataset.from_dict(dataset_dict)
     
     return dataset
 
