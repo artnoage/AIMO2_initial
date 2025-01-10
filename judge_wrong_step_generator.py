@@ -50,6 +50,18 @@ class JudgeWrongStepGenerator:
                 return None
         return None
         
+    def _extract_explanation(self, judge_response: str) -> Optional[str]:
+        """Extract explanation from judge response"""
+        # Look for content between <EXPLANATION> tags
+        explanation_match = re.search(r'<EXPLANATION>(.*?)<EXPLANATION>', judge_response, re.DOTALL)
+        if explanation_match:
+            return explanation_match.group(1).strip()
+        # If no tags, try to extract everything after the step number
+        step_match = re.search(r'Step\s+\d+\.\s*(.*)', judge_response)
+        if step_match:
+            return step_match.group(1).strip()
+        return None
+        
     async def _verify_completions(
         self,
         problem: str,
@@ -299,19 +311,59 @@ class JudgeWrongStepGenerator:
         if not self.judge_was_correct:
             return None
             
-        # Create entry for ORPO training - full solution comparison only
-        results = [{
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'prompt': {'content': solution_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
-            'rejected': {'content': wrong_solution, 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0,
-            'judge_prediction': self.judge_prediction,
-            'actual_wrong_step': current_step,
-            'judge_was_correct': self.judge_was_correct
-        }]
+        # Extract judge's explanation
+        judge_explanation = self._extract_explanation(judge_response)
+        if not judge_explanation:
+            self.logs.append("Could not extract judge explanation")
+            return None
+            
+        # Get wrong solution up to the bad step
+        wrong_solution_partial = '\n'.join(steps[:current_step + 1])
+        
+        # Remove step numbers from completion for combined solution
+        completion_steps = saved_good_completion.split('\n')
+        unnumbered_completion = []
+        for step in completion_steps:
+            # Remove step numbers but keep the content
+            step_without_number = re.sub(r'^Step\s+\d+[:.]\s*', '', step)
+            unnumbered_completion.append(step_without_number)
+        
+        # Create combined solution
+        combined_solution = (
+            f"{wrong_solution_partial}\n\n"
+            f"Error Explanation: {judge_explanation}\n\n"
+            f"Correct continuation:\n{' '.join(unnumbered_completion)}"
+        )
+        
+        # Create entries for ORPO training
+        results = [
+            # First entry: full solution comparison
+            {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'prompt': {'content': solution_prompt, 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+                'rejected': {'content': wrong_solution, 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0,
+                'judge_prediction': self.judge_prediction,
+                'actual_wrong_step': current_step,
+                'judge_was_correct': self.judge_was_correct
+            },
+            # Second entry: wrong solution with explanation and correction
+            {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'prompt': {'content': solution_prompt, 'role': 'user'},
+                'chosen': {'content': combined_solution, 'role': 'assistant'},
+                'rejected': {'content': wrong_solution, 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0,
+                'judge_prediction': self.judge_prediction,
+                'actual_wrong_step': current_step,
+                'judge_was_correct': self.judge_was_correct
+            }
+        ]
         
         return results
 
