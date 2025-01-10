@@ -299,49 +299,19 @@ class JudgeWrongStepGenerator:
         if not self.judge_was_correct:
             return None
             
-        # Create entries for ORPO training
-        results = []
-        
-        # First entry: full solution comparison
-        results.append({
+        # Create entry for ORPO training - full solution comparison only
+        results = [{
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
-        
-        # Second entry: step comparison
-        step_prompt = await self.step_agent.generate(
-            problem,
-            partial_solutions[max(0, wrong_step_index - 1)],
-            return_prompt=True
-        )
-        results.append({
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'prompt': {'content': step_prompt[0], 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
-            'rejected': {'content': steps[wrong_step_index], 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
-
-        # Third entry: completion comparison
-        results.append({
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-            'rejected': {'content': ''.join(steps[current_step:]), 'role': 'assistant'},
-            'score_chosen': 1.0,
             'score_rejected': 0.0,
             'judge_prediction': self.judge_prediction,
             'actual_wrong_step': current_step,
             'judge_was_correct': self.judge_was_correct
-        })
+        }]
         
         return results
 
