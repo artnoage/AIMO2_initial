@@ -370,8 +370,8 @@ class JudgeWrongStepGenerator:
             {
                 'problem': problem,
                 'correct_answer': correct_answer,
-                'prompt': {'content': f"Here is a mathematical problem and two proposed solutions:\n\nProblem:\n{problem}\n\n{'Solution A' if choice([True, False]) else 'Solution B'}:\n{correct_solution}\n\n{'Solution B' if choice([True, False]) else 'Solution A'}:\n{wrong_solution}\n\nWhich solution do you prefer and why? Start your response with either 'I prefer Solution A because' or 'I prefer Solution B because'", 'role': 'user'},
-                'response': {'content': f"I prefer {'Solution A' if correct_solution in prompt['content'].split('Solution A:')[1].split('Solution B:')[0] else 'Solution B'} because it correctly solves the problem step by step and arrives at the right answer. The other solution contains errors in its reasoning.", 'role': 'assistant'},
+                'prompt': {'content': f"Here is a mathematical problem and two proposed solutions:\n\nProblem:\n{problem}\n\n{'Solution A' if (correct_first := choice([True, False])) else 'Solution B'}:\n{correct_solution}\n\n{'Solution B' if correct_first else 'Solution A'}:\n{wrong_solution}\n\nWhich solution do you prefer and why? Start your response with either 'I prefer Solution A because' or 'I prefer Solution B because'", 'role': 'user'},
+                'response': {'content': f"I prefer {'Solution A' if correct_first else 'Solution B'} because it correctly solves the problem step by step and arrives at the right answer. The other solution contains errors in its reasoning.", 'role': 'assistant'},
                 'score': 1.0
             }
         ]
