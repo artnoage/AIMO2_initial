@@ -147,15 +147,16 @@ class JudgeWrongStepGenerator:
         correct_answer: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
-        Generate solutions and validate judge's prediction of the first wrong step.
+        Generate both correct and wrong solutions, then validate judge's prediction of the first wrong step.
         Returns list of dicts with prompts and solutions/steps for ORPO training.
         """
-        # Get a wrong solution first
+        # Search for both correct and wrong solutions
+        correct_solution = None
         wrong_solution = None
         solution_prompt = None
         attempts = 0
         
-        while wrong_solution is None and attempts < self.best_of:
+        while (correct_solution is None or wrong_solution is None) and attempts < self.best_of:
             try:
                 attempts += 1
                 if solution_prompt is None:
@@ -181,15 +182,20 @@ class JudgeWrongStepGenerator:
                     problem
                 )
                 
-                if not is_correct:
+                if is_correct and correct_solution is None:
+                    correct_solution = solution
+                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
+                elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
                     self.logs.append(f"✓ Found wrong solution on attempt {attempts}")
-                    break
                     
             except Exception as e:
                 self.logs.append(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
+        if correct_solution is None:
+            logging.error("❌ Failed to find correct solution")
+            return None
         if wrong_solution is None:
             logging.error("❌ Failed to find wrong solution")
             return None
