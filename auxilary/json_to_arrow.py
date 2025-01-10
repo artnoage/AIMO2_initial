@@ -1,94 +1,50 @@
-import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+from datasets import Dataset
+from pathlib import Path
+import json
 import argparse
-from datasets import Dataset, Features, Value
-from typing import Dict, Any, List
 
-def load_json_data(json_path: str) -> List[Dict[str, Any]]:
-    """Load data from JSON file"""
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError("JSON file must contain an array of objects")
-    return data
+def load_json_dataset(json_path: Path):
+    """Load JSON dataset and convert it to a format suitable for HuggingFace."""
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    except json.JSONDecodeError:
+        raise ValueError(f"Invalid JSON file: {json_path}")
 
-def create_arrow_dataset(data: List[Dict[str, Any]]) -> Dataset:
-    """Convert JSON data to Arrow dataset"""
-    if not data:
-        raise ValueError("Empty dataset")
-    
-    # Convert to Dataset using from_dict with proper column organization
-    dataset_dict = {
-        key: [example[key] for example in data]
-        for key in data[0].keys()
-    }
-    dataset = Dataset.from_dict(dataset_dict)
-    
-    return dataset
+def convert_to_hf_dataset(data):
+    """Convert the data to a HuggingFace Dataset."""
+    dataset = Dataset.from_list(data)
+    # Save locally in Arrow format with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    save_path = os.path.join("local_datasets", timestamp)
+    os.makedirs(save_path, exist_ok=True)
+    dataset.save_to_disk(save_path)
+    return dataset, save_path
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert JSON to ORPO Arrow dataset')
-    parser.add_argument('json_file', help='Input JSON file to convert')
+    parser = argparse.ArgumentParser(description='Convert JSON to Arrow dataset')
+    parser.add_argument('json_file', type=Path, help='Input JSON file to convert')
     args = parser.parse_args()
     
-    # Create timestamp-based output directory
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = os.path.join('local_datasets', timestamp)
-    os.makedirs(output_dir, exist_ok=True)
-    
+    # Validate path exists
+    if not args.json_file.exists():
+        raise FileNotFoundError(f"Path does not exist: {args.json_file}")
+
     try:
-        # Load and convert data
-        print(f"Loading data from {args.json_file}...")
-        data = load_json_data(args.json_file)
-        
-        print("Converting to ORPO Arrow dataset...")
-        dataset = create_arrow_dataset(data)
-        
-        # Save dataset
-        print(f"Saving dataset to {output_dir}...")
-        dataset.save_to_disk(output_dir)
-        
-        # Create detailed dataset info
-        dataset_info = {
-            "num_examples": len(dataset),
-            "features": str(dataset.features),  # Convert features to string representation
-            "timestamp": timestamp,
-            "source_file": args.json_file,
-            "format": "ORPO",
-            "version": "1.0.0",
-            "score_ranges": {
-                "chosen": {
-                    "min": float(min(dataset['score_chosen'])),
-                    "max": float(max(dataset['score_chosen'])),
-                    "mean": float(sum(dataset['score_chosen']) / len(dataset))
-                },
-                "rejected": {
-                    "min": float(min(dataset['score_rejected'])),
-                    "max": float(max(dataset['score_rejected'])),
-                    "mean": float(sum(dataset['score_rejected']) / len(dataset))
-                }
-            }
-        }
-        
-        # Save dataset info
-        info_path = os.path.join(output_dir, 'dataset_info.json')
-        with open(info_path, 'w') as f:
-            json.dump(dataset_info, f, indent=2, default=str)
-            
-        print(f"\nSuccessfully converted {len(dataset)} examples")
-        print(f"Dataset saved to: {output_dir}")
-        print("\nScore Statistics:")
-        print(f"Chosen scores: min={dataset_info['score_ranges']['chosen']['min']:.3f}, "
-              f"max={dataset_info['score_ranges']['chosen']['max']:.3f}, "
-              f"mean={dataset_info['score_ranges']['chosen']['mean']:.3f}")
-        print(f"Rejected scores: min={dataset_info['score_ranges']['rejected']['min']:.3f}, "
-              f"max={dataset_info['score_ranges']['rejected']['max']:.3f}, "
-              f"mean={dataset_info['score_ranges']['rejected']['mean']:.3f}")
+        print(f"Loading JSON dataset from {args.json_file}...")
+        data = load_json_dataset(args.json_file)
+        print("Converting to HuggingFace dataset format...")
+        dataset, save_path = convert_to_hf_dataset(data)
+        print(f"Dataset saved locally in Arrow format at '{save_path}'")
+        print(f"Successfully converted {len(dataset)} examples")
         
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return
+        print(f"Error processing dataset: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()
