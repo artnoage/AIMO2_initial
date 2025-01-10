@@ -223,15 +223,18 @@ class JudgeWrongStepGenerator:
         self.logs.append(str(self.judge_prediction))
         # Store judge's prediction and use it as starting point
         
-        # If judge didn't identify a valid step number or predicted beyond solution length,
-        # start from the middle as a reasonable default
-        if (self.judge_prediction is None or 
-            self.judge_prediction >= num_steps):
-            self.logs.append("Judge didn't identify valid step number, starting from middle")
-            current_step = num_steps // 2
-        else:
-            current_step = self.judge_prediction
-            self.logs.append(f"Judge identified step {current_step} as first error")
+        # Return None if judge didn't identify a valid step number
+        if self.judge_prediction is None:
+            self.logs.append("Judge didn't identify valid step number, returning None")
+            return None
+            
+        # Return None if judge predicted beyond solution length
+        if self.judge_prediction >= num_steps:
+            self.logs.append("Judge predicted step beyond solution length, returning None")
+            return None
+            
+        current_step = self.judge_prediction
+        self.logs.append(f"Judge identified step {current_step} as first error")
             
         # Verify the step the judge predicted
         self.logs.append("\n=== Verifying judge's prediction ===")
