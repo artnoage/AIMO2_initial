@@ -260,14 +260,14 @@ class JudgeWrongStepGenerator:
         step_is_invalid = False
 
         # First verify the previous step can be completed correctly
-            prev_found_verified, prev_found_valid, prev_correct_step, prev_good_completion, prev_completion_prompt = (
-                await self._verify_completions(
-                    problem,
-                    partial_solutions[current_step - 1],
-                    correct_answer,
-                    current_step - 1
-                )
+        prev_found_verified, prev_found_valid, prev_correct_step, prev_good_completion, prev_completion_prompt = (
+            await self._verify_completions(
+                problem,
+                partial_solutions[current_step - 1],
+                correct_answer,
+                current_step - 1
             )
+        )
             
             if prev_found_valid:
                 # Previous step is valid, now we can check the current step
