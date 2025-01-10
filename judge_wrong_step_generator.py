@@ -320,19 +320,18 @@ class JudgeWrongStepGenerator:
         # Get wrong solution up to the bad step
         wrong_solution_partial = '\n'.join(steps[:current_step + 1])
         
-        # Remove step numbers from completion for combined solution
+        # Split completion into steps
         completion_steps = saved_good_completion.split('\n')
-        unnumbered_completion = []
-        for step in completion_steps:
-            # Remove step numbers but keep the content
-            step_without_number = re.sub(r'^Step\s+\d+[:.]\s*', '', step)
-            unnumbered_completion.append(step_without_number)
+        
+        # Only remove step number from first step to avoid duplication
+        if completion_steps:
+            completion_steps[0] = re.sub(r'^Step\s+\d+[:.]\s*', '', completion_steps[0])
         
         # Create combined solution
         combined_solution = (
             f"{wrong_solution_partial}\n\n"
             f"Error Explanation: {judge_explanation}\n\n"
-            f"Correct continuation:\n{' '.join(unnumbered_completion)}"
+            f"Correct continuation:\n{'\n'.join(completion_steps)}"
         )
         
         # Create entries for ORPO training
