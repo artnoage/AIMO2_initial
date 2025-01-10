@@ -4,7 +4,6 @@ import asyncio
 import json
 import signal
 import sympy
-import requests
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp

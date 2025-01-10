@@ -140,9 +140,9 @@ class JudgeAgent:
                 "If you find any errors, identify the FIRST step where something goes wrong "
                 "and explain the error. If the solution is completely correct, say so.\n\n"
                 "Format your response as:\n"
-                "First error in Step X: <explanation>\n"
+                "First error in Step X. <\EXPLENATION> provide explenation here <EXPLENATION>\n"
                 "or\n"
-                "Solution is correct"
+                "Solution is correct."
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)

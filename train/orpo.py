@@ -18,7 +18,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250108_182212",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250109_170918",
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -46,7 +46,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250109_170423")
+    dataset = load_from_disk("local_datasets/20250110_124615")
     def formatting_func(example):
         # Only keep the required fields
         required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected']
