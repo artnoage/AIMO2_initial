@@ -327,7 +327,7 @@ class JudgeWrongStepGenerator:
             '\n'.join(completion_steps)
         )
         
-        # Create entries for ORPO training
+        # Create entries for ORPO and SFT training
         results = [
             # First entry: full solution comparison
             {
@@ -348,6 +348,22 @@ class JudgeWrongStepGenerator:
                 'rejected': {'content': wrong_solution, 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
+            },
+            # Third entry: SFT for correct solution verification
+            {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'prompt': {'content': f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{problem}\n\nProposed Solution:\n{correct_solution}\n\nIs this solution completely correct?", 'role': 'user'},
+                'response': {'content': "Yes, this solution is completely correct.", 'role': 'assistant'},
+                'score': 1.0
+            },
+            # Fourth entry: SFT for wrong solution judgment
+            {
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'prompt': {'content': f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{problem}\n\nProposed Solution:\n{wrong_solution}\n\nPlease carefully read this solution step by step. If you find any errors, identify the FIRST step where something goes wrong and explain the error. If the solution is completely correct, say so.", 'role': 'user'},
+                'response': {'content': judge_response, 'role': 'assistant'},
+                'score': 1.0
             }
         ]
         
