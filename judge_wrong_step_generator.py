@@ -255,14 +255,6 @@ class JudgeWrongStepGenerator:
         else:
             self.logs.append(f"✗ Step {current_step} cannot be completed correctly - Judge was correct")
             
-        # Validate judge's prediction
-        if self.judge_prediction is not None:
-            self.judge_was_correct = (wrong_step_index == self.judge_prediction)
-            self.logs.append("\n=== Judge Accuracy ===")
-            self.logs.append(f"Judge predicted first wrong step: {self.judge_prediction}")
-            self.logs.append(f"Actual first wrong step: {wrong_step_index}")
-            self.logs.append(f"Judge was {'correct' if self.judge_was_correct else 'incorrect'}")
-            
         # Create entries for ORPO training
         results = []
         
@@ -299,11 +291,11 @@ class JudgeWrongStepGenerator:
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-            'rejected': {'content': ''.join(steps[wrong_step_index:]), 'role': 'assistant'},
+            'rejected': {'content': ''.join(steps[current_step:]), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0,
             'judge_prediction': self.judge_prediction,
-            'actual_wrong_step': wrong_step_index,
+            'actual_wrong_step': current_step,
             'judge_was_correct': self.judge_was_correct
         })
         
