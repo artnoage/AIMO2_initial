@@ -294,6 +294,10 @@ class JudgeWrongStepGenerator:
             
         # The judge is correct only if both conditions are met
         self.judge_was_correct = step_is_invalid and prev_step_valid
+        
+        # Return None if judge was wrong
+        if not self.judge_was_correct:
+            return None
             
         # Create entries for ORPO training
         results = []
