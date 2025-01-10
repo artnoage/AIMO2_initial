@@ -353,8 +353,8 @@ class JudgeWrongStepGenerator:
             {
                 'problem': problem,
                 'correct_answer': correct_answer,
-                'prompt': {'content': f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{problem}\n\nProposed Solution:\n{correct_solution}\n\nIs this solution completely correct?", 'role': 'user'},
-                'response': {'content': "Yes, this solution is completely correct.", 'role': 'assistant'},
+                'prompt': {'content': f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{problem}\n\nProposed Solution:\n{correct_solution}\n\nPlease carefully read this solution step by step. If you find any errors, identify the FIRST step where something goes wrong and explain the error. If the solution is completely correct, say so.", 'role': 'user'},
+                'response': {'content': "Solution is correct.", 'role': 'assistant'},
                 'score': 1.0
             },
             # Fourth entry: SFT for wrong solution judgment
