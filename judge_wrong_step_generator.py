@@ -250,27 +250,50 @@ class JudgeWrongStepGenerator:
         if found_verified and not found_valid:
             return None
             
-        # The judge is correct if this step cannot be completed correctly
-        self.judge_was_correct = not found_valid
+        # For the judge to be correct:
+        # 1. The predicted step must not be completable correctly
+        # 2. The previous step must be completable correctly
         
-        # Store the last good step and completion details
+        # First check if the predicted step is invalid
+        step_is_invalid = not found_valid
+        prev_step_valid = False
+        
+        # Store completion details
         last_good_step = None
         saved_good_completion = None
         saved_completion_prompt = None
         wrong_step_index = current_step
         
-        if found_valid:
+        if step_is_invalid and current_step > 0:
+            # Verify the previous step can be completed correctly
+            prev_found_verified, prev_found_valid, prev_correct_step, prev_good_completion, prev_completion_prompt = (
+                await self._verify_completions(
+                    problem,
+                    partial_solutions[current_step - 1],
+                    correct_answer,
+                    current_step - 1
+                )
+            )
+            prev_step_valid = prev_found_valid
+            
+            if prev_step_valid:
+                last_good_step = steps[current_step - 1]
+                saved_good_completion = prev_good_completion
+                saved_completion_prompt = prev_completion_prompt
+                self.logs.append(f"✓ Previous step {current_step - 1} is valid")
+                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
+                self.logs.append("Judge was correct")
+            else:
+                self.logs.append(f"✗ Previous step {current_step - 1} cannot be completed correctly")
+                self.logs.append("Judge was incorrect - error starts earlier")
+        elif not step_is_invalid:
             self.logs.append(f"✓ Step {current_step} is valid - Judge was incorrect")
             last_good_step = correct_step
             saved_good_completion = good_completion
             saved_completion_prompt = completion_prompt
-        else:
-            self.logs.append(f"✗ Step {current_step} cannot be completed correctly - Judge was correct")
-            # If judge was correct, get the last good step (previous step)
-            if current_step > 0:
-                last_good_step = steps[current_step - 1]
-                saved_good_completion = ''.join(steps[current_step - 1:])
-                saved_completion_prompt = completion_prompt
+            
+        # The judge is correct only if both conditions are met
+        self.judge_was_correct = step_is_invalid and prev_step_valid
             
         # Create entries for ORPO training
         results = []
