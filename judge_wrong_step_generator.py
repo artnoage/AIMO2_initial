@@ -257,7 +257,7 @@ class JudgeWrongStepGenerator:
         saved_good_completion = None
         saved_completion_prompt = None
         wrong_step_index = current_step
-        step_is_invalid = False
+        step_is_wrong = False
 
         # First verify the previous step can be completed correctly
         prev_found_verified, prev_found_valid, prev_correct_step, prev_good_completion, prev_completion_prompt = (
@@ -269,35 +269,35 @@ class JudgeWrongStepGenerator:
             )
         )
             
-            if prev_found_valid:
-                # Previous step is valid, now we can check the current step
-                prev_step_valid = True
-                last_good_step = steps[current_step - 1]
-                saved_good_completion = prev_good_completion
-                saved_completion_prompt = prev_completion_prompt
-                self.logs.append(f"✓ Previous step {current_step - 1} is valid")
-                
-                # Check if the current step is invalid
-                _, found_valid, _, _, _ = await self._verify_completions(
-                    problem,
-                    partial_solutions[current_step],
-                    correct_answer,
-                    current_step
-                )
-                
-                step_is_invalid = not found_valid
-                
-                if step_is_invalid:
-                    self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                    self.logs.append("Judge was correct")
-                else:
-                    self.logs.append(f"✓ Step {current_step} is valid - Judge was incorrect")
+        if prev_found_valid:
+            # Previous step is valid, now we can check the current step
+            prev_step_valid = True
+            saved_good_completion = prev_good_completion
+            saved_completion_prompt = prev_completion_prompt
+            correct_step=prev_correct_step
+
+            self.logs.append(f"✓ Previous step {current_step - 1} is valid")
+            
+            # Check if the current step is invalid
+            found_verified, _, _, _, _ = await self._verify_completions(
+                problem,
+                partial_solutions[current_step],
+                correct_answer,
+                current_step
+            )
+            
+            step_is_wrong= not found_verified
+            if step_is_wrong:
+                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
+                self.logs.append("Judge was correct")
             else:
-                self.logs.append(f"✗ Previous step {current_step - 1} cannot be completed correctly")
-                self.logs.append("Judge was incorrect - error starts earlier")
+                self.logs.append(f"✓ Step {current_step} is valid - Judge was incorrect")
+        else:
+            self.logs.append(f"✗ Previous step {current_step - 1} cannot be completed correctly")
+            self.logs.append("Judge was incorrect - error starts earlier")
             
         # The judge is correct only if both conditions are met
-        self.judge_was_correct = step_is_invalid and prev_step_valid
+        self.judge_was_correct = step_is_wrong and prev_step_valid
         
         # Return None if judge was wrong
         if not self.judge_was_correct:
@@ -337,10 +337,7 @@ class JudgeWrongStepGenerator:
                 'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
                 'rejected': {'content': wrong_solution, 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0,
-                'judge_prediction': self.judge_prediction,
-                'actual_wrong_step': current_step,
-                'judge_was_correct': self.judge_was_correct
+                'score_rejected': 0.0
             },
             # Second entry: wrong solution with explanation and correction
             {
@@ -350,10 +347,7 @@ class JudgeWrongStepGenerator:
                 'chosen': {'content': combined_solution, 'role': 'assistant'},
                 'rejected': {'content': wrong_solution, 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0,
-                'judge_prediction': self.judge_prediction,
-                'actual_wrong_step': current_step,
-                'judge_was_correct': self.judge_was_correct
+                'score_rejected': 0.0
             }
         ]
         
