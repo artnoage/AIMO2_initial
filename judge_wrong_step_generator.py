@@ -147,16 +147,15 @@ class JudgeWrongStepGenerator:
         correct_answer: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
-        Generate both correct and wrong solutions, identify which step causes wrong solution to fail.
+        Generate solutions and validate judge's prediction of the first wrong step.
         Returns list of dicts with prompts and solutions/steps for ORPO training.
         """
-        # Search for both correct and wrong solutions
-        correct_solution = None
+        # Get a wrong solution first
         wrong_solution = None
         solution_prompt = None
         attempts = 0
         
-        while (correct_solution is None or wrong_solution is None) and attempts < self.best_of:
+        while wrong_solution is None and attempts < self.best_of:
             try:
                 attempts += 1
                 if solution_prompt is None:
@@ -182,22 +181,17 @@ class JudgeWrongStepGenerator:
                     problem
                 )
                 
-                if is_correct and correct_solution is None:
-                    correct_solution = solution
-                    self.logs.append(f"✓ Found correct solution on attempt {attempts}")
-                elif not is_correct and wrong_solution is None:
+                if not is_correct:
                     wrong_solution = solution
                     self.logs.append(f"✓ Found wrong solution on attempt {attempts}")
+                    break
                     
             except Exception as e:
                 self.logs.append(f"Error in attempt {attempts}: {str(e)}")
                 continue
                 
-        if correct_solution is None:
-            logging.error("❌ Failed to find correct solution")
-            return None
         if wrong_solution is None:
-            logging.error("❌ Failed to find wrong solution") 
+            logging.error("❌ Failed to find wrong solution")
             return None
             
         # Split wrong solution into steps
@@ -233,75 +227,27 @@ class JudgeWrongStepGenerator:
             current_step = self.judge_prediction
             self.logs.append(f"Judge identified step {current_step} as first error")
             
-        going_up = None  # Direction flag: None=initial, True=up, False=down
-        last_bad_step = None
-        last_good_step = None
-        wrong_step_index = None
-        saved_good_completion = None
-        saved_completion_prompt = None
-        self.judge_was_correct=None
-
-        self.logs.append("\n=== Analyzing solution steps ===")
-        self.logs.append(f"Starting analysis at step {current_step}")
+        # Verify the step the judge predicted
+        self.logs.append("\n=== Verifying judge's prediction ===")
+        self.logs.append(f"Checking step {current_step}...")
         
-        while True:
-            self.logs.append(f"\nChecking step {current_step}...")
-            
-            found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
-                problem,
-                partial_solutions[current_step],
-                correct_answer,
-                current_step
-            )
-            if found_verified and not found_valid:
-                return None
-
-            if found_valid:
-                self.logs.append(f"✓ Step {current_step} is valid")
-                last_good_step = correct_step
-                saved_good_completion = good_completion
-                saved_completion_prompt = completion_prompt
-                
-                if going_up is None:
-                    # First check was good, go up to find potential wrong step
-                    going_up = True
-                elif not going_up:
-                    # We were going down and found a good step
-                    # The wrong step must be the last_bad_step we found
-                    wrong_step_index = last_bad_step
-                    break
-                    
-                # Move up one step
-                if current_step + 1 >= num_steps:
-                    # We reached the top without finding a wrong step
-                    logging.error("❌ Reached end without finding wrong step")
-                    return None
-                current_step += 1
-                
-            else:
-                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                last_bad_step = current_step
-                
-                if going_up is None:
-                    # First check was bad, go down to find last good step
-                    going_up = False
-                    wrong_step_index = current_step  # Save first bad step found
-                elif going_up:
-                    # We were going up and found a bad step
-                    # The wrong step must be here
-                    wrong_step_index = current_step
-                    break
-                    
-                # Move down one step
-                if current_step - 1 < 0:
-                    # We reached the bottom without finding good step
-                    logging.error("❌ Reached start without finding good step")
-                    return None
-                current_step -= 1
-
-        if wrong_step_index is None:
-            logging.error("❌ Failed to identify wrong step")
+        found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
+            problem,
+            partial_solutions[current_step],
+            correct_answer,
+            current_step
+        )
+        
+        if found_verified and not found_valid:
             return None
+            
+        # The judge is correct if this step cannot be completed correctly
+        self.judge_was_correct = not found_valid
+        
+        if found_valid:
+            self.logs.append(f"✓ Step {current_step} is valid - Judge was incorrect")
+        else:
+            self.logs.append(f"✗ Step {current_step} cannot be completed correctly - Judge was correct")
             
         # Validate judge's prediction
         if self.judge_prediction is not None:
