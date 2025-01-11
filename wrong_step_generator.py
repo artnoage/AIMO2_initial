@@ -307,6 +307,18 @@ class WrongStepGenerator:
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
+
+        # Fourth entry: full solution with correct completion comparison
+        correct_with_completion = partial_solutions[wrong_step_index] + remove_inst_tokens(saved_good_completion)
+        results.append({
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'prompt': {'content': solution_prompt, 'role': 'user'},
+            'chosen': {'content': correct_with_completion, 'role': 'assistant'},
+            'rejected': {'content': wrong_solution, 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
         
         return results
 
