@@ -431,22 +431,13 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
     Returns:
         Tuple[bool, str]: (is_valid, reason)
     """
+    # Check if completion starts with "Step" in first 5 chars
+    if not completion[:5].strip().startswith("Step"):
+        return False, "Completion must start with 'Step'"
+        
     # Check for invalid tokens
     if "[...]" in completion:
         return False, "Contains invalid tokens ([...])"
-        
-    # Get the last step number from partial solution
-    parts = partial_solution.split("Step")
-    last_step = 0
-    for part in parts[1:]:  # Skip first split which is before "Step"
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(part)
-            if match:
-                try:
-                    num = int(match.group(1))
-                    last_step = max(last_step, num)
-                except ValueError:
-                    continue
                     
     # Split completion into steps
     completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
