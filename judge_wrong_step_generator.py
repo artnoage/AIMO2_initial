@@ -184,7 +184,7 @@ class JudgeWrongStepGenerator:
                     continue
                 
                 # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
+                is_valid, _ = validate_solution(solution)
                 if not is_valid:
                     continue
                     
@@ -254,14 +254,11 @@ class JudgeWrongStepGenerator:
         # 2. The predicted step must not be completable correctly
         
         prev_step_valid = False
-        last_good_step = None
         saved_good_completion = None
-        saved_completion_prompt = None
-        wrong_step_index = current_step
         step_is_wrong = False
 
         # First verify the previous step can be completed correctly
-        prev_found_verified, prev_found_valid, prev_correct_step, prev_good_completion, prev_completion_prompt = (
+        _, prev_found_valid, _, prev_good_completion, _ = (
             await self._verify_completions(
                 problem,
                 partial_solutions[current_step - 1],
@@ -274,8 +271,7 @@ class JudgeWrongStepGenerator:
             # Previous step is valid, now we can check the current step
             prev_step_valid = True
             saved_good_completion = prev_good_completion
-            saved_completion_prompt = prev_completion_prompt
-            correct_step=prev_correct_step
+            
 
             self.logs.append(f"✓ Previous step {current_step - 1} is valid")
             
@@ -327,7 +323,7 @@ class JudgeWrongStepGenerator:
             "Correct continuation:\n" + 
             '\n'.join(completion_steps)
         )
-        
+        correct_first = choice([True, False])
         # Create entries for ORPO and SFT training
         results = [
             # First entry: full solution comparison
@@ -367,10 +363,12 @@ class JudgeWrongStepGenerator:
                 'score': 1.0
             },
             # Fifth entry: SFT for solution comparison with randomized order
+            
+            
             {
                 'problem': problem,
                 'correct_answer': correct_answer,
-                'prompt': {'content': f"Here is a mathematical problem and two proposed solutions:\n\nProblem:\n{problem}\n\n{'Solution A' if (correct_first := choice([True, False])) else 'Solution B'}:\n{correct_solution}\n\n{'Solution B' if correct_first else 'Solution A'}:\n{wrong_solution}\n\nWhich solution do you prefer and why? Start your response with either 'I prefer Solution A because' or 'I prefer Solution B because'", 'role': 'user'},
+                'prompt': {'content': f"Here is a mathematical problem and two proposed solutions:\n\nProblem:\n{problem}\n\n{'Solution A' if correct_first else 'Solution B'}:\n{correct_solution}\n\n{'Solution B' if correct_first else 'Solution A'}:\n{wrong_solution}\n\nWhich solution do you prefer and why? Start your response with either 'I prefer Solution A because' or 'I prefer Solution B because'", 'role': 'user'},
                 'response': {'content': f"I prefer {'Solution A' if correct_first else 'Solution B'} because it correctly solves the problem step by step and arrives at the right answer. The other solution contains errors in its reasoning.", 'role': 'assistant'},
                 'score': 1.0
             }
