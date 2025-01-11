@@ -270,8 +270,8 @@ class WrongStepGenerator:
         # Create two entries for ORPO training
         results = []
         
-        # First entry: full solution comparison
         results.append({
+            'type': 'full_solution',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
@@ -281,13 +281,13 @@ class WrongStepGenerator:
             'score_rejected': 0.0
         })
         
-        # Second entry: step comparison
         step_prompt = await self.step_agent.generate(
             problem,
             partial_solutions[max(0, wrong_step_index - 1)],
             return_prompt=True
         )
         results.append({
+            'type': 'step',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': step_prompt[0], 'role': 'user'},
@@ -297,8 +297,8 @@ class WrongStepGenerator:
             'score_rejected': 0.0
         })
 
-        # Third entry: completion comparison
         results.append({
+            'type': 'completion',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': saved_completion_prompt, 'role': 'user'},
@@ -308,9 +308,9 @@ class WrongStepGenerator:
             'score_rejected': 0.0
         })
 
-        # Fourth entry: full solution with correct completion comparison
         correct_with_completion = partial_solutions[wrong_step_index] + remove_inst_tokens(saved_good_completion)
         results.append({
+            'type': 'recovery',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
