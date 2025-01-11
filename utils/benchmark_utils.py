@@ -208,6 +208,10 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     if not answer:
         return None, "No answer provided" if debug else (None, None)
         
+    # Check for logical operators that indicate multiple answers
+    if "\\text{or}" in answer or "\\text{and}" in answer:
+        return None, "Answer contains 'or'/'and' operators" if debug else (None, None)
+        
     # Clean the answer string
     clean_answer = answer.strip()
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
