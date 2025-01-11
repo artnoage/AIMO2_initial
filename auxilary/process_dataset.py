@@ -361,8 +361,8 @@ def main():
         )
     })
 
-    # Save locally first
-    output_dir = "../numina_olympiads"
+    # Save locally in current directory using repo name
+    output_dir = args.repo_name.split('/')[-1]  # Get last part of repo name
     os.makedirs(output_dir, exist_ok=True)
     
     # Create dataset_info.json
