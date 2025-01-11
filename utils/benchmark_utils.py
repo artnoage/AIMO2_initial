@@ -212,7 +212,11 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     clean_answer = answer.strip()
     clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
     clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    clean_answer = clean_answer.replace('\\pm', '')
+    clean_answer = clean_answer.replace('\\ ', '')
     clean_answer = clean_answer.replace('\\,', '')
+    clean_answer = clean_answer.replace('\\%', '')
+    clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
     clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
     
     def has_single_term(text: str) -> bool:
