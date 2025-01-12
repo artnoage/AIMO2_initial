@@ -206,6 +206,7 @@ async def process_example(
         # Return all formats                                                                 
         results = [
             {                                                                                 
+                'type': 'light',
                 'id': example_id,
                 'problem': example['problem'],
                 'correct_answer': correct_answer,                                                                      
@@ -216,6 +217,7 @@ async def process_example(
                 'score_rejected': rejected_score
             },
             {
+                'type': 'dark',
                 'id': example_id,
                 'problem': example['problem'],
                 'correct_answer': correct_answer,
@@ -226,6 +228,7 @@ async def process_example(
                 'score_rejected': rejected_score
             },
             {
+                'type': 'judge',
                 'id': example_id,
                 'problem': example['problem'],
                 'correct_answer': correct_answer,
