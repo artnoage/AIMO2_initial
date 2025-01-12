@@ -205,7 +205,7 @@ async def process_example(
                 'problem': example['problem'],
                 'correct_answer': correct_answer,
                 'prompt': {'content': trickster_prompt, 'role': 'user'},
-                'chosen': {'content': common_wrong, 'role': 'assistant'},
+                'chosen': {'content': validated_wrong, 'role': 'assistant'},
                 'rejected': {'content': chosen_response, 'role': 'assistant'},
                 'score_chosen': chosen_score,
                 'score_rejected': rejected_score
