@@ -32,7 +32,7 @@ async def process_full_solution(
     total_solution_attempts = 0
     
     attempts = 0
-    while (not found_correct or not found_wrong) and attempts < config.best_of:
+    while (not found_correct or not found_common_wrong) and attempts < config.best_of:
         attempts += 1
         try:
             total_solution_attempts += 1
@@ -128,7 +128,7 @@ async def process_full_solution(
             f"✓ Relative improvement: N/A (rejected score is 0)")
                                                                                                     
     return (
-        bifurcation_prompt,
+        full_solution_prompt,
         remove_inst_tokens(correct_solution),
         validated_wrong_solution,
         chosen_score,
