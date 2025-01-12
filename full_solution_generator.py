@@ -181,17 +181,37 @@ async def process_example(
          # Always print logs before returning result                                                
         print("\n".join(logs))                                                                     
                                                                                                 
-        # Return consistent format                                                                 
-        result = {                                                                                 
-            'id': example_id,
-            'problem': example['problem'],
-            'correct_answer': correct_answer,                                                                      
-            'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
-            'chosen': {'content': chosen_response, 'role': 'assistant'},                           
-            'rejected': {'content': common_wrong, 'role': 'assistant'},                       
-            'score_chosen': chosen_score,                                                          
-            'score_rejected': rejected_score}                                                      
-        return [result]                                                                            
+        # Create trickster prompt
+        trickster_prompt = (
+            "You are a math trickster, you are given a problem and you are supposed to "
+            "give a wrong solution that will fool a mathematician. Here is the problem:\n\n"
+            f"{example['problem']}"
+        )
+
+        # Return both formats                                                                 
+        results = [
+            {                                                                                 
+                'id': example_id,
+                'problem': example['problem'],
+                'correct_answer': correct_answer,                                                                      
+                'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
+                'chosen': {'content': chosen_response, 'role': 'assistant'},                           
+                'rejected': {'content': common_wrong, 'role': 'assistant'},                       
+                'score_chosen': chosen_score,                                                          
+                'score_rejected': rejected_score
+            },
+            {
+                'id': example_id,
+                'problem': example['problem'],
+                'correct_answer': correct_answer,
+                'prompt': {'content': trickster_prompt, 'role': 'user'},
+                'chosen': {'content': common_wrong, 'role': 'assistant'},
+                'rejected': {'content': chosen_response, 'role': 'assistant'},
+                'score_chosen': chosen_score,
+                'score_rejected': rejected_score
+            }
+        ]
+        return results                                                                            
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
