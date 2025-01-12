@@ -20,7 +20,7 @@ async def process_full_solution(
     """Process example using full solution approach"""
     logs = []
     solution_agent = FullSolutionAgent(solver)
-    bifurcation_prompt = None
+    full_solution_prompt = None
     found_correct = False
     found_wrong = False
     correct_attempt = 0
@@ -34,8 +34,8 @@ async def process_full_solution(
         attempts += 1
         try:
             total_solution_attempts += 1
-            if bifurcation_prompt is None:
-                bifurcation_prompt, current_solution = await solution_agent.generate(
+            if full_solution_prompt is None:
+                full_solution_prompt, current_solution = await solution_agent.generate(
                     example["problem"], return_prompt=True)
             else:
                 current_solution = await solution_agent.generate(example["problem"])
@@ -161,7 +161,7 @@ async def process_example(
         if not result:                                                                             
             return None                                                                            
                                                                                                     
-        bifurcation_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
+        full_solution_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
         print(solution_logs)  # Print the logs from full solution                                  
                                                                                                     
          # Add final summary to logs                                                                
@@ -182,7 +182,7 @@ async def process_example(
             'id': example_id,
             'problem': example['problem'],
             'correct_answer': correct_answer,                                                                      
-            'prompt': {'content': bifurcation_prompt, 'role': 'user'},                             
+            'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
             'chosen': {'content': chosen_response, 'role': 'assistant'},                           
             'rejected': {'content': rejected_response, 'role': 'assistant'},                       
             'score_chosen': chosen_score,                                                          
