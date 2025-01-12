@@ -110,7 +110,7 @@ async def process_full_solution(
     logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
     logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
     logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
-    logs.append(f"✓ Failure rate: {(found_wrong/attempts)*100:.1f}%")
+    logs.append(f"✓ Failure rate: {(found_common_wrong/attempts)*100:.1f}%")
     logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
 
                    
