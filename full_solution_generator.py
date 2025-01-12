@@ -188,7 +188,22 @@ async def process_example(
             f"{example['problem']}"
         )
 
-        # Return both formats                                                                 
+        # Randomly decide position of correct solution for judge prompt
+        import random
+        correct_first = random.choice([True, False])
+        
+        # Create judge prompt
+        judge_prompt = (
+            "You are a mathematics judge. You will be shown a problem and two proposed solutions - "
+            "Solution A and Solution B. Your task is to carefully evaluate both solutions and determine "
+            "which one is correct. Here is the problem and solutions:\n\n"
+            f"Problem:\n{example['problem']}\n\n"
+            f"Solution A:\n{chosen_response if correct_first else validated_wrong}\n\n"
+            f"Solution B:\n{validated_wrong if correct_first else chosen_response}\n\n"
+            "Which solution is correct, A or B? Explain your reasoning."
+        )
+
+        # Return all formats                                                                 
         results = [
             {                                                                                 
                 'id': example_id,
@@ -207,6 +222,16 @@ async def process_example(
                 'prompt': {'content': trickster_prompt, 'role': 'user'},
                 'chosen': {'content': validated_wrong, 'role': 'assistant'},
                 'rejected': {'content': chosen_response, 'role': 'assistant'},
+                'score_chosen': chosen_score,
+                'score_rejected': rejected_score
+            },
+            {
+                'id': example_id,
+                'problem': example['problem'],
+                'correct_answer': correct_answer,
+                'prompt': {'content': judge_prompt, 'role': 'user'},
+                'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+                'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
                 'score_chosen': chosen_score,
                 'score_rejected': rejected_score
             }
