@@ -22,11 +22,13 @@ async def process_full_solution(
     solution_agent = FullSolutionAgent(solver)
     full_solution_prompt = None
     found_correct = False
-    found_wrong = False
+    found_common_wrong = False
+    found_validated_wrong = False
     correct_attempt = 0
     wrong_attempt = 0
     correct_solution = None
-    wrong_solution = None
+    common_wrong_solution = None
+    validated_wrong_solution = None
     total_solution_attempts = 0
     
     attempts = 0
@@ -40,41 +42,51 @@ async def process_full_solution(
             else:
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
-            # Validate solution structure
-            is_valid, validation_reason = validate_solution(current_solution)
-            if not is_valid:
-                # Consider invalid solutions as wrong solutions
-                if not found_wrong:
-                    found_wrong = True
-                    wrong_attempt = attempts
-                    wrong_solution = current_solution
-                    logs.append(f"✗ Found wrong solution (invalid) on attempt {attempts}: {validation_reason}")
-                elif not found_correct:
-                    continue  # Keep looking for correct solution
-                else:
-                    break  # We have both solutions
-                continue
-                                                                                                    
-            logs.append(f"✓ Attempt {attempts} passed validation")
-
-            # Only verify correctness for valid solutions
+            # First verify correctness
             is_correct, reason = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
                 example["problem"]
             )
-            if is_correct and not found_correct:
+
+            if not is_correct and not found_common_wrong:
+                # Store first wrong solution regardless of validation
+                found_common_wrong = True
+                wrong_attempt = attempts
+                common_wrong_solution = current_solution
+                logs.append(f"✗ Found common wrong solution on attempt {attempts}")
+
+            # Then validate solution structure
+            is_valid, validation_reason = validate_solution(current_solution)
+            if not is_valid:
+                logs.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
+                continue
+
+            logs.append(f"✓ Attempt {attempts} passed validation")
+
+            if not is_correct and not found_validated_wrong:
+                # Store first validated wrong solution
+                found_validated_wrong = True
+                validated_wrong_solution = current_solution
+                logs.append(f"✓ Found validated wrong solution on attempt {attempts}")
+
+            if is_correct and is_valid and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
                 logs.append(f"✓ Found correct solution on attempt {attempts}")
                 logs.append(f"  Total solution attempts: {total_solution_attempts}")
-                                                                                                    
+
         except Exception as e:
             print(f"Error in full solution attempt {attempts}: {str(e)}")
             continue
 
-    if not found_correct or not found_wrong:
+    # If we didn't find a validated wrong solution but have a common wrong, use that
+    if not found_validated_wrong and found_common_wrong:
+        validated_wrong_solution = common_wrong_solution
+        logs.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
+
+    if not found_correct or not found_common_wrong:
         return None
 
     # Print summary of attempts
@@ -118,7 +130,7 @@ async def process_full_solution(
     return (
         bifurcation_prompt,
         remove_inst_tokens(correct_solution),
-        wrong_solution,
+        validated_wrong_solution,
         chosen_score,
         rejected_score,
         "\n".join(logs)
