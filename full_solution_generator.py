@@ -92,12 +92,9 @@ async def process_full_solution(
     # Print summary of attempts
     print(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
     print(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
-    # Calculate scores
-    chosen_score = 1.0 - (0.4 * (correct_attempt-1)/config.best_of)
-    if correct_attempt == 1:
-        chosen_score = min(1.0, chosen_score + 0.1)
-
-    rejected_score = 0
+    # Set fixed scores
+    chosen_score = 1.0
+    rejected_score = 0.0
 
     # Print detailed logs
     logs.append("\n" + "="*50)
@@ -117,15 +114,9 @@ async def process_full_solution(
                                                                                                 
     # Scoring details                                                                              
     logs.append(f"\n💯 Scoring Details:")                                                          
-    logs.append(f"✓ Chosen solution score: {chosen_score:.3f}")                                    
-    logs.append(f"✓ Rejected solution score: {rejected_score:.3f}")                                
-    logs.append(f"✓ Score difference: {(chosen_score - rejected_score):.3f}")                      
-    if rejected_score != 0:
-        logs.append(
-            f"✓ Relative improvement: {((chosen_score - rejected_score)/rejected_score)*100:.1f}%")
-    else:
-        logs.append(
-            f"✓ Relative improvement: N/A (rejected score is 0)")
+    logs.append(f"✓ Chosen solution score: 1.000")                                    
+    logs.append(f"✓ Rejected solution score: 0.000")                                
+    logs.append(f"✓ Score difference: 1.000")
                                                                                                     
     return (
         full_solution_prompt,
