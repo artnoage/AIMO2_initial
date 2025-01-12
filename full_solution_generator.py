@@ -131,6 +131,7 @@ async def process_full_solution(
         full_solution_prompt,
         remove_inst_tokens(correct_solution),
         validated_wrong_solution,
+        common_wrong_solution,
         chosen_score,
         rejected_score,
         "\n".join(logs)
@@ -173,7 +174,7 @@ async def process_example(
         if not result:                                                                             
             return None                                                                            
                                                                                                     
-        full_solution_prompt, chosen_response, rejected_response, chosen_score, rejected_score, solution_logs = result
+        full_solution_prompt, chosen_response, validated_wrong, common_wrong, chosen_score, rejected_score, solution_logs = result
         print(solution_logs)  # Print the logs from full solution                                  
                                                                                                     
          # Add final summary to logs                                                                
@@ -196,7 +197,7 @@ async def process_example(
             'correct_answer': correct_answer,                                                                      
             'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
             'chosen': {'content': chosen_response, 'role': 'assistant'},                           
-            'rejected': {'content': rejected_response, 'role': 'assistant'},                       
+            'rejected': {'content': common_wrong, 'role': 'assistant'},                       
             'score_chosen': chosen_score,                                                          
             'score_rejected': rejected_score}                                                      
         return [result]                                                                            
