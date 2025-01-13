@@ -38,16 +38,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     example["problem"]
                 )
                 
-                if is_correct:
-                    correct_count += 1
-                    if best_solution is None:
-                        best_solution = current_solution
-                        
+                # Always append the solution, regardless of correctness
                 solutions.append({
                     'solution': current_solution,
                     'answer': current_answer,
                     'is_correct': is_correct
                 })
+                
+                # Update statistics if correct
+                if is_correct:
+                    correct_count += 1
+                    if best_solution is None:
+                        best_solution = current_solution
             except Exception as e:
                 print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
                 print(f"Exception type: {type(e).__name__}")
