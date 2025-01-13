@@ -9,18 +9,21 @@ from trl import ORPOTrainer
 from transformers import logging
 import re
 
+
+model_type = "merged"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250113_122225"
 def _strip_prefix(s, pattern):
     # Use re.escape to escape any special characters in the pattern
     return re.sub(f"^{re.escape(pattern)}", "", s)
 
 def main():
     # Set training type
-    training_type = "orpo"
     logging.set_verbosity_info()
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250110_130544",
+        model_name=model_name,
         max_seq_length=4096,
         load_in_4bit=False)
 
@@ -48,7 +51,7 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250112_093955")
+    dataset = load_from_disk(dataset_name)
     def formatting_func(example):
         # Only keep the required fields
         required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected']
@@ -116,10 +119,11 @@ def main():
 
     # Save both merged model and LoRA weights
     models_dir = "models"
-    os.makedirs(os.path.join(models_dir, training_type), exist_ok=True)
+    
+    os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
-    model_output_dir = os.path.join(models_dir, training_type, timestamp)
+    model_output_dir = os.path.join(models_dir, model_type, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
