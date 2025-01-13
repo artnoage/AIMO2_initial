@@ -192,15 +192,13 @@ async def process_example(
         import random
         correct_first = random.choice([True, False])
         
-        # Create judge prompt
-        judge_prompt = (
-            "You are a mathematics judge. You will be presented with a problem and two proposed solutions:"
-            "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one" 
-            "demonstrates stronger reasoning and is more likely to be correct. Here is the problem and solutions:\n\n"
-            f"Problem:\n{example['problem']}\n\n"
-            f"Solution A:\n{chosen_response if correct_first else validated_wrong}\n\n"
-            f"Solution B:\n{validated_wrong if correct_first else chosen_response}\n\n"
-            "Which solution is correct, A or B? Explain your reasoning."
+        # Initialize tournament judge and get comparison
+        tournament_judge = TournamentJudgeAgent(main)
+        judge_prompt, judge_response = await tournament_judge.compare_solutions(
+            example['problem'],
+            chosen_response if correct_first else validated_wrong,
+            validated_wrong if correct_first else chosen_response,
+            return_prompt=True
         )
 
         # Return all formats                                                                 
