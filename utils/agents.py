@@ -162,13 +162,13 @@ class TournamentJudgeAgent:
         """
         prompt = [
             HumanMessage(content=(
-                "You are a mathematics judge. You will be presented with a problem and two proposed solutions: "
+                "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
                 "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
                 "demonstrates stronger reasoning and is more likely to be correct.\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Solution A:\n{solution_a}\n\n"
                 f"Solution B:\n{solution_b}\n\n"
-                "Which solution is correct, A or B? Explain your reasoning."
+                "Which solution is better, A or B?"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
