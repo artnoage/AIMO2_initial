@@ -83,12 +83,14 @@ class ProgressTracker:
                 at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
                 
                 # Calculate average correct solutions per problem
-                avg_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch) / total_examples
+                total_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch)
+                avg_correct = total_correct / total_examples if total_examples > 0 else 0
                 
                 # Debug prints
                 print(f"\nDebug - Interim Statistics:")
                 print(f"Number of problems in batch: {total_examples}")
-                print(f"Average correct solutions: {avg_correct}")
+                print(f"Total correct solutions in batch: {total_correct}")
+                print(f"Average correct solutions: {avg_correct:.3f}")
                 print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in last_batch])
                 
                 # Count problems with success rate above 50%
@@ -246,12 +248,14 @@ class ProgressTracker:
             at_least_one = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
             
             # Calculate average correct solutions per problem
-            avg_correct = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total
+            total_correct = sum(sum(r.get('is_correct_list', [])) for r in self.results)
+            avg_correct = total_correct / total if total > 0 else 0
             
             # Debug prints
             print(f"\nDebug - Final Statistics:")
             print(f"Total number of problems: {total}")
-            print(f"Average correct solutions: {avg_correct}")
+            print(f"Total correct solutions: {total_correct}")
+            print(f"Average correct solutions per problem: {avg_correct:.3f}")
             print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in self.results])
             
             # Count problems with success rate above 50%
