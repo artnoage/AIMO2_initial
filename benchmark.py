@@ -49,16 +49,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'is_correct': is_correct
                 })
             except Exception as e:
-                print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
-                # Handle error case
+                print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
+                print(f"Exception type: {type(e).__name__}")
+                print(f"Exception message: {str(e)}")
+                import traceback
+                print(f"Traceback:\n{traceback.format_exc()}")
+                # Handle error case but continue with next attempt
                 solution_info = {
-                    'solution': "Error occurred",
+                    'solution': f"Error occurred: {type(e).__name__} - {str(e)}",
                     'answer': None,
-                    'verification_score': 0,
-                    'verification_steps': 1,
                     'is_correct': False
                 }
                 solutions.append(solution_info)
+                continue  # Try next attempt
         
         
         # Calculate most common answer statistics
