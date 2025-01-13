@@ -1,11 +1,10 @@
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
-from trl import ORPOTrainer, ORPOConfig
+from trl import DPOTrainer, DPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
-from trl import ORPOTrainer
 from transformers import logging
 import re
 
@@ -85,7 +84,7 @@ def main():
 
 
     # ORPO specific training arguments
-    training_args = ORPOConfig(
+    training_args = DPOConfig(
         max_length=4096,
         max_prompt_length=2048,
         per_device_train_batch_size=1,
@@ -102,7 +101,7 @@ def main():
         beta=0.1)
 
     # Initialize ORPO trainer
-    trainer = ORPOTrainer(
+    trainer = DPOTrainer(
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,
