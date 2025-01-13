@@ -165,7 +165,7 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
             model=name,
             temperature=temp,
             api_key="EMPTY",
-            base_url=f"http://localhost:{config.port}/v1")
+            base_url=f"http://localhost:{config.main_port if role == 'main' else config.auxiliary_port}/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
