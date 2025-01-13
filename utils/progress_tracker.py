@@ -206,6 +206,9 @@ class ProgressTracker:
             self._save_progress_stats(msg + "\n")
             return
             
+        # Save final results first
+        self.save_results()
+            
         # Create dataset if requested
         self.create_hf_dataset()
 
