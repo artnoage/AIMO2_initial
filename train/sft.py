@@ -1,4 +1,4 @@
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 import os
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
@@ -7,17 +7,17 @@ from trl import SFTTrainer
 from transformers import logging
 from unsloth import is_bfloat16_supported
 from datetime import datetime
+import json
 
 def main():
     # Set training type
-    training_type = "sft"
     logging.set_verbosity_info()
 
     
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="mistralai/Mathstral-7B-v0.1",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/20250112_094532",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -25,11 +25,11 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
-    r = 384, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r = 256, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-    lora_alpha = 384,
+    lora_alpha = 256,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -53,7 +53,8 @@ def main():
 
 
     # Load dataset and get second half
-    dataset = load_dataset("Metaskepsis/sft", split="train")
+    #dataset = load_dataset("Metaskepsis/sft", split="train")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/judge/20250113_120330")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     half_size = len(dataset) // 2
     dataset = dataset.select(range(half_size, len(dataset)))  # Take second half
@@ -65,7 +66,7 @@ def main():
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     #print("\nFirst conversation after formatting:")
-    #print(json.dumps(formatted_dataset[0]["text"], indent=2))
+    print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
@@ -94,12 +95,13 @@ def main():
 
     #exit()
     # Train the model
-    trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250108_110648/checkpoint-10392")
+    trainer.train()
     models_dir = "models"
-    os.makedirs(os.path.join(models_dir, training_type), exist_ok=True)
+    model_type = "judge"
+    os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
-    model_output_dir = os.path.join(models_dir, training_type, timestamp)
+    model_output_dir = os.path.join(models_dir, model_type, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
