@@ -6,7 +6,6 @@ from pathlib import Path
 import json
 import argparse
 
-#Here
 def load_json_dataset(json_path: Path):
     """Load JSON dataset and convert it to a format suitable for HuggingFace."""
     try:
