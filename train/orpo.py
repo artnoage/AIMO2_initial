@@ -13,6 +13,18 @@ import re
 model_type = "merged"
 model_name= "/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
 dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250113_122225"
+
+# Check if model_type is in paths
+if model_type not in model_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in model_name path!")
+    print("!"*80 + "\n")
+
+if model_type not in dataset_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
+    print("!"*80 + "\n")
+
 def _strip_prefix(s, pattern):
     # Use re.escape to escape any special characters in the pattern
     return re.sub(f"^{re.escape(pattern)}", "", s)
