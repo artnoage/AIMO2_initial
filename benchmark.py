@@ -20,8 +20,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Warning: Could not extract answer from solution for example {str(running_id)}")
             return None
 
-        solver = get_model(config, role="solver")
-        solution_agent = FullSolutionAgent(solver)
+        main = get_model(config, role="main")
+        solution_agent = FullSolutionAgent(main)
         solutions = []
         correct_count = 0
         best_solution = None

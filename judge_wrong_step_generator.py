@@ -21,17 +21,17 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 class JudgeWrongStepGenerator:
-    """Generates wrong solution steps by finding valid but incorrect solutions using judge guidance"""
+    """Generates wrong solution steps by finding valid but incorrect solutions using auxiliary guidance"""
     
-    def __init__(self, solver, judge, best_of: int, completions: int):
-        self.solver = solver
-        self.judge = judge
+    def __init__(self, main, auxiliary, best_of: int, completions: int):
+        self.main = main
+        self.auxiliary = auxiliary
         self.best_of = best_of
         self.completions = completions
-        self.solution_agent = FullSolutionAgent(solver)
-        self.step_agent = NextStepAgent(solver)
-        self.completion_agent = CompletionAgent(solver)
-        self.judge_agent = JudgeAgent(judge)
+        self.solution_agent = FullSolutionAgent(main)
+        self.step_agent = NextStepAgent(main)
+        self.completion_agent = CompletionAgent(main)
+        self.judge_agent = JudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
         

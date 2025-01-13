@@ -29,8 +29,8 @@ class ModelOption(Enum):
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
     # Model settings
-    solver: str
-    judge: str   # If None, uses same as solver
+    main: str
+    auxiliary: str   # If None, uses same as main
     port: int = 8000
     temperature: float = 0.9
     judge_temp: float = 0.0
@@ -62,12 +62,12 @@ class BenchmarkConfig:
         parser = ArgumentParser(description=description)
         
         # Model arguments
-        parser.add_argument('--solver', type=str, 
+        parser.add_argument('--main', type=str, 
                           choices=[model.name for model in ModelOption],
-                          default='LOCAL', help='Model to use for solving problems')
-        parser.add_argument('--judge', type=str,
+                          default='LOCAL', help='Main model to use for solving problems')
+        parser.add_argument('--auxiliary', type=str,
                           choices=[model.name for model in ModelOption],
-                          default='LOCAL', help='Model to use for judging problems')
+                          default='LOCAL', help='Auxiliary model to use for judging problems')
         parser.add_argument('--port', type=int, default=8000,
                           help='Port for local model server (default: 8000)')
         parser.add_argument('--temperature', type=float, default=0.9,
