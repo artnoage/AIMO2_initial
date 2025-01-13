@@ -145,7 +145,7 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
-def get_model(config: BenchmarkConfig, role: str = "solver"):
+def get_model(config: BenchmarkConfig, role: str = "main"):
     """
     Initialize the ChatOpenAI model based on configuration.
     For LOCAL models, it connects to a local endpoint.
@@ -153,7 +153,7 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
     
     Args:
         config: The benchmark configuration
-        role: The role of the model (e.g. "solver", "judge", etc.)
+        role: The role of the model (e.g. "main", "auxiliary", etc.)
     """
     model = ModelOption[getattr(config, role)]
     
