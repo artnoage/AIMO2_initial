@@ -82,6 +82,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         solution_a = tournament_solutions.pop(0)
                         solution_b = tournament_solutions.pop(0)
                         
+                        import random
                         judge_result = await judge_agent.compare_solutions(
                             example["problem"],
                             solution_a['solution'],
@@ -89,10 +90,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         )
                         
                         # Determine winner based on judge's response
-                        if "A" in judge_result.upper():
+                        if not judge_result or not isinstance(judge_result, str):
+                            # Failsafe: random choice if judge fails
+                            print(f"Warning: Judge gave invalid response. Making random choice.")
+                            next_round.append(random.choice([solution_a, solution_b]))
+                        elif "A" in judge_result.upper():
                             next_round.append(solution_a)
-                        else:
+                        elif "B" in judge_result.upper():
                             next_round.append(solution_b)
+                        else:
+                            # Failsafe: random choice if response unclear
+                            print(f"Warning: Judge response unclear: '{judge_result}'. Making random choice.")
+                            next_round.append(random.choice([solution_a, solution_b]))
                     
                     tournament_solutions = next_round
                 
