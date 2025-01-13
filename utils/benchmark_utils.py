@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from tqdm import tqdm
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from huggingface_hub import whoami
 from utils.benchmark_config import *
 from utils.progress_tracker import *
@@ -694,12 +694,18 @@ async def run_benchmark(
         cache_dir = os.path.join("cache", "huggingface")
         os.makedirs(cache_dir, exist_ok=True)
         
-        if config.dataset == 'Metaskepsis/Numina':  # Default option
-            dataset = load_dataset("Metaskepsis/Numina", split=config.split, 
-                                 cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
-        else:  # Custom dataset name
-            dataset = load_dataset(config.dataset, split=config.split,
-                                 cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
+        if os.path.exists(config.dataset):  # Check if it's a local path
+            dataset = load_from_disk(config.dataset)
+            # If split is specified, filter the dataset
+            if config.split and hasattr(dataset, config.split):
+                dataset = dataset[config.split]
+        else:  # Assume it's a HuggingFace dataset name
+            if config.dataset == 'Metaskepsis/Numina':  # Default option
+                dataset = load_dataset("Metaskepsis/Numina", split=config.split, 
+                                     cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
+            else:  # Custom dataset name
+                dataset = load_dataset(config.dataset, split=config.split,
+                                     cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')
