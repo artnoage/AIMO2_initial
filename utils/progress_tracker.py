@@ -287,6 +287,9 @@ class ProgressTracker:
             avg_judge_success = total_judge_successes / total_judge_decisions if total_judge_decisions > 0 else 0
             avg_judge_failsafe = total_judge_failsafes / total_judge_decisions if total_judge_decisions > 0 else 0
             
+            # Calculate failsafe statistics
+            problems_with_failsafe = sum(1 for r in self.results if r.get('judge_failsafe_rate', 0) > 0)
+            
             stats_str += (
                 f"\nBenchmark Statistics:\n"
                 f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
@@ -296,6 +299,7 @@ class ProgressTracker:
                 f"- Tournament winners correct: {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
                 f"- Average judge success rate: {avg_judge_success:.1f}%\n"
                 f"- Average judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
+                f"- Problems requiring failsafe: {problems_with_failsafe}/{total} ({problems_with_failsafe/total*100:.1f}%)\n"
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
