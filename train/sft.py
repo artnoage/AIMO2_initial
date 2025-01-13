@@ -9,6 +9,8 @@ from unsloth import is_bfloat16_supported
 from datetime import datetime
 
 def main():
+    # Set training type
+    training_type = "sft"
     logging.set_verbosity_info()
 
     
@@ -94,10 +96,10 @@ def main():
     # Train the model
     trainer.train(resume_from_checkpoint = "/Home/stat/laschos/AIMO2_initial/train_results/20250108_110648/checkpoint-10392")
     models_dir = "models"
-    os.makedirs(models_dir, exist_ok=True)
+    os.makedirs(os.path.join(models_dir, training_type), exist_ok=True)
     
     
-    model_output_dir = os.path.join(models_dir, timestamp)
+    model_output_dir = os.path.join(models_dir, training_type, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")

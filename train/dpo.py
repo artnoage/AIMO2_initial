@@ -13,6 +13,8 @@ def _strip_prefix(s, pattern):
     return re.sub(f"^{re.escape(pattern)}", "", s)
 
 def main():
+    # Set training type
+    training_type = "dpo"
     logging.set_verbosity_info()
 
     # Load the model
@@ -113,10 +115,10 @@ def main():
 
     # Save both merged model and LoRA weights
     models_dir = "models"
-    os.makedirs(models_dir, exist_ok=True)
+    os.makedirs(os.path.join(models_dir, training_type), exist_ok=True)
     
     
-    model_output_dir = os.path.join(models_dir, timestamp)
+    model_output_dir = os.path.join(models_dir, training_type, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
