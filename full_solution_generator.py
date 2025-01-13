@@ -43,7 +43,7 @@ async def process_full_solution(
                 current_solution = await solution_agent.generate(example["problem"])
                                                                                                     
             # First verify correctness
-            is_correct, reason = await verifier.verify(
+            is_correct, _ = await verifier.verify(
                 current_solution,
                 extract_answer_from_solution(example['solution']),
                 example["problem"]
@@ -194,7 +194,7 @@ async def process_example(
         
         # Initialize tournament judge and get comparison
         tournament_judge = TournamentJudgeAgent(main)
-        judge_prompt, judge_response = await tournament_judge.compare_solutions(
+        judge_prompt, _ = await tournament_judge.compare_solutions(
             example['problem'],
             chosen_response if correct_first else validated_wrong,
             validated_wrong if correct_first else chosen_response,
