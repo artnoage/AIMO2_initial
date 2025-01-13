@@ -19,11 +19,12 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20250109_170918"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
     QWEN="qwen/qwq-32b-preview"
+    HAIKU="anthropic/claude-3.5-haiku:beta"
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
@@ -44,7 +45,7 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 15
+    best_of: int = 30
     completions: int = 30
     
     # Verification settings
@@ -90,7 +91,7 @@ class BenchmarkConfig:
         # Execution arguments
         parser.add_argument('--max-concurrent', type=int, default=64,
                           help='Maximum number of concurrent problems (default: 64)')
-        parser.add_argument('--best-of', type=int, default=10,
+        parser.add_argument('--best-of', type=int, default=30,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--completions', type=int, default=30,
                           help='Number of completions to try per path (default: 15)')
