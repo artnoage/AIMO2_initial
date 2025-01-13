@@ -212,21 +212,28 @@ class ProgressTracker:
         # Calculate statistics
         stats = self.calculate_score_stats(self.results)
         
+        # Initialize statistics tracking
+        stats = self.calculate_score_stats(self.results)
+        
         # Initialize bifurcation tracking
-        bifurcation_counts = {}
-        valid_points = 0
-        total_bifurcation = 0
+        bifurcation_stats = {
+            'counts': {},
+            'total': 0,
+            'valid_points': 0,
+            'average': 0
+        }
         
         # Count valid bifurcation points
         for r in self.results:
             if r and isinstance(r, dict) and 'bifurcation_point' in r:
                 point = r['bifurcation_point']
                 if isinstance(point, (int, float)):
-                    bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-                    total_bifurcation += point
-                    valid_points += 1
+                    bifurcation_stats['counts'][point] = bifurcation_stats['counts'].get(point, 0) + 1
+                    bifurcation_stats['total'] += point
+                    bifurcation_stats['valid_points'] += 1
         
-        avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
+        if bifurcation_stats['valid_points'] > 0:
+            bifurcation_stats['average'] = bifurcation_stats['total'] / bifurcation_stats['valid_points']
 
         end_time = datetime.now()
         total_duration = end_time - self.start_time
