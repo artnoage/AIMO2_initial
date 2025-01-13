@@ -97,7 +97,8 @@ class ProgressTracker:
                     print(f"Result {idx}: is_correct_list = {r.get('is_correct_list')}")
                 
                 print("Success rates per problem:", [
-                    sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', []))
+                    sum(1 for x in r.get('is_correct_list', []) if x) / len(r.get('is_correct_list', []))
+                    if r.get('is_correct_list') else 0
                     for r in last_batch
                 ])
                 
@@ -273,7 +274,8 @@ class ProgressTracker:
                 print(f"Result {idx}: is_correct_list = {r.get('is_correct_list')}")
             
             print("Success rates per problem:", [
-                sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', []))
+                sum(1 for x in r.get('is_correct_list', []) if x) / len(r.get('is_correct_list', []))
+                if r.get('is_correct_list') else 0
                 for r in self.results
             ])
             
