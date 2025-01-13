@@ -21,13 +21,13 @@ load_dotenv()
 class WrongStepGenerator:
     """Generates wrong solution steps by finding valid but incorrect solutions"""
     
-    def __init__(self, solver, best_of: int, completions: int):
-        self.solver = solver
+    def __init__(self, main, best_of: int, completions: int):
+        self.main = main
         self.best_of = best_of
         self.completions = completions
-        self.solution_agent = FullSolutionAgent(solver)
-        self.step_agent = NextStepAgent(solver)
-        self.completion_agent = CompletionAgent(solver)
+        self.solution_agent = FullSolutionAgent(main)
+        self.step_agent = NextStepAgent(main)
+        self.completion_agent = CompletionAgent(main)
         self.verifier = NumericVerifier()
         self.logs = []
         
@@ -330,11 +330,11 @@ async def main():
     async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
         """Process a single example"""
         try:
-            # Initialize solver
-            solver = get_model(config, role="solver")
+            # Initialize main model
+            main = get_model(config, role="main")
             
             # Create generator
-            generator = WrongStepGenerator(solver, config.best_of, config.completions)
+            generator = WrongStepGenerator(main, config.best_of, config.completions)
             
             # Extract answer
             correct_answer = extract_answer_from_solution(example['solution'])
