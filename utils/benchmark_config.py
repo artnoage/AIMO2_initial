@@ -32,8 +32,8 @@ class BenchmarkConfig:
     main: str
     auxiliary: str   # If None, uses same as main
     port: int = 8000
-    temperature: float = 0.9
-    judge_temp: float = 0.0
+    main_temp: float = 0.9
+    auxiliary_temp: float = 0.0
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -70,10 +70,10 @@ class BenchmarkConfig:
                           default='LOCAL', help='Auxiliary model to use for judging problems')
         parser.add_argument('--port', type=int, default=8000,
                           help='Port for local model server (default: 8000)')
-        parser.add_argument('--temperature', type=float, default=0.9,
-                          help='Temperature for solver generation (default: 0.9)')
-        parser.add_argument('--judge-temp', type=float, default=0.0,
-                          help='Temperature for judge generation (default: 0.0)')
+        parser.add_argument('--main-temp', type=float, default=0.9,
+                          help='Temperature for main model generation (default: 0.9)')
+        parser.add_argument('--auxiliary-temp', type=float, default=0.0,
+                          help='Temperature for auxiliary model generation (default: 0.0)')
                           
         # Dataset arguments
         parser.add_argument('--dataset', type=str,

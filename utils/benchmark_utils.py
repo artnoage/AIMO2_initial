@@ -158,7 +158,7 @@ def get_model(config: BenchmarkConfig, role: str = "solver"):
     model = ModelOption[getattr(config, role)]
     
     name = model.value
-    temp = config.judge_temp if role == "auxiliary" else config.temperature
+    temp = config.auxiliary_temp if role == "auxiliary" else config.main_temp
     
     if model == ModelOption.LOCAL:
         return CustomChat(
