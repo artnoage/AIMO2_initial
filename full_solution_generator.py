@@ -181,11 +181,11 @@ async def process_example(
          # Always print logs before returning result                                                
         print("\n".join(logs))                                                                     
                                                                                                 
-        # Create trickster prompt
-        trickster_prompt = (
-            "You are a math trickster, you are given a problem and you are supposed to "
-            "give a wrong solution that will fool a mathematician. Here is the problem:\n\n"
-            f"{example['problem']}"
+        # Generate wrong solution using LokiAgent
+        loki_agent = LokiAgent(main)
+        loki_prompt, wrong_solution = await loki_agent.generate(
+            example['problem'],
+            return_prompt=True
         )
 
         # Randomly decide position of correct solution for judge prompt
@@ -219,8 +219,8 @@ async def process_example(
                 'id': example_id,
                 'problem': example['problem'],
                 'correct_answer': correct_answer,
-                'prompt': {'content': trickster_prompt, 'role': 'user'},
-                'chosen': {'content': validated_wrong, 'role': 'assistant'},
+                'prompt': {'content': loki_prompt, 'role': 'user'},
+                'chosen': {'content': wrong_solution, 'role': 'assistant'},
                 'rejected': {'content': chosen_response, 'role': 'assistant'},
                 'score_chosen': chosen_score,
                 'score_rejected': rejected_score

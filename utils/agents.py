@@ -173,3 +173,30 @@ class TournamentJudgeAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
+
+
+class LokiAgent:
+    """Agent that generates deliberately incorrect but convincing mathematical solutions"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a deliberately incorrect but convincing solution"""
+        prompt = [
+            HumanMessage(content=(
+                "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+                "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+                "that would fool even a careful mathematician.\n\n"
+                f"Problem:\n{problem}\n\n"
+                "Please provide a complete solution that:\n"
+                "1. Uses correct mathematical notation and LaTeX\n"
+                "2. Follows logical steps\n"
+                "3. Contains subtle but significant errors\n"
+                "4. Arrives at an incorrect answer\n"
+                "5. Appears convincing at first glance\n\n"
+                "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (prompt[0].content, response) if return_prompt else response
