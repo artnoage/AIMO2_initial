@@ -31,7 +31,7 @@ class JudgeWrongStepGenerator:
         self.solution_agent = FullSolutionAgent(main)
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.judge_agent = JudgeAgent(auxiliary)
+        self.judge_agent = FullJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
         

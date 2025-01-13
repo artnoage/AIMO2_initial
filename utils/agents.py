@@ -120,7 +120,7 @@ class FullSolutionAgent:
         return (prompt[0].content, response) if return_prompt else response
 
 
-class JudgeAgent:
+class FullJudgeAgent:
     """Agent that evaluates mathematical solutions and identifies the first wrong step"""
     
     def __init__(self, model):
