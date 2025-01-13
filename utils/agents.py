@@ -140,7 +140,7 @@ class JudgeAgent:
                 "If you find any errors, identify the FIRST step where something goes wrong "
                 "and explain the error. If the solution is completely correct, say so.\n\n"
                 "Format your response as:\n"
-                "First error in Step X. <\EXPLENATION> provide explenation here <EXPLENATION>\n"
+                "First error in Step X. <\EXPLANATION> provide explenation here <EXPLANATION>\n"
                 "or\n"
                 "Solution is correct."
             ))
