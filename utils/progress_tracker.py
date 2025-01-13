@@ -91,7 +91,11 @@ class ProgressTracker:
                 print(f"Number of problems in batch: {total_examples}")
                 print(f"Total correct solutions in batch: {total_correct}")
                 print(f"Average correct solutions: {avg_correct:.3f}")
-                print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in last_batch])
+                print("Success rates per problem:", [
+                    sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', []))
+                    if r.get('is_correct_list', []) else 0 
+                    for r in last_batch
+                ])
                 
                 # Count problems with success rate above 50%
                 above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
@@ -262,7 +266,9 @@ class ProgressTracker:
             print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in self.results])
             
             # Count problems with success rate above 50%
-            above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
+            above_avg = sum(1 for r in self.results 
+                if r.get('is_correct_list') and 
+                (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
             
             # Count problems where most common answer is correct
             most_common_correct = 0
