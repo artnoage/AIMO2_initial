@@ -308,13 +308,13 @@ class WrongStepGenerator:
             'score_rejected': 0.0
         })
 
-        correct_with_completion = partial_solutions[wrong_step_index] + remove_inst_tokens(saved_good_completion)
+        correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
         results.append({
             'type': 'recovery',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
-            'chosen': {'content': correct_with_completion, 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0

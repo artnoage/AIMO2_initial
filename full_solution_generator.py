@@ -194,9 +194,9 @@ async def process_example(
         
         # Create judge prompt
         judge_prompt = (
-            "You are a mathematics judge. You will be shown a problem and two proposed solutions - "
-            "Solution A and Solution B. Your task is to carefully evaluate both solutions and determine "
-            "which one is correct. Here is the problem and solutions:\n\n"
+            "You are a mathematics judge. You will be presented with a problem and two proposed solutions:"
+            "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one" 
+            "demonstrates stronger reasoning and is more likely to be correct. Here is the problem and solutions:\n\n"
             f"Problem:\n{example['problem']}\n\n"
             f"Solution A:\n{chosen_response if correct_first else validated_wrong}\n\n"
             f"Solution B:\n{validated_wrong if correct_first else chosen_response}\n\n"
