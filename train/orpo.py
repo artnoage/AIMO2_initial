@@ -96,9 +96,9 @@ def main():
     # Concatenate original and shuffled datasets
     formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
 
-    # Create timestamped output directory
+    # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/{timestamp}"
+    output_dir = f"train_results/{model_type}/{timestamp}"
 
 
     # ORPO specific training arguments
