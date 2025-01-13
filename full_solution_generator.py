@@ -13,13 +13,13 @@ load_dotenv()
                                                                                                     
 async def process_full_solution(
     example: Dict,
-    solver: any,
+    main: any,
     verifier: any,
     config: BenchmarkConfig
 ) -> Optional[Tuple[str, str, str, float, float, str]]:
     """Process example using full solution approach"""
     logs = []
-    solution_agent = FullSolutionAgent(solver)
+    solution_agent = FullSolutionAgent(main)
     full_solution_prompt = None
     found_correct = False
     found_common_wrong = False
@@ -161,7 +161,7 @@ async def process_example(
         logs.append(f"{example['problem'][:200]}...")                                              
         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
                                                                                                 
-        result = await process_full_solution(example, solver, verifier, config)                    
+        result = await process_full_solution(example, main, verifier, config)                    
         if not result:                                                                             
             return None                                                                            
                                                                                                     
