@@ -31,7 +31,7 @@ class JudgeWrongStepGenerator:
         self.solution_agent = FullSolutionAgent(main)
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.judge_agent = FullJudgeAgent(auxiliary)
+        self.full_judge_agent = FullJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
         
@@ -227,12 +227,12 @@ class JudgeWrongStepGenerator:
             logging.error("❌ Not enough steps found (need at least analysis + one step)")
             return None
             
-        # Ask judge to identify the first wrong step
-        judge_response = await self.judge_agent.find_first_wrong_step(problem, wrong_solution)
+        # Ask full judge to identify the first wrong step
+        judge_response = await self.full_judge_agent.find_first_wrong_step(problem, wrong_solution)
         self.judge_prediction = self._extract_step_number(judge_response)
-        self.logs.append("\n\nThis is the judges repsonse\n\n")
+        self.logs.append("\n\nThis is the full judge's response\n\n")
         self.logs.append(judge_response)
-        self.logs.append("\n\nThis is the judges \n\n")
+        self.logs.append("\n\nThis is the full judge's prediction\n\n")
         self.logs.append(str(self.judge_prediction))
         # Store judge's prediction and use it as starting point
         
@@ -382,12 +382,12 @@ async def main():
     async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
         """Process a single example"""
         try:
-            # Initialize solver and judge
-            solver = get_model(config, role="solver")
-            judge = get_model(config, role="judge")
+            # Initialize main and auxiliary models
+            main = get_model(config, role="main")
+            auxiliary = get_model(config, role="auxiliary")
             
             # Create generator
-            generator = JudgeWrongStepGenerator(solver, judge, config.best_of, config.completions)
+            generator = JudgeWrongStepGenerator(main, auxiliary, config.best_of, config.completions)
             
             # Extract answer
             correct_answer = extract_answer_from_solution(example['solution'])
