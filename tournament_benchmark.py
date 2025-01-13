@@ -65,6 +65,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Tournament judging
         winning_solution = None
         winning_solution_correct = False
+        judge_success_count = 0
+        judge_total_decisions = 0
+        failsafe_count = 0
         
         if len(solutions) > 1:
             # Create tournament brackets
@@ -90,17 +93,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         )
                         
                         # Determine winner based on judge's response
+                        judge_total_decisions += 1
+                        
                         if not judge_result or not isinstance(judge_result, str):
                             # Failsafe: random choice if judge fails
                             print(f"Warning: Judge gave invalid response. Making random choice.")
+                            failsafe_count += 1
                             next_round.append(random.choice([solution_a, solution_b]))
                         elif "A" in judge_result.upper():
+                            # Judge success if both correct/incorrect and chose A
+                            if solution_a['is_correct'] == solution_b['is_correct']:
+                                judge_success_count += 1
                             next_round.append(solution_a)
                         elif "B" in judge_result.upper():
+                            # Judge success if both correct/incorrect and chose B
+                            if solution_a['is_correct'] == solution_b['is_correct']:
+                                judge_success_count += 1
                             next_round.append(solution_b)
                         else:
                             # Failsafe: random choice if response unclear
                             print(f"Warning: Judge response unclear: '{judge_result}'. Making random choice.")
+                            failsafe_count += 1
                             next_round.append(random.choice([solution_a, solution_b]))
                     
                     tournament_solutions = next_round
@@ -128,6 +141,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Most common answer: {most_common_answer}")
         print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print(f"Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
+        if judge_total_decisions > 0:
+            print(f"Judge success rate: {(judge_success_count/judge_total_decisions)*100:.1f}%")
+            print(f"Judge failsafe rate: {(failsafe_count/judge_total_decisions)*100:.1f}%")
         print("-" * 80)
         
         return [{
@@ -140,7 +156,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
-            'tournament_winner_correct': winning_solution_correct
+            'tournament_winner_correct': winning_solution_correct,
+            'judge_success_rate': (judge_success_count/judge_total_decisions)*100 if judge_total_decisions > 0 else 0,
+            'judge_failsafe_rate': (failsafe_count/judge_total_decisions)*100 if judge_total_decisions > 0 else 0
         }]
         
     except Exception as e:
