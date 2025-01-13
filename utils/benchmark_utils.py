@@ -690,10 +690,16 @@ async def run_benchmark(
             return
 
     try:
+        # Create a specific cache directory for datasets
+        cache_dir = os.path.join("cache", "huggingface")
+        os.makedirs(cache_dir, exist_ok=True)
+        
         if config.dataset == 'Metaskepsis/Numina':  # Default option
-            dataset = load_dataset("Metaskepsis/Numina", split=config.split)
+            dataset = load_dataset("Metaskepsis/Numina", split=config.split, 
+                                 cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
         else:  # Custom dataset name
-            dataset = load_dataset(config.dataset, split=config.split)
+            dataset = load_dataset(config.dataset, split=config.split,
+                                 cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')
