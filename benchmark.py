@@ -54,14 +54,43 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print(f"Exception message: {str(e)}")
                 import traceback
                 print(f"Traceback:\n{traceback.format_exc()}")
-                # Handle error case but continue with next attempt
-                solution_info = {
-                    'solution': f"Error occurred: {type(e).__name__} - {str(e)}",
-                    'answer': None,
-                    'is_correct': False
-                }
-                solutions.append(solution_info)
-                continue  # Try next attempt
+                
+                # Retry this attempt up to 3 times
+                for retry in range(3):
+                    try:
+                        print(f"Retrying attempt {attempt + 1} (retry {retry + 1}/3)...")
+                        current_solution = await solution_agent.generate(example["problem"])
+                        
+                        # Create numeric verifier
+                        verifier = NumericVerifier(tolerance=config.tolerance)
+                        is_correct, current_answer = await verifier.verify(
+                            current_solution,
+                            correct_answer,
+                            example["problem"]
+                        )
+                        
+                        if is_correct:
+                            correct_count += 1
+                            if best_solution is None:
+                                best_solution = current_solution
+                                
+                        solutions.append({
+                            'solution': current_solution,
+                            'answer': current_answer,
+                            'is_correct': is_correct
+                        })
+                        break  # Success, exit retry loop
+                        
+                    except Exception as retry_e:
+                        print(f"Retry {retry + 1} failed: {str(retry_e)}")
+                        if retry == 2:  # Last retry failed
+                            solution_info = {
+                                'solution': f"Error occurred after 3 retries: {type(e).__name__} - {str(e)}",
+                                'answer': None,
+                                'is_correct': False
+                            }
+                            solutions.append(solution_info)
+                continue  # Move to next attempt
         
         
         # Calculate most common answer statistics
