@@ -252,6 +252,12 @@ class ProgressTracker:
             
             # Count problems where most common answer is correct
             most_common_correct = 0
+            tournament_winners_correct = 0
+            total_with_tournament = 0
+            total_judge_decisions = 0
+            total_judge_successes = 0
+            total_judge_failsafes = 0
+            
             for r in self.results:
                 if not r.get('model_answers'):
                     continue
@@ -265,6 +271,21 @@ class ProgressTracker:
                 if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', []))
                       if ans is not None and str(ans) == most_common):
                     most_common_correct += 1
+                
+                # Tournament statistics
+                if 'tournament_winner_correct' in r:
+                    total_with_tournament += 1
+                    if r['tournament_winner_correct']:
+                        tournament_winners_correct += 1
+                if 'judge_success_rate' in r:
+                    total_judge_decisions += 1
+                    total_judge_successes += r['judge_success_rate']
+                if 'judge_failsafe_rate' in r:
+                    total_judge_failsafes += r['judge_failsafe_rate']
+            
+            # Calculate averages for judge statistics
+            avg_judge_success = total_judge_successes / total_judge_decisions if total_judge_decisions > 0 else 0
+            avg_judge_failsafe = total_judge_failsafes / total_judge_decisions if total_judge_decisions > 0 else 0
             
             stats_str += (
                 f"\nBenchmark Statistics:\n"
@@ -272,6 +293,9 @@ class ProgressTracker:
                 f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                 f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
                 f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
+                f"- Tournament winners correct: {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
+                f"- Average judge success rate: {avg_judge_success:.1f}%\n"
+                f"- Average judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
