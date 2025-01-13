@@ -15,12 +15,15 @@ def load_json_dataset(json_path: Path):
     except json.JSONDecodeError:
         raise ValueError(f"Invalid JSON file: {json_path}")
 
-def convert_to_hf_dataset(data):
+def convert_to_hf_dataset(data, dataset_type=None):
     """Convert the data to a HuggingFace Dataset."""
     dataset = Dataset.from_list(data)
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    save_path = os.path.join("local_datasets", timestamp)
+    if dataset_type:
+        save_path = os.path.join("local_datasets", dataset_type, timestamp)
+    else:
+        save_path = os.path.join("local_datasets", timestamp)
     os.makedirs(save_path, exist_ok=True)
     dataset.save_to_disk(save_path)
     return dataset, save_path
@@ -28,6 +31,7 @@ def convert_to_hf_dataset(data):
 def main():
     parser = argparse.ArgumentParser(description='Convert JSON to Arrow dataset')
     parser.add_argument('json_file', type=Path, help='Input JSON file to convert')
+    parser.add_argument('--type', type=str, help='Dataset type folder name (optional)')
     args = parser.parse_args()
     
     # Validate path exists
@@ -38,7 +42,7 @@ def main():
         print(f"Loading JSON dataset from {args.json_file}...")
         data = load_json_dataset(args.json_file)
         print("Converting to HuggingFace dataset format...")
-        dataset, save_path = convert_to_hf_dataset(data)
+        dataset, save_path = convert_to_hf_dataset(data, args.type)
         print(f"Dataset saved locally in Arrow format at '{save_path}'")
         print(f"Successfully converted {len(dataset)} examples")
         
