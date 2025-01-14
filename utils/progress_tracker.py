@@ -256,13 +256,18 @@ class ProgressTracker:
             # Calculate failsafe statistics
             problems_with_failsafe = sum(1 for r in self.results if r.get('judge_failsafe_rate', 0) > 0)
             
+            # Calculate accumulated tournament statistics
+            acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
+            acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
+            
             stats_str += (
                 f"\nBenchmark Statistics:\n"
                 f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
                 f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                 f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
                 f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
-                + (f"- Tournament winners correct: {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
+                + (f"- Tournament winners correct (batch): {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
+                   f"- Tournament winners correct (accumulated): {acc_tournament_winners}/{acc_total_tournaments} ({acc_tournament_winners/acc_total_tournaments*100:.1f}%)\n"
                    f"- Judge success rate (correct vs wrong): {avg_judge_success:.1f}%\n"
                    f"- Judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
                    f"- Problems requiring failsafe: {problems_with_failsafe}/{total} ({problems_with_failsafe/total*100:.1f}%)\n"
