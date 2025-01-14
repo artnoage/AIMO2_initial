@@ -712,9 +712,9 @@ async def run_benchmark(
                     example_id=example['id'],
                     config=config
                 )
-            if result:
-                progress_tracker.add_result(result)
-            return result
+                if result:
+                    progress_tracker.add_result(result)
+                return result
 
         tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
         

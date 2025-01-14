@@ -40,9 +40,11 @@ class ProgressTracker:
         """Add a list of results to the tracker and update progress"""
         if results:
             self.results.extend(results)
-            # Check if we've hit a checkpoint
+            # Force immediate save at checkpoints
             if len(self.results) % self.config.stats_update_freq == 0:
                 self.print_progress()
+                self._save_progress_stats(f"Checkpoint at {len(self.results)} examples")
+                self.save_results()
     
     def _has_field(self, results: List[Dict], field: str) -> bool:
         """Check if field exists in any result"""
