@@ -111,10 +111,13 @@ class ProgressTracker:
                 # Batch statistics
                 stats_str += (
                     f"\nBatch Statistics (last {total_examples}):\n"
-                    f"- Problems with at least one correct solution: {at_least_one}/{total_examples} ({at_least_one/total_examples*100:.1f}%)\n"
+                    f"- Problems with at least one correct solution: {at_least_one}/{total_examples} "
+                    f"({at_least_one/total_examples*100:.1f}%)\n"
                     f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                    f"- Problems with above average correct solutions: {above_avg}/{total_examples} ({above_avg/total_examples*100:.1f}%)\n"
-                    f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} ({most_common_correct/total_examples*100:.1f}%)\n"
+                    f"- Problems with above average correct solutions: {above_avg}/{total_examples} "
+                    f"({above_avg/total_examples*100:.1f}%)\n"
+                    f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} "
+                    f"({most_common_correct/total_examples*100:.1f}%)\n"
                 )
 
                 # Accumulated statistics
@@ -125,9 +128,11 @@ class ProgressTracker:
                 
                 stats_str += (
                     f"\nAccumulated Statistics (N={total_acc}):\n"
-                    f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} ({at_least_one_acc/total_acc*100:.1f}%)\n"
+                    f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} "
+                    f"({at_least_one_acc/total_acc*100:.1f}%)\n"
                     f"- Average correct solutions per problem: {avg_correct_acc:.2f}\n"
-                    f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} ({above_avg_acc/total_acc*100:.1f}%)\n"
+                    f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} "
+                    f"({above_avg_acc/total_acc*100:.1f}%)\n"
                     f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
                 )
         
@@ -136,19 +141,19 @@ class ProgressTracker:
             # Batch statistics
             stats_str += (
                 f"\nBatch Statistics (last {total_examples}):\n"
-                    f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
-                    f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
-                    f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
-                )
+                f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
+                f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
+                f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
+            )
                 
-                # Accumulated statistics
-                stats_str += (
-                    f"\nAccumulated Statistics (N={len(self.results)}):\n"
-                    f"- Average score for chosen solutions: {accumulated_stats.get('avg_chosen', 0):.2f}\n"
-                    f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
-                    f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
-                )
-                stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
+            # Accumulated statistics
+            stats_str += (
+                f"\nAccumulated Statistics (N={len(self.results)}):\n"
+                f"- Average score for chosen solutions: {accumulated_stats.get('avg_chosen', 0):.2f}\n"
+                f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
+                f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
+            )
+            stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
             print(stats_str)
             self._save_progress_stats(stats_str)
