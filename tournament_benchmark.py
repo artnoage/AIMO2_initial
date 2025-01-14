@@ -103,11 +103,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         elif "A" in judge_result.upper():
                             # Judge success if chose correct solution when one is correct and one wrong
                             if solution_a['is_correct'] != solution_b['is_correct']:
-                                judge_success_count += 1
-                                if solution_a['is_correct']:  # A is correct, did judge choose A?
-                                    judge_success_count += "A" in judge_result.upper()
-                                else:  # B is correct, did judge choose B?
-                                    judge_success_count += "B" in judge_result.upper()
+                                if solution_a['is_correct']:  # A is correct
+                                    judge_success_count += 1 if "A" in judge_result.upper() else 0
+                                else:  # B is correct
+                                    judge_success_count += 1 if "B" in judge_result.upper() else 0
                             next_round.append(solution_a)
                         elif "B" in judge_result.upper():
                             # Judge success if chose correct solution when one is correct and one wrong
