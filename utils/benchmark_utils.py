@@ -160,7 +160,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     name = model.value
     temp = config.auxiliary_temp if role == "auxiliary" else config.main_temp
     
-    if model == ModelOption.LOCAL:
+    if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
         return CustomChat(
             model=name,
             temperature=temp,
@@ -502,51 +502,6 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
             
     return True, "Valid completion"
                     
-    # Split completion into steps
-    completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
-    if not completion_steps:
-        return False, "Completion contains no steps"
-        
-    # Track found step numbers to ensure no duplicates or gaps
-    found_steps = set()
-    
-    # Validate each step in completion
-    for i, step in enumerate(completion_steps, 1):
-        expected_step_num = last_step + i
-        full_step = "Step" + step
-        
-        # Find actual step number in the completion
-        actual_step = None
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(full_step)
-            if match:
-                try:
-                    actual_step = int(match.group(1))
-                    break
-                except ValueError:
-                    continue
-                    
-        if actual_step is None:
-            return False, f"Could not find step number in completion step {i}"
-            
-        if actual_step != expected_step_num:
-            return False, f"Expected step {expected_step_num}, found step {actual_step}"
-            
-        if actual_step in found_steps:
-            return False, f"Duplicate step number {actual_step}"
-            
-        found_steps.add(actual_step)
-        
-        # Validate step format and content
-        if not validate_step(full_step, expected_step=expected_step_num):
-            return False, f"Invalid step {expected_step_num} format or content"
-            
-    # Check for gaps in step numbers
-    expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
-    if found_steps != expected_steps:
-        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
-            
-    return True, "Valid completion"
 
 def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     """Validate a solution step"""
