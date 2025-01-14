@@ -37,9 +37,10 @@ class ProgressTracker:
             f.write(f"{datetime.now().isoformat()}: {stats}\n")
 
     def add_result(self, results: List[Dict]) -> None:
-        """Add a list of results to the tracker"""
+        """Add a list of results to the tracker and update progress"""
         if results:
             self.results.extend(results)
+            self.print_progress()
     
     def _has_field(self, results: List[Dict], field: str) -> bool:
         """Check if field exists in any result"""
