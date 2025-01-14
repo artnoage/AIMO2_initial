@@ -75,29 +75,29 @@ class ProgressTracker:
             
             # Count problems with success rate above 50%
             above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
-                
-                # Count problems where most common answer is correct
-                most_common_correct = 0
-                for r in last_batch:
-                    if not r.get('model_answers'):
-                        continue
-                    # Get most common answer
-                    answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
-                    if not answers:
-                        continue
-                    from collections import Counter
-                    most_common = Counter(answers).most_common(1)[0][0]
-                    # Check if most common answer is in list of correct answers
-                    if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', [])) 
-                          if ans is not None and str(ans) == most_common):
-                        most_common_correct += 1
-                
-                # Count tournament winners if present
-                tournament_winners = 0
-                total_with_tournament = 0
-                if self._has_field(last_batch, 'tournament_winner_correct'):
-                    total_with_tournament = sum(1 for r in last_batch if 'tournament_winner_correct' in r)
-                    tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
+            
+            # Count problems where most common answer is correct
+            most_common_correct = 0
+            for r in last_batch:
+                if not r.get('model_answers'):
+                    continue
+                # Get most common answer
+                answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
+                if not answers:
+                    continue
+                from collections import Counter
+                most_common = Counter(answers).most_common(1)[0][0]
+                # Check if most common answer is in list of correct answers
+                if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', [])) 
+                      if ans is not None and str(ans) == most_common):
+                    most_common_correct += 1
+            
+            # Count tournament winners if present
+            tournament_winners = 0
+            total_with_tournament = 0
+            if self._has_field(last_batch, 'tournament_winner_correct'):
+                total_with_tournament = sum(1 for r in last_batch if 'tournament_winner_correct' in r)
+                tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
 
             # Batch statistics
             stats_str += (
