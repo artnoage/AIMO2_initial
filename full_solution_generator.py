@@ -188,16 +188,24 @@ async def process_example(
             return_prompt=True
         )
 
+        # Split solutions into steps
+        correct_steps = split_into_steps(chosen_response)
+        wrong_steps = split_into_steps(validated_wrong)
+        
+        # Remove last step from both solutions
+        truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+        truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+        
         # Randomly decide position of correct solution for judge prompt
         import random
         correct_first = random.choice([True, False])
         
-        # Initialize tournament judge and get comparison
+        # Initialize tournament judge and get comparison with truncated solutions
         tournament_judge = TournamentJudgeAgent(main)
         judge_prompt, _ = await tournament_judge.compare_solutions(
             example['problem'],
-            chosen_response if correct_first else validated_wrong,
-            validated_wrong if correct_first else chosen_response,
+            truncated_correct if correct_first else truncated_wrong,
+            truncated_wrong if correct_first else truncated_correct,
             return_prompt=True
         )
 
