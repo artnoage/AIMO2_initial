@@ -252,24 +252,21 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
         with time_limit(10):  # 10 second timeout
-            # Parse LaTeX to sympy-compatible format
-            latex_expr = latex2sympy(clean_answer)
-            # Convert to sympy expression and evaluate
-            expr = sympy.sympify(latex_expr)
-            # Handle both single values and lists/matrices
-            if hasattr(expr, 'evalf'):
-                result = float(expr.evalf())
-            elif isinstance(expr, list) or isinstance(expr, tuple) or (
-                hasattr(expr, 'is_Matrix') and expr.is_Matrix
-            ):
-                return (None, f"Rejected list/matrix answer: {expr}") if debug else (None, None)
-            else:
-                result = float(expr)
-            return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
-    except TimeoutException:
-        return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
-    except (sympy.SympifyError, TypeError, ValueError) as e:
-        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None)
+            try:
+                # Parse LaTeX to sympy-compatible format
+                latex_expr = latex2sympy(clean_answer)
+                # Convert to sympy expression and evaluate
+                expr = sympy.sympify(latex_expr)
+                # Handle both single values and lists/matrices
+                if hasattr(expr, 'evalf'):
+                    result = float(expr.evalf())
+                    return (result, None)
+                else:
+                    return (None, None)
+            except:
+                return (None, None)
+    except:
+        return (None, None)
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
