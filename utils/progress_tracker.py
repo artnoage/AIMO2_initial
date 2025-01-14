@@ -62,10 +62,10 @@ class ProgressTracker:
         
         # Build statistics string
         stats_str = f"N={len(self.results)} "
-            stats_str += "\nBatch Statistics (last {total_examples}):\n"
-            
-            # For benchmark.py style results
-            if self._has_field(last_batch, 'is_correct_list'):
+        stats_str += f"\nBatch Statistics (last {total_examples}):\n"
+        
+        # For benchmark.py style results
+        if self._has_field(last_batch, 'is_correct_list'):
                 # Count problems with at least one correct solution
                 at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
                 
