@@ -45,22 +45,6 @@ class ProgressTracker:
         """Check if field exists in any result"""
         return any(field in r for r in results)
 
-    def calculate_score_stats(self, results: List[Dict]) -> Dict:
-        if not results:
-            return {}
-        
-        stats = {}
-        total = len(results)
-        
-        # Only calculate stats if fields exist
-        if self._has_field(results, 'score_chosen'):
-            stats['avg_chosen'] = sum(r.get('score_chosen', 0) for r in results) / total
-        if self._has_field(results, 'score_rejected'):
-            stats['avg_rejected'] = sum(r.get('score_rejected', 0) for r in results) / total
-        if 'avg_chosen' in stats and 'avg_rejected' in stats:
-            stats['avg_diff'] = stats['avg_chosen'] - stats['avg_rejected']
-            
-        return stats
 
     def print_progress(self) -> None:
         if len(self.results) % self.config.stats_update_freq == 0 and self.results:
@@ -223,32 +207,7 @@ class ProgressTracker:
 
         total = len(self.results)
         
-        # Calculate statistics
-        stats = self.calculate_score_stats(self.results)
-        
-        # Initialize statistics tracking
-        stats = self.calculate_score_stats(self.results)
-        
-        # Initialize bifurcation tracking
-        bifurcation_stats = {
-            'counts': {},
-            'total': 0,
-            'valid_points': 0,
-            'average': 0
-        }
-        
-        # Count valid bifurcation points
-        for r in self.results:
-            if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                point = r['bifurcation_point']
-                if isinstance(point, (int, float)):
-                    bifurcation_stats['counts'][point] = bifurcation_stats['counts'].get(point, 0) + 1
-                    bifurcation_stats['total'] += point
-                    bifurcation_stats['valid_points'] += 1
-        
-        if bifurcation_stats['valid_points'] > 0:
-            bifurcation_stats['average'] = bifurcation_stats['total'] / bifurcation_stats['valid_points']
-
+    
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
@@ -337,15 +296,6 @@ class ProgressTracker:
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
-        # For data_creator.py style results
-        if any(key in stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
-            stats_str += (
-                f"\nFinal Data Creation Statistics:\n"
-                f"- Average score for chosen solutions: {stats.get('avg_chosen', 0):.2f}\n"
-                f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
-                f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
-            )
-            stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
 
         # Add judge accuracy statistics if available
         if self._has_field(self.results, 'judge_was_correct'):
