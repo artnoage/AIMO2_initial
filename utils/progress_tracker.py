@@ -60,14 +60,9 @@ class ProgressTracker:
         
         # Calculate batch statistics
         total_examples = len(last_batch)
-        batch_stats = self.calculate_score_stats(last_batch)
-        
-        # Calculate accumulated statistics
-        accumulated_stats = self.calculate_score_stats(self.results)
         
         # Build statistics string
         stats_str = f"N={len(self.results)} "
-        stats_str += f"\nBatch Statistics (last {total_examples}):\n"
         
         # For benchmark.py style results
         if self._has_field(last_batch, 'is_correct_list'):
@@ -141,24 +136,6 @@ class ProgressTracker:
                     f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
                 )
         
-        # For data_creator.py style results
-        if any(key in batch_stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
-            # Batch statistics
-            stats_str += (
-                f"\nBatch Statistics (last {total_examples}):\n"
-                f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
-                f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
-                f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
-            )
-                
-            # Accumulated statistics
-            stats_str += (
-                f"\nAccumulated Statistics (N={len(self.results)}):\n"
-                f"- Average score for chosen solutions: {accumulated_stats.get('avg_chosen', 0):.2f}\n"
-                f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
-                f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
-            )
-            stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
         
         # Always print and save results, regardless of which style they are
         print(stats_str)
