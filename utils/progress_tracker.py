@@ -289,10 +289,12 @@ class ProgressTracker:
                 f"- Average correct solutions per problem: {avg_correct:.2f}\n"
                 f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
                 f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
-                f"- Tournament winners correct: {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
-                f"- Average judge success rate: {avg_judge_success:.1f}%\n"
-                f"- Average judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
-                f"- Problems requiring failsafe: {problems_with_failsafe}/{total} ({problems_with_failsafe/total*100:.1f}%)\n"
+                f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
+                + (f"- Tournament winners correct: {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
+                   f"- Average judge success rate: {avg_judge_success:.1f}%\n"
+                   f"- Average judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
+                   f"- Problems requiring failsafe: {problems_with_failsafe}/{total} ({problems_with_failsafe/total*100:.1f}%)\n"
+                   if total_with_tournament > 0 else "") +
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
