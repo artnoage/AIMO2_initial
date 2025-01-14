@@ -155,10 +155,11 @@ class ProgressTracker:
                 f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
             )
             stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
-            
-            print(stats_str)
-            self._save_progress_stats(stats_str)
-            self.save_results()
+        
+        # Always print and save results, regardless of which style they are
+        print(stats_str)
+        self._save_progress_stats(stats_str)
+        self.save_results()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
