@@ -148,10 +148,11 @@ class ProgressTracker:
                 stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
             print(stats_str)
-            self._save_progress_stats(stats_str)
             
-            # Automatically save results every 100 examples
-            self.save_results()
+            # Save progress stats and results based on update frequency
+            if len(self.results) % self.config.stats_update_freq == 0:
+                self._save_progress_stats(stats_str)
+                self.save_results()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
