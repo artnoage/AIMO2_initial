@@ -68,14 +68,13 @@ class ProgressTracker:
         if self._has_field(last_batch, 'is_correct_list'):
             # Count problems with at least one correct solution
             at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
-                
-                # Calculate average correct solutions per problem
-                total_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch)
-                avg_correct = total_correct / total_examples if total_examples > 0 else 0
-                
-                
-                # Count problems with success rate above 50%
-                above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
+            
+            # Calculate average correct solutions per problem
+            total_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch)
+            avg_correct = total_correct / total_examples if total_examples > 0 else 0
+            
+            # Count problems with success rate above 50%
+            above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
                 
                 # Count problems where most common answer is correct
                 most_common_correct = 0
