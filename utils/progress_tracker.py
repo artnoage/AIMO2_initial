@@ -56,12 +56,12 @@ class ProgressTracker:
         # Calculate batch statistics
         total_examples = len(last_batch)
         batch_stats = self.calculate_score_stats(last_batch)
-            
-            # Calculate accumulated statistics
-            accumulated_stats = self.calculate_score_stats(self.results)
-            
-            # Build statistics string
-            stats_str = f"N={len(self.results)} "
+        
+        # Calculate accumulated statistics
+        accumulated_stats = self.calculate_score_stats(self.results)
+        
+        # Build statistics string
+        stats_str = f"N={len(self.results)} "
             stats_str += "\nBatch Statistics (last {total_examples}):\n"
             
             # For benchmark.py style results
