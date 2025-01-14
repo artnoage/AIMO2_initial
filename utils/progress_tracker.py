@@ -64,10 +64,10 @@ class ProgressTracker:
         # Build statistics string
         stats_str = f"N={len(self.results)} "
         
-        # For benchmark.py style results
+        # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
-                # Count problems with at least one correct solution
-                at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
+            # Count problems with at least one correct solution
+            at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
                 
                 # Calculate average correct solutions per problem
                 total_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch)
@@ -100,24 +100,24 @@ class ProgressTracker:
                     total_with_tournament = sum(1 for r in last_batch if 'tournament_winner_correct' in r)
                     tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
 
-                # Batch statistics
+            # Batch statistics
+            stats_str += (
+                f"\nBatch Statistics (last {total_examples}):\n"
+                f"- Problems with at least one correct solution: {at_least_one}/{total_examples} "
+                f"({at_least_one/total_examples*100:.1f}%)\n"
+                f"- Average correct solutions per problem: {avg_correct:.2f}\n"
+                f"- Problems with above average correct solutions: {above_avg}/{total_examples} "
+                f"({above_avg/total_examples*100:.1f}%)\n"
+                f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} "
+                f"({most_common_correct/total_examples*100:.1f}%)\n"
+            )
+            
+            # Add tournament statistics if present
+            if total_with_tournament > 0:
                 stats_str += (
-                    f"\nBatch Statistics (last {total_examples}):\n"
-                    f"- Problems with at least one correct solution: {at_least_one}/{total_examples} "
-                    f"({at_least_one/total_examples*100:.1f}%)\n"
-                    f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                    f"- Problems with above average correct solutions: {above_avg}/{total_examples} "
-                    f"({above_avg/total_examples*100:.1f}%)\n"
-                    f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} "
-                    f"({most_common_correct/total_examples*100:.1f}%)\n"
+                    f"- Tournament winners correct: {tournament_winners}/{total_with_tournament} "
+                    f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
                 )
-                
-                # Add tournament statistics if present
-                if total_with_tournament > 0:
-                    stats_str += (
-                        f"- Tournament winners correct: {tournament_winners}/{total_with_tournament} "
-                        f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
-                    )
 
                 # Accumulated statistics
                 total_acc = len(self.results)
