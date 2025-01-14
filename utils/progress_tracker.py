@@ -130,12 +130,12 @@ class ProgressTracker:
                     f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} ({above_avg_acc/total_acc*100:.1f}%)\n"
                     f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
                 )
-            
-            # For data_creator.py style results
-            if any(key in batch_stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
-                # Batch statistics
-                stats_str += (
-                    f"\nBatch Statistics (last {total_examples}):\n"
+        
+        # For data_creator.py style results
+        if any(key in batch_stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
+            # Batch statistics
+            stats_str += (
+                f"\nBatch Statistics (last {total_examples}):\n"
                     f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
                     f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
                     f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
