@@ -93,6 +93,13 @@ class ProgressTracker:
                           if ans is not None and str(ans) == most_common):
                         most_common_correct += 1
                 
+                # Count tournament winners if present
+                tournament_winners = 0
+                total_with_tournament = 0
+                if self._has_field(last_batch, 'tournament_winner_correct'):
+                    total_with_tournament = sum(1 for r in last_batch if 'tournament_winner_correct' in r)
+                    tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
+
                 # Batch statistics
                 stats_str += (
                     f"\nBatch Statistics (last {total_examples}):\n"
@@ -104,6 +111,13 @@ class ProgressTracker:
                     f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} "
                     f"({most_common_correct/total_examples*100:.1f}%)\n"
                 )
+                
+                # Add tournament statistics if present
+                if total_with_tournament > 0:
+                    stats_str += (
+                        f"- Tournament winners correct: {tournament_winners}/{total_with_tournament} "
+                        f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
+                    )
 
                 # Accumulated statistics
                 total_acc = len(self.results)
