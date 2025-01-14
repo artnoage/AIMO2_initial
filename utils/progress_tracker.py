@@ -47,12 +47,15 @@ class ProgressTracker:
 
 
     def print_progress(self) -> None:
-        if len(self.results) % self.config.stats_update_freq == 0 and self.results:
-            last_batch = self.results[-self.config.stats_update_freq:]
+        # Only proceed if we have results and are at a frequency checkpoint
+        if not self.results or len(self.results) % self.config.stats_update_freq != 0:
+            return
             
-            # Calculate batch statistics
-            total_examples = len(last_batch)
-            batch_stats = self.calculate_score_stats(last_batch)
+        last_batch = self.results[-self.config.stats_update_freq:]
+        
+        # Calculate batch statistics
+        total_examples = len(last_batch)
+        batch_stats = self.calculate_score_stats(last_batch)
             
             # Calculate accumulated statistics
             accumulated_stats = self.calculate_score_stats(self.results)
@@ -148,11 +151,8 @@ class ProgressTracker:
                 stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
             
             print(stats_str)
-            
-            # Save progress stats and results based on update frequency
-            if len(self.results) % self.config.stats_update_freq == 0:
-                self._save_progress_stats(stats_str)
-                self.save_results()
+            self._save_progress_stats(stats_str)
+            self.save_results()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
