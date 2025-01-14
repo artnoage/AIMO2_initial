@@ -40,7 +40,9 @@ class ProgressTracker:
         """Add a list of results to the tracker and update progress"""
         if results:
             self.results.extend(results)
-            self.print_progress()
+            # Check if we've hit a checkpoint
+            if len(self.results) % self.config.stats_update_freq == 0:
+                self.print_progress()
     
     def _has_field(self, results: List[Dict], field: str) -> bool:
         """Check if field exists in any result"""
@@ -48,8 +50,8 @@ class ProgressTracker:
 
 
     def print_progress(self) -> None:
-        # Only proceed if we have results and are at a frequency checkpoint
-        if not self.results or len(self.results) % self.config.stats_update_freq != 0:
+        # Only proceed if we have results
+        if not self.results:
             return
             
         last_batch = self.results[-self.config.stats_update_freq:]
