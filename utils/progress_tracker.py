@@ -118,6 +118,32 @@ class ProgressTracker:
                     f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
                 )
 
+            # Accumulated statistics
+            total_acc = len(self.results)
+            at_least_one_acc = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
+            avg_correct_acc = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total_acc
+            above_avg_acc = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
+            most_common_correct_acc = sum(1 for r in self.results if r.get('is_most_common_correct', False))
+
+            stats_str += (
+                f"\nAccumulated Statistics (N={total_acc}):\n"
+                f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} "
+                f"({at_least_one_acc/total_acc*100:.1f}%)\n"
+                f"- Average correct solutions per problem: {avg_correct_acc:.2f}\n"
+                f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} "
+                f"({above_avg_acc/total_acc*100:.1f}%)\n"
+                f"- Problems where most common answer is correct: {most_common_correct_acc}/{total_acc} "
+                f"({most_common_correct_acc/total_acc*100:.1f}%)\n"
+            )
+
+            if total_with_tournament > 0:
+                acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
+                acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
+                stats_str += (
+                    f"- Tournament winners correct: {acc_tournament_winners}/{acc_total_tournaments} "
+                    f"({acc_tournament_winners/acc_total_tournaments*100:.1f}%)\n"
+                )
+
                 # Accumulated statistics
                 total_acc = len(self.results)
                 at_least_one_acc = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
