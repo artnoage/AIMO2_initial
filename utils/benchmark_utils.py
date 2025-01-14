@@ -4,6 +4,8 @@ import asyncio
 import json
 import signal
 import sympy
+import time
+import shutil
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp
@@ -642,22 +644,52 @@ async def run_benchmark(
             return
 
     try:
-        # Create a specific cache directory for datasets
-        cache_dir = os.path.join("cache", "huggingface")
+        # Create a unique cache directory using timestamp
+        timestamp = int(time.time())
+        cache_dir = os.path.join("cache", f"huggingface_{timestamp}")
         os.makedirs(cache_dir, exist_ok=True)
-        
-        if os.path.exists(config.dataset):  # Check if it's a local path
-            dataset = load_from_disk(config.dataset)
-            # If split is specified, filter the dataset
-            if config.split and hasattr(dataset, config.split):
-                dataset = dataset[config.split]
-        else:  # Assume it's a HuggingFace dataset name
-            if config.dataset == 'Metaskepsis/Numina':  # Default option
-                dataset = load_dataset("Metaskepsis/Numina", split=config.split, 
-                                     cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
-            else:  # Custom dataset name
-                dataset = load_dataset(config.dataset, split=config.split,
-                                     cache_dir=cache_dir, download_mode="reuse_cache_if_exists")
+
+        def load_dataset_with_retry(max_retries=3, cleanup_on_fail=True):
+            for attempt in range(max_retries):
+                try:
+                    if os.path.exists(config.dataset):  # Local path
+                        dataset = load_from_disk(config.dataset)
+                        if config.split and hasattr(dataset, config.split):
+                            dataset = dataset[config.split]
+                    else:  # HuggingFace dataset
+                        if config.dataset == 'Metaskepsis/Numina':
+                            dataset = load_dataset(
+                                "Metaskepsis/Numina", 
+                                split=config.split,
+                                cache_dir=cache_dir,
+                                download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                            )
+                        else:
+                            dataset = load_dataset(
+                                config.dataset,
+                                split=config.split,
+                                cache_dir=cache_dir,
+                                download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                            )
+                    return dataset
+                except Exception as e:
+                    print(f"Dataset loading attempt {attempt + 1} failed: {str(e)}")
+                    if cleanup_on_fail and attempt < max_retries - 1:
+                        print("Cleaning up cache and retrying...")
+                        try:
+                            shutil.rmtree(cache_dir)
+                            os.makedirs(cache_dir, exist_ok=True)
+                        except Exception as cleanup_error:
+                            print(f"Cache cleanup failed: {cleanup_error}")
+                    time.sleep(2)  # Wait before retry
+                    
+            raise Exception("Failed to load dataset after all retries")
+
+        try:
+            dataset = load_dataset_with_retry()
+        except Exception as e:
+            print(f"Fatal error loading dataset: {e}")
+            return
             
         # First sort by ID to ensure consistent ordering
         dataset = dataset.sort('id')
@@ -749,3 +781,9 @@ async def run_benchmark(
         
         progress_tracker.print_final_stats()
         progress_tracker.save_results()
+        
+        # Cleanup cache directory at the end
+        try:
+            shutil.rmtree(cache_dir)
+        except Exception as e:
+            print(f"Warning: Failed to cleanup cache directory: {e}")
