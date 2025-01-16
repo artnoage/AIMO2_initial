@@ -272,10 +272,19 @@ class WrongStepGenerator:
         # Create two entries for ORPO training
         results = []
         
-        # Generate wrong solution using LokiAgent
-        loki_prompt, _ = await self.loki_agent.generate(
-            problem,
-            return_prompt=True
+        # Reuse prompts for dark and judge alignments
+        loki_prompt = (
+            "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+            "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+            "that would fool even a careful mathematician.\n\n"
+            f"Problem:\n{problem}\n\n"
+            "Please provide a complete solution that:\n"
+            "1. Uses correct mathematical notation and LaTeX\n"
+            "2. Follows logical steps\n"
+            "3. Contains subtle but significant errors\n"
+            "4. Arrives at an incorrect answer\n"
+            "5. Appears convincing at first glance\n\n"
+            "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
         )
 
         # Split solutions into steps for judge
@@ -289,12 +298,15 @@ class WrongStepGenerator:
         # Randomly decide position of correct solution for judge prompt
         correct_first = random.choice([True, False])
         
-        # Get tournament judge comparison with truncated solutions
-        judge_prompt, _ = await self.tournament_judge.compare_solutions(
-            problem,
-            truncated_correct if correct_first else truncated_wrong,
-            truncated_wrong if correct_first else truncated_correct,
-            return_prompt=True
+        # Construct judge prompt without API call
+        judge_prompt = (
+            "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
+            "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
+            "demonstrates stronger reasoning and is more likely to be correct.\n\n"
+            f"Problem:\n{problem}\n\n"
+            f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
+            f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
+            "Which solution is better, A or B?"
         )
 
         # Add all alignments for full solution
@@ -364,10 +376,19 @@ class WrongStepGenerator:
         })
 
         correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
-        # Generate recovery alignments
-        loki_prompt, _ = await self.loki_agent.generate(
-            problem,
-            return_prompt=True
+        # Reuse prompts for recovery alignments
+        loki_prompt = (
+            "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+            "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+            "that would fool even a careful mathematician.\n\n"
+            f"Problem:\n{problem}\n\n"
+            "Please provide a complete solution that:\n"
+            "1. Uses correct mathematical notation and LaTeX\n"
+            "2. Follows logical steps\n"
+            "3. Contains subtle but significant errors\n"
+            "4. Arrives at an incorrect answer\n"
+            "5. Appears convincing at first glance\n\n"
+            "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
         )
 
         # Split solutions for judge
@@ -379,11 +400,15 @@ class WrongStepGenerator:
         
         correct_first = random.choice([True, False])
         
-        judge_prompt, _ = await self.tournament_judge.compare_solutions(
-            problem,
-            truncated_correct if correct_first else truncated_wrong,
-            truncated_wrong if correct_first else truncated_correct,
-            return_prompt=True
+        # Construct judge prompt without API call
+        judge_prompt = (
+            "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
+            "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
+            "demonstrates stronger reasoning and is more likely to be correct.\n\n"
+            f"Problem:\n{problem}\n\n"
+            f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
+            f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
+            "Which solution is better, A or B?"
         )
 
         results.append({
