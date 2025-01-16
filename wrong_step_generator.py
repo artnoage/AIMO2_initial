@@ -271,6 +271,7 @@ class WrongStepGenerator:
         results = []
         
         results.append({
+            'allignment':'light',
             'type': 'full_solution',
             'problem': problem,
             'correct_answer': correct_answer,
@@ -287,6 +288,7 @@ class WrongStepGenerator:
             return_prompt=True
         )
         results.append({
+            'allignment':'light',
             'type': 'step',
             'problem': problem,
             'correct_answer': correct_answer,
@@ -298,6 +300,7 @@ class WrongStepGenerator:
         })
 
         results.append({
+            'allignment':'light',
             'type': 'completion',
             'problem': problem,
             'correct_answer': correct_answer,
@@ -310,6 +313,7 @@ class WrongStepGenerator:
 
         correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
         results.append({
+            'allignment':'light',
             'type': 'recovery',
             'problem': problem,
             'correct_answer': correct_answer,
