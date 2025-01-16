@@ -273,7 +273,7 @@ class WrongStepGenerator:
         results = []
         
         # Generate wrong solution using LokiAgent
-        loki_prompt, loki_solution = await self.loki_agent.generate(
+        loki_prompt, _ = await self.loki_agent.generate(
             problem,
             return_prompt=True
         )
@@ -287,7 +287,6 @@ class WrongStepGenerator:
         truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
         
         # Randomly decide position of correct solution for judge prompt
-        import random
         correct_first = random.choice([True, False])
         
         # Get tournament judge comparison with truncated solutions
@@ -317,7 +316,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': loki_prompt, 'role': 'user'},
-            'chosen': {'content': loki_solution, 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(wrong_solution), 'role': 'assistant'},
             'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
@@ -366,7 +365,7 @@ class WrongStepGenerator:
 
         correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
         # Generate recovery alignments
-        loki_prompt, loki_solution = await self.loki_agent.generate(
+        loki_prompt, _ = await self.loki_agent.generate(
             problem,
             return_prompt=True
         )
@@ -405,7 +404,7 @@ class WrongStepGenerator:
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': loki_prompt, 'role': 'user'},
-            'chosen': {'content': loki_solution, 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(wrong_solution), 'role': 'assistant'},
             'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
