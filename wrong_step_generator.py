@@ -28,6 +28,8 @@ class WrongStepGenerator:
         self.solution_agent = FullSolutionAgent(main)
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
+        self.loki_agent = LokiAgent(main)
+        self.tournament_judge = TournamentJudgeAgent(main)
         self.verifier = NumericVerifier()
         self.logs = []
         
@@ -270,14 +272,65 @@ class WrongStepGenerator:
         # Create two entries for ORPO training
         results = []
         
+        # Generate wrong solution using LokiAgent
+        loki_prompt, loki_solution = await self.loki_agent.generate(
+            problem,
+            return_prompt=True
+        )
+
+        # Split solutions into steps for judge
+        correct_steps = split_into_steps(remove_inst_tokens(correct_solution))
+        wrong_steps = split_into_steps(wrong_solution)
+        
+        # Remove last step from both solutions
+        truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+        truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+        
+        # Randomly decide position of correct solution for judge prompt
+        import random
+        correct_first = random.choice([True, False])
+        
+        # Get tournament judge comparison with truncated solutions
+        judge_prompt, _ = await self.tournament_judge.compare_solutions(
+            problem,
+            truncated_correct if correct_first else truncated_wrong,
+            truncated_wrong if correct_first else truncated_correct,
+            return_prompt=True
+        )
+
+        # Add all alignments for full solution
         results.append({
-            'allignment':'light',
+            'alignment':'light',
             'type': 'full_solution',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+        results.append({
+            'alignment':'dark',
+            'type': 'full_solution',
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'prompt': {'content': loki_prompt, 'role': 'user'},
+            'chosen': {'content': loki_solution, 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+        results.append({
+            'alignment':'judge',
+            'type': 'full_solution',
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'prompt': {'content': judge_prompt, 'role': 'user'},
+            'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+            'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
@@ -312,14 +365,60 @@ class WrongStepGenerator:
         })
 
         correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
+        # Generate recovery alignments
+        loki_prompt, loki_solution = await self.loki_agent.generate(
+            problem,
+            return_prompt=True
+        )
+
+        # Split solutions for judge
+        correct_steps = split_into_steps(remove_inst_tokens(correct_with_completion))
+        wrong_steps = split_into_steps(wrong_solution)
+        
+        truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+        truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+        
+        correct_first = random.choice([True, False])
+        
+        judge_prompt, _ = await self.tournament_judge.compare_solutions(
+            problem,
+            truncated_correct if correct_first else truncated_wrong,
+            truncated_wrong if correct_first else truncated_correct,
+            return_prompt=True
+        )
+
         results.append({
-            'allignment':'light',
+            'alignment':'light',
             'type': 'recovery',
             'problem': problem,
             'correct_answer': correct_answer,
             'prompt': {'content': solution_prompt, 'role': 'user'},
             'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
             'rejected': {'content': wrong_solution, 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+        results.append({
+            'alignment':'dark',
+            'type': 'recovery',
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'prompt': {'content': loki_prompt, 'role': 'user'},
+            'chosen': {'content': loki_solution, 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+        results.append({
+            'alignment':'judge',
+            'type': 'recovery',
+            'problem': problem,
+            'correct_answer': correct_answer,
+            'prompt': {'content': judge_prompt, 'role': 'user'},
+            'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+            'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
