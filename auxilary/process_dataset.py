@@ -187,11 +187,11 @@ def is_multiple_choice(problem: str) -> bool:
 def main():
     # Initialize Hugging Face API
     api = HfApi()
-    parser = argparse.ArgumentParser(description='Process dataset for olympiads with valid answers')
+    parser = argparse.ArgumentParser(description='Process local dataset for olympiads with valid answers')
     parser.add_argument('--dataset', type=str, required=True,
-                       help='Dataset name (e.g. "AI-MO/NuminaMath-CoT") or path to local dataset')
-    parser.add_argument('--local', action='store_true', default=False,
-                       help='Load dataset from local disk instead of Hugging Face Hub')
+                       help='Path to local dataset')
+    parser.add_argument('--output-dir', type=str, required=True,
+                       help='Name of output directory under local_datasets/')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -211,14 +211,10 @@ def main():
     warnings.filterwarnings("ignore", message="Metadata validation was skipped")
     warnings.filterwarnings("ignore", message="Found cached dataset")
     
-    # Load the dataset
+    # Load the local dataset
     try:
-        if args.local:
-            print(f"Loading local dataset from {args.dataset}...")
-            dataset = load_from_disk(args.dataset)[args.split]
-        else:
-            print(f"Loading dataset {args.dataset} from Hugging Face Hub...")
-            dataset = load_dataset(args.dataset, split=args.split)
+        print(f"Loading local dataset from {args.dataset}...")
+        dataset = load_from_disk(args.dataset)[args.split]
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
@@ -369,9 +365,9 @@ def main():
         )
     })
 
-    # Save locally in current directory using repo name
-    output_dir = args.repo_name.split('/')[-1]  # Get last part of repo name
-    os.makedirs(output_dir, exist_ok=True)
+    # Save in local_datasets directory
+    output_path = os.path.join('local_datasets', args.output_dir)
+    os.makedirs(output_path, exist_ok=True)
     
     # Create dataset_info.json
     # Convert features to JSON-serializable format
@@ -428,106 +424,12 @@ def main():
     }
     
     # Save dataset_info.json
-    with open(os.path.join(output_dir, "dataset_info.json"), "w") as f:
+    with open(os.path.join(output_path, "dataset_info.json"), "w") as f:
         json.dump(dataset_info, f, indent=2)
     
     # Save the dataset
-    filtered_dataset_dict.save_to_disk(output_dir)
-    print(f"\nDataset saved locally to: {output_dir}")
-
-    # Try to push to Hugging Face Hub
-    try:
-        # Get the username from huggingface-cli
-        username = api.whoami()["name"]
-        repo_id = args.repo_name
-        
-        # Create or get the repository
-        try:
-            api.create_repo(
-                repo_id=repo_id,
-                private=True,
-                repo_type="dataset"
-            )
-        except Exception as repo_error:
-            print(f"Note: Repository may already exist: {repo_error}")
-        
-        # Push the dataset
-        filtered_dataset_dict.push_to_hub(repo_id)
-        
-        # Update the dataset card
-        readme_content = f"""---
-annotations_creators:
-  - expert-generated
-language:
-  - en
-language_creators:
-  - expert-generated
-license: mit
-multilinguality:
-  - monolingual
-pretty_name: Numina-Olympiads
-size_categories:
-  - 1K<n<10K
-source_datasets:
-  - AI-MO/NuminaMath-CoT
-task_categories:
-  - text-generation
-  - mathematical-reasoning
-task_ids:
-  - math-word-problems
-  - olympiad-math
-paperswithcode_id: numina-olympiads
-tags:
-  - mathematics
-  - olympiads
-  - problem-solving
-  - latex
-  - mathematical-reasoning
-  - math-word-problems
-  - olympiad-math
-metrics:
-  - name: filtered_ratio
-    type: ratio 
-    value: {len(filtered_dataset) / len(dataset):.3f}
-    description: Ratio of filtered dataset size to original dataset size
----
-
-# Numina-Olympiads
-
-Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers.
-
-## Dataset Information
-- Split: {args.split}
-- Original size: {len(dataset)}
-- Filtered size: {len(filtered_dataset)}
-- Source: olympiads
-- All examples contain valid boxed answers
-
-## Dataset Description
-This dataset is a filtered version of the NuminaMath-CoT dataset, containing only problems from olympiad sources that have valid boxed answers. Each example includes:
-- A mathematical word problem
-- A detailed solution with step-by-step reasoning
-- A boxed final answer in LaTeX format
-
-## Usage
-The dataset is particularly useful for:
-- Training and evaluating math problem-solving models
-- Studying olympiad-style mathematical reasoning
-- Testing model capabilities on complex word problems
-"""
-        with open("README.md", "w") as f:
-            f.write(readme_content)
-            
-        api.upload_file(
-            path_or_fileobj="README.md",
-            path_in_repo="README.md",
-            repo_id=repo_id,
-            repo_type="dataset"
-        )
-        print("\nSuccessfully pushed dataset to Hugging Face Hub")
-    except Exception as e:
-        print(f"\nFailed to push to Hugging Face Hub: {e}")
-        print("You can still use the locally saved dataset")
+    filtered_dataset_dict.save_to_disk(output_path)
+    print(f"\nDataset saved locally to: {output_path}")
 
 
 if __name__ == "__main__":
