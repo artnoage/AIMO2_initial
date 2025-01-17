@@ -3,6 +3,19 @@ import argparse
 from typing import List, Dict, Any
 from pathlib import Path
 
+def filter_by_alignment(data: List[Dict], alignments: List[str]) -> List[Dict]:
+    """
+    Filter a list of dictionaries to only include entries with specified alignments.
+    
+    Args:
+        data: List of dictionaries containing entries
+        alignments: List of alignments to keep
+        
+    Returns:
+        Filtered list containing only entries of specified alignments
+    """
+    return [entry for entry in data if entry.get('alignment') in alignments]
+
 def filter_by_types(data: List[Dict], types: List[str]) -> List[Dict]:
     """
     Filter a list of dictionaries to only include entries with specified types.
@@ -68,6 +81,8 @@ def main():
     parser.add_argument('output_file', help='Output JSON file path')
     parser.add_argument('--types', nargs='+',
                       help='Types to keep (e.g. light dark judge)')
+    parser.add_argument('--alignments', nargs='+',
+                      help='Alignments to keep')
     parser.add_argument('--success-rate-above', type=float,
                       help='Keep entries with success rate above this threshold (0-1)')
     parser.add_argument('--success-rate-below', type=float,
@@ -88,6 +103,10 @@ def main():
     filtered_data = data
     
     # Apply filters in sequence
+    if args.alignments:
+        filtered_data = filter_by_alignment(filtered_data, args.alignments)
+        print(f"After alignment filtering: {len(filtered_data)} entries")
+        
     if args.types:
         filtered_data = filter_by_types(filtered_data, args.types)
         print(f"After type filtering: {len(filtered_data)} entries")
