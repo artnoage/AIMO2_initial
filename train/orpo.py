@@ -10,8 +10,8 @@ from transformers import logging
 import re
 
 
-model_type = "wrong"
-model_name= "models/wrong/20250115_102759"
+model_type = "merged"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250116_114220"
 dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/20250117_072635"
 
 
