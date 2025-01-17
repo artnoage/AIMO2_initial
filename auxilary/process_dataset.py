@@ -266,7 +266,7 @@ def main():
         print(f"After filtering for {args.source}: {len(dataset)}")
     
     # Filter for solutions containing exactly one boxed answer
-    def has_valid_answer(example):
+    def has_valid_answer(example: Dict[str, str]) -> bool:
         if 'solution' not in example:
             stats['removed_no_boxed'] += 1
             return False
@@ -280,20 +280,21 @@ def main():
             stats['removed_multiple_boxed'] += 1
             return False
             
-        # Check for HTTP links
-        if contains_http(example['problem']):
-            stats['removed_http_problem'] += 1
-            return False
-        if contains_http(example['solution']):
-            stats['removed_http_solution'] += 1
+        # Combined check for HTTP and non-Latin characters
+        has_invalid, invalid_type = contains_invalid_content(example['problem'])
+        if has_invalid:
+            if invalid_type == 'http':
+                stats['removed_http_problem'] += 1
+            else:
+                stats['removed_non_latin_problem'] += 1
             return False
             
-        # Check for non-Latin characters
-        if contains_non_latin(example['problem']):
-            stats['removed_non_latin_problem'] += 1
-            return False
-        if contains_non_latin(example['solution']):
-            stats['removed_non_latin_solution'] += 1
+        has_invalid, invalid_type = contains_invalid_content(example['solution'])
+        if has_invalid:
+            if invalid_type == 'http':
+                stats['removed_http_solution'] += 1
+            else:
+                stats['removed_non_latin_solution'] += 1
             return False
             
         # Verify answer extraction
