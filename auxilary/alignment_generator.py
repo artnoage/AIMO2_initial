@@ -100,12 +100,18 @@ def main():
     with open(args.input_file, 'r') as f:
         data = json.load(f)
     
-    # Start with all existing entries
-    all_entries = data.copy()
+    # Start with all existing entries and add alignment field
+    all_entries = []
+    for entry in data:
+        entry_copy = entry.copy()
+        entry_copy['alignment'] = 'light'
+        all_entries.append(entry_copy)
     
     # Add dark and judge entries for light entries of type full_solution or recovery
     for entry in data:
-        if entry['type'] in ['full_solution', 'recovery'] and entry['alignment'] == 'light':
+        entry_with_alignment = entry.copy()
+        entry_with_alignment['alignment'] = 'light'
+        if entry_with_alignment['type'] in ['full_solution', 'recovery']:
             # Generate and add dark/judge entries
             all_entries.extend(generate_dark_and_judge(entry))
     
