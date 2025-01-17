@@ -100,16 +100,13 @@ def main():
     with open(args.input_file, 'r') as f:
         data = json.load(f)
     
-    # Process each light entry of type full_solution or recovery
-    all_entries = []
+    # Start with all existing entries
+    all_entries = data.copy()
+    
+    # Add dark and judge entries for light entries of type full_solution or recovery
     for entry in data:
-        if entry['type'] not in ['full_solution', 'recovery']:
-            # Keep entries that aren't full_solution or recovery unchanged
-            all_entries.append(entry)
-        elif entry['alignment'] == 'light':
-            # Keep the original light entry
-            all_entries.append(entry)
-            # Generate and add dark/judge entries only for full_solution type
+        if entry['type'] in ['full_solution', 'recovery'] and entry['alignment'] == 'light':
+            # Generate and add dark/judge entries
             all_entries.extend(generate_dark_and_judge(entry))
     
     # Write output file
