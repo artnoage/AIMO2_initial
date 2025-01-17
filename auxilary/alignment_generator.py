@@ -100,11 +100,11 @@ def main():
     with open(args.input_file, 'r') as f:
         data = json.load(f)
     
-    # Process each light entry of type full_solution
+    # Process each light entry of type full_solution or recovery
     all_entries = []
     for entry in data:
-        if entry['type'] != 'full_solution':
-            # Keep non-full_solution entries unchanged
+        if entry['type'] not in ['full_solution', 'recovery']:
+            # Keep entries that aren't full_solution or recovery unchanged
             all_entries.append(entry)
         elif entry['alignment'] == 'light':
             # Keep the original light entry
