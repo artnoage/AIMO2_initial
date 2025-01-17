@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-from datasets import Dataset, load_from_disk
+from datasets import Dataset, load_from_disk, load_dataset
 from tqdm import tqdm
 import torch
 from pathlib import Path
@@ -24,6 +24,48 @@ def validate_repo_name(repo_name: str) -> bool:
         return False
     username, repo = repo_name.split('/')
     return bool(username and repo)
+
+def download_dataset_from_hub(repo_name: str, local_path: Path):
+    """Download a dataset from HuggingFace Hub."""
+    token = os.environ.get('HF_TOKEN')
+    if not token:
+        raise ValueError("HF_TOKEN environment variable not set")
+        
+    login(token)
+    print(f"Downloading dataset from {repo_name}...")
+    dataset = load_dataset(repo_name)
+    
+    # Create local_datasets directory if it doesn't exist
+    local_path.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Saving dataset to {local_path}...")
+    dataset.save_to_disk(str(local_path))
+    print("Download complete!")
+
+def download_model_from_hub(repo_name: str, local_path: Path):
+    """Download a model from HuggingFace Hub."""
+    token = os.environ.get('HF_TOKEN')
+    if not token:
+        raise ValueError("HF_TOKEN environment variable not set")
+    login(token)
+    
+    print(f"Downloading model and tokenizer from {repo_name}...")
+    try:
+        # Create models directory if it doesn't exist
+        local_path.mkdir(parents=True, exist_ok=True)
+        
+        # Download model and tokenizer
+        model = AutoModelForCausalLM.from_pretrained(repo_name)
+        tokenizer = AutoTokenizer.from_pretrained(repo_name)
+        
+        print(f"Saving model and tokenizer to {local_path}...")
+        model.save_pretrained(str(local_path))
+        tokenizer.save_pretrained(str(local_path))
+        print("Download complete!")
+        
+    except Exception as e:
+        print(f"Error downloading model: {str(e)}")
+        raise
 
 def upload_dataset_to_hub(dataset, repo_name):
     """Upload the dataset to HuggingFace Hub."""
@@ -94,41 +136,53 @@ def main():
     # Load environment variables from .env file
     load_dotenv()
     
-    parser = argparse.ArgumentParser(description='Upload Arrow datasets or models to HuggingFace Hub')
+    parser = argparse.ArgumentParser(description='Upload or download datasets/models from HuggingFace Hub')
     parser.add_argument('--type', choices=['dataset', 'model'], required=True,
-                      help='Type of content to upload (dataset or model)')
-    parser.add_argument('--path', required=True, type=Path,
-                      help='Path to Arrow dataset directory or model directory')
+                      help='Type of content to handle (dataset or model)')
+    parser.add_argument('--load', choices=['up', 'down'], required=True,
+                      help='Upload to or download from HuggingFace Hub')
+    parser.add_argument('--path', type=Path,
+                      help='Path to local content (required for upload)')
     parser.add_argument('--repo_name', required=True,
                       help='Name for the HuggingFace repository (format: username/repo-name)')
     args = parser.parse_args()
     
-    if args.type == 'dataset':
-        # Validate path exists
+    if args.load == 'up':
+        if not args.path:
+            raise ValueError("--path is required for upload operations")
         if not args.path.exists():
             raise FileNotFoundError(f"Path does not exist: {args.path}")
 
-        try:
-            # Validate and load Arrow dataset
-            validate_arrow_dataset(args.path)
-            print(f"Loading Arrow dataset from {args.path}...")
-            dataset = load_from_disk(str(args.path))
-            print("Dataset loaded successfully")
-            
-            # Upload dataset
-            upload_dataset_to_hub(dataset, args.repo_name)
-            print(f"Dataset successfully uploaded to {args.repo_name}")
-        except Exception as e:
-            print(f"Error processing dataset: {str(e)}")
-            raise
+        if args.type == 'dataset':
+            try:
+                # Validate and load Arrow dataset
+                validate_arrow_dataset(args.path)
+                print(f"Loading Arrow dataset from {args.path}...")
+                dataset = load_from_disk(str(args.path))
+                print("Dataset loaded successfully")
+                
+                # Upload dataset
+                upload_dataset_to_hub(dataset, args.repo_name)
+                print(f"Dataset successfully uploaded to {args.repo_name}")
+            except Exception as e:
+                print(f"Error processing dataset: {str(e)}")
+                raise
+        
+        else:  # model
+            if not args.repo_name:
+                raise ValueError("--repo_name is required for model uploads")
+                
+            # Handle model upload
+            upload_model_to_hub(args.path, args.repo_name)
+            print(f"Model successfully uploaded to {args.repo_name}")
     
-    else:  # model
-        if not args.repo_name:
-            raise ValueError("--repo_name is required for model uploads")
-            
-        # Handle model upload
-        upload_model_to_hub(args.path, args.repo_name)
-        print(f"Model successfully uploaded to {args.repo_name}")
+    else:  # download
+        if args.type == 'dataset':
+            local_path = Path('local_datasets') / args.repo_name.split('/')[-1]
+            download_dataset_from_hub(args.repo_name, local_path)
+        else:  # model
+            local_path = Path('models') / args.repo_name.split('/')[-1]
+            download_model_from_hub(args.repo_name, local_path)
 
 if __name__ == "__main__":
     main()
