@@ -10,9 +10,10 @@ from transformers import logging
 import re
 
 
-model_type = "merged"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250113_122225"
+model_type = "wrong"
+model_name= "models/wrong/20250115_102759"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/20250117_072635"
+
 
 # Check if model_type is in paths
 if model_type not in model_name:
@@ -94,7 +95,7 @@ def main():
     shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
     #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+    formatted_dataset = concatenate_datasets([shuffled_dataset])
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -105,7 +106,7 @@ def main():
     training_args = ORPOConfig(
         max_length=4096,
         max_prompt_length=2048,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=2,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
         learning_rate=3e-6,
@@ -113,7 +114,7 @@ def main():
         optim = "adafactor",
         seed=42,
         bf16=True,
-        weight_decay=0.01,
+        weight_decay=0.1,
         lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.1)

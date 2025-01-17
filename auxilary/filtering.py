@@ -14,7 +14,7 @@ def filter_by_types(data: List[Dict], types: List[str]) -> List[Dict]:
     Returns:
         Filtered list containing only entries of specified types
     """
-    return [entry for entry in data if entry.get('type') in types]
+    return [entry for entry in data if entry.get('allignment') in types]
 
 def filter_by_success_rate_above(data: List[Dict], threshold: float) -> List[Dict]:
     """

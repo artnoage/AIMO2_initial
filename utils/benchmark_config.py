@@ -19,8 +19,8 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
-    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/merged/20250116_114220"
+    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/merged/20250116_114220"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
@@ -47,8 +47,8 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 30
-    completions: int = 30
+    best_of: int = 20
+    completions: int = 25
     
     # Verification settings
     tolerance: float = 1e-6  # Tolerance for numeric answer comparison
@@ -69,7 +69,7 @@ class BenchmarkConfig:
                           default='LOCAL', help='Main model to use for solving problems')
         parser.add_argument('--auxiliary', type=str,
                           choices=[model.name for model in ModelOption],
-                          default='LOCAL', help='Auxiliary model to use for judging problems')
+                          default='LOCAL_2', help='Auxiliary model to use for judging problems')
         parser.add_argument('--main-port', type=int, default=8000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
@@ -95,9 +95,9 @@ class BenchmarkConfig:
         # Execution arguments
         parser.add_argument('--max-concurrent', type=int, default=64,
                           help='Maximum number of concurrent problems (default: 64)')
-        parser.add_argument('--best-of', type=int, default=30,
+        parser.add_argument('--best-of', type=int, default=20,
                           help='Number of attempts per problem (default: 5)')
-        parser.add_argument('--completions', type=int, default=30,
+        parser.add_argument('--completions', type=int, default=25,
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments

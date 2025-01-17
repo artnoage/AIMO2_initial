@@ -37,7 +37,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     correct_answer,
                     example["problem"]
                 )
-                
                 # Always append the solution, regardless of correctness
                 solutions.append({
                     'solution': current_solution,

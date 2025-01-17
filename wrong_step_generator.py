@@ -28,8 +28,6 @@ class WrongStepGenerator:
         self.solution_agent = FullSolutionAgent(main)
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.loki_agent = LokiAgent(main)
-        self.tournament_judge = TournamentJudgeAgent(main)
         self.verifier = NumericVerifier()
         self.logs = []
         
@@ -155,7 +153,7 @@ class WrongStepGenerator:
                     continue
                 
                 # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
+                is_valid, _ = validate_solution(solution)
                 if not is_valid:
                     continue
                     
@@ -376,21 +374,7 @@ class WrongStepGenerator:
         })
 
         correct_with_completion = partial_solutions[wrong_step_index-1] + remove_inst_tokens(saved_good_completion)
-        # Reuse prompts for recovery alignments
-        loki_prompt = (
-            "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
-            "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
-            "that would fool even a careful mathematician.\n\n"
-            f"Problem:\n{problem}\n\n"
-            "Please provide a complete solution that:\n"
-            "1. Uses correct mathematical notation and LaTeX\n"
-            "2. Follows logical steps\n"
-            "3. Contains subtle but significant errors\n"
-            "4. Arrives at an incorrect answer\n"
-            "5. Appears convincing at first glance\n\n"
-            "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
-        )
-
+        
         # Split solutions for judge
         correct_steps = split_into_steps(remove_inst_tokens(correct_with_completion))
         wrong_steps = split_into_steps(wrong_solution)

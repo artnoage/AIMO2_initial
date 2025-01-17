@@ -413,10 +413,10 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         if not validate_step(full_step, expected_step=i):
             word_count = len(full_step.split())
             step_error = ""
-            if word_count < 22:
+            if word_count < 20:
                 step_error = f"Step {i} too short ({word_count} words < 20)"
-            elif word_count > 100:
-                step_error = f"Step {i} too long ({word_count} words > 120)"
+            elif word_count > 140:
+                step_error = f"Step {i} too long ({word_count} words > 140)"
             else:
                 step_error = f"Step {i} invalid format or numbering"
             return False, step_error
@@ -508,7 +508,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     #    return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 20 or word_count > 120:
+    if word_count < 20 or word_count > 140:
         return False
         
     # Check step numbering if expected step is provided
