@@ -201,6 +201,8 @@ def main():
                        help='Only keep problems where the answer is a number')
     parser.add_argument('--exclude', type=str,
                        help='JSON file containing problems to exclude')
+    parser.add_argument('--include', type=str,
+                       help='JSON file containing problems to include (keep only these)')
     parser.add_argument('--exclude-multiple-choice', action='store_true', default=False,
                        help='Exclude multiple choice problems (default: keep them)')
     args = parser.parse_args()
@@ -220,8 +222,10 @@ def main():
 
     print(f"\nOriginal dataset size: {len(dataset)}")
 
-    # Load exclude list if provided
+    # Load exclude/include lists if provided
     excluded_problems = set()
+    included_problems = set()
+    
     if args.exclude and os.path.exists(args.exclude):
         try:
             with open(args.exclude, 'r') as f:
@@ -232,7 +236,20 @@ def main():
             print(f"Error loading exclude file: {e}")
             return
 
-    # Filter out excluded problems
+    if args.include and os.path.exists(args.include):
+        try:
+            with open(args.include, 'r') as f:
+                include_data = json.load(f)
+                included_problems = {item['problem'] for item in include_data if 'problem' in item}
+            print(f"Loaded {len(included_problems)} problems to include")
+        except Exception as e:
+            print(f"Error loading include file: {e}")
+            return
+
+    # Apply include/exclude filters
+    if included_problems:
+        dataset = dataset.filter(lambda x: x['problem'] in included_problems)
+        print(f"After including only specified problems: {len(dataset)}")
     if excluded_problems:
         dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
         print(f"After excluding problems: {len(dataset)}")
