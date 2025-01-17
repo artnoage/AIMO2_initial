@@ -48,17 +48,26 @@ def generate_dark_and_judge(light_entry: Dict) -> List[Dict]:
     # Randomly decide position of correct solution
     correct_first = random.choice([True, False])
     
-    # Get solutions from light entry
-    correct_solution = light_entry['chosen']['content']
-    wrong_solution = light_entry['rejected']['content']
+    # Get solutions from light entry and remove last step from both
+    def split_into_steps(solution: str) -> List[str]:
+        """Split solution into steps by double newlines"""
+        steps = [s.strip() for s in solution.split('\n\n') if s.strip()]
+        return steps
+        
+    correct_steps = split_into_steps(light_entry['chosen']['content'])
+    wrong_steps = split_into_steps(light_entry['rejected']['content'])
+    
+    # Remove last step from both solutions
+    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
     
     judge_prompt = (
         "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
         "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
         "demonstrates stronger reasoning and is more likely to be correct.\n\n"
         f"Problem:\n{problem}\n\n"
-        f"Solution A:\n{correct_solution if correct_first else wrong_solution}\n\n"
-        f"Solution B:\n{wrong_solution if correct_first else correct_solution}\n\n"
+        f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
+        f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
         "Which solution is better, A or B?"
     )
     
