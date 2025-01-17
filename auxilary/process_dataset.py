@@ -141,20 +141,30 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 
 def count_boxed_answers(solution: str) -> int:
-    """Count number of \boxed{...} occurrences in solution"""
-    count = 0
-    pos = 0
-    while True:
-        pos = solution.find('\\boxed{', pos)
-        if pos == -1:
-            break
-        count += 1
-        pos += 1
-    return count
+    """Count number of \boxed{...} occurrences in solution using compiled regex"""
+    return len(BOXED_PATTERN.findall(solution))
 
-def contains_http(text: str) -> bool:
-    """Check if text contains http links"""
-    return 'http' in text.lower()
+# Compile regex patterns once
+MULTIPLE_CHOICE_PATTERN = re.compile(r'(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*')
+BOXED_PATTERN = re.compile(r'\\boxed\{')
+
+# Define character ranges
+CHINESE_CHARS = frozenset(chr(i) for i in range(0x4e00, 0x9fff + 1))
+RUSSIAN_CHARS = frozenset(chr(i) for i in range(0x0400, 0x04FF + 1))
+
+def contains_invalid_content(text: str) -> Tuple[bool, str]:
+    """Check if text contains http links or non-Latin characters"""
+    if 'http' in text.lower():
+        return True, 'http'
+    
+    # Use set intersection for faster character checking
+    text_chars = set(text)
+    if text_chars & CHINESE_CHARS:
+        return True, 'chinese'
+    if text_chars & RUSSIAN_CHARS:
+        return True, 'russian'
+    
+    return False, ''
 
 def is_numeric_answer(answer: str) -> bool:
     """Check if the answer represents a number using extract_numeric_answer"""
@@ -166,17 +176,6 @@ def is_numeric_answer(answer: str) -> bool:
         return numeric_value is not None
     except Exception:
         return False
-
-def contains_non_latin(text: str) -> bool:
-    """Check if text contains Chinese or Russian characters"""
-    for char in text:
-        # Check for Chinese characters
-        if '\u4e00' <= char <= '\u9fff':
-            return True
-        # Check for Russian characters
-        if '\u0400' <= char <= '\u04FF':
-            return True
-    return False
 
 def is_multiple_choice(problem: str) -> bool:
     """Check if the problem contains multiple choice indicators (A,B,C,D)"""
