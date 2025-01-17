@@ -142,7 +142,7 @@ def main():
     parser.add_argument('--load', choices=['up', 'down'], required=True,
                       help='Upload to or download from HuggingFace Hub')
     parser.add_argument('--path', type=Path,
-                      help='Path to local content (required for upload)')
+                      help='Path to local content (for upload) or destination path (for download)')
     parser.add_argument('--repo_name', required=True,
                       help='Name for the HuggingFace repository (format: username/repo-name)')
     args = parser.parse_args()
@@ -177,11 +177,21 @@ def main():
             print(f"Model successfully uploaded to {args.repo_name}")
     
     else:  # download
+        # Set default paths if not provided
+        if not args.path:
+            if args.type == 'dataset':
+                local_path = Path('local_datasets') / args.repo_name.split('/')[-1]
+            else:  # model
+                local_path = Path('models') / args.repo_name.split('/')[-1]
+        else:
+            local_path = args.path
+            
+        # Create parent directories if they don't exist
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+            
         if args.type == 'dataset':
-            local_path = Path('local_datasets') / args.repo_name.split('/')[-1]
             download_dataset_from_hub(args.repo_name, local_path)
         else:  # model
-            local_path = Path('models') / args.repo_name.split('/')[-1]
             download_model_from_hub(args.repo_name, local_path)
 
 if __name__ == "__main__":
