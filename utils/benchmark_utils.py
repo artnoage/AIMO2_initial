@@ -400,10 +400,12 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):
         return False, "Contains URLs/links"
         
-    # Check analysis length
+    # Check analysis section
     analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
-    if analysis_parts and len(analysis_parts[0].split()) < 20:
-        return False, "Analysis section too short (< 20 words)"
+    if analysis_parts:
+        is_valid, reason = validate_analysis(analysis_parts[0])
+        if not is_valid:
+            return False, f"Analysis section: {reason}"
         
     # Check for boxed answer
     if "\\boxed{" not in solution:
