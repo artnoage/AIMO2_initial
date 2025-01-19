@@ -515,7 +515,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
     #    return False
     # Check if response has less than 20 words
     word_count = len(resp.split())
-    if word_count < 20 or word_count > 140:
+    if word_count < 22 or word_count > 120:
         return False
         
     # Check step numbering if expected step is provided
