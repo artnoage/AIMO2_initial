@@ -5,36 +5,34 @@ from pathlib import Path
 from datasets import Dataset
 import datetime
 
-def convert_to_conversations(data: Dict) -> Dict:
-    """
-    Convert a single problem-solution pair to conversation format.
-    """
-    return {
-        "conversations": [
-            {
-                "role": "user",
-                "content": data["problem"]
-            },
-            {
-                "role": "assistant",
-                "content": data["solution"]
-            }
-        ]
-    }
-
 def process_dataset(input_path: str, output_path: str):
     """
     Process the entire dataset and convert to conversation format.
+    Creates a single conversations list containing all examples.
     """
     # Read input JSON
     with open(input_path, 'r') as f:
         data = json.load(f)
     
-    # Convert each example
-    converted_data = [convert_to_conversations(item) for item in data]
+    # Create a single conversations list containing all examples
+    conversations = []
+    for item in data:
+        conversations.extend([
+            {
+                "role": "user",
+                "content": item["problem"]
+            },
+            {
+                "role": "assistant",
+                "content": item["solution"]
+            }
+        ])
+    
+    # Create the final format
+    converted_data = {"conversations": conversations}
     
     # Create HuggingFace dataset
-    dataset = Dataset.from_list(converted_data)
+    dataset = Dataset.from_dict({"conversations": [conversations]})
     
     # Save as both JSON and HuggingFace dataset
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
