@@ -392,12 +392,10 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     # Check for analysis section
     if "analysis" not in solution.lower():
         return False, "Missing analysis section"
-    #if "[/INST]" in solution.lower():
-    #    return False, "Contains [/INST] token"
-    #if "INST]" in solution.lower():
-    #    return False, "Contains [/INST] token"
+        
     if "[…]" in solution.lower():   
         return False, "Skips steps"
+        
     # Check analysis length
     analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
     if analysis_parts and len(analysis_parts[0].split()) < 20:
@@ -407,25 +405,25 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if "\\boxed{" not in solution:
         return False, "Missing boxed answer"
         
-    # Split into steps
-    steps = solution.lower().split("step")[1:]  # Skip text before first "step"
-    if not steps:
+    # Split solution into steps and validate each one
+    steps = split_into_steps(solution)
+    if len(steps) <= 1:  # Only analysis or no steps
         return False, "No steps found"
-
-    # Validate each step
-    for i, step in enumerate(steps, 1):
-        full_step = "Step" + step
-        if not validate_step(full_step, expected_step=i):
-            word_count = len(full_step.split())
-            step_error = ""
-            if word_count < 20:
-                step_error = f"Step {i} too short ({word_count} words < 20)"
-            elif word_count > 140:
-                step_error = f"Step {i} too long ({word_count} words > 140)"
-            else:
-                step_error = f"Step {i} invalid format or numbering"
-            return False, step_error
         
+    # Skip analysis section if present
+    start_idx = 1 if "analysis" in steps[0].lower() else 0
+    
+    # Validate each step
+    for i, step in enumerate(steps[start_idx:], 1):
+        if not validate_step(step, expected_step=i):
+            word_count = len(step.split())
+            if word_count < 20:
+                return False, f"Step {i} too short ({word_count} words < 20)"
+            elif word_count > 140:
+                return False, f"Step {i} too long ({word_count} words > 140)"
+            else:
+                return False, f"Step {i} invalid format or numbering"
+    
     return True, "Solution valid"
 
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
