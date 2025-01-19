@@ -10,9 +10,9 @@ from transformers import logging
 import re
 
 
-model_type = "merged"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250116_114220"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/20250117_072635"
+model_type = "very_hard"
+model_name= "models/light/20250119_094443"
+dataset_name="/Home/stat/laschos/AIMO2_initial/models/very_hard/20250119_112932"
 
 
 # Check if model_type is in paths
@@ -106,15 +106,15 @@ def main():
     training_args = ORPOConfig(
         max_length=4096,
         max_prompt_length=2048,
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
-        learning_rate=3e-6,
+        learning_rate=2e-6,
         logging_steps=1,
         optim = "adafactor",
         seed=42,
         bf16=True,
-        weight_decay=0.1,
+        weight_decay=0.05,
         lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.1)

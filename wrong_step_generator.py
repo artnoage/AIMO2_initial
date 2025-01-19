@@ -38,7 +38,7 @@ class WrongStepGenerator:
         partial_solution: str,
         correct_answer: str,
         step_index: int,
-        size_threshold: int = 2000
+        size_threshold: int 
     ) -> Tuple[bool, bool, Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct.
         Returns:
@@ -86,6 +86,7 @@ class WrongStepGenerator:
                         
                     # Check solution size
                     if len(complete_solution) < size_threshold:
+                        print("size_matters")
                         self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
                         
@@ -159,8 +160,9 @@ class WrongStepGenerator:
                     continue
                 
                 # Validate solution structure
-                is_valid, _ = validate_solution(solution)
+                is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
+                    print(validation_reason)
                     continue
                     
                 # Check if solution is wrong
@@ -172,7 +174,7 @@ class WrongStepGenerator:
                 
                 if is_correct and correct_solution is None:
                     correct_solution = solution
-                    solution_threshold = int(0.85 * len(solution))  # Calculate threshold here
+                    solution_threshold = int(0.9 * len(solution))  # Calculate threshold here
                     self.logs.append(f"✓ Found correct solution on attempt {attempts}")
                 elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
