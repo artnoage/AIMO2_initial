@@ -419,14 +419,9 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     
     # Validate each step
     for i, step in enumerate(steps[start_idx:], 1):
-        if not validate_step(step, expected_step=i):
-            word_count = len(step.split())
-            if word_count < 20:
-                return False, f"Step {i} too short ({word_count} words < 20)"
-            elif word_count > 140:
-                return False, f"Step {i} too long ({word_count} words > 140)"
-            else:
-                return False, f"Step {i} invalid format or numbering"
+        is_valid, reason = validate_step(step, expected_step=i)
+        if not is_valid:
+            return False, f"Step {i}: {reason}"
     
     return True, "Solution valid"
 
@@ -498,8 +493,9 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         found_steps.add(actual_step)
         
         # Validate step format and content
-        if not validate_step(full_step, expected_step=expected_step_num):
-            return False, f"Invalid step {expected_step_num} format or content"
+        is_valid, reason = validate_step(full_step, expected_step=expected_step_num)
+        if not is_valid:
+            return False, f"Step {expected_step_num}: {reason}"
             
     # Check for gaps in step numbers
     expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
@@ -509,14 +505,14 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
     return True, "Valid completion"
                     
 
-def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
+def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
     """Validate a solution step"""
-    #if "[/INST]" in resp:
-    #    return False
-    # Check if response has less than 20 words
+    # Check if response has less than 20 words or more than 120
     word_count = len(resp.split())
-    if word_count < 22 or word_count > 120:
-        return False
+    if word_count < 22:
+        return False, f"Step too short ({word_count} words < 22)"
+    if word_count > 120:
+        return False, f"Step too long ({word_count} words > 120)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:
@@ -525,7 +521,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
         
         # Reject if there are any decimal numbers in steps (e.g. 2.1)
         if re.search(r'step\s*\d+\.\d+', resp.lower()):
-            return False
+            return False, "Contains decimal step numbers"
             
         for pattern in STEP_NUMBER_PATTERNS:
             match = pattern.search(resp)
@@ -534,15 +530,15 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
                     num = int(match.group(1))
                     # Reject decimal numbers
                     if '.' in match.group(1):
-                        return False
+                        return False, "Contains decimal step numbers"
                     found_numbers.append(num)
                 except ValueError:
-                    return False
+                    return False, "Invalid step number format"
                 
         # If we found any numbers, they must match the expected step
         if found_numbers:
             if not any(num == expected_step for num in found_numbers):
-                return False
+                return False, f"Step number mismatch: expected {expected_step}"
         else:
             # No explicit numbers found, check for text mentions
             step_mentions = [
@@ -552,11 +548,14 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
                 f"{expected_step}."
             ]
             if not any(mention.lower() in resp.lower() for mention in step_mentions):
-                return False
+                return False, f"Missing step number {expected_step}"
             
     # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
-    return step_count <= 1
+    if step_count > 1:
+        return False, "Multiple step mentions"
+        
+    return True, "Step valid"
 
 class NumericVerifier:
     def __init__(self, tolerance: float = 1e-6):
