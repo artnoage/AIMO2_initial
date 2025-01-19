@@ -85,8 +85,8 @@ class WrongStepGenerator:
                         continue
                         
                     # Check solution size
-                    if len(complete_solution) > size_threshold:
-                        self.logs.append(f"Solution exceeds size threshold: {len(complete_solution)} > {size_threshold}")
+                    if len(complete_solution) < size_threshold:
+                        self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
                         
                     # Then check if the complete solution is valid
