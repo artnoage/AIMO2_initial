@@ -32,7 +32,15 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
     """Convert an Arrow dataset to JSON format."""
     try:
         dataset = load_from_disk(str(arrow_path))
-        data = dataset.to_list()
+        
+        # Handle both Dataset and DatasetDict
+        if hasattr(dataset, 'to_list'):  # Single Dataset
+            data = dataset.to_list()
+        else:  # DatasetDict
+            # Convert each split to a dictionary
+            data = {}
+            for split_name, split_dataset in dataset.items():
+                data[split_name] = split_dataset.to_list()
         
         if output_path is None:
             # Create output path based on input path
