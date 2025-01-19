@@ -14,25 +14,26 @@ def process_dataset(input_path: str, output_path: str):
     with open(input_path, 'r') as f:
         data = json.load(f)
     
-    # Create a single conversations list containing all examples
+    # Create list of conversations, each containing a complete exchange
     conversations = []
     for item in data:
-        conversations.extend([
+        conversation = [
             {
                 "role": "user",
                 "content": item["problem"]
             },
             {
-                "role": "assistant",
+                "role": "assistant", 
                 "content": item["solution"]
             }
-        ])
+        ]
+        conversations.append(conversation)
     
     # Create the final format
     converted_data = {"conversations": conversations}
     
     # Create HuggingFace dataset
-    dataset = Dataset.from_dict({"conversations": [conversations]})
+    dataset = Dataset.from_dict({"conversations": conversations})
     
     # Save as both JSON and HuggingFace dataset
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
