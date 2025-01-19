@@ -396,6 +396,10 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if "[…]" in solution.lower():   
         return False, "Skips steps"
         
+    # Check for links/URLs
+    if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):
+        return False, "Contains URLs/links"
+        
     # Check analysis length
     analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
     if analysis_parts and len(analysis_parts[0].split()) < 20:
