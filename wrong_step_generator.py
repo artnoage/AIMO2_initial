@@ -172,6 +172,7 @@ class WrongStepGenerator:
                 
                 if is_correct and correct_solution is None:
                     correct_solution = solution
+                    solution_threshold = int(0.85 * len(solution))  # Calculate threshold here
                     self.logs.append(f"✓ Found correct solution on attempt {attempts}")
                 elif not is_correct and wrong_solution is None:
                     wrong_solution = solution
@@ -221,7 +222,8 @@ class WrongStepGenerator:
                 problem,
                 partial_solutions[current_step],
                 correct_answer,
-                current_step
+                current_step,
+                solution_threshold
             )
             if found_verified and not found_valid:
                 return None
