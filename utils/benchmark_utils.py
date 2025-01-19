@@ -365,9 +365,6 @@ STEP_NUMBER_PATTERNS = [
 
 def validate_analysis(resp: str) -> Tuple[bool, str]:
     """Validate an analysis response"""
-    #if "[/INST]" in resp:
-    #    return False, "Contains [/INST] token"
-        
     # Check if response has less than 20 words
     word_count = len(resp.split())
     if word_count < 20:
