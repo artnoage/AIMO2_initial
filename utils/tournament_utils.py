@@ -2,25 +2,16 @@ import random
 from typing import Dict, List, Optional, Tuple, Any, Callable
 from utils.benchmark_utils import remove_inst_tokens
 
-from enum import Enum
-
-class TournamentType(Enum):
-    """Types of tournaments supported"""
-    ADVERSARIAL = "adversarial"  # For adversarial generation
-    BENCHMARK = "benchmark"      # For benchmark evaluation
-
 class Tournament:
     """Manages solution tournaments and generates judge training examples"""
     
-    def __init__(self, judge_agent, tournament_type: TournamentType = TournamentType.ADVERSARIAL, logger=None):
+    def __init__(self, judge_agent, logger=None):
         """
         Initialize tournament manager
         Args:
             judge_agent: Agent that can compare solutions
-            tournament_type: Type of tournament to run (adversarial or benchmark)
             logger: Optional logger for tournament progress
         """
-        self.tournament_type = tournament_type
         self.judge_agent = judge_agent
         self.logs = []
         self.logger = logger

@@ -8,7 +8,7 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.log_handler import MarkdownLogger
-from utils.tournament_utils import Tournament, TournamentType
+from utils.tournament_utils import Tournament
 
 # Constants
 SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
@@ -38,7 +38,7 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
-        self.tournament = Tournament(self.judge_agent, tournament_type=TournamentType.ADVERSARIAL, logger=self.logs)
+        self.tournament = Tournament(self.judge_agent, logger=self.logs)
 
     async def _verify_completions(
         self,

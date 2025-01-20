@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from utils.benchmark_config import *
 from utils.benchmark_utils import *
 from utils.agents import *
-from utils.tournament_utils import Tournament, TournamentType
+from utils.tournament_utils import Tournament
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -64,7 +64,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solutions.append(solution_info)
 
         # Run tournament
-        tournament = Tournament(judge_agent, tournament_type=TournamentType.BENCHMARK)
+        tournament = Tournament(judge_agent)
         tournament_solutions = [(s['solution'], s['is_correct'], '') for s in solutions if s['solution'] != "Error occurred"]
         
         # Get solution content for tournament
