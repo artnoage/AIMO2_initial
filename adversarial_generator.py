@@ -356,19 +356,23 @@ class AdversarialGenerator:
                 'score_rejected': 0.0
             })
             
+            # Get solver prompt for light recovery
+            solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
+            
             # Add recovery entries
             correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
             results.append({
                 'alignment': 'light',
                 'type': 'recovery',
                 'problem': problem,
-                'prompt': {'content': prompt, 'role': 'user'},
+                'prompt': {'content': solver_prompt[0], 'role': 'user'},
                 'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
             
+            # Use Loki prompt for dark recovery
             results.append({
                 'alignment': 'dark',
                 'type': 'recovery', 
