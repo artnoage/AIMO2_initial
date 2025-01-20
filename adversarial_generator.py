@@ -104,65 +104,15 @@ class AdversarialGenerator:
         Generate both correct and incorrect valid solutions and run tournament.
         Returns list of training examples.
         """
+        results = []
         solutions = []
         top_correct = None
         top_wrong = None
         second_wrong = None
         
-        # Search for correct solutions
-        attempts = 0
-        while attempts < self.best_of:
-            try:
-                attempts += 1
-                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-                
-                # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
-                if not is_valid:
-                    self.logs.append(f"Invalid solution structure: {validation_reason}")
-                    continue
-                    
-                # Verify correctness
-                is_correct, _ = await self.verifier.verify(
-                    solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    solutions.append((solution, True, prompt))
-                    self.logs.append(f"✓ Found valid correct solution on attempt {attempts}")
-                    
-            except Exception as e:
-                self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
-                continue
-                
-        attempts = 0
-        while attempts < self.best_of:
-            try:
-                attempts += 1
-                prompt, solution = await self.solution_agent.generate(
-                    problem,
-                    return_prompt=True
-                )
-            except Exception as e:
-                self.logs.append(f"Error getting step prompt: {str(e)}")
-                continue
-        
-        # Add step entry
-        results.append({
-            'alignment': 'light',
-            'type': 'step',
-            'problem': problem,
-            'prompt': {'content': step_prompt[0], 'role': 'user'},
-            'chosen': {'content': last_good_step, 'role': 'assistant'},
-            'rejected': {'content': wrong_steps[wrong_step_index], 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
         
         # Add completion entry
-        self.judge_results.append({
+        results.append({
             'alignment': 'light',
             'type': 'completion',
             'problem': problem,
@@ -175,7 +125,7 @@ class AdversarialGenerator:
         
         # Add recovery entry
         correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-        self.judge_results.append({
+        results.append({
             'alignment': 'light',
             'type': 'recovery',
             'problem': problem,
