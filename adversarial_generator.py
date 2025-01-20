@@ -93,6 +93,30 @@ class AdversarialGenerator:
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         self.valid_solutions = [self.valid_solutions[i] for i in sorted_indices]
         
+        # Find top correct and wrong solutions
+        top_correct = None
+        top_wrong = None
+        for solution, is_correct, prompt in self.valid_solutions:
+            if is_correct and top_correct is None:
+                top_correct = (solution, prompt)
+            elif not is_correct and top_wrong is None:
+                top_wrong = (solution, prompt)
+            if top_correct and top_wrong:
+                break
+                
+        # If we found both, create light entry
+        if top_correct and top_wrong:
+            self.judge_results.append({
+                'alignment': 'light',
+                'type': 'full_solution',
+                'problem': problem,
+                'prompt': {'content': top_correct[1], 'role': 'user'},
+                'chosen': {'content': top_correct[0], 'role': 'assistant'},
+                'rejected': {'content': top_wrong[0], 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+        
     async def generate(
         self,
         problem: str,
