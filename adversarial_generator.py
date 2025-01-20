@@ -102,16 +102,6 @@ class AdversarialGenerator:
         # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         return [solutions[i] for i in sorted_indices]
-                
-                if num_steps >= 2:  # Need at least analysis + one step
-                    # Start with a random step
-                    current_step = num_steps // 2
-                    going_up = None  # Direction flag: None=initial, True=up, False=down
-                    last_bad_step = None
-                    last_good_step = None
-                    wrong_step_index = None
-                    saved_good_completion = None
-                    saved_completion_prompt = None
                     
                     while True:
                         self.logs.append(f"\nChecking step {current_step}...")
