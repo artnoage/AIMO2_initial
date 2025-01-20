@@ -102,8 +102,8 @@ class AdversarialGenerator:
         # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         return [solutions[i] for i in sorted_indices]
-                    
-    while True:
+
+    async def generate(
         self.logs.append(f"\nChecking step {current_step}...")
         
         try:
