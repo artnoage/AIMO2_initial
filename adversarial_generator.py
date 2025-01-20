@@ -109,13 +109,8 @@ class AdversarialGenerator:
         top_correct = None
         top_wrong = None
         second_wrong = None
-            
-            # Verify if the answer is correct
-            is_correct, _ = await self.verifier.verify(
-                complete_solution,
-                correct_answer,
-                problem
-            )
+        
+        # Search for correct solutions
             
             if is_correct:
                 self.logs.append(f"✓ Step {current_step} is valid")
@@ -156,14 +151,12 @@ class AdversarialGenerator:
                     break
                 current_step -= 1
                 
-        except Exception as e:
-            self.logs.append(f"Error checking step {current_step}: {str(e)}")
-            break
-            
-    # If we found the wrong step and have a good completion, create training entries
-    if wrong_step_index is not None and saved_good_completion:
-        # Get step prompt
-        step_prompt = await self.step_agent.generate(
+        # Search for correct solutions
+        attempts = 0
+        while attempts < self.best_of:
+            try:
+                attempts += 1
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
             problem,
             partial_solutions[max(0, wrong_step_index - 1)],
             return_prompt=True
