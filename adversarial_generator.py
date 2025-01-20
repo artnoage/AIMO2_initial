@@ -123,7 +123,21 @@ class AdversarialGenerator:
                     self.logs.append(f"Invalid solution structure: {validation_reason}")
                     continue
                     
-        # Search for correct solutions
+                # Verify correctness
+                is_correct, _ = await self.verifier.verify(
+                    solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    solutions.append((solution, True, prompt))
+                    self.logs.append(f"✓ Found valid correct solution on attempt {attempts}")
+                    
+            except Exception as e:
+                self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
+                continue
+                
         attempts = 0
         while attempts < self.best_of:
             try:
@@ -133,6 +147,9 @@ class AdversarialGenerator:
                 partial_solutions[max(0, wrong_step_index - 1)],
                 return_prompt=True
             )
+            except Exception as e:
+                self.logs.append(f"Error getting step prompt: {str(e)}")
+                continue
         
         # Add step entry
         self.judge_results.append({
