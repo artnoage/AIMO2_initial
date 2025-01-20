@@ -376,7 +376,7 @@ class AdversarialGenerator:
         self,
         problem: str,
         correct_answer: str
-    ) -> Optional[List[Dict[str, Any]]]:
+    ) -> List[Dict[str, Any]]:
         """
         Generate both correct and incorrect valid solutions and run tournament.
         Returns list of training examples.
@@ -446,7 +446,7 @@ class AdversarialGenerator:
         
         if len(solutions) < 2 or not (has_correct and has_incorrect):
             self.logs.append("Failed to generate required mix of correct and incorrect solutions")
-            return None
+            return []
             
         # Shuffle solutions before tournament
         random.shuffle(solutions)
@@ -503,14 +503,14 @@ class AdversarialGenerator:
             
         return results
 
-async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> Optional[List[Dict]]:
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
     try:
         # Extract answer
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
             logging.error(f"Could not extract answer from solution for example {running_id}")
-            return None
+            return []
 
         # Prepare comprehensive logs for this example
         all_logs = []
@@ -533,7 +533,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Generate solutions and run tournament
         results = await generator.generate(example['problem'], correct_answer)
         if not results:
-            return None
+            return []
 
         # Add generator logs
         all_logs.extend(generator.logs)
@@ -562,7 +562,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
     except Exception as e:
         logging.error(f"Error processing example {running_id}: {str(e)}")
-        return None
+        return []
 
 async def main():
     """Main function for adversarial generation approach"""
