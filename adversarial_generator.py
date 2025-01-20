@@ -177,6 +177,11 @@ class AdversarialGenerator:
         return results
 
     async def _run_tournament(
+        self,
+        solutions: List[Tuple[str, bool, str]],
+        problem: str
+    ) -> Tuple[List[Tuple[str, bool, str]], List[Dict[str, Any]]]:
+        """Run tournament between solutions to rank them and generate training examples"""
         if len(solutions) < 2:
             return solutions
 
