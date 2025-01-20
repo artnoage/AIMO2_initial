@@ -78,33 +78,33 @@ class AdversarialGenerator:
                 last_good_step = correct_step
                 saved_good_completion = good_completion
                 saved_completion_prompt = completion_prompt
+                
+                if going_up is None:
+                    going_up = True
+                elif not going_up:
+                    wrong_step_index = last_bad_step
+                    break
                     
-                    if going_up is None:
-                        going_up = True
-                    elif not going_up:
-                        wrong_step_index = last_bad_step
-                        break
-                        
-                    if current_step + 1 >= num_steps:
-                        break
-                    current_step += 1
+                if current_step + 1 >= num_steps:
+                    break
+                current_step += 1
+                
+            else:
+                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
+                last_bad_step = current_step
+                
+                if going_up is None:
+                    going_up = False
+                    wrong_step_index = current_step
+                elif going_up:
+                    wrong_step_index = current_step
+                    break
                     
-                else:
-                    self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                    last_bad_step = current_step
-                    
-                    if going_up is None:
-                        going_up = False
-                        wrong_step_index = current_step
-                    elif going_up:
-                        wrong_step_index = current_step
-                        break
-                        
-                    if current_step - 1 < 0:
-                        break
-                    current_step -= 1
-                    
-            except Exception as e:
+                if current_step - 1 < 0:
+                    break
+                current_step -= 1
+                
+        except Exception as e:
                 self.logs.append(f"Error checking step {current_step}: {str(e)}")
                 break
                 
