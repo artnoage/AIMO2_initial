@@ -205,7 +205,14 @@ class AdversarialGenerator:
                     )
                     
                     # Parse response to get winner (A or B)
-                    winner = judge_response.strip().upper()[0]
+                    response = judge_response.strip().upper()
+                    if response and response[0] in ['A', 'B']:
+                        winner = response[0]
+                    else:
+                        # Failsafe: randomly choose if response is invalid
+                        import random
+                        winner = random.choice(['A', 'B'])
+                        self.logs.append(f"Invalid judge response, randomly chose {winner}")
                     
                     tournament_results = []
                     # Track judge accuracy when comparing correct vs wrong
