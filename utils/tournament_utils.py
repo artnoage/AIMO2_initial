@@ -82,13 +82,20 @@ class Tournament:
                     truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
                     truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
                     
-                    winner_prompt = prompt_a if winner == 'A' else prompt_b
+                    # Get judge's comparison prompt
+                    _, judge_prompt = await self.judge_agent.compare_solutions(
+                        problem,
+                        truncated_correct,
+                        truncated_wrong,
+                        return_prompt=True
+                    )
+                    
                     training_example = {
                         'alignment': 'judge',
                         'type': 'solution',
                         'problem': problem,
                         'correct_answer': correct_answer,
-                        'prompt': {'content': winner_prompt, 'role': 'user'},
+                        'prompt': {'content': judge_prompt, 'role': 'user'},
                         'chosen': {'content': truncated_correct, 'role': 'assistant'},
                         'rejected': {'content': truncated_wrong, 'role': 'assistant'},
                         'score_chosen': 1.0,

@@ -193,6 +193,10 @@ class AdversarialGenerator:
         # Process top wrong solution for step-based entries
         if top_wrong and top_correct:
             step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, top_correct[0])
+            # Add problem and correct_answer to step results
+            for result in step_results:
+                result['problem'] = problem
+                result['correct_answer'] = correct_answer
             results.extend(step_results)
         
         # Create training examples
