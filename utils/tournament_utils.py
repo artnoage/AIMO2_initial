@@ -5,6 +5,16 @@ from utils.benchmark_utils import remove_inst_tokens, split_into_steps
 class Tournament:
     """Manages solution tournaments and generates judge training examples"""
     
+    JUDGE_PROMPT_TEMPLATE = (
+        "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
+        "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
+        "demonstrates stronger reasoning and is more likely to be correct.\n\n"
+        "Problem:\n{problem}\n\n"
+        "Solution A:\n{solution_a}\n\n"
+        "Solution B:\n{solution_b}\n\n"
+        "Which solution is better, A or B?"
+    )
+    
     def __init__(self, judge_agent, logger=None):
         """
         Initialize tournament manager
