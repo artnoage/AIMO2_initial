@@ -598,66 +598,51 @@ class AdversarialGenerator:
         
         return results
 
-async def _process_generation(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Tuple[List[Dict], List[str]]:
-    """Handle the generation part of processing an example"""
-    # Extract answer
-    correct_answer = extract_answer_from_solution(example['solution'])
-    if correct_answer is None:
-        logging.error(f"Could not extract answer from solution for example {running_id}")
-        return [], []
-
-    # Initialize models
-    main = get_model(config, role="main")
-    auxiliary = get_model(config, role="auxiliary")
-    
-    # Create generator
-    generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
-    
-    # Generate solutions and run tournament
-    results = await generator.generate(example['problem'], correct_answer)
-    
-    # Add example ID to results
-    if results:
-        for entry in results:
-            entry['id'] = example_id
-            
-    return results, generator.logs
-
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
     try:
-        # Prepare comprehensive logs for this example
+        # Extract answer
+        correct_answer = extract_answer_from_solution(example['solution'])
+        if correct_answer is None:
+            logging.error(f"Could not extract answer from solution for example {running_id}")
+            return []
+
+        # Initialize models
+        main = get_model(config, role="main")
+        auxiliary = get_model(config, role="auxiliary")
+        
+        # Create generator
+        generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
+        
+        # Prepare logs
         all_logs = []
         all_logs.append("\n" + "="*80)
         all_logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
         all_logs.append("="*80)
-        
-        # Problem details
         all_logs.append(f"\n📋 Problem:")
         all_logs.append(f"{example['problem'][:200]}...")
-        all_logs.append(f"\n✓ Expected Answer: {extract_answer_from_solution(example['solution'])}")
-
-        # Generate solutions
-        results, generator_logs = await _process_generation(example, running_id, example_id, config)
+        all_logs.append(f"\n✓ Expected Answer: {correct_answer}")
         
-        # Add generator logs
-        all_logs.extend(generator_logs)
+        # Generate solutions and run tournament
+        results = await generator.generate(example['problem'], correct_answer)
         
+        # Add example ID to results
         if results:
-            # Add solution quality metrics
+            for entry in results:
+                entry['id'] = example_id
+                
+        # Add generator logs and solution details
+        all_logs.extend(generator.logs)
+        if results:
             all_logs.append("\n📊 Solution Quality:")
-            
-            # Add details about the generated solutions
             all_logs.append("\n🔍 Generated Solutions:")
             for entry in results:
                 all_logs.append(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
                 all_logs.append(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
         
-        # Print logs for this example
+        # Print and save logs
         print("\n".join(all_logs))
-        
-        # Save comprehensive logs to markdown file
-        log_file = logger.save_logs(all_logs, example_id)
+        logger.save_logs(all_logs, example_id)
             
         return results
 
@@ -670,12 +655,11 @@ async def main():
     config = BenchmarkConfig.from_args('Adversarial generation approach')
     logger = MarkdownLogger()  # Create single logger instance for all examples
     
-    async def process_with_logger(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
-        return await process_example(example, running_id, example_id, config, logger)
-    
     await run_benchmark(
         config=config,
-        process_example_func=process_with_logger
+        process_example_func=lambda example, running_id, example_id, config: process_example(
+            example, running_id, example_id, config, logger
+        )
     )
 
 if __name__ == "__main__":
