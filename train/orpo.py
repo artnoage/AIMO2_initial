@@ -10,9 +10,9 @@ from transformers import logging
 import re
 
 
-model_type = "very_hard"
-model_name= "models/light/20250119_094443"
-dataset_name="/Home/stat/laschos/AIMO2_initial/models/very_hard/20250119_112932"
+model_type = "merged"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250118_111148"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250120_104249"
 
 
 # Check if model_type is in paths
