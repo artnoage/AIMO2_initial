@@ -40,15 +40,15 @@ class AdversarialGenerator:
         self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
         self.judge_results = []  # Will store tournament results for training
         
-    async def _run_tournament(self, problem: str, correct_answer: str) -> None:
+    async def _run_tournament(self, solutions: List[Tuple[str, bool, str]], problem: str) -> List[Tuple[str, bool, str]]:
         """Run tournament between solutions to rank them"""
-        if len(self.valid_solutions) < 2:
-            return
+        if len(solutions) < 2:
+            return solutions
 
         # Track wins for each solution
-        wins = {i: 0 for i in range(len(self.valid_solutions))}
+        wins = {i: 0 for i in range(len(solutions))}
         
-        # Run round-robin tournament
+        # Run round-robin tournament 
         for i in range(len(self.valid_solutions)):
             for j in range(i + 1, len(self.valid_solutions)):
                 sol_a, is_correct_a, prompt_a = self.valid_solutions[i]
@@ -99,15 +99,9 @@ class AdversarialGenerator:
                     self.logs.append(f"Error in tournament match: {str(e)}")
                     continue
                     
-        # Sort solutions by wins
+        # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
-        self.valid_solutions = [self.valid_solutions[i] for i in sorted_indices]
-        
-        # Find top solutions
-        top_correct = None
-        top_wrong = None
-        second_wrong = None
-        for solution, is_correct, prompt in self.valid_solutions:
+        return [solutions[i] for i in sorted_indices]
             if is_correct and top_correct is None:
                 top_correct = (solution, prompt)
             elif not is_correct:
@@ -288,9 +282,11 @@ class AdversarialGenerator:
         correct_answer: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
-        Generate both correct and incorrect valid solutions.
-        Stores results in self.valid_solutions as (solution, is_correct) tuples.
+        Generate both correct and incorrect valid solutions and run tournament.
+        Returns list of training examples.
         """
+        solutions = []
+        
         # Search for correct solutions
         attempts = 0
         while attempts < self.best_of:
@@ -312,7 +308,7 @@ class AdversarialGenerator:
                 )
                 
                 if is_correct:
-                    self.valid_solutions.append((solution, True, prompt))
+                    solutions.append((solution, True, prompt))
                     self.logs.append(f"✓ Found valid correct solution on attempt {attempts}")
                     
             except Exception as e:
@@ -340,12 +336,24 @@ class AdversarialGenerator:
                 )
                 
                 if not is_correct:
-                    self.valid_solutions.append((solution, False, prompt))
+                    solutions.append((solution, False, prompt))
                     self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts}")
                     
             except Exception as e:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
+                
+        if len(solutions) < 2:
+            return None
+            
+        # Run tournament to rank solutions
+        ranked_solutions = await self._run_tournament(solutions, problem)
+        
+        # Find top solutions
+        top_correct = None
+        top_wrong = None
+        second_wrong = None
+        for solution, is_correct, prompt in ranked_solutions:
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using adversarial generation approach"""
@@ -363,11 +371,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create generator
         generator = AdversarialGenerator(main, auxiliary, config.best_of)
         
-        # Generate solutions
-        await generator.generate(example['problem'], correct_answer)
-        
-        # Run tournament
-        await generator._run_tournament(example['problem'], correct_answer)
+        # Generate solutions and run tournament
+        results = await generator.generate(example['problem'], correct_answer)
+        if not results:
+            return None
         
         # Add example ID to results
         for entry in generator.judge_results:
