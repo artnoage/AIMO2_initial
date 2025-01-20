@@ -25,6 +25,7 @@ class Tournament:
     async def _run_match(
         self,
         problem: str,
+        correct_answer: str,
         sol_a: Tuple[Any, bool, str],
         sol_b: Tuple[Any, bool, str],
         get_content: Callable = lambda x: x[0]
@@ -86,6 +87,7 @@ class Tournament:
                         'alignment': 'judge',
                         'type': 'solution',
                         'problem': problem,
+                        'correct_answer': correct_answer,
                         'prompt': {'content': winner_prompt, 'role': 'user'},
                         'chosen': {'content': truncated_correct, 'role': 'assistant'},
                         'rejected': {'content': truncated_wrong, 'role': 'assistant'},
@@ -103,6 +105,7 @@ class Tournament:
         self,
         solutions: List[Tuple[Any, bool, str]],
         problem: str,
+        correct_answer: str,
         get_content: Callable = lambda x: x[0]
     ) -> Tuple[List[Tuple[Any, bool, str]], List[Dict[str, Any]], Dict[str, Any]]:
         """
@@ -128,7 +131,8 @@ class Tournament:
         for i in range(len(solutions)):
             for j in range(i + 1, len(solutions)):
                 winner, training_example = await self._run_match(
-                    problem, 
+                    problem,
+                    correct_answer,
                     solutions[i], 
                     solutions[j],
                     get_content

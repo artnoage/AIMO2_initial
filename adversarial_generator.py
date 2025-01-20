@@ -248,7 +248,7 @@ class AdversarialGenerator:
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
-        ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem)
+        ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem, correct_answer)
         
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
