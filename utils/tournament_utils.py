@@ -63,22 +63,32 @@ class Tournament:
             else:
                 winner = random.choice(['A', 'B'])
                 self._log(f"Invalid judge response, randomly chose {winner}")
-                
+            
             # Generate training example if judge was wrong
             training_example = None
             if is_correct_a != is_correct_b:  # One correct, one incorrect
                 judge_chose_correct = (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b)
                 if not judge_chose_correct:
+                    # Split solutions into steps
                     correct_sol = sol_a_text if is_correct_a else sol_b_text
                     wrong_sol = sol_b_text if is_correct_a else sol_a_text
+                    
+                    # Split solutions for judge
+                    correct_steps = split_into_steps(remove_inst_tokens(correct_sol))
+                    wrong_steps = split_into_steps(wrong_sol)
+                    
+                    # Remove last step from both solutions
+                    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+                    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+                    
                     winner_prompt = prompt_a if winner == 'A' else prompt_b
                     training_example = {
                         'alignment': 'judge',
                         'type': 'solution',
                         'problem': problem,
                         'prompt': {'content': winner_prompt, 'role': 'user'},
-                        'chosen': {'content': remove_inst_tokens(correct_sol), 'role': 'assistant'},
-                        'rejected': {'content': remove_inst_tokens(wrong_sol), 'role': 'assistant'},
+                        'chosen': {'content': truncated_correct, 'role': 'assistant'},
+                        'rejected': {'content': truncated_wrong, 'role': 'assistant'},
                         'score_chosen': 1.0,
                         'score_rejected': 0.0
                     }
