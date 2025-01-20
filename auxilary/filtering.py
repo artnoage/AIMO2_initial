@@ -101,6 +101,8 @@ def main():
                       help='Keep entries with success rate below this threshold (0-1)')
     parser.add_argument('--most-common-correct', action='store_true',
                       help='Keep only entries where is_most_common_correct is true')
+    parser.add_argument('--direction', choices=['in', 'out'], default='in',
+                      help='Filter direction: "in" to keep matching entries, "out" to remove them')
     
     args = parser.parse_args()
     
@@ -118,23 +120,28 @@ def main():
     
     # Apply filters in sequence
     if args.alignments:
-        filtered_data = filter_by_alignment(filtered_data, args.alignments)
+        result = filter_by_alignment(filtered_data, args.alignments)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After alignment filtering: {len(filtered_data)} entries")
         
     if args.types:
-        filtered_data = filter_by_types(filtered_data, args.types)
+        result = filter_by_types(filtered_data, args.types)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After type filtering: {len(filtered_data)} entries")
         
     if args.success_rate_above:
-        filtered_data = filter_by_success_rate_above(filtered_data, args.success_rate_above)
+        result = filter_by_success_rate_above(filtered_data, args.success_rate_above)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After success rate above filtering: {len(filtered_data)} entries")
         
     if args.success_rate_below:
-        filtered_data = filter_by_success_rate_below(filtered_data, args.success_rate_below)
+        result = filter_by_success_rate_below(filtered_data, args.success_rate_below)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After success rate below filtering: {len(filtered_data)} entries")
         
     if args.most_common_correct:
-        filtered_data = filter_most_common_correct(filtered_data)
+        result = filter_most_common_correct(filtered_data)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After most common correct filtering: {len(filtered_data)} entries")
     
     # Save filtered data
