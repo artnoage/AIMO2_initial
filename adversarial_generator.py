@@ -31,8 +31,152 @@ class AdversarialGenerator:
         self.verifier = NumericVerifier()
         self.logs = []
         
-    async def _run_tournament(self, solutions: List[Tuple[str, bool, str]], problem: str) -> List[Tuple[str, bool, str]]:
-        """Run tournament between solutions to rank them"""
+    async def _analyze_wrong_solution(
+        self,
+        problem: str,
+        correct_answer: str,
+        wrong_solution: Tuple[str, str]
+    ) -> List[Dict[str, Any]]:
+        """Analyze wrong solution to find wrong step and generate training examples"""
+        results = []
+        solution, prompt = wrong_solution
+        
+        # Split solutions into steps
+        wrong_steps = split_into_steps(solution)
+        if not wrong_steps or len(wrong_steps) < 2:
+            return results
+            
+        # Get partial solutions
+        partial_solutions = get_partial_solutions(wrong_steps)
+        num_steps = len(partial_solutions)
+        
+        # Start with middle step
+        current_step = num_steps // 2
+        going_up = None
+        last_bad_step = None
+        last_good_step = None
+        wrong_step_index = None
+        saved_good_completion = None
+        saved_completion_prompt = None
+        
+        while True:
+            self.logs.append(f"\nChecking step {current_step}...")
+            
+            try:
+                # Try to complete from this point
+                completion_prompt, completion = await self.completion_agent.generate(
+                    problem,
+                    partial_solutions[current_step],
+                    return_prompt=True
+                )
+                complete_solution = partial_solutions[current_step] + completion
+                
+                # Verify if the answer is correct
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    self.logs.append(f"✓ Step {current_step} is valid")
+                    last_good_step = completion
+                    saved_good_completion = completion
+                    saved_completion_prompt = completion_prompt
+                    
+                    if going_up is None:
+                        going_up = True
+                    elif not going_up:
+                        wrong_step_index = last_bad_step
+                        break
+                        
+                    if current_step + 1 >= num_steps:
+                        break
+                    current_step += 1
+                    
+                else:
+                    self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
+                    last_bad_step = current_step
+                    
+                    if going_up is None:
+                        going_up = False
+                        wrong_step_index = current_step
+                    elif going_up:
+                        wrong_step_index = current_step
+                        break
+                        
+                    if current_step - 1 < 0:
+                        break
+                    current_step -= 1
+                    
+            except Exception as e:
+                self.logs.append(f"Error checking step {current_step}: {str(e)}")
+                break
+                
+        # If we found wrong step and have good completion, create training entries
+        if wrong_step_index is not None and saved_good_completion:
+            try:
+                # Get step prompt
+                step_prompt = await self.step_agent.generate(
+                    problem,
+                    partial_solutions[max(0, wrong_step_index - 1)],
+                    return_prompt=True
+                )
+                
+                # Add step entry
+                results.append({
+                    'alignment': 'light',
+                    'type': 'step',
+                    'problem': problem,
+                    'prompt': {'content': step_prompt[0], 'role': 'user'},
+                    'chosen': {'content': last_good_step, 'role': 'assistant'},
+                    'rejected': {'content': wrong_steps[wrong_step_index], 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+                # Add completion entry
+                results.append({
+                    'alignment': 'light', 
+                    'type': 'completion',
+                    'problem': problem,
+                    'prompt': {'content': saved_completion_prompt, 'role': 'user'},
+                    'chosen': {'content': saved_good_completion, 'role': 'assistant'},
+                    'rejected': {'content': ''.join(wrong_steps[wrong_step_index:]), 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+                # Add recovery entries
+                correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
+                results.append({
+                    'alignment': 'light',
+                    'type': 'recovery',
+                    'problem': problem,
+                    'prompt': {'content': prompt, 'role': 'user'},
+                    'chosen': {'content': correct_with_completion, 'role': 'assistant'},
+                    'rejected': {'content': solution, 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+                results.append({
+                    'alignment': 'dark',
+                    'type': 'recovery', 
+                    'problem': problem,
+                    'prompt': {'content': prompt, 'role': 'user'},
+                    'chosen': {'content': solution, 'role': 'assistant'},
+                    'rejected': {'content': correct_with_completion, 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+            except Exception as e:
+                self.logs.append(f"Error creating training entries: {str(e)}")
+                
+        return results
+
+    async def _run_tournament(
         if len(solutions) < 2:
             return solutions
 
@@ -186,142 +330,8 @@ class AdversarialGenerator:
                     
         # Process top wrong solution for step-based entries
         if top_wrong:
-            # Split solutions into steps
-            wrong_steps = split_into_steps(top_wrong[0])
-            if wrong_steps:
-                # Get partial solutions
-                partial_solutions = get_partial_solutions(wrong_steps)
-                num_steps = len(partial_solutions)
-                
-                if num_steps >= 2:  # Need at least analysis + one step
-                    # Start with a random step
-                    current_step = num_steps // 2
-                    going_up = None  # Direction flag: None=initial, True=up, False=down
-                    last_bad_step = None
-                    last_good_step = None
-                    wrong_step_index = None
-                    saved_good_completion = None
-                    saved_completion_prompt = None
-                    
-                    while True:
-                        self.logs.append(f"\nChecking step {current_step}...")
-                        
-                        try:
-                            # Try to complete from this point
-                            completion_prompt, completion = await self.completion_agent.generate(
-                                problem,
-                                partial_solutions[current_step],
-                                return_prompt=True
-                            )
-                            complete_solution = partial_solutions[current_step] + completion
-                            
-                            # Verify if the answer is correct
-                            is_correct, _ = await self.verifier.verify(
-                                complete_solution,
-                                correct_answer,
-                                problem
-                            )
-                            
-                            if is_correct:
-                                self.logs.append(f"✓ Step {current_step} is valid")
-                                last_good_step = completion
-                                saved_good_completion = completion
-                                saved_completion_prompt = completion_prompt
-                                
-                                if going_up is None:
-                                    # First check was good, go up to find potential wrong step
-                                    going_up = True
-                                elif not going_up:
-                                    # We were going down and found a good step
-                                    # The wrong step must be the last_bad_step we found
-                                    wrong_step_index = last_bad_step
-                                    break
-                                    
-                                # Move up one step
-                                if current_step + 1 >= num_steps:
-                                    break
-                                current_step += 1
-                                
-                            else:
-                                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                                last_bad_step = current_step
-                                
-                                if going_up is None:
-                                    # First check was bad, go down to find last good step
-                                    going_up = False
-                                    wrong_step_index = current_step  # Save first bad step found
-                                elif going_up:
-                                    # We were going up and found a bad step
-                                    # The wrong step must be here
-                                    wrong_step_index = current_step
-                                    break
-                                    
-                                # Move down one step
-                                if current_step - 1 < 0:
-                                    break
-                                current_step -= 1
-                                
-                        except Exception as e:
-                            self.logs.append(f"Error checking step {current_step}: {str(e)}")
-                            break
-                            
-                    # If we found the wrong step and have a good completion, create training entries
-                    if wrong_step_index is not None and saved_good_completion:
-                        # Get step prompt
-                        step_prompt = await self.step_agent.generate(
-                            problem,
-                            partial_solutions[max(0, wrong_step_index - 1)],
-                            return_prompt=True
-                        )
-                        
-                        # Add step entry
-                        results.append({
-                            'alignment': 'light',
-                            'type': 'step',
-                            'problem': problem,
-                            'prompt': {'content': step_prompt[0], 'role': 'user'},
-                            'chosen': {'content': last_good_step, 'role': 'assistant'},
-                            'rejected': {'content': wrong_steps[wrong_step_index], 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
-                        
-                        # Add completion entry
-                        results.append({
-                            'alignment': 'light',
-                            'type': 'completion',
-                            'problem': problem,
-                            'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-                            'chosen': {'content': saved_good_completion, 'role': 'assistant'},
-                            'rejected': {'content': ''.join(wrong_steps[wrong_step_index:]), 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
-                        
-                        # Add recovery entry
-                        correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-                        results.append({
-                            'alignment': 'light',
-                            'type': 'recovery',
-                            'problem': problem,
-                            'prompt': {'content': top_wrong[1], 'role': 'user'},
-                            'chosen': {'content': correct_with_completion, 'role': 'assistant'},
-                            'rejected': {'content': top_wrong[0], 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
-                        
-                        # Add dark recovery entry
-                        results.append({
-                            'alignment': 'dark',
-                            'type': 'recovery',
-                            'problem': problem,
-                            'prompt': {'content': top_wrong[1], 'role': 'user'},
-                            'chosen': {'content': top_wrong[0], 'role': 'assistant'},
-                            'rejected': {'content': correct_with_completion, 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
+            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong)
+            results.extend(step_results)
         
         # Create training examples
         if top_correct and top_wrong:
