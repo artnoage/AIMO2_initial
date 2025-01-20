@@ -450,10 +450,12 @@ class AdversarialGenerator:
     ) -> List[Tuple[str, bool, str]]:
         """Generate both correct and incorrect solutions"""
         solutions = []
+        correct_count = 0
+        incorrect_count = 0
         
         # Search for correct solutions
         attempts = 0
-        while attempts < self.best_of:
+        while attempts < self.best_of and correct_count < 3:
             try:
                 attempts += 1
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
@@ -473,7 +475,8 @@ class AdversarialGenerator:
                 
                 if is_correct:
                     solutions.append((solution, True, prompt))
-                    self.logs.append(f"✓ Found valid correct solution on attempt {attempts}")
+                    correct_count += 1
+                    self.logs.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
                     
             except Exception as e:
                 self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
@@ -481,7 +484,7 @@ class AdversarialGenerator:
                 
         # Search for incorrect solutions
         attempts = 0
-        while attempts < self.best_of:
+        while attempts < self.best_of and incorrect_count < 3:
             try:
                 attempts += 1
                 prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
@@ -501,7 +504,8 @@ class AdversarialGenerator:
                 
                 if not is_correct:
                     solutions.append((solution, False, prompt))
-                    self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts}")
+                    incorrect_count += 1
+                    self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/3)")
                     
             except Exception as e:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
