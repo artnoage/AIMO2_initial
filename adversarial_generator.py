@@ -149,6 +149,9 @@ class AdversarialGenerator:
         saved_good_completion = None
         saved_completion_prompt = None
         
+        self.logs.append("\n=== Analyzing solution steps ===")
+        self.logs.append(f"Starting analysis at step {current_step}")
+        
         try:
             while True:
                 self.logs.append(f"\nChecking step {current_step}...")
@@ -171,13 +174,19 @@ class AdversarialGenerator:
                     saved_completion_prompt = completion_prompt
                     
                     if going_up is None:
+                        # First check was good, go up to find potential wrong step
                         going_up = True
                     elif not going_up:
+                        # We were going down and found a good step
+                        # The wrong step must be the last_bad_step we found
                         wrong_step_index = last_bad_step
                         break
                         
+                    # Move up one step
                     if current_step + 1 >= num_steps:
-                        break
+                        # We reached the top without finding a wrong step
+                        self.logs.append("❌ Reached end without finding wrong step")
+                        return []
                     current_step += 1
                     
                 else:
@@ -185,18 +194,25 @@ class AdversarialGenerator:
                     last_bad_step = current_step
                     
                     if going_up is None:
+                        # First check was bad, go down to find last good step
                         going_up = False
-                        wrong_step_index = current_step
+                        wrong_step_index = current_step  # Save first bad step found
                     elif going_up:
+                        # We were going up and found a bad step
+                        # The wrong step must be here
                         wrong_step_index = current_step
                         break
                         
+                    # Move down one step
                     if current_step - 1 < 0:
-                        break
+                        # We reached the bottom without finding good step
+                        self.logs.append("❌ Reached start without finding good step")
+                        return []
                     current_step -= 1
                     
         except Exception as e:
             self.logs.append(f"Error checking step {current_step}: {str(e)}")
+            return []
                 
         # If we found wrong step and have good completion, create training entries
         if wrong_step_index is not None and saved_good_completion:
