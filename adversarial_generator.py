@@ -95,7 +95,11 @@ class AdversarialGenerator:
                     is_valid, validation_reason = validate_solution(complete_solution)
                     if is_valid:
                         found_valid = True
-                        correct_step = completion
+                        # Extract the next step
+                        completion_steps = split_into_steps(complete_solution)
+                        next_step_index = step_index + 1
+                        correct_step = completion_steps[next_step_index]
+                        # Store the successful completion
                         good_completion = completion
                         break
                     else:
