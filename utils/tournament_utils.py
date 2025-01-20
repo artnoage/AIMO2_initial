@@ -83,16 +83,15 @@ class Tournament:
                     truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
                     
                     
-                    # For judge alignment, we want A/B as responses
-                    correct_first = random.choice([True, False])
+                    # Create judge training example based on which solution was correct
                     training_example = {
                         'alignment': 'judge',
                         'type': 'solution',
                         'problem': problem,
                         'correct_answer': correct_answer,
                         'prompt': {'content': judge_prompt, 'role': 'user'}, 
-                        'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
-                        'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
+                        'chosen': {'content': 'A' if is_correct_a else 'B', 'role': 'assistant'},
+                        'rejected': {'content': 'B' if is_correct_a else 'A', 'role': 'assistant'},
                         'score_chosen': 1.0,
                         'score_rejected': 0.0
                     }
