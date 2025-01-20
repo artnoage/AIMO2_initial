@@ -7,6 +7,7 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.log_handler import MarkdownLogger
+import random
 
 # Configure logging
 logging.basicConfig(
@@ -448,7 +449,6 @@ class AdversarialGenerator:
             return None
             
         # Shuffle solutions before tournament
-        import random
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
