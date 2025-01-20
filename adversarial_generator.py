@@ -31,7 +31,6 @@ class AdversarialGenerator:
         self.verifier = NumericVerifier()
         self.logs = []
         self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
-        self.judge_results = []  # Will store tournament results for training
         
     async def _run_tournament(self, solutions: List[Tuple[str, bool, str]], problem: str) -> List[Tuple[str, bool, str]]:
         """Run tournament between solutions to rank them"""
@@ -63,7 +62,7 @@ class AdversarialGenerator:
                         wins[i] += 1
                         # If wrong solution beat correct solution, add to judge training data
                         if not is_correct_a and is_correct_b:
-                            self.judge_results.append({
+                            results.append({
                                 'alignment': 'judge',
                                 'type': 'solution',
                                 'problem': problem,
@@ -77,7 +76,7 @@ class AdversarialGenerator:
                         wins[j] += 1
                         # If wrong solution beat correct solution, add to judge training data
                         if not is_correct_b and is_correct_a:
-                            self.judge_results.append({
+                            results.append({
                                 'alignment': 'judge',
                                 'type': 'solution',
                                 'problem': problem,
@@ -151,7 +150,7 @@ class AdversarialGenerator:
                 continue
         
         # Add step entry
-        self.judge_results.append({
+        results.append({
             'alignment': 'light',
             'type': 'step',
             'problem': problem,
@@ -466,7 +465,7 @@ class AdversarialGenerator:
                 'score_rejected': 0.0
             })
             
-        return self.judge_results
+        return results
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using adversarial generation approach"""
@@ -490,10 +489,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
         
         # Add example ID to results
-        for entry in generator.judge_results:
+        for entry in results:
             entry['id'] = example_id
             
-        return generator.judge_results
+        return results
 
     except Exception as e:
         logging.error(f"Error processing example {running_id}: {str(e)}")
