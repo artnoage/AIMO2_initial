@@ -1,6 +1,6 @@
 import random
 from typing import Dict, List, Optional, Tuple, Any, Callable
-from utils.benchmark_utils import remove_inst_tokens
+from utils.benchmark_utils import remove_inst_tokens, split_into_steps
 
 class Tournament:
     """Manages solution tournaments and generates judge training examples"""
