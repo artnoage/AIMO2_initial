@@ -110,11 +110,16 @@ class AdversarialGenerator:
                         self.logs.append(f"Found verified but invalid solution: {validation_reason}")
                         continue
                         
-            except Exception:
+            except Exception as e:
+                self.logs.append(f"Error in completion attempt {i+1}: {str(e)}")
                 continue
                 
         if step_index == 0:
             self.logs.append(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
+            if not found_verified:
+                self.logs.append("Analysis is wrong: No verified solutions found")
+            elif not found_valid:
+                self.logs.append("Example dropped: Found verified but no valid solutions in analysis")
         else:
             self.logs.append(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
             if not found_verified:
@@ -565,7 +570,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         auxiliary = get_model(config, role="auxiliary")
         
         # Create generator
-        generator = AdversarialGenerator(main, auxiliary, config.best_of)
+        generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
         
         # Generate solutions and run tournament
         results = await generator.generate(example['problem'], correct_answer)
