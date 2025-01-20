@@ -25,14 +25,15 @@ load_dotenv()
 class AdversarialGenerator:
     """Generates pairs of valid correct and incorrect solutions using multiple agents"""
     
-    def __init__(self, main, best_of: int):
+    def __init__(self, main, auxiliary, best_of: int):
         self.main = main
+        self.auxiliary = auxiliary
         self.best_of = best_of
         self.solution_agent = FullSolutionAgent(main) 
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.loki_agent = LokiAgent(main)
-        self.judge_agent = TournamentJudgeAgent(main)
+        self.loki_agent = LokiAgent(auxiliary)
+        self.judge_agent = TournamentJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
         self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
@@ -349,11 +350,12 @@ async def main():
     """Main function for adversarial generation approach"""
     config = BenchmarkConfig.from_args('Adversarial generation approach')
     
-    # Initialize main model
+    # Initialize models
     main = get_model(config, role="main")
+    auxiliary = get_model(config, role="auxiliary")
     
     # Create generator
-    generator = AdversarialGenerator(main, config.best_of)
+    generator = AdversarialGenerator(main, auxiliary, config.best_of)
     
     # Test with a sample problem
     problem = "Solve the equation: 2x + 5 = 13"
