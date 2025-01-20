@@ -36,7 +36,8 @@ class AdversarialGenerator:
         self,
         problem: str,
         correct_answer: str,
-        wrong_solution: Tuple[str, str]
+        wrong_solution: Tuple[str, str],
+        correct_solution: str
     ) -> List[Dict[str, Any]]:
         """Analyze wrong solution to find wrong step and generate training examples"""
         results = []
@@ -86,15 +87,8 @@ class AdversarialGenerator:
                         self.logs.append(f"Invalid completion: {completion_reason}")
                         continue
                         
-                    # Check solution size against correct solutions
-                    correct_solutions = [s[0] for s in solutions if s[1]]  # Get all correct solutions
-                    if not correct_solutions:
-                        self.logs.append("No correct solutions available for size comparison")
-                        continue
-                    
-                    # Use average length of correct solutions as reference
-                    avg_correct_len = sum(len(s) for s in correct_solutions) / len(correct_solutions)
-                    size_threshold = int(0.9 * avg_correct_len)
+                    # Check solution size against best correct solution
+                    size_threshold = int(0.9 * len(correct_solution))
                     if len(complete_solution) < size_threshold:
                         self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
@@ -388,8 +382,8 @@ class AdversarialGenerator:
                     break
                     
         # Process top wrong solution for step-based entries
-        if top_wrong:
-            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong)
+        if top_wrong and top_correct:
+            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, top_correct[0])
             results.extend(step_results)
         
         # Create training examples
