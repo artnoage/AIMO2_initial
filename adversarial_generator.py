@@ -443,7 +443,7 @@ class AdversarialGenerator:
         correct_count = 0
         incorrect_count = 0
         
-        # Search for correct solutions
+        # Search for correct solutions first
         attempts = 0
         while attempts < self.best_of and correct_count < 3:
             try:
@@ -471,7 +471,12 @@ class AdversarialGenerator:
             except Exception as e:
                 self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
                 continue
-                
+
+        # Only search for incorrect solutions if we found at least one correct solution
+        if correct_count == 0:
+            self.logs.append("Failed to find any correct solutions - skipping incorrect solution generation")
+            return solutions
+
         # Search for incorrect solutions
         attempts = 0
         while attempts < self.best_of and incorrect_count < 3:
