@@ -142,11 +142,10 @@ class AdversarialGenerator:
         while attempts < self.best_of:
             try:
                 attempts += 1
-                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-                problem,
-                partial_solutions[max(0, wrong_step_index - 1)],
-                return_prompt=True
-            )
+                prompt, solution = await self.solution_agent.generate(
+                    problem,
+                    return_prompt=True
+                )
             except Exception as e:
                 self.logs.append(f"Error getting step prompt: {str(e)}")
                 continue
