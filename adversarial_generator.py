@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
-from utils.log_handler import MarkdownLogger
 from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
 
@@ -262,7 +261,7 @@ class AdversarialGenerator:
         
         return results
 
-async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> List[Dict]:
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
     try:
         # Extract answer
@@ -288,14 +287,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create generator
         generator = AdversarialGenerator(main, auxiliary, auxiliary2, config.best_of, config.completions)
         
-        # Prepare logs
-        all_logs = []
-        all_logs.append("\n" + "="*80)
-        all_logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
-        all_logs.append("="*80)
-        all_logs.append(f"\n📋 Problem:")
-        all_logs.append(f"{example['problem'][:200]}...")
-        all_logs.append(f"\n✓ Expected Answer: {correct_answer}")
+        # Create a simple list for logs
+        logs = []
+        logs.append("\n" + "="*80)
+        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        logs.append("="*80)
+        logs.append(f"\n📋 Problem:")
+        logs.append(f"{example['problem'][:200]}...")
+        logs.append(f"\n✓ Expected Answer: {correct_answer}")
         
         # Generate solutions and run tournament
         results = await generator.generate(example['problem'], correct_answer)
@@ -305,18 +304,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for entry in results:
                 entry['id'] = example_id
                 
-        # Add generator logs and solution details
-        all_logs.extend(generator.logs)
-        if results:
-            all_logs.append("\n📊 Solution Quality:")
-            all_logs.append("\n🔍 Generated Solutions:")
-            for entry in results:
-                all_logs.append(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
-                all_logs.append(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
+        # Print logs and results
+        for log in logs + generator.logs:
+            print(log)
         
-        # Print and save logs
-        print("\n".join(all_logs))
-        logger.save_logs(all_logs, example_id)
+        if results:
+            print("\n📊 Solution Quality:")
+            print("\n🔍 Generated Solutions:")
+            for entry in results:
+                print(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
+                print(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
             
         return results
 
@@ -327,12 +324,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 async def main():
     """Main function for adversarial generation approach"""
     config = BenchmarkConfig.from_args('Adversarial generation approach')
-    logger = MarkdownLogger()  # Create single logger instance for all examples
-    
     await run_benchmark(
         config=config,
         process_example_func=lambda example, running_id, example_id, config: process_example(
-            example, running_id, example_id, config, logger
+            example, running_id, example_id, config
         )
     )
 
