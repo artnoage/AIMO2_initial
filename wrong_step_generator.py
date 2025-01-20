@@ -360,7 +360,7 @@ class WrongStepGenerator:
             return_prompt=True
         )
         results.append({
-            'allignment':'light',
+            'alignment':'light',
             'type': 'step',
             'problem': problem,
             'correct_answer': correct_answer,
@@ -372,7 +372,7 @@ class WrongStepGenerator:
         })
 
         results.append({
-            'allignment':'light',
+            'alignment':'light',
             'type': 'completion',
             'problem': problem,
             'correct_answer': correct_answer,
