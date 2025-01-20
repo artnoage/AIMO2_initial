@@ -171,7 +171,11 @@ class AdversarialGenerator:
                     current_step,
                     size_threshold
                 )
-                
+
+                if found_verified and not found_valid:
+                    self.logs.append("Found verified but invalid completion - skipping step analysis")
+                    return []
+                    
                 if found_valid:
                     self.logs.append(f"✓ Step {current_step} is valid")
                     last_good_step = correct_step
