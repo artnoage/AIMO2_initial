@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
+from utils.log_handler import MarkdownLogger
 
 # Configure logging
 logging.basicConfig(
@@ -398,12 +399,24 @@ class AdversarialGenerator:
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using adversarial generation approach"""
+    logger = MarkdownLogger()  # Create logger instance
     try:
         # Extract answer
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
             logging.error(f"Could not extract answer from solution for example {running_id}")
             return None
+
+        # Prepare comprehensive logs for this example
+        all_logs = []
+        all_logs.append("\n" + "="*80)
+        all_logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        all_logs.append("="*80)
+        
+        # Problem details
+        all_logs.append(f"\n📋 Problem:")
+        all_logs.append(f"{example['problem'][:200]}...")
+        all_logs.append(f"\n✓ Expected Answer: {correct_answer}")
 
         # Initialize models
         main = get_model(config, role="main")
@@ -416,6 +429,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         results = await generator.generate(example['problem'], correct_answer)
         if not results:
             return None
+
+        # Add generator logs
+        all_logs.extend(generator.logs)
+        
+        if results:
+            # Add solution quality metrics
+            all_logs.append("\n📊 Solution Quality:")
+            
+            # Add details about the generated solutions
+            all_logs.append("\n🔍 Generated Solutions:")
+            for entry in results:
+                all_logs.append(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
+                all_logs.append(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
+        
+        # Print logs for this example
+        print("\n".join(all_logs))
+        
+        # Save comprehensive logs to markdown file
+        log_file = logger.save_logs(all_logs, example_id)
         
         # Add example ID to results
         for entry in results:
