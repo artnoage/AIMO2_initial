@@ -65,6 +65,18 @@ def filter_by_success_rate_below(data: List[Dict], threshold: float) -> List[Dic
             filtered_data.append(entry)
     return filtered_data
 
+def filter_most_common_correct(data: List[Dict]) -> List[Dict]:
+    """
+    Filter entries keeping only those where is_most_common_correct is true.
+    
+    Args:
+        data: List of dictionaries containing entries
+        
+    Returns:
+        Filtered list containing only entries where is_most_common_correct is true
+    """
+    return [entry for entry in data if entry.get('is_most_common_correct', False)]
+
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON data from file"""
     with open(file_path, 'r') as f:
@@ -87,6 +99,8 @@ def main():
                       help='Keep entries with success rate above this threshold (0-1)')
     parser.add_argument('--success-rate-below', type=float,
                       help='Keep entries with success rate below this threshold (0-1)')
+    parser.add_argument('--most-common-correct', action='store_true',
+                      help='Keep only entries where is_most_common_correct is true')
     
     args = parser.parse_args()
     
@@ -118,6 +132,10 @@ def main():
     if args.success_rate_below:
         filtered_data = filter_by_success_rate_below(filtered_data, args.success_rate_below)
         print(f"After success rate below filtering: {len(filtered_data)} entries")
+        
+    if args.most_common_correct:
+        filtered_data = filter_most_common_correct(filtered_data)
+        print(f"After most common correct filtering: {len(filtered_data)} entries")
     
     # Save filtered data
     save_json(filtered_data, args.output_file)
