@@ -381,16 +381,12 @@ class AdversarialGenerator:
 
     
 
-    async def generate(
+    async def _generate_solutions(
         self,
         problem: str,
         correct_answer: str
-    ) -> List[Dict[str, Any]]:
-        """
-        Generate both correct and incorrect valid solutions and run tournament.
-        Returns list of training examples.
-        """
-        results = []
+    ) -> List[Tuple[str, bool, str]]:
+        """Generate both correct and incorrect solutions"""
         solutions = []
         
         # Search for correct solutions
@@ -449,20 +445,16 @@ class AdversarialGenerator:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
                 
-        # Check for at least one correct and one incorrect solution
-        has_correct = any(is_correct for _, is_correct, _ in solutions)
-        has_incorrect = any(not is_correct for _, is_correct, _ in solutions)
-        
-        if len(solutions) < 2 or not (has_correct and has_incorrect):
-            self.logs.append("Failed to generate required mix of correct and incorrect solutions")
-            return []
-            
-        # Shuffle solutions before tournament
-        random.shuffle(solutions)
-        
-        # Run tournament to rank solutions
-        ranked_solutions, tournament_results = await self._run_tournament(solutions, problem)
-        results.extend(tournament_results)
+        return solutions
+
+    async def _create_training_examples(
+        self,
+        problem: str,
+        correct_answer: str,
+        ranked_solutions: List[Tuple[str, bool, str]]
+    ) -> List[Dict[str, Any]]:
+        """Create training examples from ranked solutions"""
+        results = []
         
         # Find top solutions
         top_correct = None
@@ -510,6 +502,38 @@ class AdversarialGenerator:
                 'score_rejected': 0.0
             })
             
+        return results
+
+    async def generate(
+        self,
+        problem: str,
+        correct_answer: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate both correct and incorrect valid solutions and run tournament.
+        Returns list of training examples.
+        """
+        # Generate solutions
+        solutions = await self._generate_solutions(problem, correct_answer)
+        
+        # Check for at least one correct and one incorrect solution
+        has_correct = any(is_correct for _, is_correct, _ in solutions)
+        has_incorrect = any(not is_correct for _, is_correct, _ in solutions)
+        
+        if len(solutions) < 2 or not (has_correct and has_incorrect):
+            self.logs.append("Failed to generate required mix of correct and incorrect solutions")
+            return []
+            
+        # Shuffle solutions before tournament
+        random.shuffle(solutions)
+        
+        # Run tournament to rank solutions
+        ranked_solutions, tournament_results = await self._run_tournament(solutions, problem)
+        
+        # Create training examples
+        results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
+        results.extend(tournament_results)
+        
         return results
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> List[Dict]:
