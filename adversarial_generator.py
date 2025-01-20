@@ -343,17 +343,23 @@ class AdversarialGenerator:
                     
                     wins[winner_idx] += 1
                     
-                    # Record all tournament matches for training
-                    tournament_results.append({
-                            'alignment': 'judge',
-                            'type': 'solution',
-                            'problem': problem,
-                            'prompt': {'content': winner_prompt, 'role': 'user'},
-                            'chosen': {'content': remove_inst_tokens(loser_sol), 'role': 'assistant'},
-                            'rejected': {'content': remove_inst_tokens(winner_sol), 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
+                    # Only create judge training examples when prediction is wrong
+                    if is_correct_a != is_correct_b:  # One correct, one incorrect
+                        judge_chose_correct = (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b)
+                        if not judge_chose_correct:
+                            # Judge chose wrong solution, create training example with correct solution as chosen
+                            correct_sol = sol_a if is_correct_a else sol_b
+                            wrong_sol = sol_b if is_correct_a else sol_a
+                            tournament_results.append({
+                                'alignment': 'judge',
+                                'type': 'solution',
+                                'problem': problem,
+                                'prompt': {'content': winner_prompt, 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(correct_sol), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(wrong_sol), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
                             
                 except Exception as e:
                     self.logs.append(f"Error in tournament match: {str(e)}")
