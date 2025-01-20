@@ -102,10 +102,6 @@ class AdversarialGenerator:
         # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         return [solutions[i] for i in sorted_indices]
-            if wrong_steps:
-                # Get partial solutions
-                partial_solutions = get_partial_solutions(wrong_steps)
-                num_steps = len(partial_solutions)
                 
                 if num_steps >= 2:  # Need at least analysis + one step
                     # Start with a random step
