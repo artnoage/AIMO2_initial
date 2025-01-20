@@ -102,16 +102,6 @@ class AdversarialGenerator:
         # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         return [solutions[i] for i in sorted_indices]
-            if is_correct and top_correct is None:
-                top_correct = (solution, prompt)
-            elif not is_correct:
-                if top_wrong is None:
-                    top_wrong = (solution, prompt)
-                elif second_wrong is None:
-                    second_wrong = (solution, prompt)
-                    break
-                    
-        # Process top wrong solution for step-based entries
         if top_wrong:
             # Split solutions into steps
             wrong_steps = split_into_steps(top_wrong[0])
@@ -354,6 +344,16 @@ class AdversarialGenerator:
         top_wrong = None
         second_wrong = None
         for solution, is_correct, prompt in ranked_solutions:
+            if is_correct and top_correct is None:
+                top_correct = (solution, prompt)
+            elif not is_correct:
+                if top_wrong is None:
+                    top_wrong = (solution, prompt)
+                elif second_wrong is None:
+                    second_wrong = (solution, prompt)
+                    break
+                    
+        # Process top wrong solution for step-based entries
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
     """Process a single example using adversarial generation approach"""
