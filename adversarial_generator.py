@@ -86,8 +86,15 @@ class AdversarialGenerator:
                         self.logs.append(f"Invalid completion: {completion_reason}")
                         continue
                         
-                    # Check solution size against original
-                    size_threshold = int(0.9 * len(solution))
+                    # Check solution size against correct solutions
+                    correct_solutions = [s[0] for s in solutions if s[1]]  # Get all correct solutions
+                    if not correct_solutions:
+                        self.logs.append("No correct solutions available for size comparison")
+                        continue
+                    
+                    # Use average length of correct solutions as reference
+                    avg_correct_len = sum(len(s) for s in correct_solutions) / len(correct_solutions)
+                    size_threshold = int(0.9 * avg_correct_len)
                     if len(complete_solution) < size_threshold:
                         self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
