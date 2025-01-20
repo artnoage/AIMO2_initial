@@ -130,8 +130,8 @@ class AdversarialGenerator:
                     'type': 'step',
                     'problem': problem,
                     'prompt': {'content': step_prompt[0], 'role': 'user'},
-                    'chosen': {'content': last_good_step, 'role': 'assistant'},
-                    'rejected': {'content': wrong_steps[wrong_step_index], 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
                 })
@@ -142,8 +142,8 @@ class AdversarialGenerator:
                     'type': 'completion',
                     'problem': problem,
                     'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-                    'chosen': {'content': saved_good_completion, 'role': 'assistant'},
-                    'rejected': {'content': ''.join(wrong_steps[wrong_step_index:]), 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
                 })
@@ -155,8 +155,8 @@ class AdversarialGenerator:
                     'type': 'recovery',
                     'problem': problem,
                     'prompt': {'content': prompt, 'role': 'user'},
-                    'chosen': {'content': correct_with_completion, 'role': 'assistant'},
-                    'rejected': {'content': solution, 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
                 })
@@ -166,8 +166,8 @@ class AdversarialGenerator:
                     'type': 'recovery', 
                     'problem': problem,
                     'prompt': {'content': prompt, 'role': 'user'},
-                    'chosen': {'content': solution, 'role': 'assistant'},
-                    'rejected': {'content': correct_with_completion, 'role': 'assistant'},
+                    'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
                 })
@@ -231,8 +231,8 @@ class AdversarialGenerator:
                                 'type': 'solution',
                                 'problem': problem,
                                 'prompt': {'content': prompt_b, 'role': 'user'},
-                                'chosen': {'content': sol_b, 'role': 'assistant'},
-                                'rejected': {'content': sol_a, 'role': 'assistant'},
+                                'chosen': {'content': remove_inst_tokens(sol_b), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(sol_a), 'role': 'assistant'},
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
                             })
@@ -245,8 +245,8 @@ class AdversarialGenerator:
                                 'type': 'solution',
                                 'problem': problem,
                                 'prompt': {'content': prompt_a, 'role': 'user'},
-                                'chosen': {'content': sol_a, 'role': 'assistant'},
-                                'rejected': {'content': sol_b, 'role': 'assistant'},
+                                'chosen': {'content': remove_inst_tokens(sol_a), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(sol_b), 'role': 'assistant'},
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
                             })
@@ -376,8 +376,8 @@ class AdversarialGenerator:
                 'type': 'full_solution',
                 'problem': problem,
                 'prompt': {'content': top_correct[1], 'role': 'user'},
-                'chosen': {'content': top_correct[0], 'role': 'assistant'},
-                'rejected': {'content': top_wrong[0], 'role': 'assistant'},
+                'chosen': {'content': remove_inst_tokens(top_correct[0]), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(top_wrong[0]), 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
@@ -389,8 +389,8 @@ class AdversarialGenerator:
                 'type': 'full_solution',
                 'problem': problem,
                 'prompt': {'content': top_wrong[1], 'role': 'user'},
-                'chosen': {'content': top_wrong[0], 'role': 'assistant'},
-                'rejected': {'content': second_wrong[0], 'role': 'assistant'},
+                'chosen': {'content': remove_inst_tokens(top_wrong[0]), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(second_wrong[0]), 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
