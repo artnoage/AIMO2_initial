@@ -397,9 +397,8 @@ class AdversarialGenerator:
             
         return results
 
-async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> Optional[List[Dict]]:
     """Process a single example using adversarial generation approach"""
-    logger = MarkdownLogger()  # Create logger instance
     try:
         # Extract answer
         correct_answer = extract_answer_from_solution(example['solution'])
@@ -462,10 +461,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 async def main():
     """Main function for adversarial generation approach"""
     config = BenchmarkConfig.from_args('Adversarial generation approach')
+    logger = MarkdownLogger()  # Create single logger instance for all examples
+    
+    async def process_with_logger(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
+        return await process_example(example, running_id, example_id, config, logger)
     
     await run_benchmark(
         config=config,
-        process_example_func=process_example
+        process_example_func=process_with_logger
     )
 
 if __name__ == "__main__":
