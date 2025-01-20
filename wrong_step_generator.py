@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from utils.benchmark_config import *
 from utils.benchmark_utils import *
 from utils.agents import *
-from utils.log_handler import MarkdownLogger
 from utils.step_analysis_utils import *
 # Configure logging
 logging.basicConfig(
@@ -357,8 +356,6 @@ class WrongStepGenerator:
 async def main():
     """Main function for wrong step generation"""
     config = BenchmarkConfig.from_args('Wrong step generation approach')
-    logger = MarkdownLogger()  # Create single logger instance for all examples
-    
     async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
         """Process a single example"""
         try:
@@ -405,9 +402,6 @@ async def main():
             
             # Print logs for this example
             print("\n".join(all_logs))
-            
-            # Save comprehensive logs to markdown file
-            log_file = logger.save_logs(all_logs, example_id)
             
             # Add example ID to results
             if result:
