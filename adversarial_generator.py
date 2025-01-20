@@ -41,10 +41,10 @@ class AdversarialGenerator:
         wins = {i: 0 for i in range(len(solutions))}
         
         # Run round-robin tournament 
-        for i in range(len(self.valid_solutions)):
-            for j in range(i + 1, len(self.valid_solutions)):
-                sol_a, is_correct_a, prompt_a = self.valid_solutions[i]
-                sol_b, is_correct_b, prompt_b = self.valid_solutions[j]
+        for i in range(len(solutions)):
+            for j in range(i + 1, len(solutions)):
+                sol_a, is_correct_a, prompt_a = solutions[i]
+                sol_b, is_correct_b, prompt_b = solutions[j]
                 
                 try:
                     # Get judge's decision
@@ -107,73 +107,6 @@ class AdversarialGenerator:
         """
         results = []
         solutions = []
-        top_correct = None
-        top_wrong = None
-        second_wrong = None
-        
-        
-        # Add completion entry
-        results.append({
-            'alignment': 'light',
-            'type': 'completion',
-            'problem': problem,
-            'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-            'chosen': {'content': saved_good_completion, 'role': 'assistant'},
-            'rejected': {'content': ''.join(wrong_steps[wrong_step_index:]), 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
-        
-        # Add recovery entry
-        correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-        results.append({
-            'alignment': 'light',
-            'type': 'recovery',
-            'problem': problem,
-            'prompt': {'content': top_wrong[1], 'role': 'user'},
-            'chosen': {'content': correct_with_completion, 'role': 'assistant'},
-            'rejected': {'content': top_wrong[0], 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
-        
-        # Add dark recovery entry
-        self.judge_results.append({
-            'alignment': 'dark',
-            'type': 'recovery',
-            'problem': problem,
-            'prompt': {'content': top_wrong[1], 'role': 'user'},
-            'chosen': {'content': top_wrong[0], 'role': 'assistant'},
-            'rejected': {'content': correct_with_completion, 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
-
-        # Create light entry if we have correct and wrong
-        if top_correct and top_wrong:
-            self.judge_results.append({
-                'alignment': 'light',
-                'type': 'full_solution',
-                'problem': problem,
-                'prompt': {'content': top_correct[1], 'role': 'user'},
-                'chosen': {'content': top_correct[0], 'role': 'assistant'},
-                'rejected': {'content': top_wrong[0], 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-
-        # Create dark entry if we have two wrong solutions
-        if top_wrong and second_wrong:
-            self.judge_results.append({
-                'alignment': 'dark',
-                'type': 'full_solution',
-                'problem': problem,
-                'prompt': {'content': top_wrong[1], 'role': 'user'},
-                'chosen': {'content': top_wrong[0], 'role': 'assistant'},
-                'rejected': {'content': second_wrong[0], 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
         
         # Search for correct solutions
         attempts = 0
@@ -343,7 +276,7 @@ class AdversarialGenerator:
                         )
                         
                         # Add step entry
-                        self.judge_results.append({
+                        results.append({
                             'alignment': 'light',
                             'type': 'step',
                             'problem': problem,
@@ -391,9 +324,10 @@ class AdversarialGenerator:
                             'score_rejected': 0.0
                         })
         
-        # Create light entry if we have correct and wrong
+        # Create training examples
         if top_correct and top_wrong:
-            self.judge_results.append({
+            # Light alignment example
+            results.append({
                 'alignment': 'light',
                 'type': 'full_solution',
                 'problem': problem,
