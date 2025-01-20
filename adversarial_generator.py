@@ -152,12 +152,13 @@ class AdversarialGenerator:
         self.logs.append("\n=== Analyzing solution steps ===")
         self.logs.append(f"Starting analysis at step {current_step}")
         
-        try:
-            while True:
+        # Calculate size threshold from correct solution
+        size_threshold = int(0.9 * len(correct_solution))
+        
+        # Binary search for wrong step
+        while True:
+            try:
                 self.logs.append(f"\nChecking step {current_step}...")
-                
-                # Calculate size threshold from correct solution
-                size_threshold = int(0.9 * len(correct_solution))
                 
                 found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
                     problem,
@@ -210,71 +211,75 @@ class AdversarialGenerator:
                         return []
                     current_step -= 1
                     
-        except Exception as e:
-            self.logs.append(f"Error checking step {current_step}: {str(e)}")
-            return []
-                
-        # If we found wrong step and have good completion, create training entries
-        if wrong_step_index is not None and saved_good_completion:
-            try:
-                # Get step prompt
-                step_prompt = await self.step_agent.generate(
-                    problem,
-                    partial_solutions[max(0, wrong_step_index - 1)],
-                    return_prompt=True
-                )
-                
-                # Add step entry
-                results.append({
-                    'alignment': 'light',
-                    'type': 'step',
-                    'problem': problem,
-                    'prompt': {'content': step_prompt[0], 'role': 'user'},
-                    'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
-                    'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
-                    'score_chosen': 1.0,
-                    'score_rejected': 0.0
-                })
-                
-                # Add completion entry
-                results.append({
-                    'alignment': 'light', 
-                    'type': 'completion',
-                    'problem': problem,
-                    'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-                    'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-                    'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
-                    'score_chosen': 1.0,
-                    'score_rejected': 0.0
-                })
-                
-                # Add recovery entries
-                correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-                results.append({
-                    'alignment': 'light',
-                    'type': 'recovery',
-                    'problem': problem,
-                    'prompt': {'content': prompt, 'role': 'user'},
-                    'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
-                    'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                    'score_chosen': 1.0,
-                    'score_rejected': 0.0
-                })
-                
-                results.append({
-                    'alignment': 'dark',
-                    'type': 'recovery', 
-                    'problem': problem,
-                    'prompt': {'content': prompt, 'role': 'user'},
-                    'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                    'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
-                    'score_chosen': 1.0,
-                    'score_rejected': 0.0
-                })
-                
             except Exception as e:
-                self.logs.append(f"Error creating training entries: {str(e)}")
+                self.logs.append(f"Error in step verification: {str(e)}")
+                return []
                 
+        # If we didn't find a wrong step, return empty results
+        if wrong_step_index is None or not saved_good_completion:
+            return []
+            
+        # Create training entries
+        try:
+            # Get step prompt
+            step_prompt = await self.step_agent.generate(
+                problem,
+                partial_solutions[max(0, wrong_step_index - 1)],
+                return_prompt=True
+            )
+            
+            # Add step entry
+            results.append({
+                'alignment': 'light',
+                'type': 'step',
+                'problem': problem,
+                'prompt': {'content': step_prompt[0], 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+            
+            # Add completion entry
+            results.append({
+                'alignment': 'light', 
+                'type': 'completion',
+                'problem': problem,
+                'prompt': {'content': saved_completion_prompt, 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+            
+            # Add recovery entries
+            correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
+            results.append({
+                'alignment': 'light',
+                'type': 'recovery',
+                'problem': problem,
+                'prompt': {'content': prompt, 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+            
+            results.append({
+                'alignment': 'dark',
+                'type': 'recovery', 
+                'problem': problem,
+                'prompt': {'content': prompt, 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+            
+        except Exception as e:
+            self.logs.append(f"Error creating training entries: {str(e)}")
+            return []
+            
         return results
 
     async def _run_tournament(
@@ -322,34 +327,29 @@ class AdversarialGenerator:
                         if (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b):
                             judge_correct += 1
                     
-                    # Update wins
-                    if winner == 'A':
-                        wins[i] += 1
-                        if not is_correct_a and is_correct_b:
-                            tournament_results.append({
-                                'alignment': 'judge',
-                                'type': 'solution',
-                                'problem': problem,
-                                'prompt': {'content': prompt_b, 'role': 'user'},
-                                'chosen': {'content': remove_inst_tokens(sol_b), 'role': 'assistant'},
-                                'rejected': {'content': remove_inst_tokens(sol_a), 'role': 'assistant'},
-                                'score_chosen': 1.0,
-                                'score_rejected': 0.0
-                            })
-                    elif winner == 'B':
-                        wins[j] += 1
-                        # If wrong solution beat correct solution, add to judge training data
-                        if not is_correct_b and is_correct_a:
-                            tournament_results.append({
-                                'alignment': 'judge',
-                                'type': 'solution',
-                                'problem': problem,
-                                'prompt': {'content': prompt_a, 'role': 'user'},
-                                'chosen': {'content': remove_inst_tokens(sol_a), 'role': 'assistant'},
-                                'rejected': {'content': remove_inst_tokens(sol_b), 'role': 'assistant'},
-                                'score_chosen': 1.0,
-                                'score_rejected': 0.0
-                            })
+                    # Update wins and check for wrong solution beating correct one
+                    winner_idx = i if winner == 'A' else j
+                    loser_idx = j if winner == 'A' else i
+                    winner_correct = is_correct_a if winner == 'A' else is_correct_b
+                    loser_correct = is_correct_b if winner == 'A' else is_correct_a
+                    winner_prompt = prompt_a if winner == 'A' else prompt_b
+                    winner_sol = sol_a if winner == 'A' else sol_b
+                    loser_sol = sol_b if winner == 'A' else sol_a
+                    
+                    wins[winner_idx] += 1
+                    
+                    # If wrong solution beat correct solution, add to judge training data
+                    if not winner_correct and loser_correct:
+                        tournament_results.append({
+                            'alignment': 'judge',
+                            'type': 'solution',
+                            'problem': problem,
+                            'prompt': {'content': winner_prompt, 'role': 'user'},
+                            'chosen': {'content': remove_inst_tokens(loser_sol), 'role': 'assistant'},
+                            'rejected': {'content': remove_inst_tokens(winner_sol), 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0
+                        })
                             
                 except Exception as e:
                     self.logs.append(f"Error in tournament match: {str(e)}")
