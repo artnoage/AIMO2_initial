@@ -57,12 +57,13 @@ class AdversarialGenerator:
                     # Parse response to get winner (A or B)
                     winner = judge_response.strip().upper()[0]
                     
+                    tournament_results = []
                     # Update wins
                     if winner == 'A':
                         wins[i] += 1
                         # If wrong solution beat correct solution, add to judge training data
                         if not is_correct_a and is_correct_b:
-                            results.append({
+                            tournament_results.append({
                                 'alignment': 'judge',
                                 'type': 'solution',
                                 'problem': problem,
@@ -76,7 +77,7 @@ class AdversarialGenerator:
                         wins[j] += 1
                         # If wrong solution beat correct solution, add to judge training data
                         if not is_correct_b and is_correct_a:
-                            results.append({
+                            tournament_results.append({
                                 'alignment': 'judge',
                                 'type': 'solution',
                                 'problem': problem,
@@ -93,7 +94,7 @@ class AdversarialGenerator:
                     
         # Sort solutions by wins and return
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
-        return [solutions[i] for i in sorted_indices]
+        return [solutions[i] for i in sorted_indices], tournament_results
 
     async def generate(
         self,
@@ -234,7 +235,8 @@ class AdversarialGenerator:
             return None
             
         # Run tournament to rank solutions
-        ranked_solutions = await self._run_tournament(solutions, problem)
+        ranked_solutions, tournament_results = await self._run_tournament(solutions, problem)
+        results.extend(tournament_results)
         
         # Find top solutions
         top_correct = None
