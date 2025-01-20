@@ -27,13 +27,77 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(main)
         self.verifier = NumericVerifier()
         self.logs = []
-        self.valid_solutions = []  # Will store tuples of (solution, is_correct)
+        self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
+        self.judge_results = []  # Will store tournament results for training
+        
+    async def _run_tournament(self, problem: str) -> None:
+        """Run tournament between solutions to rank them"""
+        if len(self.valid_solutions) < 2:
+            return
+
+        # Track wins for each solution
+        wins = {i: 0 for i in range(len(self.valid_solutions))}
+        
+        # Run round-robin tournament
+        for i in range(len(self.valid_solutions)):
+            for j in range(i + 1, len(self.valid_solutions)):
+                sol_a, is_correct_a, prompt_a = self.valid_solutions[i]
+                sol_b, is_correct_b, prompt_b = self.valid_solutions[j]
+                
+                try:
+                    # Get judge's decision
+                    judge_response = await self.judge_agent.compare_solutions(
+                        problem,
+                        sol_a,
+                        sol_b
+                    )
+                    
+                    # Parse response to get winner (A or B)
+                    winner = judge_response.strip().upper()[0]
+                    
+                    # Update wins
+                    if winner == 'A':
+                        wins[i] += 1
+                        # If wrong solution beat correct solution, add to judge training data
+                        if not is_correct_a and is_correct_b:
+                            self.judge_results.append({
+                                'alignment': 'judge',
+                                'type': 'solution',
+                                'problem': problem,
+                                'prompt': {'content': prompt_b, 'role': 'user'},
+                                'chosen': {'content': sol_b, 'role': 'assistant'},
+                                'rejected': {'content': sol_a, 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
+                    elif winner == 'B':
+                        wins[j] += 1
+                        # If wrong solution beat correct solution, add to judge training data
+                        if not is_correct_b and is_correct_a:
+                            self.judge_results.append({
+                                'alignment': 'judge',
+                                'type': 'solution',
+                                'problem': problem,
+                                'prompt': {'content': prompt_a, 'role': 'user'},
+                                'chosen': {'content': sol_a, 'role': 'assistant'},
+                                'rejected': {'content': sol_b, 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
+                            
+                except Exception as e:
+                    self.logs.append(f"Error in tournament match: {str(e)}")
+                    continue
+                    
+        # Sort solutions by wins
+        sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
+        self.valid_solutions = [self.valid_solutions[i] for i in sorted_indices]
         
     async def generate(
         self,
         problem: str,
         correct_answer: str
-    ) -> None:
+    ) -> Optional[List[Dict[str, Any]]]:
         """
         Generate both correct and incorrect valid solutions.
         Stores results in self.valid_solutions as (solution, is_correct) tuples.
@@ -43,7 +107,7 @@ class AdversarialGenerator:
         while attempts < self.best_of:
             try:
                 attempts += 1
-                solution = await self.solution_agent.generate(problem)
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
@@ -59,7 +123,7 @@ class AdversarialGenerator:
                 )
                 
                 if is_correct:
-                    self.valid_solutions.append((solution, True))
+                    self.valid_solutions.append((solution, True, prompt))
                     self.logs.append(f"✓ Found valid correct solution on attempt {attempts}")
                     
             except Exception as e:
@@ -71,7 +135,7 @@ class AdversarialGenerator:
         while attempts < self.best_of:
             try:
                 attempts += 1
-                solution = await self.loki_agent.generate(problem)
+                prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
@@ -87,7 +151,7 @@ class AdversarialGenerator:
                 )
                 
                 if not is_correct:
-                    self.valid_solutions.append((solution, False))
+                    self.valid_solutions.append((solution, False, prompt))
                     self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts}")
                     
             except Exception as e:
@@ -110,13 +174,19 @@ async def main():
     
     await generator.generate(problem, correct_answer)
     
+    # Run tournament
+    await generator._run_tournament(problem)
+        
     # Print results
-    print("\nValid solutions found:")
-    for solution, is_correct in generator.valid_solutions:
-        print(f"\nCorrect: {is_correct}")
+    print("\nValid solutions ranked by tournament performance:")
+    for i, (solution, is_correct, _) in enumerate(generator.valid_solutions):
+        print(f"\nRank {i+1}")
+        print(f"Correct: {is_correct}")
         print("-" * 40)
         print(solution)
         print("-" * 40)
+            
+    print("\nJudge training examples generated:", len(generator.judge_results))
 
 if __name__ == "__main__":
     try:
