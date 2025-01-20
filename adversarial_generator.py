@@ -433,16 +433,6 @@ class AdversarialGenerator:
             saved_completion_prompt
         )
 
-    async def _run_tournament(
-        self,
-        solutions: List[Tuple[str, bool, str]],
-        problem: str
-    ) -> Tuple[List[Tuple[str, bool, str]], List[Dict[str, Any]]]:
-        """Run tournament between solutions to rank them and generate training examples"""
-        return await self.tournament.run_tournament(solutions, problem)
-
-    
-
     async def _generate_solutions(
         self,
         problem: str,
@@ -594,7 +584,7 @@ class AdversarialGenerator:
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
-        ranked_solutions, tournament_results = await self._run_tournament(solutions, problem)
+        ranked_solutions, tournament_results = await self.tournament.run_tournament(solutions, problem)
         
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
