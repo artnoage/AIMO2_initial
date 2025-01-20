@@ -40,7 +40,7 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
         self.logs = []
-        self.tournament = Tournament(self.judge_agent, auxiliary2, logger=self.logs)
+        self.tournament = Tournament(self.judge_agent, logger=self.logs)
         self.step_analyzer = StepAnalyzer(
             self.completion_agent,
             self.step_agent,
