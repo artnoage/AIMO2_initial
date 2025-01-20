@@ -290,7 +290,7 @@ class AdversarialGenerator:
     ) -> Tuple[List[Tuple[str, bool, str]], List[Dict[str, Any]]]:
         """Run tournament between solutions to rank them and generate training examples"""
         if len(solutions) < 2:
-            return solutions
+            return solutions, []
 
         # Track wins and judge accuracy
         wins = {i: 0 for i in range(len(solutions))}
@@ -569,7 +569,7 @@ async def main():
     config = BenchmarkConfig.from_args('Adversarial generation approach')
     logger = MarkdownLogger()  # Create single logger instance for all examples
     
-    async def process_with_logger(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
+    async def process_with_logger(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
         return await process_example(example, running_id, example_id, config, logger)
     
     await run_benchmark(
