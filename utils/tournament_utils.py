@@ -162,9 +162,15 @@ class Tournament:
             'solution_ranking': [1 if sol[1] else 0 for sol in sorted_solutions]
         }
         
-        # Log basic results
+        # Log detailed results
         self._log("\n=== Tournament Complete ===")
         if judge_total > 0:
             self._log(f"Judge decisions made: {judge_total}")
+            self._log(f"Judge correct decisions: {judge_correct}/{judge_total} ({(judge_correct/judge_total)*100:.1f}%)")
+            
+        self._log("\nRanked Solutions:")
+        for i, (solution, is_correct, _) in enumerate(sorted_solutions, 1):
+            status = "✓ Correct" if is_correct else "✗ Incorrect"
+            self._log(f"{i}. {status}")
         
         return sorted_solutions, tournament_results, stats
