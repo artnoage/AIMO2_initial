@@ -1,13 +1,16 @@
 import os
 import asyncio
 import logging
+import random
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.log_handler import MarkdownLogger
-import random
+
+# Constants
+SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
 
 # Configure logging
 logging.basicConfig(
@@ -154,7 +157,7 @@ class AdversarialGenerator:
         self.logs.append(f"Starting analysis at step {current_step}")
         
         # Calculate size threshold from correct solution
-        size_threshold = int(0.9 * len(correct_solution))
+        size_threshold = int(SIZE_THRESHOLD_FACTOR * len(correct_solution))
         
         # Binary search for wrong step
         while True:
@@ -297,6 +300,9 @@ class AdversarialGenerator:
         judge_correct = 0
         judge_total = 0
         
+        # Initialize tournament results
+        tournament_results = []
+        
         # Run round-robin tournament
         for i in range(len(solutions)):
             for j in range(i + 1, len(solutions)):
@@ -317,7 +323,6 @@ class AdversarialGenerator:
                         winner = response[0]
                     else:
                         # Failsafe: randomly choose if response is invalid
-                        import random
                         winner = random.choice(['A', 'B'])
                         self.logs.append(f"Invalid judge response, randomly chose {winner}")
                     
