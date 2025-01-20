@@ -8,113 +8,11 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.log_handler import MarkdownLogger
+from utils.tournament_utils import Tournament
 
 # Constants
 SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
 
-class Tournament:
-    """Manages solution tournaments and generates judge training examples"""
-    
-    def __init__(self, judge_agent, logger):
-        self.judge_agent = judge_agent
-        self.logs = logger
-        
-    async def _run_match(
-        self,
-        problem: str,
-        sol_a: Tuple[str, bool, str],
-        sol_b: Tuple[str, bool, str]
-    ) -> Tuple[Optional[str], Optional[Dict]]:
-        """Run a single tournament match between two solutions"""
-        try:
-            # Unpack solutions
-            sol_a_text, is_correct_a, prompt_a = sol_a
-            sol_b_text, is_correct_b, prompt_b = sol_b
-            
-            # Get judge's decision
-            judge_response = await self.judge_agent.compare_solutions(
-                problem,
-                sol_a_text,
-                sol_b_text
-            )
-            
-            # Parse response
-            response = judge_response.strip().upper()
-            if response and response[0] in ['A', 'B']:
-                winner = response[0]
-            else:
-                winner = random.choice(['A', 'B'])
-                self.logs.append(f"Invalid judge response, randomly chose {winner}")
-                
-            # Generate training example if judge was wrong
-            training_example = None
-            if is_correct_a != is_correct_b:  # One correct, one incorrect
-                judge_chose_correct = (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b)
-                if not judge_chose_correct:
-                    correct_sol = sol_a_text if is_correct_a else sol_b_text
-                    wrong_sol = sol_b_text if is_correct_a else sol_a_text
-                    winner_prompt = prompt_a if winner == 'A' else prompt_b
-                    training_example = {
-                        'alignment': 'judge',
-                        'type': 'solution',
-                        'problem': problem,
-                        'prompt': {'content': winner_prompt, 'role': 'user'},
-                        'chosen': {'content': remove_inst_tokens(correct_sol), 'role': 'assistant'},
-                        'rejected': {'content': remove_inst_tokens(wrong_sol), 'role': 'assistant'},
-                        'score_chosen': 1.0,
-                        'score_rejected': 0.0
-                    }
-                    
-            return winner, training_example
-            
-        except Exception as e:
-            self.logs.append(f"Error in tournament match: {str(e)}")
-            return None, None
-            
-    async def run_tournament(
-        self,
-        solutions: List[Tuple[str, bool, str]],
-        problem: str
-    ) -> Tuple[List[Tuple[str, bool, str]], List[Dict[str, Any]]]:
-        """Run tournament between solutions to rank them and generate training examples"""
-        if len(solutions) < 2:
-            return solutions, []
-            
-        wins = {i: 0 for i in range(len(solutions))}
-        judge_correct = 0
-        judge_total = 0
-        tournament_results = []
-        
-        # Run round-robin tournament
-        for i in range(len(solutions)):
-            for j in range(i + 1, len(solutions)):
-                winner, training_example = await self._run_match(problem, solutions[i], solutions[j])
-                
-                if winner:
-                    winner_idx = i if winner == 'A' else j
-                    wins[winner_idx] += 1
-                    
-                    # Track judge accuracy
-                    if solutions[i][1] != solutions[j][1]:  # Different correctness
-                        judge_total += 1
-                        if (winner == 'A' and solutions[i][1]) or (winner == 'B' and solutions[j][1]):
-                            judge_correct += 1
-                            
-                if training_example:
-                    tournament_results.append(training_example)
-                    
-        # Sort solutions by wins
-        sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
-        sorted_solutions = [solutions[i] for i in sorted_indices]
-        
-        # Log results
-        ranking = [1 if sol[1] else 0 for sol in sorted_solutions]
-        self.logs.append("\n=== Tournament Results ===")
-        if judge_total > 0:
-            self.logs.append(f"Judge accuracy: {judge_correct}/{judge_total} ({judge_correct/judge_total*100:.1f}% correct)")
-        self.logs.append(f"Solution ranking (1=correct, 0=incorrect): {ranking}")
-        
-        return sorted_solutions, tournament_results
 
 # Configure logging
 logging.basicConfig(
@@ -140,7 +38,7 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
-        self.tournament = Tournament(self.judge_agent, self.logs)
+        self.tournament = Tournament(self.judge_agent, logger=self.logs)
 
     async def _verify_completions(
         self,
@@ -589,7 +487,7 @@ class AdversarialGenerator:
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
-        ranked_solutions, tournament_results = await self.tournament.run_tournament(solutions, problem)
+        ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem)
         
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from utils.benchmark_config import *
 from utils.benchmark_utils import *
 from utils.agents import *
+from utils.tournament_utils import Tournament
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -62,71 +63,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 }
                 solutions.append(solution_info)
 
-        # Tournament judging
-        winning_solution = None
-        winning_solution_correct = False
-        judge_success_count = 0
-        judge_total_decisions = 0
-        failsafe_count = 0
+        # Run tournament
+        tournament = Tournament(judge_agent)
+        tournament_solutions = [(s['solution'], s['is_correct'], '') for s in solutions if s['solution'] != "Error occurred"]
         
-        if len(solutions) > 1:
-            # Create tournament brackets
-            tournament_solutions = [s for s in solutions if s['solution'] != "Error occurred"]
-            if len(tournament_solutions) > 1:
-                while len(tournament_solutions) > 1:
-                    next_round = []
-                    # Handle cases where number of solutions is odd
-                    if len(tournament_solutions) % 2 != 0:
-                        # Last solution automatically advances to next round
-                        next_round.append(tournament_solutions.pop())
-                    
-                    # Process pairs
-                    while len(tournament_solutions) >= 2:
-                        solution_a = tournament_solutions.pop(0)
-                        solution_b = tournament_solutions.pop(0)
-                        
-                        import random
-                        judge_result = await judge_agent.compare_solutions(
-                            example["problem"],
-                            solution_a['solution'],
-                            solution_b['solution']
-                        )
-                        
-                        # Determine winner based on judge's response
-                        judge_total_decisions += 1
-                        
-                        if not judge_result or not isinstance(judge_result, str):
-                            # Failsafe: random choice if judge fails
-                            print(f"Warning: Judge gave invalid response. Making random choice.")
-                            failsafe_count += 1
-                            next_round.append(random.choice([solution_a, solution_b]))
-                        elif "A" in judge_result.upper():
-                            # Judge success if chose correct solution when one is correct and one wrong
-                            if solution_a['is_correct'] != solution_b['is_correct']:
-                                if solution_a['is_correct']:  # A is correct
-                                    judge_success_count += 1 if "A" in judge_result.upper() else 0
-                                else:  # B is correct
-                                    judge_success_count += 1 if "B" in judge_result.upper() else 0
-                            next_round.append(solution_a)
-                        elif "B" in judge_result.upper():
-                            # Judge success if chose correct solution when one is correct and one wrong
-                            if solution_a['is_correct'] != solution_b['is_correct']:
-                                judge_success_count += 1
-                                if solution_a['is_correct']:  # A is correct, did judge choose A?
-                                    judge_success_count += "A" in judge_result.upper()
-                                else:  # B is correct, did judge choose B?
-                                    judge_success_count += "B" in judge_result.upper()
-                            next_round.append(solution_b)
-                        else:
-                            # Failsafe: random choice if response unclear
-                            print(f"Warning: Judge response unclear: '{judge_result}'. Making random choice.")
-                            failsafe_count += 1
-                            next_round.append(random.choice([solution_a, solution_b]))
-                    
-                    tournament_solutions = next_round
-                
-                winning_solution = tournament_solutions[0]
-                winning_solution_correct = winning_solution['is_correct']
+        # Get solution content for tournament
+        def get_solution_content(solution_tuple):
+            return solution_tuple[0]
+            
+        # Run tournament if we have enough solutions
+        tournament_stats = {}
+        if len(tournament_solutions) > 1:
+            _, _, tournament_stats = await tournament.run_tournament(
+                tournament_solutions,
+                example["problem"],
+                get_content=get_solution_content
+            )
+            
+        winning_solution_correct = tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False
+        judge_success_rate = tournament_stats.get('judge_accuracy', 0) * 100
+        judge_total_decisions = tournament_stats.get('judge_decisions', 0)
 
         # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
