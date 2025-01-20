@@ -93,18 +93,21 @@ class AdversarialGenerator:
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
         self.valid_solutions = [self.valid_solutions[i] for i in sorted_indices]
         
-        # Find top correct and wrong solutions
+        # Find top solutions
         top_correct = None
         top_wrong = None
+        second_wrong = None
         for solution, is_correct, prompt in self.valid_solutions:
             if is_correct and top_correct is None:
                 top_correct = (solution, prompt)
-            elif not is_correct and top_wrong is None:
-                top_wrong = (solution, prompt)
-            if top_correct and top_wrong:
-                break
-                
-        # If we found both, create light entry
+            elif not is_correct:
+                if top_wrong is None:
+                    top_wrong = (solution, prompt)
+                elif second_wrong is None:
+                    second_wrong = (solution, prompt)
+                    break
+                    
+        # Create light entry if we have correct and wrong
         if top_correct and top_wrong:
             self.judge_results.append({
                 'alignment': 'light',
@@ -113,6 +116,19 @@ class AdversarialGenerator:
                 'prompt': {'content': top_correct[1], 'role': 'user'},
                 'chosen': {'content': top_correct[0], 'role': 'assistant'},
                 'rejected': {'content': top_wrong[0], 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
+            
+        # Create dark entry if we have two wrong solutions
+        if top_wrong and second_wrong:
+            self.judge_results.append({
+                'alignment': 'dark',
+                'type': 'full_solution',
+                'problem': problem,
+                'prompt': {'content': top_wrong[1], 'role': 'user'},
+                'chosen': {'content': top_wrong[0], 'role': 'assistant'},
+                'rejected': {'content': second_wrong[0], 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
