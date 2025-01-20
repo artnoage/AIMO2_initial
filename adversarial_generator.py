@@ -9,6 +9,7 @@ from utils.benchmark_utils import *
 from utils.agents import *
 from utils.log_handler import MarkdownLogger
 from utils.tournament_utils import Tournament
+from utils.step_analysis_utils import StepAnalyzer
 
 # Constants
 SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
@@ -39,254 +40,13 @@ class AdversarialGenerator:
         self.verifier = NumericVerifier()
         self.logs = []
         self.tournament = Tournament(self.judge_agent, logger=self.logs)
-
-    async def _verify_completions(
-        self,
-        problem: str,
-        partial_solution: str,
-        correct_answer: str,
-        step_index: int,
-        size_threshold: int
-    ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
-        """Try multiple completions of a partial solution to check if any are correct.
-        Returns:
-            - found_verified: True if any solution verified correctly
-            - found_valid: True if any solution both verified and validated
-            - correct_step: The next correct step if found, None otherwise
-            - good_completion: The full valid completion if found, None otherwise
-            - completion_prompt: The prompt used for the successful completion
-        """
-        found_verified = False
-        found_valid = False
-        correct_step = None
-        good_completion = None
-        completion_prompt = None
-        
-        for i in range(self.completions):
-            try:
-                if completion_prompt is None:
-                    prompt, completion = await self.completion_agent.generate(
-                        problem,
-                        partial_solution,
-                        return_prompt=True
-                    )
-                    completion_prompt = prompt
-                else:
-                    completion = await self.completion_agent.generate(
-                        problem,
-                        partial_solution
-                    )
-                complete_solution = partial_solution + completion
-                
-                # First verify if the answer is correct
-                is_correct, _ = await self.verifier.verify(
-                    complete_solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    found_verified = True
-                    # Validate the completion itself
-                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
-                    if not is_valid_completion:
-                        self.logs.append(f"Invalid completion: {completion_reason}")
-                        continue
-                        
-                    # Check solution size
-                    if len(complete_solution) < size_threshold:
-                        self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
-                        continue
-                        
-                    # Then check if the complete solution is valid
-                    is_valid, validation_reason = validate_solution(complete_solution)
-                    if is_valid:
-                        found_valid = True
-                        # Extract the next step
-                        completion_steps = split_into_steps(complete_solution)
-                        next_step_index = step_index + 1
-                        correct_step = completion_steps[next_step_index]
-                        # Store the successful completion
-                        good_completion = completion
-                        break
-                    else:
-                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
-                        continue
-                        
-            except Exception as e:
-                self.logs.append(f"Error in completion attempt {i+1}: {str(e)}")
-                continue
-                
-        if step_index == 0:
-            self.logs.append(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
-            if not found_verified:
-                self.logs.append("Analysis is wrong: No verified solutions found")
-            elif not found_valid:
-                self.logs.append("Example dropped: Found verified but no valid solutions in analysis")
-        else:
-            self.logs.append(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
-            if not found_verified:
-                self.logs.append(f"Step {step_index} is wrong: No verified solutions found")
-            elif not found_valid:
-                self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
-                
-        return found_verified, found_valid, correct_step, good_completion, completion_prompt
-
-    async def _find_wrong_step(
-        self,
-        problem: str,
-        correct_answer: str,
-        partial_solutions: List[str],
-        size_threshold: int
-    ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
-        """Binary search to find first wrong step in solution"""
-        num_steps = len(partial_solutions)
-        current_step = num_steps // 2
-        going_up = None
-        last_bad_step = None
-        last_good_step = None
-        wrong_step_index = None
-        saved_good_completion = None
-        saved_completion_prompt = None
-        
-        self.logs.append("\n=== Analyzing solution steps ===")
-        self.logs.append(f"Starting analysis at step {current_step}")
-        
-        while True:
-            try:
-                self.logs.append(f"\nChecking step {current_step}...")
-                
-                found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
-                    problem,
-                    partial_solutions[current_step],
-                    correct_answer,
-                    current_step,
-                    size_threshold
-                )
-
-                if found_verified and not found_valid:
-                    self.logs.append("Found verified but invalid completion - skipping step analysis")
-                    return None, None, None, None
-                    
-                if found_valid:
-                    self.logs.append(f"✓ Step {current_step} is valid")
-                    last_good_step = correct_step
-                    saved_good_completion = good_completion
-                    saved_completion_prompt = completion_prompt
-                    
-                    if going_up is None:
-                        going_up = True
-                    elif not going_up:
-                        wrong_step_index = last_bad_step
-                        break
-                        
-                    if current_step + 1 >= num_steps:
-                        self.logs.append("❌ Reached end without finding wrong step")
-                        return None, None, None, None
-                    current_step += 1
-                    
-                else:
-                    self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                    last_bad_step = current_step
-                    
-                    if going_up is None:
-                        going_up = False
-                        wrong_step_index = current_step
-                    elif going_up:
-                        wrong_step_index = current_step
-                        break
-                        
-                    if current_step - 1 < 0:
-                        self.logs.append("❌ Reached start without finding good step")
-                        return None, None, None, None
-                    current_step -= 1
-                    
-            except Exception as e:
-                self.logs.append(f"Error in step verification: {str(e)}")
-                return None, None, None, None
-                
-        return wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt
-
-    async def _create_step_examples(
-        self,
-        problem: str,
-        wrong_solution: Tuple[str, str],
-        wrong_steps: List[str],
-        partial_solutions: List[str],
-        wrong_step_index: int,
-        last_good_step: str,
-        saved_good_completion: str,
-        saved_completion_prompt: str
-    ) -> List[Dict[str, Any]]:
-        """Create training examples from identified wrong step"""
-        results = []
-        solution, prompt = wrong_solution
-        
-        try:
-            # Get step prompt
-            step_prompt = await self.step_agent.generate(
-                problem,
-                partial_solutions[max(0, wrong_step_index - 1)],
-                return_prompt=True
-            )
-            
-            # Add step entry
-            results.append({
-                'alignment': 'light',
-                'type': 'step',
-                'problem': problem,
-                'prompt': {'content': step_prompt[0], 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-            # Add completion entry
-            results.append({
-                'alignment': 'light', 
-                'type': 'completion',
-                'problem': problem,
-                'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-            # Get solver prompt for light recovery
-            solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
-            
-            # Add recovery entries
-            correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-            results.append({
-                'alignment': 'light',
-                'type': 'recovery',
-                'problem': problem,
-                'prompt': {'content': solver_prompt[0], 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-            # Use Loki prompt for dark recovery
-            results.append({
-                'alignment': 'dark',
-                'type': 'recovery', 
-                'problem': problem,
-                'prompt': {'content': prompt, 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-        except Exception as e:
-            self.logs.append(f"Error creating training entries: {str(e)}")
-            return []
-            
-        return results
+        self.step_analyzer = StepAnalyzer(
+            self.completion_agent,
+            self.step_agent,
+            self.solution_agent,
+            self.verifier,
+            self.logs
+        )
 
     async def _analyze_wrong_solution(
         self,
@@ -296,7 +56,7 @@ class AdversarialGenerator:
         correct_solution: str
     ) -> List[Dict[str, Any]]:
         """Analyze wrong solution to find wrong step and generate training examples"""
-        solution, _ = wrong_solution
+        solution, prompt = wrong_solution
         
         # Split solutions into steps
         wrong_steps = split_into_steps(solution)
@@ -307,11 +67,11 @@ class AdversarialGenerator:
         partial_solutions = get_partial_solutions(wrong_steps)
         size_threshold = int(SIZE_THRESHOLD_FACTOR * len(correct_solution))
         
-        # Find wrong step
-        wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await self._find_wrong_step(
+        # Find wrong step using step analyzer
+        wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await self.step_analyzer.find_wrong_step(
             problem,
             correct_answer,
-            partial_solutions,
+            solution,
             size_threshold
         )
         
@@ -319,10 +79,10 @@ class AdversarialGenerator:
         if wrong_step_index is None or not saved_good_completion:
             return []
             
-        # Create training examples
-        return await self._create_step_examples(
+        # Create training examples using step analyzer
+        return await self.step_analyzer.create_step_examples(
             problem,
-            wrong_solution,
+            (solution, prompt),
             wrong_steps,
             partial_solutions,
             wrong_step_index,
