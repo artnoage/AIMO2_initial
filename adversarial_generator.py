@@ -27,16 +27,17 @@ load_dotenv()
 class AdversarialGenerator:
     """Generates pairs of valid correct and incorrect solutions using multiple agents"""
     
-    def __init__(self, main, auxiliary, best_of: int, completions: int):
+    def __init__(self, main, auxiliary, auxiliary2, best_of: int, completions: int):
         self.main = main
         self.auxiliary = auxiliary
+        self.auxiliary2 = auxiliary2
         self.best_of = best_of
         self.completions = completions
         self.solution_agent = FullSolutionAgent(main) 
         self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
         self.loki_agent = LokiAgent(auxiliary)
-        self.judge_agent = TournamentJudgeAgent(auxiliary)
+        self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
         self.logs = []
         self.tournament = Tournament(self.judge_agent, logger=self.logs)
@@ -268,8 +269,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main = get_model(config, role="main")
         auxiliary = get_model(config, role="auxiliary")
         
+        # Create config2 with temperature=0
+        config2 = BenchmarkConfig(
+            main=config.main,
+            auxiliary=config.auxiliary,
+            main_port=config.main_port,
+            auxiliary_port=config.auxiliary_port,
+            auxiliary_temp=0.0
+        )
+        auxiliary2 = get_model(config2, role="auxiliary")
+        
         # Create generator
-        generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
+        generator = AdversarialGenerator(main, auxiliary, auxiliary2, config.best_of, config.completions)
         
         # Prepare logs
         all_logs = []
