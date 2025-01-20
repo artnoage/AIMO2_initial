@@ -93,6 +93,13 @@ class Tournament:
                     truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
                     
                     
+                    # Create judge prompt using template with truncated solutions
+                    judge_prompt = Tournament.JUDGE_PROMPT_TEMPLATE.format(
+                        problem=problem,
+                        solution_a=truncated_correct if is_correct_a else truncated_wrong,
+                        solution_b=truncated_wrong if is_correct_a else truncated_correct
+                    )
+                    
                     # Create judge training example based on which solution was correct
                     training_example = {
                         'alignment': 'judge',
