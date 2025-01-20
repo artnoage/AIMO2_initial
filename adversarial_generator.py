@@ -39,7 +39,7 @@ class AdversarialGenerator:
         partial_solution: str,
         correct_answer: str,
         step_index: int,
-        correct_solution: str
+        size_threshold: int
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct.
         Returns:
@@ -86,8 +86,7 @@ class AdversarialGenerator:
                         self.logs.append(f"Invalid completion: {completion_reason}")
                         continue
                         
-                    # Check solution size against best correct solution
-                    size_threshold = int(0.9 * len(correct_solution))
+                    # Check solution size
                     if len(complete_solution) < size_threshold:
                         self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
@@ -150,12 +149,15 @@ class AdversarialGenerator:
             while True:
                 self.logs.append(f"\nChecking step {current_step}...")
                 
+                # Calculate size threshold from correct solution
+                size_threshold = int(0.9 * len(correct_solution))
+                
                 found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
                     problem,
                     partial_solutions[current_step],
                     correct_answer,
                     current_step,
-                    correct_solution
+                    size_threshold
                 )
                 
                 if found_valid:
