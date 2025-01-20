@@ -545,15 +545,34 @@ class AdversarialGenerator:
         
         return results
 
+async def _process_generation(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Tuple[List[Dict], List[str]]:
+    """Handle the generation part of processing an example"""
+    # Extract answer
+    correct_answer = extract_answer_from_solution(example['solution'])
+    if correct_answer is None:
+        logging.error(f"Could not extract answer from solution for example {running_id}")
+        return [], []
+
+    # Initialize models
+    main = get_model(config, role="main")
+    auxiliary = get_model(config, role="auxiliary")
+    
+    # Create generator
+    generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
+    
+    # Generate solutions and run tournament
+    results = await generator.generate(example['problem'], correct_answer)
+    
+    # Add example ID to results
+    if results:
+        for entry in results:
+            entry['id'] = example_id
+            
+    return results, generator.logs
+
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig, logger: MarkdownLogger) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
     try:
-        # Extract answer
-        correct_answer = extract_answer_from_solution(example['solution'])
-        if correct_answer is None:
-            logging.error(f"Could not extract answer from solution for example {running_id}")
-            return []
-
         # Prepare comprehensive logs for this example
         all_logs = []
         all_logs.append("\n" + "="*80)
@@ -563,22 +582,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Problem details
         all_logs.append(f"\n📋 Problem:")
         all_logs.append(f"{example['problem'][:200]}...")
-        all_logs.append(f"\n✓ Expected Answer: {correct_answer}")
+        all_logs.append(f"\n✓ Expected Answer: {extract_answer_from_solution(example['solution'])}")
 
-        # Initialize models
-        main = get_model(config, role="main")
-        auxiliary = get_model(config, role="auxiliary")
+        # Generate solutions
+        results, generator_logs = await _process_generation(example, running_id, example_id, config)
         
-        # Create generator
-        generator = AdversarialGenerator(main, auxiliary, config.best_of, config.completions)
-        
-        # Generate solutions and run tournament
-        results = await generator.generate(example['problem'], correct_answer)
-        if not results:
-            return []
-
         # Add generator logs
-        all_logs.extend(generator.logs)
+        all_logs.extend(generator_logs)
         
         if results:
             # Add solution quality metrics
@@ -595,10 +605,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Save comprehensive logs to markdown file
         log_file = logger.save_logs(all_logs, example_id)
-        
-        # Add example ID to results
-        for entry in results:
-            entry['id'] = example_id
             
         return results
 
