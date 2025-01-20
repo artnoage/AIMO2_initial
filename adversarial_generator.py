@@ -30,7 +30,6 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.logs = []
-        self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
         
     async def _run_tournament(self, solutions: List[Tuple[str, bool, str]], problem: str) -> List[Tuple[str, bool, str]]:
         """Run tournament between solutions to rank them"""
@@ -288,7 +287,7 @@ class AdversarialGenerator:
                         })
                         
                         # Add completion entry
-                        self.judge_results.append({
+                        results.append({
                             'alignment': 'light',
                             'type': 'completion',
                             'problem': problem,
@@ -301,7 +300,7 @@ class AdversarialGenerator:
                         
                         # Add recovery entry
                         correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
-                        self.judge_results.append({
+                        results.append({
                             'alignment': 'light',
                             'type': 'recovery',
                             'problem': problem,
@@ -313,7 +312,7 @@ class AdversarialGenerator:
                         })
                         
                         # Add dark recovery entry
-                        self.judge_results.append({
+                        results.append({
                             'alignment': 'dark',
                             'type': 'recovery',
                             'problem': problem,
@@ -340,7 +339,7 @@ class AdversarialGenerator:
             
         # Create dark entry if we have two wrong solutions
         if top_wrong and second_wrong:
-            self.judge_results.append({
+            results.append({
                 'alignment': 'dark',
                 'type': 'full_solution',
                 'problem': problem,
