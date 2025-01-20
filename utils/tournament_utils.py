@@ -47,8 +47,7 @@ class Tournament:
             sol_b_text = get_content(sol_b)
             is_correct_a = sol_a[1]
             is_correct_b = sol_b[1]
-            prompt_a = sol_a[2]
-            prompt_b = sol_b[2]
+
             
             # Get judge's decision
             judge_response = await self.judge_agent.compare_solutions(
