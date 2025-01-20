@@ -122,26 +122,7 @@ class AdversarialGenerator:
                 if not is_valid:
                     self.logs.append(f"Invalid solution structure: {validation_reason}")
                     continue
-                
-            else:
-                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                last_bad_step = current_step
-                
-                if going_up is None:
-                    # First check was bad, go down to find last good step
-                    going_up = False
-                    wrong_step_index = current_step  # Save first bad step found
-                elif going_up:
-                    # We were going up and found a bad step
-                    # The wrong step must be here
-                    wrong_step_index = current_step
-                    break
                     
-                # Move down one step
-                if current_step - 1 < 0:
-                    break
-                current_step -= 1
-                
         # Search for correct solutions
         attempts = 0
         while attempts < self.best_of:
