@@ -447,6 +447,10 @@ class AdversarialGenerator:
             self.logs.append("Failed to generate required mix of correct and incorrect solutions")
             return None
             
+        # Shuffle solutions before tournament
+        import random
+        random.shuffle(solutions)
+        
         # Run tournament to rank solutions
         ranked_solutions, tournament_results = await self._run_tournament(solutions, problem)
         results.extend(tournament_results)
