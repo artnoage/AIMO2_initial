@@ -321,14 +321,13 @@ class AdversarialGenerator:
                         winner = random.choice(['A', 'B'])
                         self.logs.append(f"Invalid judge response, randomly chose {winner}")
                     
-                    tournament_results = []
                     # Track judge accuracy when comparing correct vs wrong
                     if is_correct_a != is_correct_b:
                         judge_total += 1
                         if (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b):
                             judge_correct += 1
                     
-                    # Update wins and check for wrong solution beating correct one
+                    # Update wins and determine winner/loser details
                     winner_idx = i if winner == 'A' else j
                     loser_idx = j if winner == 'A' else i
                     winner_correct = is_correct_a if winner == 'A' else is_correct_b
@@ -339,9 +338,8 @@ class AdversarialGenerator:
                     
                     wins[winner_idx] += 1
                     
-                    # If wrong solution beat correct solution, add to judge training data
-                    if not winner_correct and loser_correct:
-                        tournament_results.append({
+                    # Record all tournament matches for training
+                    tournament_results.append({
                             'alignment': 'judge',
                             'type': 'solution',
                             'problem': problem,
