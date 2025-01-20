@@ -185,10 +185,12 @@ class AdversarialGenerator:
         if len(solutions) < 2:
             return solutions
 
-        # Track wins for each solution
+        # Track wins and judge accuracy
         wins = {i: 0 for i in range(len(solutions))}
+        judge_correct = 0
+        judge_total = 0
         
-        # Run round-robin tournament 
+        # Run round-robin tournament
         for i in range(len(solutions)):
             for j in range(i + 1, len(solutions)):
                 sol_a, is_correct_a, prompt_a = solutions[i]
@@ -206,10 +208,15 @@ class AdversarialGenerator:
                     winner = judge_response.strip().upper()[0]
                     
                     tournament_results = []
+                    # Track judge accuracy when comparing correct vs wrong
+                    if is_correct_a != is_correct_b:
+                        judge_total += 1
+                        if (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b):
+                            judge_correct += 1
+                    
                     # Update wins
                     if winner == 'A':
                         wins[i] += 1
-                        # If wrong solution beat correct solution, add to judge training data
                         if not is_correct_a and is_correct_b:
                             tournament_results.append({
                                 'alignment': 'judge',
@@ -239,10 +246,20 @@ class AdversarialGenerator:
                 except Exception as e:
                     self.logs.append(f"Error in tournament match: {str(e)}")
                     continue
-                    
-        # Sort solutions by wins and return
+        
+        # Sort solutions by wins
         sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
-        return [solutions[i] for i in sorted_indices], tournament_results
+        sorted_solutions = [solutions[i] for i in sorted_indices]
+        
+        # Create ranking list (1 for correct, 0 for incorrect)
+        ranking = [1 if sol[1] else 0 for sol in sorted_solutions]
+        
+        # Print tournament results
+        self.logs.append("\n=== Tournament Results ===")
+        self.logs.append(f"Judge accuracy: {judge_correct}/{judge_total} ({judge_correct/judge_total*100:.1f}% correct)")
+        self.logs.append(f"Solution ranking (1=correct, 0=incorrect): {ranking}")
+        
+        return sorted_solutions, tournament_results
 
     async def generate(
         self,
