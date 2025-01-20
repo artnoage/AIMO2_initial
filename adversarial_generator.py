@@ -62,51 +62,51 @@ class AdversarialGenerator:
         saved_good_completion = None
         saved_completion_prompt = None
         
-        while True:
-            self.logs.append(f"\nChecking step {current_step}...")
-            
-            found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
-                problem,
-                partial_solutions[current_step],
-                correct_answer,
-                current_step,
-                correct_solution
-            )
-            
-            if found_valid:
-                self.logs.append(f"✓ Step {current_step} is valid")
-                last_good_step = correct_step
-                saved_good_completion = good_completion
-                saved_completion_prompt = completion_prompt
+        try:
+            while True:
+                self.logs.append(f"\nChecking step {current_step}...")
                 
-                if going_up is None:
-                    going_up = True
-                elif not going_up:
-                    wrong_step_index = last_bad_step
-                    break
+                found_verified, found_valid, correct_step, good_completion, completion_prompt = await self._verify_completions(
+                    problem,
+                    partial_solutions[current_step],
+                    correct_answer,
+                    current_step,
+                    correct_solution
+                )
+                
+                if found_valid:
+                    self.logs.append(f"✓ Step {current_step} is valid")
+                    last_good_step = correct_step
+                    saved_good_completion = good_completion
+                    saved_completion_prompt = completion_prompt
                     
-                if current_step + 1 >= num_steps:
-                    break
-                current_step += 1
-                
-            else:
-                self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
-                last_bad_step = current_step
-                
-                if going_up is None:
-                    going_up = False
-                    wrong_step_index = current_step
-                elif going_up:
-                    wrong_step_index = current_step
-                    break
+                    if going_up is None:
+                        going_up = True
+                    elif not going_up:
+                        wrong_step_index = last_bad_step
+                        break
+                        
+                    if current_step + 1 >= num_steps:
+                        break
+                    current_step += 1
                     
-                if current_step - 1 < 0:
-                    break
-                current_step -= 1
-                
+                else:
+                    self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
+                    last_bad_step = current_step
+                    
+                    if going_up is None:
+                        going_up = False
+                        wrong_step_index = current_step
+                    elif going_up:
+                        wrong_step_index = current_step
+                        break
+                        
+                    if current_step - 1 < 0:
+                        break
+                    current_step -= 1
+                    
         except Exception as e:
-                self.logs.append(f"Error checking step {current_step}: {str(e)}")
-                break
+            self.logs.append(f"Error checking step {current_step}: {str(e)}")
                 
         # If we found wrong step and have good completion, create training entries
         if wrong_step_index is not None and saved_good_completion:
