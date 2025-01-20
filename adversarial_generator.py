@@ -97,15 +97,18 @@ class AdversarialGenerator:
         return [solutions[i] for i in sorted_indices]
 
     async def generate(
-        self.logs.append(f"\nChecking step {current_step}...")
-        
-        try:
-            # Try to complete from this point
-            completion_prompt, completion = await self.completion_agent.generate(
-                problem,
-                partial_solutions[current_step],
-                return_prompt=True
-            )
+        self,
+        problem: str,
+        correct_answer: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Generate both correct and incorrect valid solutions and run tournament.
+        Returns list of training examples.
+        """
+        solutions = []
+        top_correct = None
+        top_wrong = None
+        second_wrong = None
             complete_solution = partial_solutions[current_step] + completion
             
             # Verify if the answer is correct
@@ -216,31 +219,31 @@ class AdversarialGenerator:
             'score_rejected': 0.0
         })
 
-# Create light entry if we have correct and wrong
-if top_correct and top_wrong:
-self.judge_results.append({
-    'alignment': 'light',
-    'type': 'full_solution',
-    'problem': problem,
-    'prompt': {'content': top_correct[1], 'role': 'user'},
-    'chosen': {'content': top_correct[0], 'role': 'assistant'},
-    'rejected': {'content': top_wrong[0], 'role': 'assistant'},
-    'score_chosen': 1.0,
-    'score_rejected': 0.0
-})
+        # Create light entry if we have correct and wrong
+        if top_correct and top_wrong:
+            self.judge_results.append({
+                'alignment': 'light',
+                'type': 'full_solution',
+                'problem': problem,
+                'prompt': {'content': top_correct[1], 'role': 'user'},
+                'chosen': {'content': top_correct[0], 'role': 'assistant'},
+                'rejected': {'content': top_wrong[0], 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
 
-# Create dark entry if we have two wrong solutions
-if top_wrong and second_wrong:
-self.judge_results.append({
-    'alignment': 'dark',
-    'type': 'full_solution',
-    'problem': problem,
-    'prompt': {'content': top_wrong[1], 'role': 'user'},
-    'chosen': {'content': top_wrong[0], 'role': 'assistant'},
-    'rejected': {'content': second_wrong[0], 'role': 'assistant'},
-    'score_chosen': 1.0,
-    'score_rejected': 0.0
-})
+        # Create dark entry if we have two wrong solutions
+        if top_wrong and second_wrong:
+            self.judge_results.append({
+                'alignment': 'dark',
+                'type': 'full_solution',
+                'problem': problem,
+                'prompt': {'content': top_wrong[1], 'role': 'user'},
+                'chosen': {'content': top_wrong[0], 'role': 'assistant'},
+                'rejected': {'content': second_wrong[0], 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
         
     async def generate(
         self,
