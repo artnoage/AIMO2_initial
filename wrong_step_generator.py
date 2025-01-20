@@ -391,14 +391,8 @@ async def main():
             all_logs.extend(generator.logs)
             
             if result:
-                # Add solution quality metrics
-                all_logs.append("\n📊 Solution Quality:")
-                
-                # Add details about the generated solutions
-                all_logs.append("\n🔍 Generated Solutions:")
-                for entry in result:
-                    all_logs.append(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
-                    all_logs.append(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
+                # Add success message
+                all_logs.append("\n📊 Generated solutions successfully")
             
             # Print logs for this example
             print("\n".join(all_logs))

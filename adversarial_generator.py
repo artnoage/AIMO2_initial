@@ -309,11 +309,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(log)
         
         if results:
-            print("\n📊 Solution Quality:")
-            print("\n🔍 Generated Solutions:")
-            for entry in results:
-                print(f"✓ Chosen: {entry['chosen']['content'][:200]}...")
-                print(f"✗ Rejected: {entry['rejected']['content'][:200]}...")
+            print("\n📊 Generated solutions successfully")
             
         return results
 
