@@ -234,27 +234,15 @@ class AdversarialGenerator:
                 
         return found_verified, found_valid, correct_step, good_completion, completion_prompt
 
-    async def _analyze_wrong_solution(
+    async def _find_wrong_step(
         self,
         problem: str,
         correct_answer: str,
-        wrong_solution: Tuple[str, str],
-        correct_solution: str
-    ) -> List[Dict[str, Any]]:
-        """Analyze wrong solution to find wrong step and generate training examples"""
-        results = []
-        solution, prompt = wrong_solution
-        
-        # Split solutions into steps
-        wrong_steps = split_into_steps(solution)
-        if not wrong_steps or len(wrong_steps) < 2:
-            return results
-            
-        # Get partial solutions
-        partial_solutions = get_partial_solutions(wrong_steps)
+        partial_solutions: List[str],
+        size_threshold: int
+    ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
+        """Binary search to find first wrong step in solution"""
         num_steps = len(partial_solutions)
-        
-        # Start with middle step
         current_step = num_steps // 2
         going_up = None
         last_bad_step = None
@@ -266,10 +254,6 @@ class AdversarialGenerator:
         self.logs.append("\n=== Analyzing solution steps ===")
         self.logs.append(f"Starting analysis at step {current_step}")
         
-        # Calculate size threshold from correct solution
-        size_threshold = int(SIZE_THRESHOLD_FACTOR * len(correct_solution))
-        
-        # Binary search for wrong step
         while True:
             try:
                 self.logs.append(f"\nChecking step {current_step}...")
@@ -284,7 +268,7 @@ class AdversarialGenerator:
 
                 if found_verified and not found_valid:
                     self.logs.append("Found verified but invalid completion - skipping step analysis")
-                    return []
+                    return None, None, None, None
                     
                 if found_valid:
                     self.logs.append(f"✓ Step {current_step} is valid")
@@ -293,19 +277,14 @@ class AdversarialGenerator:
                     saved_completion_prompt = completion_prompt
                     
                     if going_up is None:
-                        # First check was good, go up to find potential wrong step
                         going_up = True
                     elif not going_up:
-                        # We were going down and found a good step
-                        # The wrong step must be the last_bad_step we found
                         wrong_step_index = last_bad_step
                         break
                         
-                    # Move up one step
                     if current_step + 1 >= num_steps:
-                        # We reached the top without finding a wrong step
                         self.logs.append("❌ Reached end without finding wrong step")
-                        return []
+                        return None, None, None, None
                     current_step += 1
                     
                 else:
@@ -313,31 +292,38 @@ class AdversarialGenerator:
                     last_bad_step = current_step
                     
                     if going_up is None:
-                        # First check was bad, go down to find last good step
                         going_up = False
-                        wrong_step_index = current_step  # Save first bad step found
+                        wrong_step_index = current_step
                     elif going_up:
-                        # We were going up and found a bad step
-                        # The wrong step must be here
                         wrong_step_index = current_step
                         break
                         
-                    # Move down one step
                     if current_step - 1 < 0:
-                        # We reached the bottom without finding good step
                         self.logs.append("❌ Reached start without finding good step")
-                        return []
+                        return None, None, None, None
                     current_step -= 1
                     
             except Exception as e:
                 self.logs.append(f"Error in step verification: {str(e)}")
-                return []
+                return None, None, None, None
                 
-        # If we didn't find a wrong step, return empty results
-        if wrong_step_index is None or not saved_good_completion:
-            return []
-            
-        # Create training entries
+        return wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt
+
+    async def _create_step_examples(
+        self,
+        problem: str,
+        wrong_solution: Tuple[str, str],
+        wrong_steps: List[str],
+        partial_solutions: List[str],
+        wrong_step_index: int,
+        last_good_step: str,
+        saved_good_completion: str,
+        saved_completion_prompt: str
+    ) -> List[Dict[str, Any]]:
+        """Create training examples from identified wrong step"""
+        results = []
+        solution, prompt = wrong_solution
+        
         try:
             # Get step prompt
             step_prompt = await self.step_agent.generate(
@@ -399,6 +385,49 @@ class AdversarialGenerator:
             return []
             
         return results
+
+    async def _analyze_wrong_solution(
+        self,
+        problem: str,
+        correct_answer: str,
+        wrong_solution: Tuple[str, str],
+        correct_solution: str
+    ) -> List[Dict[str, Any]]:
+        """Analyze wrong solution to find wrong step and generate training examples"""
+        solution, _ = wrong_solution
+        
+        # Split solutions into steps
+        wrong_steps = split_into_steps(solution)
+        if not wrong_steps or len(wrong_steps) < 2:
+            return []
+            
+        # Get partial solutions
+        partial_solutions = get_partial_solutions(wrong_steps)
+        size_threshold = int(SIZE_THRESHOLD_FACTOR * len(correct_solution))
+        
+        # Find wrong step
+        wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await self._find_wrong_step(
+            problem,
+            correct_answer,
+            partial_solutions,
+            size_threshold
+        )
+        
+        # If we didn't find a wrong step, return empty results
+        if wrong_step_index is None or not saved_good_completion:
+            return []
+            
+        # Create training examples
+        return await self._create_step_examples(
+            problem,
+            wrong_solution,
+            wrong_steps,
+            partial_solutions,
+            wrong_step_index,
+            last_good_step,
+            saved_good_completion,
+            saved_completion_prompt
+        )
 
     async def _run_tournament(
         self,
