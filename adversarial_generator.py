@@ -263,6 +263,90 @@ class AdversarialGenerator:
         
         return sorted_solutions, tournament_results
 
+    async def _verify_completions(
+        self,
+        problem: str,
+        partial_solution: str,
+        correct_answer: str,
+        step_index: int,
+        correct_solution: str
+    ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
+        """Try multiple completions of a partial solution to check if any are correct.
+        Returns:
+            - found_verified: True if any solution verified correctly
+            - found_valid: True if any solution both verified and validated
+            - correct_step: The next correct step if found, None otherwise
+            - good_completion: The full valid completion if found, None otherwise
+            - completion_prompt: The prompt used for the successful completion
+        """
+        found_verified = False
+        found_valid = False
+        correct_step = None
+        good_completion = None
+        completion_prompt = None
+        
+        for i in range(self.completions):
+            try:
+                if completion_prompt is None:
+                    prompt, completion = await self.completion_agent.generate(
+                        problem,
+                        partial_solution,
+                        return_prompt=True
+                    )
+                    completion_prompt = prompt
+                else:
+                    completion = await self.completion_agent.generate(
+                        problem,
+                        partial_solution
+                    )
+                complete_solution = partial_solution + completion
+                
+                # First verify if the answer is correct
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    found_verified = True
+                    # Validate the completion itself
+                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
+                    if not is_valid_completion:
+                        self.logs.append(f"Invalid completion: {completion_reason}")
+                        continue
+                        
+                    # Check solution size against best correct solution
+                    size_threshold = int(0.9 * len(correct_solution))
+                    if len(complete_solution) < size_threshold:
+                        self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
+                        continue
+                        
+                    # Then check if the complete solution is valid
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if is_valid:
+                        found_valid = True
+                        correct_step = completion
+                        good_completion = completion
+                        break
+                    else:
+                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
+                        continue
+                        
+            except Exception:
+                continue
+                
+        if step_index == 0:
+            self.logs.append(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
+        else:
+            self.logs.append(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
+            if not found_verified:
+                self.logs.append(f"Step {step_index} is wrong: No verified solutions found")
+            elif not found_valid:
+                self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
+                
+        return found_verified, found_valid, correct_step, good_completion, completion_prompt
+
     async def generate(
         self,
         problem: str,
@@ -472,86 +556,3 @@ if __name__ == "__main__":
         print("\nBenchmark interrupted by user")
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")
-    async def _verify_completions(
-        self,
-        problem: str,
-        partial_solution: str,
-        correct_answer: str,
-        step_index: int,
-        correct_solution: str
-    ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
-        """Try multiple completions of a partial solution to check if any are correct.
-        Returns:
-            - found_verified: True if any solution verified correctly
-            - found_valid: True if any solution both verified and validated
-            - correct_step: The next correct step if found, None otherwise
-            - good_completion: The full valid completion if found, None otherwise
-            - completion_prompt: The prompt used for the successful completion
-        """
-        found_verified = False
-        found_valid = False
-        correct_step = None
-        good_completion = None
-        completion_prompt = None
-        
-        for i in range(self.completions):
-            try:
-                if completion_prompt is None:
-                    prompt, completion = await self.completion_agent.generate(
-                        problem,
-                        partial_solution,
-                        return_prompt=True
-                    )
-                    completion_prompt = prompt
-                else:
-                    completion = await self.completion_agent.generate(
-                        problem,
-                        partial_solution
-                    )
-                complete_solution = partial_solution + completion
-                
-                # First verify if the answer is correct
-                is_correct, _ = await self.verifier.verify(
-                    complete_solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    found_verified = True
-                    # Validate the completion itself
-                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
-                    if not is_valid_completion:
-                        self.logs.append(f"Invalid completion: {completion_reason}")
-                        continue
-                        
-                    # Check solution size against best correct solution
-                    size_threshold = int(0.9 * len(correct_solution))
-                    if len(complete_solution) < size_threshold:
-                        self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
-                        continue
-                        
-                    # Then check if the complete solution is valid
-                    is_valid, validation_reason = validate_solution(complete_solution)
-                    if is_valid:
-                        found_valid = True
-                        correct_step = completion
-                        good_completion = completion
-                        break
-                    else:
-                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
-                        continue
-                        
-            except Exception:
-                continue
-                
-        if step_index == 0:
-            self.logs.append(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
-        else:
-            self.logs.append(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
-            if not found_verified:
-                self.logs.append(f"Step {step_index} is wrong: No verified solutions found")
-            elif not found_valid:
-                self.logs.append(f"Example dropped: Found verified but no valid solutions at step {step_index}")
-                
-        return found_verified, found_valid, correct_step, good_completion, completion_prompt
