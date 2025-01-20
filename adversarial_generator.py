@@ -329,7 +329,12 @@ class AdversarialGenerator:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
                 
-        if len(solutions) < 2:
+        # Check for at least one correct and one incorrect solution
+        has_correct = any(is_correct for _, is_correct, _ in solutions)
+        has_incorrect = any(not is_correct for _, is_correct, _ in solutions)
+        
+        if len(solutions) < 2 or not (has_correct and has_incorrect):
+            self.logs.append("Failed to generate required mix of correct and incorrect solutions")
             return None
             
         # Run tournament to rank solutions
