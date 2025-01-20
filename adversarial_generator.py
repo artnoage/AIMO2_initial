@@ -111,26 +111,17 @@ class AdversarialGenerator:
         second_wrong = None
         
         # Search for correct solutions
-            
-            if is_correct:
-                self.logs.append(f"✓ Step {current_step} is valid")
-                last_good_step = completion
-                saved_good_completion = completion
-                saved_completion_prompt = completion_prompt
+        attempts = 0
+        while attempts < self.best_of:
+            try:
+                attempts += 1
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
-                if going_up is None:
-                    # First check was good, go up to find potential wrong step
-                    going_up = True
-                elif not going_up:
-                    # We were going down and found a good step
-                    # The wrong step must be the last_bad_step we found
-                    wrong_step_index = last_bad_step
-                    break
-                    
-                # Move up one step
-                if current_step + 1 >= num_steps:
-                    break
-                current_step += 1
+                # Validate solution structure
+                is_valid, validation_reason = validate_solution(solution)
+                if not is_valid:
+                    self.logs.append(f"Invalid solution structure: {validation_reason}")
+                    continue
                 
             else:
                 self.logs.append(f"✗ Step {current_step} cannot be completed correctly")
@@ -157,10 +148,10 @@ class AdversarialGenerator:
             try:
                 attempts += 1
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-            problem,
-            partial_solutions[max(0, wrong_step_index - 1)],
-            return_prompt=True
-        )
+                problem,
+                partial_solutions[max(0, wrong_step_index - 1)],
+                return_prompt=True
+            )
         
         # Add step entry
         self.judge_results.append({
