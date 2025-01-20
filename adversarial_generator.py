@@ -24,7 +24,7 @@ load_dotenv()
 class AdversarialGenerator:
     """Generates pairs of valid correct and incorrect solutions using multiple agents"""
     
-    def __init__(self, main, auxiliary, best_of: int, completions: int = 3):
+    def __init__(self, main, auxiliary, best_of: int, completions: int):
         self.main = main
         self.auxiliary = auxiliary
         self.best_of = best_of
