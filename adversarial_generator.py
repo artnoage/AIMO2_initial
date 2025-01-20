@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.benchmark_utils import (
     validate_solution, NumericVerifier, get_model,
-    split_into_steps, get_partial_solutions
+    split_into_steps, get_partial_solutions,
+    extract_answer_from_solution, run_benchmark
 )
 from utils.agents import (
     FullSolutionAgent, LokiAgent, TournamentJudgeAgent,
@@ -346,36 +347,46 @@ class AdversarialGenerator:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
 
+async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[List[Dict]]:
+    """Process a single example using adversarial generation approach"""
+    try:
+        # Extract answer
+        correct_answer = extract_answer_from_solution(example['solution'])
+        if correct_answer is None:
+            logging.error(f"Could not extract answer from solution for example {running_id}")
+            return None
+
+        # Initialize models
+        main = get_model(config, role="main")
+        auxiliary = get_model(config, role="auxiliary")
+        
+        # Create generator
+        generator = AdversarialGenerator(main, auxiliary, config.best_of)
+        
+        # Generate solutions
+        await generator.generate(example['problem'], correct_answer)
+        
+        # Run tournament
+        await generator._run_tournament(example['problem'], correct_answer)
+        
+        # Add example ID to results
+        for entry in generator.judge_results:
+            entry['id'] = example_id
+            
+        return generator.judge_results
+
+    except Exception as e:
+        logging.error(f"Error processing example {running_id}: {str(e)}")
+        return None
+
 async def main():
     """Main function for adversarial generation approach"""
     config = BenchmarkConfig.from_args('Adversarial generation approach')
     
-    # Initialize models
-    main = get_model(config, role="main")
-    auxiliary = get_model(config, role="auxiliary")
-    
-    # Create generator
-    generator = AdversarialGenerator(main, auxiliary, config.best_of)
-    
-    # Test with a sample problem
-    problem = "Solve the equation: 2x + 5 = 13"
-    correct_answer = "4"
-    
-    await generator.generate(problem, correct_answer)
-    
-    # Run tournament
-    await generator._run_tournament(problem, correct_answer)
-        
-    # Print results
-    print("\nValid solutions ranked by tournament performance:")
-    for i, (solution, is_correct, _) in enumerate(generator.valid_solutions):
-        print(f"\nRank {i+1}")
-        print(f"Correct: {is_correct}")
-        print("-" * 40)
-        print(solution)
-        print("-" * 40)
-            
-    print("\nJudge training examples generated:", len(generator.judge_results))
+    await run_benchmark(
+        config=config,
+        process_example_func=process_example
+    )
 
 if __name__ == "__main__":
     try:
