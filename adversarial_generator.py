@@ -109,7 +109,6 @@ class AdversarialGenerator:
         top_correct = None
         top_wrong = None
         second_wrong = None
-            complete_solution = partial_solutions[current_step] + completion
             
             # Verify if the answer is correct
             is_correct, _ = await self.verifier.verify(
@@ -244,20 +243,6 @@ class AdversarialGenerator:
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
-        
-    async def generate(
-        self,
-        problem: str,
-        correct_answer: str
-    ) -> Optional[List[Dict[str, Any]]]:
-        """
-        Generate both correct and incorrect valid solutions and run tournament.
-        Returns list of training examples.
-        """
-        solutions = []
-        top_correct = None
-        top_wrong = None
-        second_wrong = None
         
         # Search for correct solutions
         attempts = 0
