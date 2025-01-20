@@ -72,7 +72,7 @@ class AdversarialGenerator:
                 )
                 complete_solution = partial_solutions[current_step] + completion
                 
-                # Verify if the answer is correct
+                # First verify if the answer is correct
                 is_correct, _ = await self.verifier.verify(
                     complete_solution,
                     correct_answer,
@@ -80,6 +80,23 @@ class AdversarialGenerator:
                 )
                 
                 if is_correct:
+                    # Validate the completion itself
+                    is_valid_completion, completion_reason = validate_completion(partial_solutions[current_step], completion)
+                    if not is_valid_completion:
+                        self.logs.append(f"Invalid completion: {completion_reason}")
+                        continue
+                        
+                    # Check solution size against original
+                    size_threshold = int(0.9 * len(solution))
+                    if len(complete_solution) < size_threshold:
+                        self.logs.append(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
+                        continue
+                        
+                    # Then check if the complete solution is valid
+                    is_valid, validation_reason = validate_solution(complete_solution)
+                    if not is_valid:
+                        self.logs.append(f"Found verified but invalid solution: {validation_reason}")
+                        continue
                     self.logs.append(f"✓ Step {current_step} is valid")
                     last_good_step = completion
                     saved_good_completion = completion
