@@ -269,6 +269,9 @@ class AdversarialGenerator:
         Returns list of training examples.
         """
         solutions = []
+        top_correct = None
+        top_wrong = None
+        second_wrong = None
         
         # Search for correct solutions
         attempts = 0
