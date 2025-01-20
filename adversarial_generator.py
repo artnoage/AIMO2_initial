@@ -8,7 +8,10 @@ from utils.benchmark_utils import (
     validate_solution, NumericVerifier, get_model,
     split_into_steps, get_partial_solutions
 )
-from utils.agents import FullSolutionAgent, LokiAgent, TournamentJudgeAgent
+from utils.agents import (
+    FullSolutionAgent, LokiAgent, TournamentJudgeAgent,
+    NextStepAgent, CompletionAgent
+)
 
 # Configure logging
 logging.basicConfig(
@@ -35,7 +38,7 @@ class AdversarialGenerator:
         self.valid_solutions = []  # Will store tuples of (solution, is_correct, prompt)
         self.judge_results = []  # Will store tournament results for training
         
-    async def _run_tournament(self, problem: str) -> None:
+    async def _run_tournament(self, problem: str, correct_answer: str) -> None:
         """Run tournament between solutions to rank them"""
         if len(self.valid_solutions) < 2:
             return
@@ -359,7 +362,7 @@ async def main():
     await generator.generate(problem, correct_answer)
     
     # Run tournament
-    await generator._run_tournament(problem)
+    await generator._run_tournament(problem, correct_answer)
         
     # Print results
     print("\nValid solutions ranked by tournament performance:")
