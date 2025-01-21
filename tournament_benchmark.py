@@ -77,6 +77,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             _, _, tournament_stats = await tournament.run_tournament(
                 tournament_solutions,
                 example["problem"],
+                correct_answer,
                 get_content=get_solution_content
             )
             
@@ -105,8 +106,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print(f"Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
         if judge_total_decisions > 0:
-            print(f"Judge success rate: {(judge_success_count/judge_total_decisions)*100:.1f}%")
-            print(f"Judge failsafe rate: {(failsafe_count/judge_total_decisions)*100:.1f}%")
+            print(f"Judge success rate: {judge_success_rate:.1f}%")
         print("-" * 80)
         
         return [{
