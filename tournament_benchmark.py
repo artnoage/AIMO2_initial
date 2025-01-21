@@ -73,6 +73,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
         # Run tournament if we have enough solutions
         tournament_stats = {}
+        judge_success_count = 0
+        failsafe_count = 0
+        judge_total_decisions = 0
+        
         if len(tournament_solutions) > 1:
             _, _, tournament_stats = await tournament.run_tournament(
                 tournament_solutions,
@@ -81,9 +85,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 get_content=get_solution_content
             )
             
+            # Extract tournament statistics
+            judge_success_count = int(tournament_stats.get('judge_accuracy', 0) * tournament_stats.get('judge_decisions', 0))
+            judge_total_decisions = tournament_stats.get('judge_decisions', 0)
+            failsafe_count = judge_total_decisions - judge_success_count
+            
         winning_solution_correct = tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False
         judge_success_rate = tournament_stats.get('judge_accuracy', 0) * 100
-        judge_total_decisions = tournament_stats.get('judge_decisions', 0)
 
         # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
