@@ -122,13 +122,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'success_rate': (correct_count/config.best_of)*100,
         }
         
-        # Only include tournament stats if there were actual judge decisions
-        if tournament_stats.get('judge_decisions', 0) > 0:
-            result.update({
-                'tournament_winner_correct': winning_solution_correct,
-                'judge_accuracy': judge_accuracy,
-                'judge_decisions': tournament_stats['judge_decisions']
-            })
+        # Always include tournament stats with additional context
+        result.update({
+            'tournament_winner_correct': winning_solution_correct,
+            'judge_accuracy': judge_accuracy if tournament_stats.get('judge_decisions', 0) > 0 else None,
+            'judge_decisions': tournament_stats.get('judge_decisions', 0),
+            'all_solutions_correct': all(s['is_correct'] for s in solutions)
+        })
             
         return [result]
         
