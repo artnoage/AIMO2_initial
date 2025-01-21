@@ -110,7 +110,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Judge accuracy: {judge_accuracy:.1f}%")
         print("-" * 80)
         
-        return [{
+        result = {
             'id': example_id,
             'problem': example['problem'],
             'correct_solution': example['solution'],
@@ -120,9 +120,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
-            'tournament_winner_correct': winning_solution_correct,
-            'judge_accuracy': judge_accuracy
-        }]
+        }
+        
+        # Only include tournament stats if there were actual judge decisions
+        if tournament_stats.get('judge_decisions', 0) > 0:
+            result.update({
+                'tournament_winner_correct': winning_solution_correct,
+                'judge_accuracy': judge_accuracy,
+                'judge_decisions': tournament_stats['judge_decisions']
+            })
+            
+        return [result]
         
     except Exception as e:
         print(f"Error processing example {str(running_id)}: {e}")
