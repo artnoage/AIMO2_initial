@@ -104,7 +104,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Most common answer: {most_common_answer}")
         print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print(f"Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
-        if tournament_stats.get('judge_decisions', 0) > 0:
+        judge_decisions = tournament_stats.get('judge_decisions', 0)
+        if judge_decisions > 0:
+            print(f"Judge decisions made: {judge_decisions}")
             print(f"Judge accuracy: {judge_accuracy:.1f}%")
         print("-" * 80)
         
