@@ -60,10 +60,16 @@ class ProgressTracker:
         
         # Calculate batch statistics
         total_examples = len(last_batch)
-        
+            
         # Build statistics string
         stats_str = f"N={len(self.results)} "
-        
+            
+        # Track judge statistics if present
+        judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0)
+        judge_accuracy = 0
+        if judge_decisions > 0:
+            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r) / judge_decisions
+            
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
             # Count problems with at least one correct solution
@@ -111,11 +117,16 @@ class ProgressTracker:
                 f"({most_common_correct/total_examples*100:.1f}%)\n"
             )
             
-            # Add tournament statistics if present
+            # Add tournament and judge statistics if present
             if total_with_tournament > 0:
                 stats_str += (
                     f"- Tournament winners correct: {tournament_winners}/{total_with_tournament} "
                     f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
+                )
+            if judge_decisions > 0:
+                stats_str += (
+                    f"- Judge decisions made: {judge_decisions}\n"
+                    f"- Judge accuracy: {judge_accuracy:.1f}%\n"
                 )
 
             # Accumulated statistics
@@ -280,14 +291,7 @@ class ProgressTracker:
                 if 'judge_failsafe_rate' in r:
                     total_judge_failsafes += r['judge_failsafe_rate']
             
-            # Calculate averages for judge statistics
-            avg_judge_success = total_judge_successes / total_judge_decisions if total_judge_decisions > 0 else 0
-            avg_judge_failsafe = total_judge_failsafes / total_judge_decisions if total_judge_decisions > 0 else 0
-            
-            # Calculate failsafe statistics
-            problems_with_failsafe = sum(1 for r in self.results if r.get('judge_failsafe_rate', 0) > 0)
-            
-            # Calculate accumulated tournament statistics
+            # Calculate accumulated tournament and judge statistics
             acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
             acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
             
@@ -299,10 +303,10 @@ class ProgressTracker:
                 f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
                 + (f"- Tournament winners correct (batch): {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
                    f"- Tournament winners correct (accumulated): {acc_tournament_winners}/{acc_total_tournaments} ({acc_tournament_winners/acc_total_tournaments*100:.1f}%)\n"
-                   f"- Judge success rate (correct vs wrong): {avg_judge_success:.1f}%\n"
-                   f"- Judge failsafe rate: {avg_judge_failsafe:.1f}%\n"
-                   f"- Problems requiring failsafe: {problems_with_failsafe}/{total} ({problems_with_failsafe/total*100:.1f}%)\n"
                    if total_with_tournament > 0 else "") +
+                (f"- Judge decisions made: {total_judge_decisions}\n"
+                 f"- Overall judge accuracy: {total_judge_successes/total_judge_decisions:.1f}%\n"
+                 if total_judge_decisions > 0 else "") +
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
         
