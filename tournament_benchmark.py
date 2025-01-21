@@ -82,7 +82,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             )
             
         winning_solution_correct = tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False
-        judge_accuracy = tournament_stats.get('judge_accuracy', 0) * 100
+        judge_accuracy = tournament_stats.get('judge_accuracy', 0) * 100 if tournament_stats and tournament_stats.get('judge_accuracy') is not None else 0
 
         # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]

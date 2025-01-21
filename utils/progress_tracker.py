@@ -70,7 +70,7 @@ class ProgressTracker:
         judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0)
         judge_accuracy = 0
         if judge_decisions > 0:
-            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r) / judge_decisions
+            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r and r.get('judge_accuracy') is not None) / judge_decisions if judge_decisions > 0 else 0
             
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
