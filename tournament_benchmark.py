@@ -73,10 +73,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
         # Run tournament if we have enough solutions
         tournament_stats = {}
-        judge_success_count = 0
-        failsafe_count = 0
-        judge_total_decisions = 0
-        
         if len(tournament_solutions) > 1:
             _, _, tournament_stats = await tournament.run_tournament(
                 tournament_solutions,
@@ -85,13 +81,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 get_content=get_solution_content
             )
             
-            # Extract tournament statistics
-            judge_success_count = int(tournament_stats.get('judge_accuracy', 0) * tournament_stats.get('judge_decisions', 0))
-            judge_total_decisions = tournament_stats.get('judge_decisions', 0)
-            failsafe_count = judge_total_decisions - judge_success_count
-            
         winning_solution_correct = tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False
-        judge_success_rate = tournament_stats.get('judge_accuracy', 0) * 100
+        judge_accuracy = tournament_stats.get('judge_accuracy', 0) * 100
 
         # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
@@ -113,8 +104,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Most common answer: {most_common_answer}")
         print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print(f"Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
-        if judge_total_decisions > 0:
-            print(f"Judge success rate: {judge_success_rate:.1f}%")
+        if tournament_stats.get('judge_decisions', 0) > 0:
+            print(f"Judge accuracy: {judge_accuracy:.1f}%")
         print("-" * 80)
         
         return [{
@@ -128,8 +119,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
             'tournament_winner_correct': winning_solution_correct,
-            'judge_success_rate': (judge_success_count/judge_total_decisions)*100 if judge_total_decisions > 0 else 0,
-            'judge_failsafe_rate': (failsafe_count/judge_total_decisions)*100 if judge_total_decisions > 0 else 0
+            'judge_accuracy': judge_accuracy
         }]
         
     except Exception as e:
