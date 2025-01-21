@@ -58,10 +58,12 @@ class ProgressTracker:
             
         last_batch = self.results[-self.config.stats_update_freq:]
         
-        # Calculate batch statistics
+        # Calculate batch statistics with null safety
         total_examples = len(last_batch)
-            
-        # Build statistics string
+        if total_examples == 0:
+            return
+                
+        # Build statistics string with safe access
         stats_str = f"N={len(self.results)} "
             
         # Track judge statistics if present
@@ -72,37 +74,46 @@ class ProgressTracker:
             
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
-            # Count problems with at least one correct solution
-            at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
+            # Count problems with at least one correct solution - safely handle None and empty lists
+            at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list') or []))
             
-            # Calculate average correct solutions per problem
-            total_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch)
+            # Calculate average correct solutions per problem - safely handle None and empty lists
+            total_correct = sum(sum(r.get('is_correct_list') or []) for r in last_batch)
             avg_correct = total_correct / total_examples if total_examples > 0 else 0
             
-            # Count problems with success rate above 50%
-            above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
+            # Count problems with success rate above 50% - safely handle None and empty lists
+            above_avg = sum(1 for r in last_batch 
+                          if r.get('is_correct_list') 
+                          and len(r.get('is_correct_list', [])) > 0 
+                          and (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
             
-            # Count problems where most common answer is correct
+            # Count problems where most common answer is correct - with additional null safety
             most_common_correct = 0
             for r in last_batch:
-                if not r.get('model_answers'):
+                try:
+                    if not r.get('model_answers'):
+                        continue
+                    # Get most common answer - safely handle None values
+                    answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
+                    if not answers:
+                        continue
+                    from collections import Counter
+                    most_common = Counter(answers).most_common(1)[0][0]
+                    # Check if most common answer is in list of correct answers - safely handle None and index errors
+                    is_correct_list = r.get('is_correct_list') or []
+                    model_answers = r.get('model_answers') or []
+                    if any(i < len(is_correct_list) and is_correct_list[i] 
+                          for i, ans in enumerate(model_answers) 
+                          if ans is not None and str(ans) == most_common):
+                        most_common_correct += 1
+                except (IndexError, KeyError, TypeError):
                     continue
-                # Get most common answer
-                answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
-                if not answers:
-                    continue
-                from collections import Counter
-                most_common = Counter(answers).most_common(1)[0][0]
-                # Check if most common answer is in list of correct answers
-                if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', [])) 
-                      if ans is not None and str(ans) == most_common):
-                    most_common_correct += 1
             
-            # Count tournament winners if present
+            # Count tournament winners if present - with null safety
             tournament_winners = 0
             total_with_tournament = 0
             if self._has_field(last_batch, 'tournament_winner_correct'):
-                total_with_tournament = sum(1 for r in last_batch if 'tournament_winner_correct' in r)
+                total_with_tournament = sum(1 for r in last_batch if r.get('tournament_winner_correct') is not None)
                 tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
 
             # Batch statistics
@@ -161,9 +172,9 @@ class ProgressTracker:
                 avg_correct_acc = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total_acc
                 above_avg_acc = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
                 
-                # Calculate accumulated tournament statistics
+                # Calculate accumulated tournament statistics - with null safety
                 acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
-                acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
+                acc_total_tournaments = sum(1 for r in self.results if r.get('tournament_winner_correct') is not None)
                 
                 stats_str += (
                     f"\nAccumulated Statistics (N={total_acc}):\n"
