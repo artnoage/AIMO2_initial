@@ -257,9 +257,9 @@ class AdversarialGenerator:
         # Run tournament to rank solutions
         ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem, correct_answer)
         
-        if tournament_results is not None:
-            tournament_results=random.shuffle(tournament_results)
-            tournament_results=tournament_results[:max(3,len(tournament_results))]
+        if tournament_results:  # This checks both for None and empty list
+            random.shuffle(tournament_results)  # Shuffles in-place
+            tournament_results = tournament_results[:min(3, len(tournament_results))]  # Also fixed max->min
         
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
