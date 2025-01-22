@@ -45,7 +45,8 @@ class AdversarialGenerator:
             self.step_agent,
             self.solution_agent,
             self.verifier,
-            self.logs
+            max_attempts=completions,
+            logs=self.logs
         )
 
     async def _analyze_wrong_solution(

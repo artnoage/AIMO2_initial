@@ -11,7 +11,7 @@ from utils.benchmark_utils import (
 class StepAnalyzer:
     """Analyzes solutions to find wrong steps and generate training examples"""
     
-    def __init__(self, completion_agent, step_agent, solution_agent, verifier, logs=None):
+    def __init__(self, completion_agent, step_agent, solution_agent, verifier, max_attempts=3, logs=None):
         """
         Initialize step analyzer
         Args:
@@ -19,12 +19,14 @@ class StepAnalyzer:
             step_agent: Agent for generating next steps
             solution_agent: Agent for full solutions
             verifier: Numeric answer verifier
+            max_attempts: Maximum number of completion attempts
             logs: Optional list for logging
         """
         self.completion_agent = completion_agent
         self.step_agent = step_agent
         self.solution_agent = solution_agent
         self.verifier = verifier
+        self.max_attempts = max_attempts
         self.logs = logs if logs is not None else []
 
     def _log(self, message: str):
@@ -39,7 +41,6 @@ class StepAnalyzer:
         correct_answer: str,
         step_index: int,
         size_threshold: int,
-        max_attempts: int 
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         found_verified = False
@@ -48,7 +49,7 @@ class StepAnalyzer:
         good_completion = None
         completion_prompt = None
         print("max_attempts",max_attempts)
-        for i in range(max_attempts):
+        for i in range(self.max_attempts):
             try:
                 if completion_prompt is None:
                     prompt, completion = await self.completion_agent.generate(
