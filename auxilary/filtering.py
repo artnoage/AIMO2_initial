@@ -148,12 +148,14 @@ def main():
     # Apply include/exclude filters first
     if included_entries:
         filtered_data = [entry for entry in filtered_data 
-                        if json.dumps(entry, sort_keys=True) in included_entries]
+                        if any(entry.get('problem') == inc_entry.get('problem')
+                              for inc_entry in included_entries)]
         print(f"After including only specified entries: {len(filtered_data)}")
     
     if excluded_entries:
         filtered_data = [entry for entry in filtered_data 
-                        if json.dumps(entry, sort_keys=True) not in excluded_entries]
+                        if not any(entry.get('problem') == exc_entry.get('problem')
+                                 for exc_entry in excluded_entries)]
         print(f"After excluding entries: {len(filtered_data)}")
     
     # Apply filters in sequence
