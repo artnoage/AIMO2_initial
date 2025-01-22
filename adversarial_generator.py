@@ -11,7 +11,7 @@ from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
 
 # Constants
-SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
+SIZE_THRESHOLD_FACTOR = 0.85  # Minimum size ratio compared to correct solution
 
 
 # Configure logging
@@ -137,7 +137,7 @@ class AdversarialGenerator:
 
         # Search for incorrect solutions
         attempts = 0
-        while attempts < self.best_of and incorrect_count < 3:
+        while attempts < self.best_of and incorrect_count < 5:
             try:
                 attempts += 1
                 prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
@@ -248,12 +248,18 @@ class AdversarialGenerator:
         if len(solutions) < 2 or not (has_correct and has_incorrect):
             self.logs.append("Failed to generate required mix of correct and incorrect solutions")
             return []
-            
+
+        if solutions is not None:
+            print ("size is",len(solutions))
         # Shuffle solutions before tournament
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
         ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem, correct_answer)
+        
+        if tournament_results is not None:
+            tournament_results=random.shuffle(tournament_results)
+            tournament_results=tournament_results[:max(3,len(tournament_results))]
         
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
