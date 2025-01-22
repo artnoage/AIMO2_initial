@@ -100,10 +100,18 @@ class CustomChat:
         if hasattr(prompt, 'content'):  # LangChain message object
             prompt_text = f"[INST]{prompt.content}[/INST]"
         elif isinstance(prompt, list):  # List of messages
-            # Take the last message's content if it's a list
             prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
         else:  # String or other
             prompt_text = f"[INST]{str(prompt)}[/INST]"
+
+        # Handle different prompt types
+        #if hasattr(prompt, 'content'):  # LangChain message object
+        #    prompt_text = f"{prompt.content}"
+        #elif isinstance(prompt, list):  # List of messages
+            # Take the last message's content if it's a list
+        #    prompt_text = f"{prompt[-1].content}" if prompt else ""
+        #else:  # String or other
+        #    prompt_text = f"{str(prompt)}"
             
         payload = {
             "model": self.model,
@@ -281,7 +289,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=3, timeout=120)
+@async_retry(max_retries=3, timeout=180)
 async def get_model_response(model, prompt,max_tokens=None) -> str:
     """Get response from model with retry logic"""
     if max_tokens==None:
@@ -508,10 +516,10 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool,
     """Validate a solution step"""
     # Check if response has less than 20 words or more than 120
     word_count = len(resp.split())
-    if word_count < 21:
-        return False, f"Step too short ({word_count} words < 21)"
-    if word_count > 141:
-        return False, f"Step too long ({word_count} words > 141)"
+    if word_count < 22:
+        return False, f"Step too short ({word_count} words < 22)"
+    if word_count > 160:
+        return False, f"Step too long ({word_count} words > 160)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:
