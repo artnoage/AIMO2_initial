@@ -1,6 +1,7 @@
 import json
 import argparse
-from typing import List, Dict, Any
+import os
+from typing import List, Dict, Any, Set
 from pathlib import Path
 
 def filter_by_alignment(data: List[Dict], alignments: List[str]) -> List[Dict]:
@@ -91,6 +92,10 @@ def main():
     parser = argparse.ArgumentParser(description='Filter JSON data by various criteria')
     parser.add_argument('input_file', help='Input JSON file path')
     parser.add_argument('output_file', help='Output JSON file path')
+    parser.add_argument('--exclude', type=str,
+                      help='JSON file containing entries to exclude')
+    parser.add_argument('--include', type=str,
+                      help='JSON file containing entries to include (keep only these)')
     parser.add_argument('--types', nargs='+',
                       help='Types to keep (e.g. light dark judge)')
     parser.add_argument('--alignments', nargs='+',
@@ -114,9 +119,42 @@ def main():
         print("Error: Success rate threshold must be between 0 and 1")
         return
     
+    # Load exclude/include lists if provided
+    excluded_entries = set()
+    included_entries = set()
+    
+    if args.exclude and os.path.exists(args.exclude):
+        try:
+            exclude_data = load_json(args.exclude)
+            excluded_entries = set(json.dumps(item, sort_keys=True) for item in exclude_data)
+            print(f"Loaded {len(excluded_entries)} entries to exclude")
+        except Exception as e:
+            print(f"Error loading exclude file: {e}")
+            return
+
+    if args.include and os.path.exists(args.include):
+        try:
+            include_data = load_json(args.include)
+            included_entries = set(json.dumps(item, sort_keys=True) for item in include_data)
+            print(f"Loaded {len(included_entries)} entries to include")
+        except Exception as e:
+            print(f"Error loading include file: {e}")
+            return
+
     # Load data
     data = load_json(args.input_file)
     filtered_data = data
+
+    # Apply include/exclude filters first
+    if included_entries:
+        filtered_data = [entry for entry in filtered_data 
+                        if json.dumps(entry, sort_keys=True) in included_entries]
+        print(f"After including only specified entries: {len(filtered_data)}")
+    
+    if excluded_entries:
+        filtered_data = [entry for entry in filtered_data 
+                        if json.dumps(entry, sort_keys=True) not in excluded_entries]
+        print(f"After excluding entries: {len(filtered_data)}")
     
     # Apply filters in sequence
     if args.alignments:
