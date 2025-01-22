@@ -248,10 +248,10 @@ def main():
 
     # Apply include/exclude filters
     if included_problems:
-        dataset = dataset.filter(lambda x: x['problem'] in included_problems)
+        dataset = dataset.filter(lambda x: any(x['problem'] == inc['problem'] for inc in include_data))
         print(f"After including only specified problems: {len(dataset)}")
     if excluded_problems:
-        dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+        dataset = dataset.filter(lambda x: not any(x['problem'] == exc['problem'] for exc in exclude_data))
         print(f"After excluding problems: {len(dataset)}")
 
     # Filter out multiple choice problems if requested
