@@ -19,8 +19,8 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/light/20250120_104729"
-    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/merged/20250120_113520"
+    LOCAL ="/Home/stat/laschos/AIMO2_initial/models/light/20250121_222508"
+    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/merged/20250121_223552"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
@@ -35,7 +35,7 @@ class BenchmarkConfig:
     main_port: int = 8000
     auxiliary_port: int = 6000
     main_temp: float = 0.9
-    auxiliary_temp: float = 0.0
+    auxiliary_temp: float = 0.9
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -47,7 +47,7 @@ class BenchmarkConfig:
     
     # Execution settings
     max_concurrent: int = 256
-    best_of: int = 10
+    best_of: int = 40
     completions: int = 35
     
     # Verification settings
@@ -93,11 +93,11 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=64,
+        parser.add_argument('--max-concurrent', type=int, default=80,
                           help='Maximum number of concurrent problems (default: 64)')
-        parser.add_argument('--best-of', type=int, default=25,
+        parser.add_argument('--best-of', type=int, default=20,
                           help='Number of attempts per problem (default: 5)')
-        parser.add_argument('--completions', type=int, default=35,
+        parser.add_argument('--completions', type=int, default=12,
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments

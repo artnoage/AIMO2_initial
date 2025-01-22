@@ -11,7 +11,7 @@ from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
 
 # Constants
-SIZE_THRESHOLD_FACTOR = 0.92  # Minimum size ratio compared to correct solution
+SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
 
 
 # Configure logging
@@ -159,7 +159,7 @@ class AdversarialGenerator:
                 if not is_correct:
                     solutions.append((solution, False, prompt))
                     incorrect_count += 1
-                    self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/3)")
+                    self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/5)")
                     
             except Exception as e:
                 self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")

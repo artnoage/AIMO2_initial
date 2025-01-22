@@ -48,7 +48,6 @@ class StepAnalyzer:
         correct_step = None
         good_completion = None
         completion_prompt = None
-        print("max_attempts",max_attempts)
         for i in range(self.max_attempts):
             try:
                 if completion_prompt is None:
