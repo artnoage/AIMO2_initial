@@ -120,14 +120,13 @@ def main():
         return
     
     # Load exclude/include lists if provided
-    excluded_entries = set()
-    included_entries = set()
+    exclude_data = []
+    include_data = []
     
     if args.exclude and os.path.exists(args.exclude):
         try:
             exclude_data = load_json(args.exclude)
-            excluded_entries = set(json.dumps(item, sort_keys=True) for item in exclude_data)
-            print(f"Loaded {len(excluded_entries)} entries to exclude")
+            print(f"Loaded {len(exclude_data)} entries to exclude")
         except Exception as e:
             print(f"Error loading exclude file: {e}")
             return
@@ -135,8 +134,7 @@ def main():
     if args.include and os.path.exists(args.include):
         try:
             include_data = load_json(args.include)
-            included_entries = set(json.dumps(item, sort_keys=True) for item in include_data)
-            print(f"Loaded {len(included_entries)} entries to include")
+            print(f"Loaded {len(include_data)} entries to include")
         except Exception as e:
             print(f"Error loading include file: {e}")
             return
@@ -146,16 +144,16 @@ def main():
     filtered_data = data
 
     # Apply include/exclude filters first
-    if included_entries:
+    if include_data:
         filtered_data = [entry for entry in filtered_data 
-                        if any(entry.get('problem') == inc_entry.get('problem')
-                              for inc_entry in included_entries)]
+                        if any(entry.get('problem') == inc.get('problem')
+                              for inc in include_data)]
         print(f"After including only specified entries: {len(filtered_data)}")
     
-    if excluded_entries:
+    if exclude_data:
         filtered_data = [entry for entry in filtered_data 
-                        if not any(entry.get('problem') == exc_entry.get('problem')
-                                 for exc_entry in excluded_entries)]
+                        if not any(entry.get('problem') == exc.get('problem')
+                                 for exc in exclude_data)]
         print(f"After excluding entries: {len(filtered_data)}")
     
     # Apply filters in sequence
