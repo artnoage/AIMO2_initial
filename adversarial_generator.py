@@ -181,17 +181,30 @@ class AdversarialGenerator:
         top_wrong = None
         second_wrong = None
         max_correct_length = 0
+        
+        print("\nRanked solutions analysis:")
+        print(f"Total ranked solutions: {len(ranked_solutions)}")
+        print("Solution correctness:", [is_correct for _, is_correct, _ in ranked_solutions])
+        
         for solution, is_correct, prompt in ranked_solutions:
             if is_correct:
                 max_correct_length = max(max_correct_length, len(solution))
                 if top_correct is None:
                     top_correct = (solution, prompt)
+                    print("Found top_correct")
             elif not is_correct:
                 if top_wrong is None:
                     top_wrong = (solution, prompt)
+                    print("Found top_wrong")
                 elif second_wrong is None:
                     second_wrong = (solution, prompt)
+                    print("Found second_wrong")
                     break
+                    
+        print(f"\nAfter processing:")
+        print(f"top_correct: {'Found' if top_correct else 'None'}")
+        print(f"top_wrong: {'Found' if top_wrong else 'None'}")
+        print(f"second_wrong: {'Found' if second_wrong else 'None'}")
                     
         # Process top wrong solution for step-based entries
         if top_wrong and top_correct:
