@@ -54,7 +54,7 @@ class AdversarialGenerator:
         problem: str,
         correct_answer: str,
         wrong_solution: Tuple[str, str],
-        correct_solution: str
+        correct_solution_length: int
     ) -> List[Dict[str, Any]]:
         """Analyze wrong solution to find wrong step and generate training examples"""
         solution, prompt = wrong_solution
@@ -66,7 +66,7 @@ class AdversarialGenerator:
             
         # Get partial solutions
         partial_solutions = get_partial_solutions(wrong_steps)
-        size_threshold = int(SIZE_THRESHOLD_FACTOR * len(correct_solution))
+        size_threshold = int(SIZE_THRESHOLD_FACTOR * correct_solution_length)
         
         # Find wrong step using step analyzer
         wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await self.step_analyzer.find_wrong_step(
@@ -176,13 +176,16 @@ class AdversarialGenerator:
         """Create training examples from ranked solutions"""
         results = []
         
-        # Find top solutions
+        # Find top solutions and max correct solution length
         top_correct = None
         top_wrong = None
         second_wrong = None
+        max_correct_length = 0
         for solution, is_correct, prompt in ranked_solutions:
-            if is_correct and top_correct is None:
-                top_correct = (solution, prompt)
+            if is_correct:
+                max_correct_length = max(max_correct_length, len(solution))
+                if top_correct is None:
+                    top_correct = (solution, prompt)
             elif not is_correct:
                 if top_wrong is None:
                     top_wrong = (solution, prompt)
@@ -192,7 +195,7 @@ class AdversarialGenerator:
                     
         # Process top wrong solution for step-based entries
         if top_wrong and top_correct:
-            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, top_correct[0])
+            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, max_correct_length)
             # Add problem and correct_answer to step results
             for result in step_results:
                 result['problem'] = problem
