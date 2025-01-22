@@ -39,7 +39,7 @@ class StepAnalyzer:
         correct_answer: str,
         step_index: int,
         size_threshold: int,
-        max_attempts: int = 3
+        max_attempts: int 
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         found_verified = False
@@ -47,7 +47,7 @@ class StepAnalyzer:
         correct_step = None
         good_completion = None
         completion_prompt = None
-        
+        print("max_attempts",max_attempts)
         for i in range(max_attempts):
             try:
                 if completion_prompt is None:

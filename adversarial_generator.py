@@ -11,7 +11,7 @@ from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
 
 # Constants
-SIZE_THRESHOLD_FACTOR = 0.85  # Minimum size ratio compared to correct solution
+SIZE_THRESHOLD_FACTOR = 0.92  # Minimum size ratio compared to correct solution
 
 
 # Configure logging
@@ -249,8 +249,6 @@ class AdversarialGenerator:
             self.logs.append("Failed to generate required mix of correct and incorrect solutions")
             return []
 
-        if solutions is not None:
-            print ("size is",len(solutions))
         # Shuffle solutions before tournament
         random.shuffle(solutions)
         
@@ -260,7 +258,7 @@ class AdversarialGenerator:
         if tournament_results:  # This checks both for None and empty list
             random.shuffle(tournament_results)  # Shuffles in-place
             tournament_results = tournament_results[:min(3, len(tournament_results))]  # Also fixed max->min
-        
+
         # Create training examples
         results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
         results.extend(tournament_results)
