@@ -186,20 +186,23 @@ class AdversarialGenerator:
         print(f"Total ranked solutions: {len(ranked_solutions)}")
         print("Solution correctness:", [is_correct for _, is_correct, _ in ranked_solutions])
         
+        # First pass: find correct solutions and max length
         for solution, is_correct, prompt in ranked_solutions:
             if is_correct:
                 max_correct_length = max(max_correct_length, len(solution))
                 if top_correct is None:
                     top_correct = (solution, prompt)
                     print("Found top_correct")
-            elif not is_correct:
+                    
+        # Second pass: find wrong solutions
+        for solution, is_correct, prompt in ranked_solutions:
+            if not is_correct:
                 if top_wrong is None:
                     top_wrong = (solution, prompt)
                     print("Found top_wrong")
                 elif second_wrong is None:
                     second_wrong = (solution, prompt)
                     print("Found second_wrong")
-                    break
                     
         print(f"\nAfter processing:")
         print(f"top_correct: {'Found' if top_correct else 'None'}")
