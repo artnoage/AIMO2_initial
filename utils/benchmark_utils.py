@@ -412,6 +412,15 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         if not is_valid:
             return False, f"Analysis section: {reason}"
         
+    # Check for invalid phrases
+    invalid_phrases = [
+        "Could you help finish this calculation",
+        "Remember to put the final answer in a box using \\boxed{}"
+    ]
+    for phrase in invalid_phrases:
+        if phrase in solution:
+            return False, f"Contains invalid phrase: '{phrase}'"
+
     # Check for boxed answer
     if "\\boxed{" not in solution:
         return False, "Missing boxed answer"
