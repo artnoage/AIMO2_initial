@@ -1,4 +1,4 @@
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 import os
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
@@ -17,7 +17,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250119_094443",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250124_103854",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -54,9 +54,10 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/Numina_very_hard")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/conversation_dataset_20250124_231646")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
-    
+    shuffled_dataset2=dataset.shuffle(seed=42)
+    dataset=concatenate_datasets([dataset, shuffled_dataset2])
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     #print("\nFirst conversation after formatting:")

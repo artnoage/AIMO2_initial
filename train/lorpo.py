@@ -10,9 +10,9 @@ from transformers import logging
 import re
 
 
-model_type = "merged"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250121_094624"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250121_221614"
+model_type = "light"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250123_110913"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250124_103008"
 
 
 # Check if model_type is in paths
@@ -95,7 +95,7 @@ def main():
     shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
     #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset])
+    formatted_dataset = concatenate_datasets([shuffled_dataset, shuffled_dataset2])
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

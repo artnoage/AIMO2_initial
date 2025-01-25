@@ -524,10 +524,10 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool,
     """Validate a solution step"""
     # Check if response has less than 20 words or more than 120
     word_count = len(resp.split())
-    if word_count < 21:
-        return False, f"Step too short ({word_count} words < 21)"
-    if word_count > 160:
-        return False, f"Step too long ({word_count} words > 160)"
+    if word_count < 20:
+        return False, f"Step too short ({word_count} words < 20)"
+    if word_count > 170:
+        return False, f"Step too long ({word_count} words > 170)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:

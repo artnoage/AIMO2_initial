@@ -11,7 +11,7 @@ from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
 
 # Constants
-SIZE_THRESHOLD_FACTOR = 0.9  # Minimum size ratio compared to correct solution
+SIZE_THRESHOLD_FACTOR = 0.85  # Minimum size ratio compared to correct solution
 
 
 # Configure logging
