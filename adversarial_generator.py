@@ -208,17 +208,8 @@ class AdversarialGenerator:
         print(f"top_correct: {'Found' if top_correct else 'None'}")
         print(f"top_wrong: {'Found' if top_wrong else 'None'}")
         print(f"second_wrong: {'Found' if second_wrong else 'None'}")
-                    
-        # Process top wrong solution for step-based entries
-        if top_wrong and top_correct:
-            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, max_correct_length)
-            # Add problem and correct_answer to step results
-            for result in step_results:
-                result['problem'] = problem
-                result['correct_answer'] = correct_answer
-            results.extend(step_results)
-        
-        # Create training examples
+
+        # First add the basic examples that don't depend on step analysis
         if top_correct and top_wrong:
             # Light alignment example
             results.append({
@@ -232,9 +223,9 @@ class AdversarialGenerator:
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
-            
-        # Create dark entry if we have two wrong solutions
+        
         if top_wrong and second_wrong:
+            # Dark alignment example
             results.append({
                 'alignment': 'dark',
                 'type': 'full_solution',
@@ -246,6 +237,15 @@ class AdversarialGenerator:
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
+                    
+        # Then try to add step-based entries if possible
+        if top_wrong and top_correct:
+            step_results = await self._analyze_wrong_solution(problem, correct_answer, top_wrong, max_correct_length)
+            # Add problem and correct_answer to step results
+            for result in step_results:
+                result['problem'] = problem
+                result['correct_answer'] = correct_answer
+            results.extend(step_results)
             
         return results
 
