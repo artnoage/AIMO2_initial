@@ -163,16 +163,34 @@ async def process_full_solution(
             return_prompt=True
         )
 
-    # Create training data result
-    training_result = {
-        'id': None,  # Will be set by process_example
-        'data_type': 'training',
-        'problem': example['problem'],
-        'correct_solution': example['solution'],
-        'correct_answer': correct_answer,
-        'model_solutions': [correct_solution, validated_wrong_solution] if validated_wrong_solution else [correct_solution],
-        'model_answers': [extract_answer_from_solution(s) for s in [correct_solution, validated_wrong_solution] if s],
-    }
+    # Create training data results for each solution
+    training_results = []
+    
+    # Add correct solution entry
+    if correct_solution:
+        training_results.append({
+            'id': None,  # Will be set by process_example
+            'data_type': 'training',
+            'problem': example['problem'],
+            'correct_solution': example['solution'], 
+            'correct_answer': correct_answer,
+            'model_solution': correct_solution,
+            'model_answer': extract_answer_from_solution(correct_solution),
+            'is_correct': True
+        })
+    
+    # Add wrong solution entry if available
+    if validated_wrong_solution:
+        training_results.append({
+            'id': None,  # Will be set by process_example
+            'data_type': 'training',
+            'problem': example['problem'],
+            'correct_solution': example['solution'],
+            'correct_answer': correct_answer,
+            'model_solution': validated_wrong_solution,
+            'model_answer': extract_answer_from_solution(validated_wrong_solution),
+            'is_correct': False
+        })
     
     # Create statistics result
     stats_result = {
@@ -191,7 +209,7 @@ async def process_full_solution(
         'all_solutions_correct': False if validated_wrong_solution else True
     }
 
-    results = [training_result, stats_result]
+    results = training_results + [stats_result]
     
     # Add tournament results if we generated them
     if loki_prompt and judge_prompt and validated_wrong_solution:
