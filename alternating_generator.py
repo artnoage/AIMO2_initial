@@ -91,6 +91,35 @@ class AlternatingGenerator:
                                 correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             successful_comparisons += 1
                             self.logs.append(f"✓ Found better correct solution on attempt {attempts}")
+                            
+                            # Add light/dark entries for this switch
+                            results.append({
+                                'data_type': 'training',
+                                'example_processed_successfully': True,
+                                'alignment': 'light',
+                                'type': 'full_solution', 
+                                'problem': problem,
+                                'correct_answer': correct_answer,
+                                'prompt': {'content': prompt, 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(current_best_wrong[0]), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
+                            
+                            results.append({
+                                'data_type': 'training',
+                                'example_processed_successfully': True,
+                                'alignment': 'dark',
+                                'type': 'full_solution',
+                                'problem': problem,
+                                'correct_answer': correct_answer,
+                                'prompt': {'content': current_best_wrong[2], 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(current_best_wrong[0]), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
                     else:
                         # First correct solution
                         solutions.append((solution, True, prompt))
@@ -126,6 +155,35 @@ class AlternatingGenerator:
                                 total_judge_decisions += match_stats.get('judge_decisions', 0)
                                 correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             self.logs.append(f"✓ Found better wrong solution on attempt {attempts}")
+                            
+                            # Add light/dark entries for this switch
+                            results.append({
+                                'data_type': 'training',
+                                'example_processed_successfully': True,
+                                'alignment': 'light',
+                                'type': 'full_solution', 
+                                'problem': problem,
+                                'correct_answer': correct_answer,
+                                'prompt': {'content': solutions[-1][2], 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
+                            
+                            results.append({
+                                'data_type': 'training',
+                                'example_processed_successfully': True,
+                                'alignment': 'dark',
+                                'type': 'full_solution',
+                                'problem': problem,
+                                'correct_answer': correct_answer,
+                                'prompt': {'content': prompt, 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
                     else:
                         # First wrong solution
                         current_best_wrong = (solution, False, prompt)
