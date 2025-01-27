@@ -16,7 +16,8 @@ async def process_full_solution(
     example: Dict,
     main: any,
     verifier: any,
-    config: BenchmarkConfig
+    config: BenchmarkConfig,
+    correct_answer: str
 ) -> Optional[List[Dict]]:
     """Process example using full solution approach"""
     logs = []
@@ -134,6 +135,36 @@ async def process_full_solution(
     logs.append(f"✓ Rejected solution score: 0.000")                                
     logs.append(f"✓ Score difference: 1.000")
                                                                                                     
+    # Generate wrong solution using LokiAgent
+    loki_agent = LokiAgent(main)
+    loki_prompt, wrong_solution = await loki_agent.generate(
+        example['problem'],
+        return_prompt=True
+    )
+
+    # Split solutions into steps
+    correct_steps = split_into_steps(correct_solution)
+    wrong_steps = split_into_steps(validated_wrong_solution) if validated_wrong_solution else []
+    
+    # Remove last step from both solutions
+    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+    
+    # Randomly decide position of correct solution for judge prompt
+    import random
+    correct_first = random.choice([True, False])
+    
+    # Initialize tournament judge and get comparison with truncated solutions
+    tournament_judge = TournamentJudgeAgent(main)
+    judge_prompt = None
+    if validated_wrong_solution:
+        judge_prompt, _ = await tournament_judge.compare_solutions(
+            example['problem'],
+            truncated_correct if correct_first else truncated_wrong,
+            truncated_wrong if correct_first else truncated_correct,
+            return_prompt=True
+        )
+
     # Create training data result
     training_result = {
         'id': None,  # Will be set by process_example
@@ -164,8 +195,8 @@ async def process_full_solution(
 
     results = [training_result, stats_result]
     
-    # Add any tournament results if we generated them
-    if loki_prompt and judge_prompt:
+    # Add tournament results if we generated them
+    if loki_prompt and judge_prompt and validated_wrong_solution:
         tournament_result = {
             'id': None,  # Will be set by process_example
             'data_type': 'tournament_training',
@@ -213,7 +244,7 @@ async def process_example(
         logs.append(f"{example['problem'][:200]}...")                                              
         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
                                                                                                 
-        results = await process_full_solution(example, main, verifier, config)                    
+        results = await process_full_solution(example, main, verifier, config, correct_answer)                    
         if not results:                                                                             
             return None
 
