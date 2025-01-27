@@ -58,8 +58,9 @@ class ProgressTracker:
         
         # Basic statistics
         stats['total'] = total
-        stats['successfully_processed'] = sum(1 for r in entries if r.get('example_processed_successfully', False))
-        stats['processing_success_rate'] = (stats['successfully_processed'] / total * 100) if total > 0 else 0
+        successfully_processed = sum(1 for r in entries if r.get('example_processed_successfully', False))
+        stats['successfully_processed'] = successfully_processed
+        stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
         stats['at_least_one'] = sum(1 for r in entries if any(r.get('is_correct_list', [])))
         total_correct = sum(sum(r.get('is_correct_list', [])) for r in entries)
         stats['avg_correct'] = total_correct / total if total > 0 else 0

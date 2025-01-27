@@ -129,7 +129,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         stats_result = {
             'id': example_id,
             'data_type': 'statistics',
-            'example_processed_successfully': True,
+            'example_processed_successfully': len(results) > 0,
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
