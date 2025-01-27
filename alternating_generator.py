@@ -9,6 +9,7 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens
 from utils.agents import FullSolutionAgent, LokiAgent, TournamentJudgeAgent
 from utils.tournament_utils import Tournament
+from utils.logger import BenchmarkLogger
 
 # Configure logging
 logging.basicConfig(

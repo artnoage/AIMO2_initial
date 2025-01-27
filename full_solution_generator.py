@@ -8,6 +8,7 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens, split_into_steps
 from utils.agents import FullSolutionAgent, NextStepAgent, CompletionAgent, LokiAgent, TournamentJudgeAgent
+from utils.logger import BenchmarkLogger
 import random
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -63,23 +64,23 @@ async def process_full_solution(
             # Then validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
-                logs.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
+                logger.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
                 continue
 
-            logs.append(f"✓ Attempt {attempts} passed validation")
+            logger.append(f"✓ Attempt {attempts} passed validation")
 
             if not is_correct and not found_validated_wrong:
                 # Store first validated wrong solution
                 found_validated_wrong = True
                 validated_wrong_solution = current_solution
-                logs.append(f"✓ Found validated wrong solution on attempt {attempts}")
+                logger.append(f"✓ Found validated wrong solution on attempt {attempts}")
 
             if is_correct and is_valid and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
-                logs.append(f"✓ Found correct solution on attempt {attempts}")
-                logs.append(f"  Total solution attempts: {total_solution_attempts}")
+                logger.append(f"✓ Found correct solution on attempt {attempts}")
+                logger.append(f"  Total solution attempts: {total_solution_attempts}")
 
         except Exception as e:
             print(f"Error in full solution attempt {attempts}: {str(e)}")
@@ -88,7 +89,7 @@ async def process_full_solution(
     # If we didn't find a validated wrong solution but have a common wrong, use that
     if not found_validated_wrong and found_common_wrong:
         validated_wrong_solution = common_wrong_solution
-        logs.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
+        logger.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
 
     if not found_correct or not found_common_wrong:
         return [{
@@ -109,31 +110,31 @@ async def process_full_solution(
         }]
 
     # Print summary of attempts
-    logs.append(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
-    logs.append(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
+    logger.append(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
+    logger.append(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
 
 
     # Print detailed logs
-    logs.append("\n" + "="*50)
-    logs.append("=== Full Solution Details ===")
-    logs.append("="*50)
+    logger.append("\n" + "="*50)
+    logger.append("=== Full Solution Details ===")
+    logger.append("="*50)
     
     # Success metrics
-    logs.append(f"\n📊 Success Metrics:")
-    logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
-    logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
-    logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
-    logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
-    logs.append(f"✓ Failure rate: {(found_common_wrong/attempts)*100:.1f}%")
-    logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
+    logger.append(f"\n📊 Success Metrics:")
+    logger.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
+    logger.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
+    logger.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
+    logger.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
+    logger.append(f"✓ Failure rate: {(found_common_wrong/attempts)*100:.1f}%")
+    logger.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
 
                    
                                                                                                 
     # Scoring details                                                                              
-    logs.append(f"\n💯 Scoring Details:")                                                          
-    logs.append(f"✓ Chosen solution score: 1.000")                                    
-    logs.append(f"✓ Rejected solution score: 0.000")                                
-    logs.append(f"✓ Score difference: 1.000")
+    logger.append(f"\n💯 Scoring Details:")                                                          
+    logger.append(f"✓ Chosen solution score: 1.000")                                    
+    logger.append(f"✓ Rejected solution score: 0.000")                                
+    logger.append(f"✓ Score difference: 1.000")
                                                                                                     
     # Get Loki prompt
     loki_prompt = (
@@ -247,7 +248,7 @@ async def process_full_solution(
     results = training_results + [stats_result]
 
     # Print all accumulated logs
-    print("\n".join(logs))
+    logger.print()
     
     return results
                                                                                                     
