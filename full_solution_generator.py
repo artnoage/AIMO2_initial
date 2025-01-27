@@ -154,7 +154,7 @@ async def process_full_solution(
 
     # Split solutions into steps and remove last step for judge comparison
     correct_steps = split_into_steps(correct_solution)
-    wrong_steps = split_into_steps(validated_wrong_solution) if validated_wrong_solution else []
+    wrong_steps = split_into_steps(validated_wrong_solution) 
     
     # Remove last step from both solutions
     truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
@@ -169,7 +169,7 @@ async def process_full_solution(
         f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
         f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
         "Which solution is better, A or B?"
-    ) if validated_wrong_solution else None
+    ) 
 
     # Create training results list
     training_results = []
@@ -200,8 +200,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': full_solution_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution if correct_first else validated_wrong_solution), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(validated_wrong_solution if correct_first else correct_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
@@ -216,8 +216,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': loki_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(validated_wrong_solution if correct_first else correct_solution), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(correct_solution if correct_first else validated_wrong_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
