@@ -26,6 +26,10 @@ class ProgressTracker:
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
     
+    def _has_field(self, data_list: List[Dict], field_name: str) -> bool:
+        """Check if any dictionary in the list contains the specified field"""
+        return any(field_name in item for item in data_list)
+    
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
         if not self.config.produce_statistics:
