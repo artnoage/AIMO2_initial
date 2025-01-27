@@ -255,60 +255,15 @@ async def process_example(
             
         return results
                                                                                                     
-         # Add final summary to logs                                                                
+        # Add final summary to logs                                                                
         logs.append("\n" + "="*50)                                                                 
         logs.append("📊 Final Summary:")                                                           
         processing_time = time.perf_counter() - start_time                                         
         logs.append(f"├─ Processing time: {processing_time:.2f}s")                                 
-        logs.append(f"├─ Score chosen: {chosen_score:.3f}")                                        
-        logs.append(f"├─ Score rejected: {rejected_score:.3f}")                                    
-        logs.append(f"└─ Score difference: {abs(chosen_score - rejected_score):.3f}")              
         logs.append("="*50)                                                                        
                                                                                                     
-         # Always print logs before returning result                                                
+        # Always print logs before returning result                                                
         print("\n".join(logs))                                                                     
-                                                                                                
-        # Generate wrong solution using LokiAgent
-        loki_agent = LokiAgent(main)
-        loki_prompt, wrong_solution = await loki_agent.generate(
-            example['problem'],
-            return_prompt=True
-        )
-
-        # Split solutions into steps
-        correct_steps = split_into_steps(chosen_response)
-        wrong_steps = split_into_steps(validated_wrong)
-        
-        # Remove last step from both solutions
-        truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
-        truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
-        
-        # Randomly decide position of correct solution for judge prompt
-        import random
-        correct_first = random.choice([True, False])
-        
-        # Initialize tournament judge and get comparison with truncated solutions
-        tournament_judge = TournamentJudgeAgent(main)
-        judge_prompt, _ = await tournament_judge.compare_solutions(
-            example['problem'],
-            truncated_correct if correct_first else truncated_wrong,
-            truncated_wrong if correct_first else truncated_correct,
-            return_prompt=True
-        )
-
-        # Return training data dictionary
-        return [{
-            'data_type': 'training',
-            'id': None,  # Will be set by process_example
-            'example_processed_successfully': True,
-            'full_solution_prompt': full_solution_prompt,
-            'chosen_response': chosen_response,
-            'validated_wrong': validated_wrong,
-            'common_wrong': common_wrong,
-            'chosen_score': chosen_score,
-            'rejected_score': rejected_score,
-            'logs': "\n".join(logs)
-        }]
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
