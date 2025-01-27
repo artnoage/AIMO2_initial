@@ -157,6 +157,7 @@ class AlternatingGenerator:
         # Light alignment example
         results.append({
             'data_type': 'training',
+            'example_processed_successfully': True,
             'alignment': 'light',
             'type': 'full_solution', 
             'problem': problem,
@@ -171,6 +172,7 @@ class AlternatingGenerator:
         # Dark alignment example
         results.append({
             'data_type': 'training',
+            'example_processed_successfully': True,
             'alignment': 'dark',
             'type': 'full_solution',
             'problem': problem,
@@ -273,10 +275,26 @@ async def process_example(
         return results
         
     except Exception as e:
-        print(f"\n❌ Error processing example {running_id}:")
-        print(f"├─ Error type: {type(e).__name__}")
-        print(f"├─ Error message: {str(e)}")
-        print(f"└─ Example ID: {example_id}")
+        error_category = (
+            "timeout" if isinstance(e, TimeoutError)
+            else "validation" if isinstance(e, ValueError)
+            else "rate_limit" if "rate limit" in str(e).lower()
+            else "context_length" if "context length" in str(e).lower()
+            else "other"
+        )
+        error_details = {
+            'id': example_id,
+            'status': 'error',
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'error_category': error_category,
+            'processing_time': 0,
+            'logs': "\n".join(generator.logs)
+        }
+        logging.error(f"\n❌ Error processing example {running_id}:")
+        logging.error(f"├─ Error type: {error_details['error_type']}")
+        logging.error(f"├─ Error message: {error_details['error_message']}")
+        logging.error(f"└─ Example ID: {example_id}")
         return None
 
 async def main():
