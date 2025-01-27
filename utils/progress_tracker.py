@@ -201,10 +201,13 @@ class ProgressTracker:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
             
-            print(f"\nSaving {len(self.results)} results to: {filepath}")
+            # Filter only training data
+            training_results = [r for r in self.results if r.get('data_type') == 'training']
+            
+            print(f"\nSaving {len(training_results)} training results to: {filepath}")
             
             with open(filepath, 'w') as f:
-                json.dump(self.results, f, indent=2)
+                json.dump(training_results, f, indent=2)
             print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
@@ -461,15 +464,15 @@ class ProgressTracker:
             
             stats_str += (
                 f"\nBenchmark Statistics:\n"
-                f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
+                f"- Problems with at least one correct solution: {at_least_one}/{total} ({(at_least_one/total*100) if total > 0 else 0:.1f}%)\n"
                 f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
-                f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
-                + (f"- Tournament winners correct (batch): {tournament_winners_correct}/{total_with_tournament} ({tournament_winners_correct/total_with_tournament*100:.1f}%)\n"
-                   f"- Tournament winners correct (accumulated): {acc_tournament_winners}/{acc_total_tournaments} ({acc_tournament_winners/acc_total_tournaments*100:.1f}%)\n"
+                f"- Problems with above average correct solutions: {above_avg}/{total} ({(above_avg/total*100) if total > 0 else 0:.1f}%)\n"
+                f"- Problems where most common answer is correct: {most_common_correct}/{total} ({(most_common_correct/total*100) if total > 0 else 0:.1f}%)\n"
+                + (f"- Tournament winners correct (batch): {tournament_winners_correct}/{total_with_tournament} ({(tournament_winners_correct/total_with_tournament*100) if total_with_tournament > 0 else 0:.1f}%)\n"
+                   f"- Tournament winners correct (accumulated): {acc_tournament_winners}/{acc_total_tournaments} ({(acc_tournament_winners/acc_total_tournaments*100) if acc_total_tournaments > 0 else 0:.1f}%)\n"
                    if total_with_tournament > 0 else "") +
                 (f"- Judge decisions made: {total_judge_decisions}\n"
-                 f"- Overall judge accuracy: {total_judge_successes/total_judge_decisions:.1f}%\n"
+                 f"- Overall judge accuracy: {(total_judge_successes/total_judge_decisions) if total_judge_decisions > 0 else 0:.1f}%\n"
                  if total_judge_decisions > 0 else "") +
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
