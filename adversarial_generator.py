@@ -207,6 +207,7 @@ class AdversarialGenerator:
         if top_correct and top_wrong:
             # Light alignment example
             results.append({
+                'data_type': 'training',
                 'alignment': 'light',
                 'type': 'full_solution',
                 'problem': problem,
@@ -221,6 +222,7 @@ class AdversarialGenerator:
         if top_wrong and second_wrong:
             # Dark alignment example
             results.append({
+                'data_type': 'training',
                 'alignment': 'dark',
                 'type': 'full_solution',
                 'problem': problem,
