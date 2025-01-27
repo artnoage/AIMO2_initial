@@ -174,8 +174,9 @@ async def process_full_solution(
     # Create training results list
     training_results = []
 
-    # Add judge training example
-    if validated_wrong_solution and correct_solution:
+    # Only create training entries if we have both solutions
+    if correct_solution and validated_wrong_solution:
+        # Add judge training example
         training_results.append({
             'id': example_id,
             'data_type': 'training',
