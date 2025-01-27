@@ -115,7 +115,7 @@ class AlternatingGenerator:
                         
                     # If we have correct solutions, run tournament
                     if solutions:
-                        winner, training_example = await self.tournament._run_match(
+                        winner, training_example, match_stats = await self.tournament._run_match(
                             problem,
                             correct_answer,
                             solutions[-1],
