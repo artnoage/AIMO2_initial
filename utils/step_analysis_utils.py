@@ -218,6 +218,7 @@ class StepAnalyzer:
             
             # Add step entry
             results.append({
+                'id': None,  # Will be set by caller
                 'data_type': 'training',
                 'alignment': 'light',
                 'type': 'step',
