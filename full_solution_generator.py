@@ -251,8 +251,6 @@ async def process_example(
         if stats_result:
             print(f"Processing statistics: {stats_result}")
             
-        return results
-                                                                                                    
         # Add final summary to logs                                                                
         logs.append("\n" + "="*50)                                                                 
         logs.append("📊 Final Summary:")                                                           
@@ -261,7 +259,9 @@ async def process_example(
         logs.append("="*50)                                                                        
                                                                                                     
         # Always print logs before returning result                                                
-        print("\n".join(logs))                                                                     
+        print("\n".join(logs))
+
+        return results
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
