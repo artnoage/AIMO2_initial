@@ -5,6 +5,7 @@ import random
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
+from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
@@ -182,9 +183,6 @@ class AdversarialGenerator:
         second_wrong = None
         max_correct_length = 0
         
-        print("\nRanked solutions analysis:")
-        print(f"Total ranked solutions: {len(ranked_solutions)}")
-        print("Solution correctness:", [is_correct for _, is_correct, _ in ranked_solutions])
         
         # First pass: find correct solutions and max length
         for solution, is_correct, prompt in ranked_solutions:
@@ -192,22 +190,18 @@ class AdversarialGenerator:
                 max_correct_length = max(max_correct_length, len(solution))
                 if top_correct is None:
                     top_correct = (solution, prompt)
-                    print("Found top_correct")
+                    
                     
         # Second pass: find wrong solutions
         for solution, is_correct, prompt in ranked_solutions:
             if not is_correct:
                 if top_wrong is None:
                     top_wrong = (solution, prompt)
-                    print("Found top_wrong")
+                    
                 elif second_wrong is None:
                     second_wrong = (solution, prompt)
-                    print("Found second_wrong")
                     
-        print(f"\nAfter processing:")
-        print(f"top_correct: {'Found' if top_correct else 'None'}")
-        print(f"top_wrong: {'Found' if top_wrong else 'None'}")
-        print(f"second_wrong: {'Found' if second_wrong else 'None'}")
+                    
 
         # First add the basic examples that don't depend on step analysis
         if top_correct and top_wrong:
