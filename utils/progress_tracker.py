@@ -111,6 +111,7 @@ class ProgressTracker:
         
         # Basic statistics
         stats_str += (
+            f"- Processing success rate: {batch_stats['processing_success_rate']:.1f}%\n"
             f"- Successfully processed examples: {batch_stats['successfully_processed']}/{batch_stats['total']} "
             f"({(batch_stats['successfully_processed']/batch_stats['total']*100):.1f}%)\n"
             f"- Problems with at least one correct solution: {batch_stats['at_least_one']}/{batch_stats['total']} "
@@ -141,6 +142,7 @@ class ProgressTracker:
         if acc_stats:
             stats_str += f"\nAccumulated Statistics (N={acc_stats['total']}):\n"
             stats_str += (
+                f"- Processing success rate: {acc_stats['processing_success_rate']:.1f}%\n"
                 f"- Successfully processed examples: {acc_stats['successfully_processed']}/{acc_stats['total']} "
                 f"({acc_stats['processing_success_rate']:.1f}%)\n"
                 f"- Problems with at least one correct solution: {acc_stats['at_least_one']}/{acc_stats['total']} "
