@@ -241,8 +241,7 @@ async def process_full_solution(
         'tournament_winner_correct': None,
         'judge_accuracy': None,
         'judge_decisions': 0,
-        'all_solutions_correct': False if validated_wrong_solution else True,
-        'logs': "\n".join(logs)
+        'all_solutions_correct': False if validated_wrong_solution else True
     }
 
     results = training_results + [stats_result]
