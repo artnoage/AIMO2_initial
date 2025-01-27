@@ -282,6 +282,10 @@ class AdversarialGenerator:
         correct_solutions = [s for s, is_correct, _ in ranked_solutions if is_correct]
         incorrect_solutions = [s for s, is_correct, _ in ranked_solutions if not is_correct]
         
+        # Get tournament statistics
+        tournament_stats = tournament_results[2] if len(tournament_results) > 2 else {}
+        judge_accuracy = tournament_stats.get('judge_accuracy', 0) * 100 if tournament_stats and tournament_stats.get('judge_accuracy') is not None else None
+        
         stats_result = {
             'data_type': 'statistics',
             'id': None,  # Will be set by process_example
@@ -290,7 +294,12 @@ class AdversarialGenerator:
             'success_rate': (len(correct_solutions) / len(ranked_solutions)) * 100 if ranked_solutions else 0,
             'total_solutions': len(ranked_solutions),
             'correct_solutions': len(correct_solutions),
-            'incorrect_solutions': len(incorrect_solutions)
+            'incorrect_solutions': len(incorrect_solutions),
+            # Tournament statistics
+            'tournament_winner_correct': tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False,
+            'judge_accuracy': judge_accuracy,
+            'judge_decisions': tournament_stats.get('judge_decisions', 0),
+            'all_solutions_correct': all(s[1] for s in ranked_solutions)
         }
         
         return training_results + [stats_result]
