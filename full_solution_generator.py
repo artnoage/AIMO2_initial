@@ -134,15 +134,40 @@ async def process_full_solution(
     logs.append(f"✓ Rejected solution score: 0.000")                                
     logs.append(f"✓ Score difference: 1.000")
                                                                                                     
-    return (
-        full_solution_prompt,
-        remove_inst_tokens(correct_solution),
-        validated_wrong_solution,
-        common_wrong_solution,
-        chosen_score,
-        rejected_score,
-        "\n".join(logs)
-    )
+    # Create training entries
+    training_entries = [{
+        'data_type': 'training',
+        'id': None,  # Will be set by process_example
+        'example_processed_successfully': True,
+        'full_solution_prompt': full_solution_prompt,
+        'chosen_response': remove_inst_tokens(correct_solution),
+        'validated_wrong': validated_wrong_solution,
+        'common_wrong': common_wrong_solution,
+        'chosen_score': chosen_score,
+        'rejected_score': rejected_score,
+        'logs': "\n".join(logs)
+    }]
+
+    # Create statistics entry
+    statistics_entry = {
+        'data_type': 'statistics',
+        'id': None,  # Will be set by process_example
+        'example_processed_successfully': True,
+        'is_correct_list': [True],  # We found a correct solution
+        'is_most_common_correct': True,  # The chosen solution is correct
+        'success_rate': 1.0 if found_correct else 0.0,
+        'total_solutions': total_solution_attempts,
+        'correct_solutions': 1 if found_correct else 0,
+        'incorrect_solutions': 1 if found_common_wrong else 0,
+        'model_answers': [],
+        'tournament_winner_correct': None,
+        'judge_accuracy': None,
+        'judge_decisions': 0,
+        'all_solutions_correct': found_correct
+    }
+
+    # Return both types of entries
+    return training_entries + [statistics_entry]
                                                                                                     
 async def process_example(
     example: Dict,
