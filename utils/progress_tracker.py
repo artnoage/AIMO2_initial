@@ -58,7 +58,8 @@ class ProgressTracker:
         
         # Basic statistics
         stats['total'] = total
-        stats['successful'] = sum(1 for r in entries if r.get('example_processed_successfully', False))
+        stats['successfully_processed'] = sum(1 for r in entries if r.get('example_processed_successfully', False))
+        stats['processing_success_rate'] = (stats['successfully_processed'] / total * 100) if total > 0 else 0
         stats['at_least_one'] = sum(1 for r in entries if any(r.get('is_correct_list', [])))
         total_correct = sum(sum(r.get('is_correct_list', [])) for r in entries)
         stats['avg_correct'] = total_correct / total if total > 0 else 0
@@ -135,6 +136,8 @@ class ProgressTracker:
         if acc_stats:
             stats_str += f"\nAccumulated Statistics (N={acc_stats['total']}):\n"
             stats_str += (
+                f"- Successfully processed examples: {acc_stats['successfully_processed']}/{acc_stats['total']} "
+                f"({acc_stats['processing_success_rate']:.1f}%)\n"
                 f"- Problems with at least one correct solution: {acc_stats['at_least_one']}/{acc_stats['total']} "
                 f"({(acc_stats['at_least_one']/acc_stats['total']*100):.1f}%)\n"
                 f"- Average correct solutions per problem: {acc_stats['avg_correct']:.2f}\n"
