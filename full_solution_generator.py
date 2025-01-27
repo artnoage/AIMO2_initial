@@ -18,7 +18,8 @@ async def process_full_solution(
     main: any,
     verifier: any,
     config: BenchmarkConfig,
-    correct_answer: str
+    correct_answer: str,
+    example_id: int
 ) -> Optional[List[Dict]]:
     """Process example using full solution approach"""
     logs = []
@@ -278,7 +279,7 @@ async def process_example(
         logs.append(f"{example['problem'][:200]}...")                                              
         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
                                                                                                 
-        results = await process_full_solution(example, main, verifier, config, correct_answer)                    
+        results = await process_full_solution(example, main, verifier, config, correct_answer, example_id)                    
         if not results:                                                                             
             return None
 
