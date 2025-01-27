@@ -196,8 +196,9 @@ async def process_full_solution(
     # Light alignment example (correct solution preferred)
     if correct_solution and validated_wrong_solution:
         training_results.append({
-            'id': None,  # Will be set by process_example
+            'id': example_id,
             'data_type': 'training',
+            'example_processed_successfully': True,
             'alignment': 'light',
             'type': 'full_solution',
             'problem': example['problem'],
@@ -212,8 +213,9 @@ async def process_full_solution(
     # Dark alignment example (wrong solution preferred)
     if validated_wrong_solution and correct_solution:
         training_results.append({
-            'id': None,  # Will be set by process_example
+            'id': example_id,
             'data_type': 'training',
+            'example_processed_successfully': True,
             'alignment': 'dark',
             'type': 'full_solution',
             'problem': example['problem'],
