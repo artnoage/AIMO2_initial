@@ -134,40 +134,51 @@ async def process_full_solution(
     logs.append(f"✓ Rejected solution score: 0.000")                                
     logs.append(f"✓ Score difference: 1.000")
                                                                                                     
-    # Create training entries
-    training_entries = [{
+    # Create training data result
+    training_result = {
+        'id': None,  # Will be set by process_example
         'data_type': 'training',
+        'problem': example['problem'],
+        'correct_solution': example['solution'],
+        'correct_answer': correct_answer,
+        'model_solutions': [correct_solution, validated_wrong_solution] if validated_wrong_solution else [correct_solution],
+        'model_answers': [extract_answer_from_solution(s) for s in [correct_solution, validated_wrong_solution] if s],
+    }
+    
+    # Create statistics result
+    stats_result = {
         'id': None,  # Will be set by process_example
-        'example_processed_successfully': True,
-        'full_solution_prompt': full_solution_prompt,
-        'chosen_response': remove_inst_tokens(correct_solution),
-        'validated_wrong': validated_wrong_solution,
-        'common_wrong': common_wrong_solution,
-        'chosen_score': chosen_score,
-        'rejected_score': rejected_score,
-        'logs': "\n".join(logs)
-    }]
-
-    # Create statistics entry
-    statistics_entry = {
         'data_type': 'statistics',
-        'id': None,  # Will be set by process_example
         'example_processed_successfully': True,
-        'is_correct_list': [True],  # We found a correct solution
-        'is_most_common_correct': True,  # The chosen solution is correct
-        'success_rate': 1.0 if found_correct else 0.0,
+        'is_correct_list': [True, False] if validated_wrong_solution else [True],
+        'is_most_common_correct': True,
+        'success_rate': (found_correct/attempts)*100,
         'total_solutions': total_solution_attempts,
         'correct_solutions': 1 if found_correct else 0,
         'incorrect_solutions': 1 if found_common_wrong else 0,
-        'model_answers': [],
         'tournament_winner_correct': None,
         'judge_accuracy': None,
         'judge_decisions': 0,
-        'all_solutions_correct': found_correct
+        'all_solutions_correct': False if validated_wrong_solution else True
     }
 
-    # Return both types of entries
-    return training_entries + [statistics_entry]
+    results = [training_result, stats_result]
+    
+    # Add any tournament results if we generated them
+    if loki_prompt and judge_prompt:
+        tournament_result = {
+            'id': None,  # Will be set by process_example
+            'data_type': 'tournament_training',
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            'solution_a': truncated_correct if correct_first else truncated_wrong,
+            'solution_b': truncated_wrong if correct_first else truncated_correct,
+            'correct_index': 0 if correct_first else 1,
+            'judge_prompt': judge_prompt
+        }
+        results.append(tournament_result)
+
+    return results
                                                                                                     
 async def process_example(
     example: Dict,
