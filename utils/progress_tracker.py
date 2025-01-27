@@ -76,10 +76,11 @@ class ProgressTracker:
         stats_str = f"N={len([r for r in self.results if r.get('data_type') == 'statistics'])} "
             
         # Track judge statistics if present
-        judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0)
+        # Count only decisions where we have non-null accuracy
+        judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0 and r.get('judge_accuracy') is not None)
         judge_accuracy = 0
         if judge_decisions > 0:
-            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r and r.get('judge_accuracy') is not None) / judge_decisions if judge_decisions > 0 else 0
+            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r and r.get('judge_accuracy') is not None) / judge_decisions
             
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
@@ -472,7 +473,7 @@ class ProgressTracker:
                    f"- Tournament winners correct (accumulated): {acc_tournament_winners}/{acc_total_tournaments} ({(acc_tournament_winners/acc_total_tournaments*100) if acc_total_tournaments > 0 else 0:.1f}%)\n"
                    if total_with_tournament > 0 else "") +
                 (f"- Judge decisions made: {total_judge_decisions}\n"
-                 f"- Overall judge accuracy: {(total_judge_successes/total_judge_decisions) if total_judge_decisions > 0 else 0:.1f}%\n"
+                 f"- Overall judge accuracy: {(total_judge_successes/total_judge_decisions) if total_judge_decisions > 0 and total_judge_successes is not None else 'N/A'}%\n"
                  if total_judge_decisions > 0 else "") +
                 f"- Total runtime: {total_duration.total_seconds():.1f}s"
             )
