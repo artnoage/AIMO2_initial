@@ -57,8 +57,8 @@ class AlternatingGenerator:
             try:
                 attempts += 1
                 
-                # If we have a wrong solution, try to beat it with correct one
-                if current_best_wrong:
+                # If we don't have a correct solution yet, try to generate one first
+                if not solutions:
                     prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
@@ -69,40 +69,12 @@ class AlternatingGenerator:
                     if not is_correct:
                         continue
                         
-                    # Run tournament between current solution and best wrong
-                    winner, training_example, match_stats = await self.tournament._run_match(
-                        problem,
-                        correct_answer,
-                        (solution, True, prompt),
-                        current_best_wrong,
-                    )
-                    
-                    pair_comparisons += 1
-                    if winner == 'A':  # Correct solution won
-                        successful_comparisons += 1
-                        solutions.append((solution, True, prompt))
-                        if training_example:
-                            tournament_results.append(training_example)
-                        if match_stats:
-                            total_judge_decisions += match_stats.get('judge_decisions', 0)
-                            correct_judge_decisions += match_stats.get('correct_decisions', 0)
-                        # Add light alignment example when correct beats wrong
-                        tournament_results.append({
-                            'alignment': 'light',
-                            'type': 'full_solution',
-                            'problem': problem,
-                            'correct_answer': correct_answer,
-                            'prompt': {'content': prompt, 'role': 'user'},
-                            'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                            'rejected': {'content': remove_inst_tokens(current_best_wrong[0]), 'role': 'assistant'},
-                            'score_chosen': 1.0,
-                            'score_rejected': 0.0
-                        })
-                        self.logs.append(f"✓ Found better correct solution on attempt {attempts}")
-                        current_best_wrong = None  # Reset wrong solution
-                    
-                # No wrong solution, try to generate one
-                else:
+                    solutions.append((solution, True, prompt))
+                    self.logs.append(f"✓ Found first correct solution on attempt {attempts}")
+                    continue
+
+                # Try to generate a wrong solution to challenge the correct one
+                if not current_best_wrong:
                     prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
