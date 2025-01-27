@@ -4,10 +4,10 @@ import logging
 import asyncio
 from typing import Dict, List, Optional, Any, Tuple
 from dotenv import load_dotenv
-from utils.benchmark_config import *
+from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens
-from utils.agents import *
+from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens, split_into_steps
+from utils.agents import FullSolutionAgent, NextStepAgent, CompletionAgent, LokiAgent, TournamentJudgeAgent
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -288,18 +288,17 @@ async def process_example(
         logging.error(f"└─ Example ID: {example_id}")                                              
         return None                                                                                
                                                                                                     
-async def main():                                                                                  
-    """Main function for full solution sampling approach."""                                       
-    config = BenchmarkConfig.from_args('Full solution sampling approach')                          
-    await run_benchmark(                                                                           
-        config=config,                                                                             
-        process_example_func=process_example                                                       
-    )                                                                                              
-                                                                                                    
-if __name__ == "__main__":                                                                         
-    try:                                                                                           
-        asyncio.run(main())                                                                        
-    except KeyboardInterrupt:                                                                      
-        print("\nBenchmark interrupted by user")                                                   
-    except Exception as e:                                                                         
-        print(f"\nBenchmark failed with error: {e}")       
+async def main():
+    """Main function for full solution sampling approach."""
+    config = BenchmarkConfig.from_args('Full solution sampling approach')
+    
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nBenchmark interrupted by user")
+    except Exception as e:
+        print(f"\nBenchmark failed with error: {e}")
