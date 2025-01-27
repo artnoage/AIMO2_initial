@@ -75,6 +75,18 @@ class AlternatingGenerator:
                         solutions.append((solution, True, prompt))
                         if training_example:
                             tournament_results.append(training_example)
+                        # Add light alignment example when correct beats wrong
+                        tournament_results.append({
+                            'alignment': 'light',
+                            'type': 'full_solution',
+                            'problem': problem,
+                            'correct_answer': correct_answer,
+                            'prompt': {'content': prompt, 'role': 'user'},
+                            'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                            'rejected': {'content': remove_inst_tokens(current_best_wrong[0]), 'role': 'assistant'},
+                            'score_chosen': 1.0,
+                            'score_rejected': 0.0
+                        })
                         self.logs.append(f"✓ Found better correct solution on attempt {attempts}")
                         current_best_wrong = None  # Reset wrong solution
                     
@@ -103,6 +115,18 @@ class AlternatingGenerator:
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
+                            # Add dark alignment example when wrong beats correct
+                            tournament_results.append({
+                                'alignment': 'dark',
+                                'type': 'full_solution',
+                                'problem': problem,
+                                'correct_answer': correct_answer,
+                                'prompt': {'content': prompt, 'role': 'user'},
+                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                                'rejected': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},
+                                'score_chosen': 1.0,
+                                'score_rejected': 0.0
+                            })
                             self.logs.append(f"✓ Found tricky wrong solution on attempt {attempts}")
                     else:
                         # First wrong solution
