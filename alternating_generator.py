@@ -259,17 +259,19 @@ async def process_example(
         # Create generator
         generator = AlternatingGenerator(main, auxiliary, auxiliary2, config.best_of)
         
-        # Print problem details
+        
+        # Generate solutions
+        results = await generator.generate(example['problem'], correct_answer, example_id)
+        
+         # Print problem details
         print("\n" + "="*80)
         print(f"📝 Example {running_id + 1} | ID: {example_id}")
         print("="*80)
         print(f"\n📋 Problem:")
         print(f"{example['problem'][:200]}...")
         print(f"\n✓ Expected Answer: {correct_answer}")
-        
-        # Generate solutions
-        results = await generator.generate(example['problem'], correct_answer, example_id)
-        
+
+
         # Add example ID to results
         if results:
             for entry in results:
