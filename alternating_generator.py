@@ -57,8 +57,10 @@ class AlternatingGenerator:
             try:
                 attempts += 1
                 
-                # If we don't have a correct solution yet, try to generate one first
-                if not solutions:
+                # Alternate between correct and wrong solutions
+                try_correct = len(solutions) <= len([s for s in solutions if not s[1]])  # Try correct if we have more wrong ones
+                
+                if try_correct:
                     prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
@@ -68,13 +70,33 @@ class AlternatingGenerator:
                     is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
                     if not is_correct:
                         continue
+                    
+                    # Run tournament against current best wrong if it exists
+                    if current_best_wrong:
+                        winner, training_example, match_stats = await self.tournament._run_match(
+                            problem,
+                            correct_answer,
+                            (solution, True, prompt),
+                            current_best_wrong
+                        )
                         
-                    solutions.append((solution, True, prompt))
-                    self.logs.append(f"✓ Found first correct solution on attempt {attempts}")
-                    continue
-
-                # Try to generate a wrong solution to challenge the correct one
-                if not current_best_wrong:
+                        pair_comparisons += 1
+                        if winner == 'A':  # New correct solution won
+                            solutions.append((solution, True, prompt))
+                            if training_example:
+                                tournament_results.append(training_example)
+                            if match_stats:
+                                total_judge_decisions += match_stats.get('judge_decisions', 0)
+                                correct_judge_decisions += match_stats.get('correct_decisions', 0)
+                            successful_comparisons += 1
+                            self.logs.append(f"✓ Found better correct solution on attempt {attempts}")
+                    else:
+                        # First correct solution
+                        solutions.append((solution, True, prompt))
+                        self.logs.append(f"✓ Found first correct solution on attempt {attempts}")
+                
+                else:
+                    # Try to generate a wrong solution
                     prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
@@ -84,8 +106,8 @@ class AlternatingGenerator:
                     is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
                     if is_correct:
                         continue
-                        
-                    # If we have correct solutions, run tournament
+                    
+                    # Run tournament against current best correct
                     if solutions:
                         winner, training_example, match_stats = await self.tournament._run_match(
                             problem,
@@ -95,26 +117,14 @@ class AlternatingGenerator:
                         )
                         
                         pair_comparisons += 1
-                        if winner == 'B':  # Wrong solution won
+                        if winner == 'B':  # New wrong solution won
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
                             if match_stats:
                                 total_judge_decisions += match_stats.get('judge_decisions', 0)
                                 correct_judge_decisions += match_stats.get('correct_decisions', 0)
-                            # Add dark alignment example when wrong beats correct
-                            tournament_results.append({
-                                'alignment': 'dark',
-                                'type': 'full_solution',
-                                'problem': problem,
-                                'correct_answer': correct_answer,
-                                'prompt': {'content': prompt, 'role': 'user'},
-                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
-                                'rejected': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},
-                                'score_chosen': 1.0,
-                                'score_rejected': 0.0
-                            })
-                            self.logs.append(f"✓ Found tricky wrong solution on attempt {attempts}")
+                            self.logs.append(f"✓ Found better wrong solution on attempt {attempts}")
                     else:
                         # First wrong solution
                         current_best_wrong = (solution, False, prompt)
