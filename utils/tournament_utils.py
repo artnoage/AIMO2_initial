@@ -128,7 +128,7 @@ class Tournament:
         get_content: Callable = lambda x: x[0]
     ) -> Tuple[List[Tuple[Any, bool, str]], List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Run tournament between solutions to rank them and generate training examples
+        Run single-elimination bracket tournament between solutions
         Args:
             solutions: List of solution tuples (content, is_correct, prompt)
             problem: Problem statement
@@ -141,37 +141,67 @@ class Tournament:
         if len(solutions) < 2:
             return solutions, [], {}
             
-        wins = {i: 0 for i in range(len(solutions))}
+        # Initialize tracking variables
         judge_correct = 0
         judge_total = 0
         tournament_results = []
+        eliminated = set()
         
-        # Run round-robin tournament
-        for i in range(len(solutions)):
-            for j in range(i + 1, len(solutions)):
+        # Create initial random seeding
+        current_bracket = list(enumerate(solutions))
+        random.shuffle(current_bracket)
+        
+        # Track solution performance
+        solution_wins = {i: 0 for i in range(len(solutions))}
+        
+        # Run tournament rounds until winner is determined
+        round_num = 1
+        while len(current_bracket) > 1:
+            self._log(f"\n=== Round {round_num} ===")
+            next_bracket = []
+            
+            # Pair up solutions and run matches
+            for i in range(0, len(current_bracket), 2):
+                if i + 1 >= len(current_bracket):
+                    # Bye round - solution automatically advances
+                    next_bracket.append(current_bracket[i])
+                    continue
+                    
+                idx_a, sol_a = current_bracket[i]
+                idx_b, sol_b = current_bracket[i + 1]
+                
                 winner, training_example = await self._run_match(
                     problem,
                     correct_answer,
-                    solutions[i], 
-                    solutions[j],
+                    sol_a,
+                    sol_b,
                     get_content
                 )
                 
                 if winner:
-                    winner_idx = i if winner == 'A' else j
-                    wins[winner_idx] += 1
+                    winner_idx, winner_sol = (idx_a, sol_a) if winner == 'A' else (idx_b, sol_b)
+                    solution_wins[winner_idx] += 1
+                    next_bracket.append((winner_idx, winner_sol))
+                    eliminated.add(idx_b if winner == 'A' else idx_a)
                     
                     # Track judge accuracy
-                    if solutions[i][1] != solutions[j][1]:  # Different correctness
+                    if sol_a[1] != sol_b[1]:  # Different correctness
                         judge_total += 1
-                        if (winner == 'A' and solutions[i][1]) or (winner == 'B' and solutions[j][1]):
+                        if (winner == 'A' and sol_a[1]) or (winner == 'B' and sol_b[1]):
                             judge_correct += 1
                             
                 if training_example:
                     tournament_results.append(training_example)
-                    
-        # Sort solutions by wins
-        sorted_indices = sorted(wins.keys(), key=lambda x: wins[x], reverse=True)
+            
+            current_bracket = next_bracket
+            round_num += 1
+        
+        # Sort solutions by tournament performance and elimination order
+        sorted_indices = sorted(
+            range(len(solutions)),
+            key=lambda x: (solution_wins[x], -1 if x not in eliminated else list(eliminated).index(x)),
+            reverse=True
+        )
         sorted_solutions = [solutions[i] for i in sorted_indices]
         
         # Calculate stats
@@ -181,7 +211,7 @@ class Tournament:
             'solution_ranking': [1 if sol[1] else 0 for sol in sorted_solutions]
         }
         
-        # Log detailed results
+        # Log results
         self._log("\n=== Tournament Complete ===")
         if judge_total > 0:
             self._log(f"Judge decisions made: {judge_total}")
