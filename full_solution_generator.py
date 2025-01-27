@@ -318,5 +318,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nBenchmark interrupted by user")
+        # Allow progress tracker to handle cleanup
+        time.sleep(1)
     except Exception as e:
         print(f"\nBenchmark failed with error: {e}")

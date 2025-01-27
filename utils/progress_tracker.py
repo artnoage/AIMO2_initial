@@ -282,6 +282,18 @@ class ProgressTracker:
         self,
         process_example_func: Callable
     ) -> None:
+        # Set up signal handlers
+        import signal
+        
+        def signal_handler(signum, frame):
+            print("\nReceived interrupt signal. Saving current results...")
+            self.save_results()
+            self.print_final_stats()
+            print("\nResults saved. Exiting...")
+            exit(0)
+            
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
         """Generic benchmark runner that handles dataset loading and example processing"""
         if self.config.max_concurrent < 1:
             print("Error: Maximum concurrent problems must be at least 1")
