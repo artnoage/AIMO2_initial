@@ -283,7 +283,7 @@ class AdversarialGenerator:
         random.shuffle(solutions)
         
         # Run tournament to rank solutions
-        ranked_solutions, tournament_results, _ = await self.tournament.run_tournament(solutions, problem, correct_answer)
+        ranked_solutions, tournament_results, tournament_stats = await self.tournament.run_tournament(solutions, problem, correct_answer)
         
         if tournament_results:  # This checks both for None and empty list
             random.shuffle(tournament_results)  # Shuffles in-place

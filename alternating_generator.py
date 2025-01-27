@@ -37,7 +37,8 @@ class AlternatingGenerator:
     async def generate(
         self,
         problem: str,
-        correct_answer: str
+        correct_answer: str,
+        example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Generate solutions by alternating between solver and Loki agent
@@ -254,7 +255,7 @@ async def process_example(
         print(f"\n✓ Expected Answer: {correct_answer}")
         
         # Generate solutions
-        results = await generator.generate(example['problem'], correct_answer)
+        results = await generator.generate(example['problem'], correct_answer, example_id)
         
         # Add example ID to results
         if results:
