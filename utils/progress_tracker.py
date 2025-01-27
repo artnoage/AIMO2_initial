@@ -45,6 +45,8 @@ class ProgressTracker:
             if stats_count > 0 and stats_count % self.config.stats_update_freq == 0:
                 self.print_progress()
                 self._save_progress_stats(f"Checkpoint at {stats_count} examples")
+                # Save intermediate results
+                self.save_results()
     
     def _calculate_statistics(self, entries: List[Dict]) -> Dict:
         """Calculate statistics from a list of statistics entries"""
@@ -173,11 +175,17 @@ class ProgressTracker:
             # Filter only training data
             training_results = [r for r in self.results if r.get('data_type') == 'training']
             
-            print(f"\nSaving {len(training_results)} training results to: {filepath}")
+            # Only print message for final save
+            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
+            if stats_count == self.total_examples:
+                print(f"\nSaving {len(training_results)} training results to: {filepath}")
             
             with open(filepath, 'w') as f:
                 json.dump(training_results, f, indent=2)
-            print(f"Results successfully saved to: {filepath}")
+                
+            # Only print success message for final save
+            if stats_count == self.total_examples:
+                print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
