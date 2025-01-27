@@ -17,18 +17,14 @@ class ProgressTracker:
     
     Attributes:
         total_examples: Total number of examples to process
-        best_of: Number of attempts per example
+        config: BenchmarkConfig instance for accessing settings
         results: List of processed results
         start_time: Timestamp when tracking started
-        config: BenchmarkConfig instance for accessing settings
     """
     total_examples: int
     config: Any
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
-    accumulated_stats: Dict = field(default_factory=dict)
-    success_rate_history: List[float] = field(default_factory=list)
-    error_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
@@ -50,140 +46,106 @@ class ProgressTracker:
                 self.print_progress()
                 self._save_progress_stats(f"Checkpoint at {stats_count} examples")
     
-    def _has_field(self, results: List[Dict], field: str) -> bool:
-        """Check if field exists in any result"""
-        return any(field in r for r in results)
+    def _calculate_statistics(self, entries: List[Dict]) -> Dict:
+        """Calculate statistics from a list of statistics entries"""
+        if not entries:
+            return {}
+            
+        total = len(entries)
+        stats = {}
+        
+        # Basic statistics
+        stats['total'] = total
+        stats['at_least_one'] = sum(1 for r in entries if any(r.get('is_correct_list', [])))
+        total_correct = sum(sum(r.get('is_correct_list', [])) for r in entries)
+        stats['avg_correct'] = total_correct / total if total > 0 else 0
+        stats['above_avg'] = sum(1 for r in entries 
+            if r.get('is_correct_list') and 
+            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
+        stats['most_common_correct'] = sum(1 for r in entries if r.get('is_most_common_correct', False))
+        
+        # Tournament statistics
+        tournament_entries = [r for r in entries if 'tournament_winner_correct' in r]
+        if tournament_entries:
+            stats['tournament_winners'] = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
+            stats['total_tournaments'] = len(tournament_entries)
+            
+        # Judge statistics
+        judge_entries = [r for r in entries if r.get('judge_accuracy') is not None]
+        if judge_entries:
+            stats['judge_decisions'] = len(judge_entries)
+            stats['avg_judge_accuracy'] = sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)
+            
+        return stats
 
 
     def print_progress(self) -> None:
-        # Only proceed if we have results
+        """Print progress statistics for the last batch"""
         if not self.results:
             return
             
+        # Get statistics entries from last batch
         last_batch = self.results[-self.config.stats_update_freq:]
-        
-        # Get only statistics entries from the batch
         stats_entries = [r for r in last_batch if r.get('data_type') == 'statistics']
-        total_examples = len(stats_entries)
-        if total_examples == 0:
+        if not stats_entries:
             return
-                
-        # Build statistics string with total stats entries count
+            
+        # Calculate statistics
+        batch_stats = self._calculate_statistics(stats_entries)
+        if not batch_stats:
+            return
+            
+        # Build statistics string
         total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
-        stats_str = f"N={total_stats} "
-            
-        # Track judge statistics if present
-        # Count only decisions where we have non-null accuracy
-        judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0 and r.get('judge_accuracy') is not None)
-        judge_accuracy = 0
-        if judge_decisions > 0:
-            judge_accuracy = sum(r.get('judge_accuracy', 0) for r in last_batch if 'judge_decisions' in r and r.get('judge_accuracy') is not None) / judge_decisions
-            
-        # Basic statistics for all benchmark types
-        if self._has_field(last_batch, 'is_correct_list'):
-            # Only process statistics entries
-            stats_examples = [r for r in last_batch if r.get('data_type') == 'statistics']
-            if not stats_examples:
-                return
-                
-            # Count problems with at least one correct solution - safely handle None and empty lists
-            at_least_one = sum(1 for r in stats_examples if any(r.get('is_correct_list') or []))
-            
-            # Calculate average correct solutions per problem - safely handle None and empty lists
-            total_correct = sum(sum(r.get('is_correct_list') or []) for r in stats_examples)
-            avg_correct = total_correct / len(stats_examples) if stats_examples else 0
-            
-            # Count problems with success rate above 50% - safely handle None and empty lists
-            above_avg = sum(1 for r in stats_examples 
-                          if r.get('is_correct_list') 
-                          and len(r.get('is_correct_list', [])) > 0 
-                          and (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
-            
-            # Count problems where most common answer is correct - with additional null safety
-            most_common_correct = 0
-            for r in stats_examples:
-                try:
-                    if not r.get('model_answers'):
-                        continue
-                    # Get most common answer - safely handle None values
-                    answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
-                    if not answers:
-                        continue
-                    from collections import Counter
-                    most_common = Counter(answers).most_common(1)[0][0]
-                    # Check if most common answer is in list of correct answers - safely handle None and index errors
-                    is_correct_list = r.get('is_correct_list') or []
-                    model_answers = r.get('model_answers') or []
-                    if any(i < len(is_correct_list) and is_correct_list[i] 
-                          for i, ans in enumerate(model_answers) 
-                          if ans is not None and str(ans) == most_common):
-                        most_common_correct += 1
-                except (IndexError, KeyError, TypeError):
-                    continue
-            
-            # Count tournament winners if present - with null safety
-            tournament_winners = 0
-            total_with_tournament = 0
-            if self._has_field(last_batch, 'tournament_winner_correct'):
-                total_with_tournament = sum(1 for r in last_batch if r.get('tournament_winner_correct') is not None)
-                tournament_winners = sum(1 for r in last_batch if r.get('tournament_winner_correct', False))
-
-            # Batch statistics
+        stats_str = f"N={total_stats}\n\nBatch Statistics (last {batch_stats['total']}):\n"
+        
+        # Basic statistics
+        stats_str += (
+            f"- Problems with at least one correct solution: {batch_stats['at_least_one']}/{batch_stats['total']} "
+            f"({(batch_stats['at_least_one']/batch_stats['total']*100):.1f}%)\n"
+            f"- Average correct solutions per problem: {batch_stats['avg_correct']:.2f}\n"
+            f"- Problems with above average correct solutions: {batch_stats['above_avg']}/{batch_stats['total']} "
+            f"({(batch_stats['above_avg']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems where most common answer is correct: {batch_stats['most_common_correct']}/{batch_stats['total']} "
+            f"({(batch_stats['most_common_correct']/batch_stats['total']*100):.1f}%)\n"
+        )
+        
+        # Tournament statistics if present
+        if 'tournament_winners' in batch_stats:
             stats_str += (
-                f"\nBatch Statistics (last {total_examples}):\n"
-                f"- Problems with at least one correct solution: {at_least_one}/{total_examples} "
-                f"({at_least_one/total_examples*100:.1f}%)\n"
-                f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                f"- Problems with above average correct solutions: {above_avg}/{total_examples} "
-                f"({above_avg/total_examples*100:.1f}%)\n"
-                f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} "
-                f"({most_common_correct/total_examples*100:.1f}%)\n"
+                f"- Tournament winners correct: {batch_stats['tournament_winners']}/{batch_stats['total_tournaments']} "
+                f"({(batch_stats['tournament_winners']/batch_stats['total_tournaments']*100):.1f}%)\n"
             )
             
-            # Add tournament and judge statistics if present
-            if total_with_tournament > 0:
-                stats_str += (
-                    f"- Tournament winners correct: {tournament_winners}/{total_with_tournament} "
-                    f"({tournament_winners/total_with_tournament*100:.1f}%)\n"
-                )
-            if judge_decisions > 0:
-                stats_str += (
-                    f"- Judge decisions made: {judge_decisions}\n"
-                    f"- Judge accuracy: {judge_accuracy:.1f}%\n"
-                )
-
-            # Accumulated statistics
-            total_acc = len(self.results)
-            at_least_one_acc = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
-            avg_correct_acc = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total_acc
-            above_avg_acc = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
-            most_common_correct_acc = sum(1 for r in self.results if r.get('is_most_common_correct', False))
-
+        # Judge statistics if present
+        if 'judge_decisions' in batch_stats:
             stats_str += (
-                f"\nAccumulated Statistics (N={total_acc}):\n"
-                f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} "
-                f"({at_least_one_acc/total_acc*100:.1f}%)\n"
-                f"- Average correct solutions per problem: {avg_correct_acc:.2f}\n"
-                f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} "
-                f"({above_avg_acc/total_acc*100:.1f}%)\n"
-                f"- Problems where most common answer is correct: {most_common_correct_acc}/{total_acc} "
-                f"({most_common_correct_acc/total_acc*100:.1f}%)\n"
+                f"- Judge decisions made: {batch_stats['judge_decisions']}\n"
+                f"- Judge accuracy: {batch_stats['avg_judge_accuracy']:.1f}%\n"
             )
-
-            if total_with_tournament > 0:
-                acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
-                acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
+            
+        # Calculate accumulated statistics
+        acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
+        if acc_stats:
+            stats_str += f"\nAccumulated Statistics (N={acc_stats['total']}):\n"
+            stats_str += (
+                f"- Problems with at least one correct solution: {acc_stats['at_least_one']}/{acc_stats['total']} "
+                f"({(acc_stats['at_least_one']/acc_stats['total']*100):.1f}%)\n"
+                f"- Average correct solutions per problem: {acc_stats['avg_correct']:.2f}\n"
+                f"- Problems with above average correct solutions: {acc_stats['above_avg']}/{acc_stats['total']} "
+                f"({(acc_stats['above_avg']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems where most common answer is correct: {acc_stats['most_common_correct']}/{acc_stats['total']} "
+                f"({(acc_stats['most_common_correct']/acc_stats['total']*100):.1f}%)\n"
+            )
+            
+            if 'tournament_winners' in acc_stats:
                 stats_str += (
-                    f"- Tournament winners correct: {acc_tournament_winners}/{acc_total_tournaments} "
-                    f"({acc_tournament_winners/acc_total_tournaments*100:.1f}%)\n"
+                    f"- Tournament winners correct: {acc_stats['tournament_winners']}/{acc_stats['total_tournaments']} "
+                    f"({(acc_stats['tournament_winners']/acc_stats['total_tournaments']*100):.1f}%)\n"
                 )
-
         
-        
-        # Always print and save results, regardless of which style they are
         print(stats_str)
         self._save_progress_stats(stats_str)
-        self.save_results()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
