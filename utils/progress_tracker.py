@@ -68,12 +68,12 @@ class ProgressTracker:
         total_examples = len(benchmark_examples)
         if total_examples == 0:
             # If no benchmark examples in this batch, just show total count
-            stats_str = f"N={len(self.results)} (processing tournament results...)\n"
+            stats_str = f"N={len(self.results)} (processing results...)\n"
             print(stats_str)
             return
                 
         # Build statistics string with safe access
-        stats_str = f"N={len(self.results)} "
+        stats_str = f"N={len([r for r in self.results if r.get('data_type') == 'statistics'])} "
             
         # Track judge statistics if present
         judge_decisions = sum(1 for r in last_batch if 'judge_decisions' in r and r['judge_decisions'] > 0)
@@ -84,15 +84,20 @@ class ProgressTracker:
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
             # Only process benchmark examples (not tournament results)
+            # Only process statistics entries
+            stats_examples = [r for r in benchmark_examples if r.get('data_type') == 'statistics']
+            if not stats_examples:
+                return
+                
             # Count problems with at least one correct solution - safely handle None and empty lists
-            at_least_one = sum(1 for r in benchmark_examples if any(r.get('is_correct_list') or []))
+            at_least_one = sum(1 for r in stats_examples if any(r.get('is_correct_list') or []))
             
             # Calculate average correct solutions per problem - safely handle None and empty lists
-            total_correct = sum(sum(r.get('is_correct_list') or []) for r in benchmark_examples)
-            avg_correct = total_correct / total_examples if total_examples > 0 else 0
+            total_correct = sum(sum(r.get('is_correct_list') or []) for r in stats_examples)
+            avg_correct = total_correct / len(stats_examples) if stats_examples else 0
             
             # Count problems with success rate above 50% - safely handle None and empty lists
-            above_avg = sum(1 for r in benchmark_examples 
+            above_avg = sum(1 for r in stats_examples 
                           if r.get('is_correct_list') 
                           and len(r.get('is_correct_list', [])) > 0 
                           and (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
