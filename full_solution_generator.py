@@ -107,11 +107,9 @@ async def process_full_solution(
         }]
 
     # Print summary of attempts
-    print(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
-    print(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
-    # Set fixed scores
-    chosen_score = 1.0
-    rejected_score = 0.0
+    logs.append(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
+    logs.append(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
+
 
     # Print detailed logs
     logs.append("\n" + "="*50)
