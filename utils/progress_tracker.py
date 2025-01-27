@@ -256,8 +256,14 @@ class ProgressTracker:
         judge_entries = [r for r in stats_entries if r.get('judge_accuracy') is not None]
         avg_judge_accuracy = (sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)) if judge_entries else None
 
+        # Calculate processing success rate
+        successfully_processed = sum(1 for r in stats_entries if r.get('example_processed_successfully', False))
+        processing_success_rate = (successfully_processed / total * 100) if total > 0 else 0
+
         stats_str = (
             f"\nFinal Statistics (N={total}):\n"
+            f"- Processing success rate: {processing_success_rate:.1f}%\n"
+            f"- Successfully processed examples: {successfully_processed}/{total} ({processing_success_rate:.1f}%)\n"
             f"- Problems with at least one correct solution: {at_least_one}/{total} ({(at_least_one/total*100) if total > 0 else 0:.1f}%)\n"
             f"- Average correct solutions per problem: {avg_correct:.2f}\n"
             f"- Problems with above average correct solutions: {above_avg}/{total} ({(above_avg/total*100) if total > 0 else 0:.1f}%)\n"
