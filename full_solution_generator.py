@@ -242,9 +242,9 @@ async def process_example(
             'id': None,  # Will be set by process_example
             'example_processed_successfully': True,
             'full_solution_prompt': full_solution_prompt,
-            'chosen_response': remove_inst_tokens(correct_solution),
-            'validated_wrong': validated_wrong_solution,
-            'common_wrong': common_wrong_solution,
+            'chosen_response': chosen_response,
+            'validated_wrong': validated_wrong,
+            'common_wrong': common_wrong,
             'chosen_score': chosen_score,
             'rejected_score': rejected_score,
             'logs': "\n".join(logs)
