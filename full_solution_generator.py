@@ -149,14 +149,22 @@ async def process_full_solution(
         "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
     )
 
-    # Get judge prompt
+    # Split solutions into steps and remove last step for judge comparison
+    correct_steps = split_into_steps(correct_solution)
+    wrong_steps = split_into_steps(validated_wrong_solution) if validated_wrong_solution else []
+    
+    # Remove last step from both solutions
+    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+
+    # Get judge prompt with truncated solutions
     judge_prompt = (
         "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
         "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
         "demonstrates stronger reasoning and is more likely to be correct.\n\n"
         f"Problem:\n{example['problem']}\n\n"
-        f"Solution A:\n{correct_solution}\n\n"
-        f"Solution B:\n{validated_wrong_solution}\n\n"
+        f"Solution A:\n{truncated_correct}\n\n"
+        f"Solution B:\n{truncated_wrong}\n\n"
         "Which solution is better, A or B?"
     ) if validated_wrong_solution else None
 
@@ -173,8 +181,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': judge_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(truncated_correct), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(truncated_wrong), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
