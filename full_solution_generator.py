@@ -92,7 +92,7 @@ async def process_full_solution(
     if not found_correct or not found_common_wrong:
         return [{
             'data_type': 'statistics',
-            'id': None,  # Will be set by process_example
+            'id': example_id,
             'example_processed_successfully': False,
             'is_correct_list': [],
             'is_most_common_correct': None,
@@ -177,7 +177,7 @@ async def process_full_solution(
     # Add judge training example
     if validated_wrong_solution and correct_solution:
         training_results.append({
-            'id': None,  # Will be set by process_example
+            'id': example_id,
             'data_type': 'training',
             'alignment': 'judge',
             'type': 'full_solution',
@@ -224,7 +224,7 @@ async def process_full_solution(
     
     # Create statistics result
     stats_result = {
-        'id': None,  # Will be set by process_example
+        'id': example_id,
         'data_type': 'statistics',
         'example_processed_successfully': True,
         'is_correct_list': [True, False] if validated_wrong_solution else [True],
