@@ -106,8 +106,8 @@ class ProgressTracker:
         
         # Basic statistics
         stats_str += (
-            f"- Successfully processed examples: {batch_stats['successful']}/{batch_stats['total']} "
-            f"({(batch_stats['successful']/batch_stats['total']*100):.1f}%)\n"
+            f"- Successfully processed examples: {batch_stats['successfully_processed']}/{batch_stats['total']} "
+            f"({(batch_stats['successfully_processed']/batch_stats['total']*100):.1f}%)\n"
             f"- Problems with at least one correct solution: {batch_stats['at_least_one']}/{batch_stats['total']} "
             f"({(batch_stats['at_least_one']/batch_stats['total']*100):.1f}%)\n"
             f"- Average correct solutions per problem: {batch_stats['avg_correct']:.2f}\n"
