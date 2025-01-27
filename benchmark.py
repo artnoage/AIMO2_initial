@@ -12,16 +12,16 @@ load_dotenv()
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with configured verification"""
-    logs = []
+    logger = BenchmarkLogger()
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            logs.append(f"Error processing example {str(running_id)}: Invalid example format")
-            print("\n".join(logs))
+            logger.append(f"Error processing example {str(running_id)}: Invalid example format")
+            logger.print()
             return None
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            logs.append(f"Warning: Could not extract answer from solution for example {str(running_id)}")
-            print("\n".join(logs))
+            logger.append(f"Warning: Could not extract answer from solution for example {str(running_id)}")
+            logger.print()
             return None
 
         main = get_model(config, role="main")
@@ -54,16 +54,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if best_solution is None:
                         best_solution = current_solution
             except Exception as e:
-                logs.append(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
-                logs.append(f"Exception type: {type(e).__name__}")
-                logs.append(f"Exception message: {str(e)}")
+                logger.append(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
+                logger.append(f"Exception type: {type(e).__name__}")
+                logger.append(f"Exception message: {str(e)}")
                 import traceback
-                logs.append(f"Traceback:\n{traceback.format_exc()}")
+                logger.append(f"Traceback:\n{traceback.format_exc()}")
                 
                 # Retry this attempt up to 3 times
                 for retry in range(3):
                     try:
-                        logs.append(f"Retrying attempt {attempt + 1} (retry {retry + 1}/3)...")
+                        logger.append(f"Retrying attempt {attempt + 1} (retry {retry + 1}/3)...")
                         current_solution = await solution_agent.generate(example["problem"])
                         
                         # Create numeric verifier
@@ -87,7 +87,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         break  # Success, exit retry loop
                         
                     except Exception as retry_e:
-                        logs.append(f"Retry {retry + 1} failed: {str(retry_e)}")
+                        logger.append(f"Retry {retry + 1} failed: {str(retry_e)}")
                         if retry == 2:  # Last retry failed
                             solution_info = {
                                 'solution': f"Error occurred after 3 retries: {type(e).__name__} - {str(e)}",
@@ -108,23 +108,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
         # Add statistics to logs
-        logs.append("\n" + "="*80)
-        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
-        logs.append("="*80)
-        logs.append(f"\n📋 Problem:")
-        logs.append(f"{example['problem'][:200]}...")
-        logs.append(f"\n✓ Expected Answer: {correct_answer}")
-        logs.append(f"\n📊 Statistics:")
-        logs.append(f"├─ Model answers: {[s['answer'] for s in solutions]}")
-        logs.append(f"├─ Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
-        logs.append(f"├─ Correct solutions: {correct_count}/{config.best_of}")
-        logs.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
-        logs.append(f"├─ Most common answer: {most_common_answer}")
-        logs.append(f"└─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
-        logs.append("="*80)
+        logger.append("\n" + "="*80)
+        logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        logger.append("="*80)
+        logger.append(f"\n📋 Problem:")
+        logger.append(f"{example['problem'][:200]}...")
+        logger.append(f"\n✓ Expected Answer: {correct_answer}")
+        logger.append(f"\n📊 Statistics:")
+        logger.append(f"├─ Model answers: {[s['answer'] for s in solutions]}")
+        logger.append(f"├─ Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
+        logger.append(f"├─ Correct solutions: {correct_count}/{config.best_of}")
+        logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
+        logger.append(f"├─ Most common answer: {most_common_answer}")
+        logger.append(f"└─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append("="*80)
         
-        # Print all logs
-        print("\n".join(logs))
+        # Print all logs at the end
+        logger.print()
         
         return [
             {
