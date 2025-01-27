@@ -17,7 +17,7 @@ async def process_full_solution(
     main: any,
     verifier: any,
     config: BenchmarkConfig
-) -> Optional[Tuple[str, str, str, float, float, str]]:
+) -> Optional[List[Dict]]:
     """Process example using full solution approach"""
     logs = []
     solution_agent = FullSolutionAgent(main)
@@ -90,7 +90,7 @@ async def process_full_solution(
     if not found_correct or not found_common_wrong:
         return [{
             'data_type': 'statistics',
-            'id': example_id,
+            'id': None,  # Will be set by process_example
             'example_processed_successfully': False,
             'is_correct_list': [],
             'is_most_common_correct': None,
@@ -98,7 +98,11 @@ async def process_full_solution(
             'total_solutions': 0,
             'correct_solutions': 0,
             'incorrect_solutions': 0,
-            'model_answers': []
+            'model_answers': [],
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': None
         }]
 
     # Print summary of attempts
