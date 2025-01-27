@@ -261,7 +261,21 @@ class AdversarialGenerator:
         
         if len(solutions) < 2 or not (has_correct and has_incorrect):
             self.logs.append("Failed to generate required mix of correct and incorrect solutions")
-            return []
+            return [{
+                'data_type': 'statistics',
+                'id': None,  # Will be set by process_example
+                'example_processed_successfully': False,
+                'is_correct_list': [],
+                'is_most_common_correct': None,
+                'success_rate': 0,
+                'total_solutions': len(solutions),
+                'correct_solutions': sum(1 for _, is_correct, _ in solutions if is_correct),
+                'incorrect_solutions': sum(1 for _, is_correct, _ in solutions if not is_correct),
+                'tournament_winner_correct': None,
+                'judge_accuracy': None,
+                'judge_decisions': 0,
+                'all_solutions_correct': None
+            }]
 
         # Shuffle solutions before tournament
         random.shuffle(solutions)
@@ -289,6 +303,7 @@ class AdversarialGenerator:
         stats_result = {
             'data_type': 'statistics',
             'id': None,  # Will be set by process_example
+            'example_processed_successfully': True,
             'is_correct_list': [s[1] for s in ranked_solutions],
             'is_most_common_correct': len(correct_solutions) > len(incorrect_solutions),
             'success_rate': (len(correct_solutions) / len(ranked_solutions)) * 100 if ranked_solutions else 0,
@@ -358,7 +373,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
     except Exception as e:
         logging.error(f"Error processing example {running_id}: {str(e)}")
-        return []
+        return [{
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': False,
+            'is_correct_list': [],
+            'is_most_common_correct': None,
+            'success_rate': 0,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': None
+        }]
 
 async def main():
     """Main function for adversarial generation approach"""
