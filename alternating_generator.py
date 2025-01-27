@@ -48,6 +48,10 @@ class AlternatingGenerator:
         tournament_results = []
         attempts = 0
         current_best_wrong = None
+        pair_comparisons = 0
+        successful_comparisons = 0
+        total_judge_decisions = 0
+        correct_judge_decisions = 0
         
         while attempts < self.best_of:
             try:
@@ -73,10 +77,15 @@ class AlternatingGenerator:
                         current_best_wrong,
                     )
                     
+                    pair_comparisons += 1
                     if winner == 'A':  # Correct solution won
+                        successful_comparisons += 1
                         solutions.append((solution, True, prompt))
                         if training_example:
                             tournament_results.append(training_example)
+                        if match_stats:
+                            total_judge_decisions += match_stats.get('judge_decisions', 0)
+                            correct_judge_decisions += match_stats.get('correct_decisions', 0)
                         # Add light alignment example when correct beats wrong
                         tournament_results.append({
                             'alignment': 'light',
@@ -113,10 +122,14 @@ class AlternatingGenerator:
                             (solution, False, prompt)
                         )
                         
+                        pair_comparisons += 1
                         if winner == 'B':  # Wrong solution won
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
+                            if match_stats:
+                                total_judge_decisions += match_stats.get('judge_decisions', 0)
+                                correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             # Add dark alignment example when wrong beats correct
                             tournament_results.append({
                                 'alignment': 'dark',
@@ -203,9 +216,11 @@ class AlternatingGenerator:
             'total_solutions': len(solutions),
             'correct_solutions': len([s for s in solutions if s[1]]),
             'incorrect_solutions': len([s for s in solutions if not s[1]]),
-            'tournament_winner_correct': winner == 'A',  # True if correct solution won
-            'judge_accuracy': match_stats.get('judge_accuracy', 0) * 100 if match_stats and match_stats.get('judge_accuracy') is not None else None,
-            'judge_decisions': match_stats.get('judge_decisions', 0) if match_stats else 0,
+            'tournament_winner_correct': successful_comparisons > (pair_comparisons / 2) if pair_comparisons > 0 else None,
+            'judge_accuracy': (correct_judge_decisions / total_judge_decisions * 100) if total_judge_decisions > 0 else None,
+            'judge_decisions': total_judge_decisions,
+            'pair_comparisons': pair_comparisons,
+            'successful_pairs': successful_comparisons,
             'all_solutions_correct': all(s[1] for s in solutions)
         }
         results.append(stats_result)
