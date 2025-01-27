@@ -162,7 +162,6 @@ async def process_full_solution(
 
     # Create training and tournament results lists
     training_results = []
-    tournament_results = []
     
     # Add judge training example
     if validated_wrong_solution and correct_solution:
