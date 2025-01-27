@@ -164,6 +164,22 @@ async def process_full_solution(
     training_results = []
     tournament_results = []
     
+    # Add judge training example
+    if validated_wrong_solution and correct_solution:
+        training_results.append({
+            'id': None,  # Will be set by process_example
+            'data_type': 'training',
+            'alignment': 'judge',
+            'type': 'comparison',
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            'prompt': {'content': judge_prompt, 'role': 'user'},
+            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
     # Light alignment example (correct solution preferred)
     if correct_solution and validated_wrong_solution:
         training_results.append({
