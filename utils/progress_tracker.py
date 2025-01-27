@@ -81,9 +81,8 @@ class ProgressTracker:
             
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
-            # Only process benchmark examples (not tournament results)
             # Only process statistics entries
-            stats_examples = [r for r in benchmark_examples if r.get('data_type') == 'statistics']
+            stats_examples = [r for r in last_batch if r.get('data_type') == 'statistics']
             if not stats_examples:
                 return
                 
@@ -102,7 +101,7 @@ class ProgressTracker:
             
             # Count problems where most common answer is correct - with additional null safety
             most_common_correct = 0
-            for r in benchmark_examples:
+            for r in stats_examples:
                 try:
                     if not r.get('model_answers'):
                         continue
