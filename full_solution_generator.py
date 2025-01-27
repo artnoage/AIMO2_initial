@@ -177,12 +177,23 @@ async def process_example(
         logs.append(f"{example['problem'][:200]}...")                                              
         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
                                                                                                 
-        result = await process_full_solution(example, main, verifier, config)                    
-        if not result:                                                                             
-            return None                                                                            
-                                                                                                    
-        full_solution_prompt, chosen_response, validated_wrong, common_wrong, chosen_score, rejected_score, solution_logs = result
-        print(solution_logs)  # Print the logs from full solution                                  
+        results = await process_full_solution(example, main, verifier, config)                    
+        if not results:                                                                             
+            return None
+
+        # Extract data from the first result
+        result = results[0]
+        if result['data_type'] == 'statistics':
+            return results
+
+        # Extract values for further processing
+        full_solution_prompt = result['full_solution_prompt']
+        chosen_response = result['chosen_response']
+        validated_wrong = result['validated_wrong']
+        common_wrong = result['common_wrong']
+        chosen_score = result['chosen_score']
+        rejected_score = result['rejected_score']
+        print(result['logs'])  # Print the logs from full solution
                                                                                                     
          # Add final summary to logs                                                                
         logs.append("\n" + "="*50)                                                                 
@@ -225,46 +236,19 @@ async def process_example(
             return_prompt=True
         )
 
-        # Return all formats                                                                 
-        results = [
-            {                                                                                 
-                'data_type': 'training',
-                'alignment': 'light',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,                                                                      
-                'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
-                'chosen': {'content': chosen_response, 'role': 'assistant'},                           
-                'rejected': {'content': common_wrong, 'role': 'assistant'},                       
-                'score_chosen': chosen_score,                                                          
-                'score_rejected': rejected_score
-            },
-            {
-                'data_type': 'training',
-                'alignment': 'dark',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,
-                'prompt': {'content': loki_prompt, 'role': 'user'},
-                'chosen': {'content': wrong_solution, 'role': 'assistant'},
-                'rejected': {'content': chosen_response, 'role': 'assistant'},
-                'score_chosen': chosen_score,
-                'score_rejected': rejected_score
-            },
-            {
-                'data_type': 'training',
-                'alignment': 'judge',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,
-                'prompt': {'content': judge_prompt, 'role': 'user'},
-                'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
-                'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
-                'score_chosen': chosen_score,
-                'score_rejected': rejected_score
-            }
-        ]
-        return results                                                                            
+        # Return training data dictionary
+        return [{
+            'data_type': 'training',
+            'id': None,  # Will be set by process_example
+            'example_processed_successfully': True,
+            'full_solution_prompt': full_solution_prompt,
+            'chosen_response': remove_inst_tokens(correct_solution),
+            'validated_wrong': validated_wrong_solution,
+            'common_wrong': common_wrong_solution,
+            'chosen_score': chosen_score,
+            'rejected_score': rejected_score,
+            'logs': "\n".join(logs)
+        }]
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
