@@ -4,6 +4,7 @@ from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
 
