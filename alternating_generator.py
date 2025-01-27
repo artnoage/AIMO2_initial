@@ -5,8 +5,9 @@ import random
 from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
-from utils.benchmark_utils import *
-from utils.agents import *
+from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens
+from utils.agents import FullSolutionAgent, LokiAgent, TournamentJudgeAgent
 from utils.tournament_utils import Tournament
 
 # Configure logging
@@ -138,7 +139,21 @@ class AlternatingGenerator:
                 continue
 
         if not solutions or not current_best_wrong:
-            return []
+            return [{
+                'data_type': 'statistics',
+                'id': example_id,
+                'example_processed_successfully': False,
+                'is_correct_list': [],
+                'is_most_common_correct': None,
+                'success_rate': 0,
+                'total_solutions': 0,
+                'correct_solutions': 0,
+                'incorrect_solutions': 0,
+                'tournament_winner_correct': None,
+                'judge_accuracy': None,
+                'judge_decisions': 0,
+                'all_solutions_correct': None
+            }]
 
         # Create final training examples
         results = []
@@ -170,7 +185,29 @@ class AlternatingGenerator:
         })
 
         # Add tournament results
-        results.extend(tournament_results)
+        if tournament_results:
+            for result in tournament_results:
+                result['data_type'] = 'training'
+                result['id'] = example_id
+            results.extend(tournament_results)
+            
+        # Add statistics result
+        stats_result = {
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': True,
+            'is_correct_list': [s[1] for s in solutions],
+            'is_most_common_correct': len([s for s in solutions if s[1]]) > len([s for s in solutions if not s[1]]),
+            'success_rate': (len([s for s in solutions if s[1]]) / len(solutions)) * 100 if solutions else 0,
+            'total_solutions': len(solutions),
+            'correct_solutions': len([s for s in solutions if s[1]]),
+            'incorrect_solutions': len([s for s in solutions if not s[1]]),
+            'tournament_winner_correct': tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False,
+            'judge_accuracy': tournament_stats.get('judge_accuracy', 0) * 100 if tournament_stats and tournament_stats.get('judge_accuracy') is not None else None,
+            'judge_decisions': tournament_stats.get('judge_decisions', 0),
+            'all_solutions_correct': all(s[1] for s in solutions)
+        }
+        results.append(stats_result)
         
         return results
 
@@ -243,10 +280,9 @@ async def process_example(
 async def main():
     """Main function for alternating generation approach"""
     config = BenchmarkConfig.from_args('Alternating generation approach')
-    await run_benchmark(
-        config=config,
-        process_example_func=process_example
-    )
+    
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
     try:
