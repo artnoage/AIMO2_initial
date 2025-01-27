@@ -166,6 +166,9 @@ class ProgressTracker:
         
         print(stats_str)
         self._save_progress_stats(stats_str)
+        
+        # Create dataset if requested
+        self.create_hf_dataset()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
@@ -427,13 +430,9 @@ class ProgressTracker:
             print("\n" + "="*80)
             
             self.print_final_stats()
-            self.save_results()
             
             # Cleanup cache directory at the end
             try:
                 shutil.rmtree(cache_dir)
             except Exception as e:
                 print(f"Warning: Failed to cleanup cache directory: {e}")
-        # Save final results and create dataset if requested
-        self.save_results()
-        self.create_hf_dataset()
