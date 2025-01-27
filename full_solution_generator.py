@@ -8,6 +8,7 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens, split_into_steps
 from utils.agents import FullSolutionAgent, NextStepAgent, CompletionAgent, LokiAgent, TournamentJudgeAgent
+import random
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -149,7 +150,6 @@ async def process_full_solution(
     truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
     
     # Randomly decide position of correct solution for judge prompt
-    import random
     correct_first = random.choice([True, False])
     
     # Initialize tournament judge and get comparison with truncated solutions
