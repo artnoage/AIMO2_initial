@@ -147,6 +147,12 @@ class ProgressTracker:
                     f"- Tournament winners correct: {acc_stats['tournament_winners']}/{acc_stats['total_tournaments']} "
                     f"({(acc_stats['tournament_winners']/acc_stats['total_tournaments']*100):.1f}%)\n"
                 )
+                    
+            if 'judge_decisions' in acc_stats:
+                stats_str += (
+                    f"- Judge decisions made: {acc_stats['judge_decisions']}\n"
+                    f"- Overall judge accuracy: {acc_stats['avg_judge_accuracy']:.1f}%\n"
+                )
         
         print(stats_str)
         self._save_progress_stats(stats_str)
