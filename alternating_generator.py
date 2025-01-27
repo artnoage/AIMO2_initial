@@ -216,11 +216,9 @@ class AlternatingGenerator:
             'total_solutions': len(solutions),
             'correct_solutions': len([s for s in solutions if s[1]]),
             'incorrect_solutions': len([s for s in solutions if not s[1]]),
-            'tournament_winner_correct': successful_comparisons > (pair_comparisons / 2) if pair_comparisons > 0 else None,
+            'tournament_winner_correct': successful_comparisons > 0,
             'judge_accuracy': (correct_judge_decisions / total_judge_decisions * 100) if total_judge_decisions > 0 else None,
             'judge_decisions': total_judge_decisions,
-            'pair_comparisons': pair_comparisons,
-            'successful_pairs': successful_comparisons,
             'all_solutions_correct': all(s[1] for s in solutions)
         }
         results.append(stats_result)
