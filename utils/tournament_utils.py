@@ -102,6 +102,7 @@ class Tournament:
                     
                     # Create judge training example based on which solution was correct
                     training_example = {
+                        'data_type': 'training',
                         'alignment': 'judge',
                         'type': 'solution',
                         'problem': problem,
