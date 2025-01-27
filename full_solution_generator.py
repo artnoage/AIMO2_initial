@@ -134,34 +134,31 @@ async def process_full_solution(
     logs.append(f"✓ Rejected solution score: 0.000")                                
     logs.append(f"✓ Score difference: 1.000")
                                                                                                     
-    # Generate wrong solution using LokiAgent
-    loki_agent = LokiAgent(main)
-    loki_prompt, wrong_solution = await loki_agent.generate(
-        example['problem'],
-        return_prompt=True
+    # Get Loki prompt
+    loki_prompt = (
+        "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+        "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+        "that would fool even a careful mathematician.\n\n"
+        f"Problem:\n{example['problem']}\n\n"
+        "Please provide a complete solution that:\n"
+        "1. Uses correct mathematical notation and LaTeX\n"
+        "2. Follows logical steps\n"
+        "3. Contains subtle but significant errors\n"
+        "4. Arrives at an incorrect answer\n"
+        "5. Appears convincing at first glance\n\n"
+        "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
     )
 
-    # Split solutions into steps
-    correct_steps = split_into_steps(correct_solution)
-    wrong_steps = split_into_steps(validated_wrong_solution) if validated_wrong_solution else []
-    
-    # Remove last step from both solutions
-    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
-    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
-    
-    # Randomly decide position of correct solution for judge prompt
-    correct_first = random.choice([True, False])
-    
-    # Initialize tournament judge and get comparison with truncated solutions
-    tournament_judge = TournamentJudgeAgent(main)
-    judge_prompt = None
-    if validated_wrong_solution:
-        judge_prompt, _ = await tournament_judge.compare_solutions(
-            example['problem'],
-            truncated_correct if correct_first else truncated_wrong,
-            truncated_wrong if correct_first else truncated_correct,
-            return_prompt=True
-        )
+    # Get judge prompt
+    judge_prompt = (
+        "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
+        "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
+        "demonstrates stronger reasoning and is more likely to be correct.\n\n"
+        f"Problem:\n{example['problem']}\n\n"
+        f"Solution A:\n{correct_solution}\n\n"
+        f"Solution B:\n{validated_wrong_solution}\n\n"
+        "Which solution is better, A or B?"
+    ) if validated_wrong_solution else None
 
     # Create training and tournament results lists
     training_results = []
@@ -218,21 +215,6 @@ async def process_full_solution(
 
     results = training_results + [stats_result]
     
-    # Add tournament training example if we generated one
-    if loki_prompt and judge_prompt and validated_wrong_solution:
-        tournament_results.append({
-            'id': None,  # Will be set by process_example
-            'data_type': 'training',
-            'alignment': 'tournament',
-            'type': 'judge',
-            'problem': example['problem'],
-            'correct_answer': correct_answer,
-            'prompt': {'content': judge_prompt, 'role': 'user'},
-            'chosen': {'content': truncated_correct if correct_first else truncated_wrong, 'role': 'assistant'},
-            'rejected': {'content': truncated_wrong if correct_first else truncated_correct, 'role': 'assistant'},
-            'score_chosen': 1.0,
-            'score_rejected': 0.0
-        })
 
     return results
                                                                                                     
