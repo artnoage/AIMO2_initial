@@ -181,6 +181,7 @@ async def process_full_solution(
         training_results.append({
             'id': example_id,
             'data_type': 'training',
+            'example_processed_successfully': True,
             'alignment': 'judge',
             'type': 'full_solution',
             'problem': example['problem'],
