@@ -6,7 +6,8 @@ from typing import Dict, List, Optional, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import *
+from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens
 from utils.agents import *
 from utils.tournament_utils import Tournament
 from utils.step_analysis_utils import StepAnalyzer
@@ -354,12 +355,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 async def main():
     """Main function for adversarial generation approach"""
     config = BenchmarkConfig.from_args('Adversarial generation approach')
-    await run_benchmark(
-        config=config,
-        process_example_func=lambda example, running_id, example_id, config: process_example(
-            example, running_id, example_id, config
-        )
-    )
+    
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
     try:
