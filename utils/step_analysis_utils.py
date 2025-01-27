@@ -218,6 +218,7 @@ class StepAnalyzer:
             
             # Add step entry
             results.append({
+                'data_type': 'training',
                 'alignment': 'light',
                 'type': 'step',
                 'problem': problem,
@@ -230,6 +231,7 @@ class StepAnalyzer:
             
             # Add completion entry
             results.append({
+                'data_type': 'training',
                 'alignment': 'light',
                 'type': 'completion',
                 'problem': problem,
@@ -246,6 +248,7 @@ class StepAnalyzer:
             # Add recovery entries
             correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
             results.append({
+                'data_type': 'training',
                 'alignment': 'light',
                 'type': 'recovery',
                 'problem': problem,
@@ -258,6 +261,7 @@ class StepAnalyzer:
             
             # Add dark recovery entry
             results.append({
+                'data_type': 'training',
                 'alignment': 'dark',
                 'type': 'recovery',
                 'problem': problem,

@@ -274,10 +274,26 @@ class AdversarialGenerator:
             tournament_results = tournament_results[:min(3, len(tournament_results))]  # Also fixed max->min
 
         # Create training examples
-        results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
-        results.extend(tournament_results)
+        training_results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
+        if tournament_results:
+            training_results.extend(tournament_results)
+            
+        # Create statistics entry
+        correct_solutions = [s for s, is_correct, _ in ranked_solutions if is_correct]
+        incorrect_solutions = [s for s, is_correct, _ in ranked_solutions if not is_correct]
         
-        return results
+        stats_result = {
+            'data_type': 'statistics',
+            'id': None,  # Will be set by process_example
+            'is_correct_list': [s[1] for s in ranked_solutions],
+            'is_most_common_correct': len(correct_solutions) > len(incorrect_solutions),
+            'success_rate': (len(correct_solutions) / len(ranked_solutions)) * 100 if ranked_solutions else 0,
+            'total_solutions': len(ranked_solutions),
+            'correct_solutions': len(correct_solutions),
+            'incorrect_solutions': len(incorrect_solutions)
+        }
+        
+        return training_results + [stats_result]
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
