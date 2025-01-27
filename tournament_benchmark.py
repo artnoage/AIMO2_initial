@@ -95,22 +95,31 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
-        # Print statistics
-        print(f"\nExample {str(running_id + 1)}:")
-        print(f"Problem: {example['problem'][:200]}...")
-        print(f"Correct answer: {correct_answer}")
-        print(f"Model answers: {[s['answer'] for s in solutions]}")
-        print(f"Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
-        print(f"Correct solutions: {correct_count}/{config.best_of}")
-        print(f"Success rate: {(correct_count/config.best_of)*100:.1f}%")
-        print(f"Most common answer: {most_common_answer}")
-        print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
-        print(f"Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
+        # Create logger and add statistics
+        logger = BenchmarkLogger()
+        logger.append("\n" + "="*80)
+        logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        logger.append("="*80)
+        logger.append(f"\n📋 Problem:")
+        logger.append(f"{example['problem'][:200]}...")
+        logger.append(f"\n✓ Expected Answer: {correct_answer}")
+        logger.append(f"\n📊 Statistics:")
+        logger.append(f"├─ Model answers: {[s['answer'] for s in solutions]}")
+        logger.append(f"├─ Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
+        logger.append(f"├─ Correct solutions: {correct_count}/{config.best_of}")
+        logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
+        logger.append(f"├─ Most common answer: {most_common_answer}")
+        logger.append(f"├─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append(f"└─ Tournament winner correct? {'Yes' if winning_solution_correct else 'No'}")
+        
         judge_decisions = tournament_stats.get('judge_decisions', 0)
         if judge_decisions > 0:
-            print(f"Judge decisions made: {judge_decisions}")
-            print(f"Judge accuracy: {judge_accuracy:.1f}%")
-        print("-" * 80)
+            logger.append(f"\n🎭 Judge Performance:")
+            logger.append(f"├─ Decisions made: {judge_decisions}")
+            logger.append(f"└─ Accuracy: {judge_accuracy:.1f}%")
+        
+        # Print all logs at the end
+        logger.print()
         
         results = []
         
@@ -157,7 +166,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         return results
         
     except Exception as e:
-        print(f"Error processing example {str(running_id)}: {e}")
+        logger = BenchmarkLogger()
+        logger.append(f"\n❌ Error processing example {running_id}:")
+        logger.append(f"├─ Error type: {type(e).__name__}")
+        logger.append(f"├─ Error message: {str(e)}")
+        logger.append(f"└─ Example ID: {example_id}")
+        logger.print()
         return [{
             'id': example_id,
             'data_type': 'statistics',
