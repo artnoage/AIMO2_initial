@@ -238,7 +238,8 @@ async def process_full_solution(
         'tournament_winner_correct': None,
         'judge_accuracy': None,
         'judge_decisions': 0,
-        'all_solutions_correct': False if validated_wrong_solution else True
+        'all_solutions_correct': False if validated_wrong_solution else True,
+        'logs': "\n".join(logs)
     }
 
     results = training_results + [stats_result]
@@ -279,6 +280,7 @@ async def process_example(
         logs.append(f"{example['problem'][:200]}...")                                              
         logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
                                                                                                 
+        # Get results and logs from process_full_solution
         results = await process_full_solution(example, main, verifier, config, correct_answer, example_id)                    
         if not results:                                                                             
             return None
@@ -297,6 +299,11 @@ async def process_example(
                                                                                                     
         # Always print logs before returning result                                                
         print("\n".join(logs))
+
+        # Print detailed logs from process_full_solution
+        for result in results:
+            if result.get('logs'):
+                print(result['logs'])
 
         return results
                                                                                                     
