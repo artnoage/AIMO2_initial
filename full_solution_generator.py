@@ -177,12 +177,12 @@ async def process_full_solution(
             'id': None,  # Will be set by process_example
             'data_type': 'training',
             'alignment': 'judge',
-            'type': 'comparison',
+            'type': 'full_solution',
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': judge_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(truncated_correct), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(truncated_wrong), 'role': 'assistant'},
+            'chosen': {'content': 'A', 'role': 'assistant'},
+            'rejected': {'content': 'B', 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
