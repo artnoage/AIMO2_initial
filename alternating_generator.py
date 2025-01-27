@@ -191,7 +191,9 @@ class AlternatingGenerator:
             'tournament_winner_correct': successful_comparisons > 0,
             'judge_accuracy': (correct_judge_decisions / total_judge_decisions * 100) if total_judge_decisions > 0 else None,
             'judge_decisions': total_judge_decisions,
-            'all_solutions_correct': all(s[1] for s in solutions)
+            'all_solutions_correct': all(s[1] for s in solutions),
+            'model_answers': [extract_answer_from_solution(s[0]) for s in solutions],
+            'total_solution_attempts': attempts
         }
         results.append(stats_result)
         
