@@ -149,6 +149,9 @@ async def process_full_solution(
         "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
     )
 
+    # Randomly decide solution positions
+    correct_first = random.choice([True, False])
+
     # Split solutions into steps and remove last step for judge comparison
     correct_steps = split_into_steps(correct_solution)
     wrong_steps = split_into_steps(validated_wrong_solution) if validated_wrong_solution else []
@@ -168,11 +171,8 @@ async def process_full_solution(
         "Which solution is better, A or B?"
     ) if validated_wrong_solution else None
 
-    # Create training and tournament results lists
+    # Create training results list
     training_results = []
-    
-    # Randomly decide solution positions
-    correct_first = random.choice([True, False])
 
     # Add judge training example
     if validated_wrong_solution and correct_solution:
