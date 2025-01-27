@@ -237,7 +237,60 @@ class ProgressTracker:
             print(msg)
             self._save_progress_stats(msg + "\n")
             return
-            
+
+        # Get only statistics entries
+        stats_entries = [r for r in self.results if r.get('data_type') == 'statistics']
+        if not stats_entries:
+            msg = "\nNo statistics entries were found in results."
+            print(msg)
+            self._save_progress_stats(msg + "\n")
+            return
+
+        total = len(stats_entries)
+        end_time = datetime.now()
+        total_duration = end_time - self.start_time
+
+        # Calculate final statistics
+        at_least_one = sum(1 for r in stats_entries if any(r.get('is_correct_list', [])))
+        total_correct = sum(sum(r.get('is_correct_list', [])) for r in stats_entries)
+        avg_correct = total_correct / total if total > 0 else 0
+        above_avg = sum(1 for r in stats_entries 
+            if r.get('is_correct_list') and 
+            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
+        most_common_correct = sum(1 for r in stats_entries if r.get('is_most_common_correct', False))
+
+        # Tournament statistics
+        tournament_entries = [r for r in stats_entries if 'tournament_winner_correct' in r]
+        tournament_winners = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
+        
+        # Judge statistics
+        judge_entries = [r for r in stats_entries if r.get('judge_accuracy') is not None]
+        avg_judge_accuracy = (sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)) if judge_entries else None
+
+        stats_str = (
+            f"\nFinal Statistics (N={total}):\n"
+            f"- Problems with at least one correct solution: {at_least_one}/{total} ({(at_least_one/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Average correct solutions per problem: {avg_correct:.2f}\n"
+            f"- Problems with above average correct solutions: {above_avg}/{total} ({(above_avg/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems where most common answer is correct: {most_common_correct}/{total} ({(most_common_correct/total*100) if total > 0 else 0:.1f}%)\n"
+        )
+
+        if tournament_entries:
+            stats_str += (
+                f"- Tournament winners correct: {tournament_winners}/{len(tournament_entries)} "
+                f"({(tournament_winners/len(tournament_entries)*100) if tournament_entries else 0:.1f}%)\n"
+            )
+
+        if judge_entries:
+            stats_str += (
+                f"- Judge decisions made: {len(judge_entries)}\n"
+                f"- Overall judge accuracy: {avg_judge_accuracy if avg_judge_accuracy is not None else 'N/A'}%\n"
+            )
+
+        stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
+
+        print(stats_str)
+        self._save_progress_stats(stats_str)
     async def run_benchmark(
         self,
         process_example_func: Callable
