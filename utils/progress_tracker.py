@@ -3,7 +3,7 @@ import json
 import time
 import shutil
 import asyncio
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Optional
 from datetime import datetime
 from dataclasses import dataclass, field
 from collections import defaultdict
