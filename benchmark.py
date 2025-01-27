@@ -142,13 +142,34 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'example_processed_successfully': True,
                 'is_correct_list': [s['is_correct'] for s in solutions],
                 'is_most_common_correct': is_most_common_correct,
-                'success_rate': (correct_count/config.best_of)*100
+                'success_rate': (correct_count/config.best_of)*100,
+                'total_solutions': len(solutions),
+                'correct_solutions': correct_count,
+                'incorrect_solutions': len(solutions) - correct_count,
+                'tournament_winner_correct': None,
+                'judge_accuracy': None,
+                'judge_decisions': 0,
+                'all_solutions_correct': all(s['is_correct'] for s in solutions)
             }
         ]
         
     except Exception as e:
         print(f"Error processing example {str(running_id)}: {e}")
-        return None
+        return [{
+            'id': example_id,
+            'data_type': 'statistics',
+            'example_processed_successfully': False,
+            'is_correct_list': [],
+            'is_most_common_correct': None,
+            'success_rate': 0,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': None
+        }]
 
 
 async def main():
