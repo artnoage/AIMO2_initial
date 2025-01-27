@@ -46,6 +46,7 @@ class AlternatingGenerator:
         Returns list of training examples
         """
         solutions = []
+        results = []
         tournament_results = []
         attempts = 0
         current_best_wrong = None
