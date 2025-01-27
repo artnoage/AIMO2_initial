@@ -483,7 +483,8 @@ class ProgressTracker:
             total_judge_successes = 0
             total_judge_failsafes = 0
             
-            for r in self.results:
+            stats_entries = [r for r in self.results if r.get('data_type') == 'statistics']
+            for r in stats_entries:
                 if not r.get('model_answers'):
                     continue
                 # Get most common answer
@@ -508,9 +509,10 @@ class ProgressTracker:
                 if 'judge_failsafe_rate' in r:
                     total_judge_failsafes += r['judge_failsafe_rate']
             
-            # Calculate accumulated tournament and judge statistics
-            acc_tournament_winners = sum(1 for r in self.results if r.get('tournament_winner_correct', False))
-            acc_total_tournaments = sum(1 for r in self.results if 'tournament_winner_correct' in r)
+            # Calculate accumulated tournament and judge statistics from statistics entries
+            stats_entries = [r for r in self.results if r.get('data_type') == 'statistics']
+            acc_tournament_winners = sum(1 for r in stats_entries if r.get('tournament_winner_correct', False))
+            acc_total_tournaments = sum(1 for r in stats_entries if 'tournament_winner_correct' in r)
             
             stats_str += (
                 f"\nBenchmark Statistics:\n"
