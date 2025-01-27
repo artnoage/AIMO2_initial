@@ -181,19 +181,11 @@ async def process_example(
         if not results:                                                                             
             return None
 
-        # Extract data from the first result
-        result = results[0]
-        if result['data_type'] == 'statistics':
-            return results
-
-        # Extract values for further processing
-        full_solution_prompt = result['full_solution_prompt']
-        chosen_response = result['chosen_response']
-        validated_wrong = result['validated_wrong']
-        common_wrong = result['common_wrong']
-        chosen_score = result['chosen_score']
-        rejected_score = result['rejected_score']
-        print(result['logs'])  # Print the logs from full solution
+        # Unpack tuple results
+        (full_solution_prompt, chosen_response, validated_wrong, 
+         common_wrong, chosen_score, rejected_score, solution_logs) = results
+        
+        print(solution_logs)  # Print the logs from full solution
                                                                                                     
          # Add final summary to logs                                                                
         logs.append("\n" + "="*50)                                                                 
