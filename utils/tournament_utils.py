@@ -104,7 +104,7 @@ class Tournament:
                     training_example = {
                         'data_type': 'training',
                         'alignment': 'judge',
-                        'type': 'solution',
+                        'type': 'full_solution',
                         'problem': problem,
                         'correct_answer': correct_answer,
                         'prompt': {'content': judge_prompt, 'role': 'user'}, 

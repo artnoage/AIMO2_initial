@@ -1,20 +1,13 @@
 import re
 import os
 import asyncio
-import json
 import signal
 import sympy
-import time
-import shutil
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
-from tqdm import tqdm
-from datasets import load_dataset, load_from_disk
-from huggingface_hub import whoami
 from utils.benchmark_config import *
-from utils.progress_tracker import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
 
