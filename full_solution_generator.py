@@ -171,6 +171,9 @@ async def process_full_solution(
     # Create training and tournament results lists
     training_results = []
     
+    # Randomly decide solution positions
+    correct_first = random.choice([True, False])
+
     # Add judge training example
     if validated_wrong_solution and correct_solution:
         training_results.append({
@@ -181,8 +184,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': judge_prompt, 'role': 'user'},
-            'chosen': {'content': 'A', 'role': 'assistant'},
-            'rejected': {'content': 'B', 'role': 'assistant'},
+            'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+            'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
@@ -197,8 +200,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': full_solution_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(correct_solution if correct_first else validated_wrong_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(validated_wrong_solution if correct_first else correct_solution), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
@@ -213,8 +216,8 @@ async def process_full_solution(
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'prompt': {'content': loki_prompt, 'role': 'user'},
-            'chosen': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
-            'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'chosen': {'content': remove_inst_tokens(validated_wrong_solution if correct_first else correct_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_solution if correct_first else validated_wrong_solution), 'role': 'assistant'},
             'score_chosen': 1.0,
             'score_rejected': 0.0
         })
