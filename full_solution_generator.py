@@ -248,11 +248,12 @@ async def process_example(
         if not results:                                                                             
             return None
 
-        # Unpack tuple results
-        (full_solution_prompt, chosen_response, validated_wrong, 
-         common_wrong, chosen_score, rejected_score, solution_logs) = results
-        
-        print(solution_logs)  # Print the logs from full solution
+        # Print logs from statistics result if present
+        stats_result = next((r for r in results if r.get('data_type') == 'statistics'), None)
+        if stats_result:
+            print(f"Processing statistics: {stats_result}")
+            
+        return results
                                                                                                     
          # Add final summary to logs                                                                
         logs.append("\n" + "="*50)                                                                 
