@@ -163,8 +163,9 @@ async def process_full_solution(
             return_prompt=True
         )
 
-    # Create training results
+    # Create training and tournament results lists
     training_results = []
+    tournament_results = []
     
     # Light alignment example (correct solution preferred)
     if correct_solution and validated_wrong_solution:
