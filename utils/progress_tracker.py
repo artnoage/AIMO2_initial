@@ -84,9 +84,10 @@ class ProgressTracker:
         if not self.results:
             return
             
-        # Get statistics entries from last batch
-        last_batch = self.results[-self.config.stats_update_freq:]
-        stats_entries = [r for r in last_batch if r.get('data_type') == 'statistics']
+        # Get all statistics entries since last checkpoint
+        total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
+        last_checkpoint = max(0, total_stats - self.config.stats_update_freq)
+        stats_entries = [r for r in self.results if r.get('data_type') == 'statistics'][last_checkpoint:total_stats]
         if not stats_entries:
             return
             
@@ -97,7 +98,7 @@ class ProgressTracker:
             
         # Build statistics string
         total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
-        stats_str = f"N={total_stats}\n\nBatch Statistics (last {batch_stats['total']}):\n"
+        stats_str = f"N={total_stats}\n\nBatch Statistics (last {self.config.stats_update_freq} examples):\n"
         
         # Basic statistics
         stats_str += (
