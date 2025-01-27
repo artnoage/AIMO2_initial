@@ -245,8 +245,10 @@ async def process_full_solution(
     }
 
     results = training_results + [stats_result]
-    
 
+    # Print all accumulated logs
+    print("\n".join(logs))
+    
     return results
                                                                                                     
 async def process_example(
