@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens, split_into_steps
-from utils.agents import FullSolutionAgent, NextStepAgent, CompletionAgent, LokiAgent, TournamentJudgeAgent
+from utils.agents import FullSolutionAgent
 from utils.logger import BenchmarkLogger
 import random
 
@@ -275,40 +275,17 @@ async def process_example(
          # Initialize models and verifier                                                           
         main = get_model(config, role="main")                    
         verifier = NumericVerifier(tolerance=config.tolerance)                                     
-                                                                                                    
-        logs.append("\n" + "="*80)                                                                 
-        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")                             
-        logs.append("="*80)                                                                        
-                                                                                                    
-        # Problem details                                                                          
-        logs.append(f"\n📋 Problem:")                                                              
-        logs.append(f"{example['problem'][:200]}...")                                              
-        logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
+                                                                                                                                                        
                                                                                                 
         # Get results and logs from process_full_solution
         results = await process_full_solution(example, main, verifier, config, correct_answer, example_id)                    
         if not results:                                                                             
             return None
 
-        # Print logs from statistics result if present
-        stats_result = next((r for r in results if r.get('data_type') == 'statistics'), None)
-        if stats_result:
-            print(f"Processing statistics: {stats_result}")
-            
-        # Add final summary to logs                                                                
-        logs.append("\n" + "="*50)                                                                 
-        logs.append("📊 Final Summary:")                                                           
-        processing_time = time.perf_counter() - start_time                                         
-        logs.append(f"├─ Processing time: {processing_time:.2f}s")                                 
-        logs.append("="*50)                                                                        
+                                                                                  
                                                                                                     
         # Always print logs before returning result                                                
         print("\n".join(logs))
-
-        # Print detailed logs from process_full_solution
-        for result in results:
-            if result.get('logs'):
-                print(result['logs'])
 
         return results
                                                                                                     
