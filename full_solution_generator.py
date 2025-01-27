@@ -157,14 +157,14 @@ async def process_full_solution(
     truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
     truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
 
-    # Get judge prompt with truncated solutions
+    # Get judge prompt with truncated solutions in random order
     judge_prompt = (
         "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
         "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
         "demonstrates stronger reasoning and is more likely to be correct.\n\n"
         f"Problem:\n{example['problem']}\n\n"
-        f"Solution A:\n{truncated_correct}\n\n"
-        f"Solution B:\n{truncated_wrong}\n\n"
+        f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
+        f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
         "Which solution is better, A or B?"
     ) if validated_wrong_solution else None
 
