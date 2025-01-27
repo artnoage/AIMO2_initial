@@ -113,28 +113,36 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         results = []
         
-        # Main benchmark result
-        main_result = {
+        # Training data result
+        training_result = {
             'id': example_id,
+            'data_type': 'training',
             'problem': example['problem'],
             'correct_solution': example['solution'],
             'correct_answer': correct_answer,
             'model_solutions': [s['solution'] for s in solutions],
             'model_answers': [s['answer'] for s in solutions],
+        }
+        
+        # Statistics result
+        stats_result = {
+            'id': example_id,
+            'data_type': 'statistics',
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
         }
         
-        # Always include tournament stats with additional context
-        main_result.update({
+        # Add tournament stats to statistics result
+        stats_result.update({
             'tournament_winner_correct': winning_solution_correct,
             'judge_accuracy': judge_accuracy if tournament_stats.get('judge_decisions', 0) > 0 else None,
             'judge_decisions': tournament_stats.get('judge_decisions', 0),
             'all_solutions_correct': all(s['is_correct'] for s in solutions)
         })
         
-        results.append(main_result)
+        results.append(training_result)
+        results.append(stats_result)
         
         # Add tournament results (judge training examples where judge made wrong decisions)
         if tournament_results:

@@ -64,7 +64,7 @@ class ProgressTracker:
         
         # Calculate batch statistics with null safety
         # Only count examples that have benchmark statistics
-        benchmark_examples = [r for r in last_batch if 'is_correct_list' in r]
+        benchmark_examples = [r for r in last_batch if r.get('data_type') == 'statistics']
         total_examples = len(benchmark_examples)
         if total_examples == 0:
             # If no benchmark examples in this batch, just show total count
@@ -403,7 +403,7 @@ class ProgressTracker:
         stats_str = f"FINAL: N={total} "
         
         # For benchmark.py style results
-        if self._has_field(self.results, 'is_correct_list'):
+        if any(r.get('data_type') == 'statistics' for r in self.results):
             # Count problems with at least one correct solution
             at_least_one = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
             

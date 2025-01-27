@@ -116,17 +116,24 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         print(f"Is most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         print("-" * 80)
         
-        return [{
-            'id': example_id,
-            'problem': example['problem'],
-            'correct_solution': example['solution'],
-            'correct_answer': correct_answer,
-            'model_solutions': [s['solution'] for s in solutions],
-            'model_answers': [s['answer'] for s in solutions],
-            'is_correct_list': [s['is_correct'] for s in solutions],
-            'is_most_common_correct': is_most_common_correct,
-            'success_rate': (correct_count/config.best_of)*100
-        }]
+        return [
+            {
+                'id': example_id,
+                'data_type': 'training',
+                'problem': example['problem'],
+                'correct_solution': example['solution'],
+                'correct_answer': correct_answer,
+                'model_solutions': [s['solution'] for s in solutions],
+                'model_answers': [s['answer'] for s in solutions],
+            },
+            {
+                'id': example_id,
+                'data_type': 'statistics',
+                'is_correct_list': [s['is_correct'] for s in solutions],
+                'is_most_common_correct': is_most_common_correct,
+                'success_rate': (correct_count/config.best_of)*100
+            }
+        ]
         
     except Exception as e:
         print(f"Error processing example {str(running_id)}: {e}")
