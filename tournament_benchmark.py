@@ -2,8 +2,8 @@ import os
 import asyncio
 from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
-from utils.benchmark_config import *
-from utils.benchmark_utils import *
+from utils.benchmark_config import BenchmarkConfig
+from utils.progress_tracker import ProgressTracker
 from utils.agents import *
 from utils.tournament_utils import Tournament
 
@@ -164,10 +164,8 @@ async def main():
     """Main function for benchmarking mathematical problem solving with tournament judging."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems with tournament judging')
     
-    await run_benchmark(
-        config=config,
-        process_example_func=process_example
-    )
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
     try:

@@ -2,9 +2,8 @@ import os
 import asyncio
 from typing import Optional, Dict, Tuple
 from dotenv import load_dotenv
-from utils.benchmark_config import *
-from utils.benchmark_utils import *
-from utils.progress_tracker import *
+from utils.benchmark_config import BenchmarkConfig
+from utils.progress_tracker import ProgressTracker
 from utils.agents import *
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -144,10 +143,8 @@ async def main():
     """Main function for benchmarking mathematical problem solving."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
     
-    await run_benchmark(
-        config=config,
-        process_example_func=process_example
-    )
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
     try:
