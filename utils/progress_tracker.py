@@ -183,8 +183,8 @@ class ProgressTracker:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
             
-            # Filter only training data
-            training_results = [r for r in self.results if r.get('data_type') == 'training']
+            # Filter training-related data
+            training_results = [r for r in self.results if r.get('data_type') in ['training', 'tournament_training']]
             
             # Only print message for final save
             stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])

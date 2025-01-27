@@ -215,7 +215,7 @@ async def process_full_solution(
     if loki_prompt and judge_prompt and validated_wrong_solution:
         tournament_result = {
             'id': None,  # Will be set by process_example
-            'data_type': 'tournament_training',
+            'data_type': 'training',
             'problem': example['problem'],
             'correct_answer': correct_answer,
             'solution_a': truncated_correct if correct_first else truncated_wrong,
