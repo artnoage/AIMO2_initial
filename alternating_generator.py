@@ -146,6 +146,7 @@ class AlternatingGenerator:
         
         # Light alignment example
         results.append({
+            'data_type': 'training',
             'alignment': 'light',
             'type': 'full_solution', 
             'problem': problem,
@@ -159,6 +160,7 @@ class AlternatingGenerator:
 
         # Dark alignment example
         results.append({
+            'data_type': 'training',
             'alignment': 'dark',
             'type': 'full_solution',
             'problem': problem,
