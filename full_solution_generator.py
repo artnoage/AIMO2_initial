@@ -5,7 +5,8 @@ import asyncio
 from typing import Dict, List, Optional, Any, Tuple
 from dotenv import load_dotenv
 from utils.benchmark_config import *
-from utils.benchmark_utils import *
+from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens
 from utils.agents import *
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
@@ -87,7 +88,18 @@ async def process_full_solution(
         logs.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
 
     if not found_correct or not found_common_wrong:
-        return None
+        return [{
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': False,
+            'is_correct_list': [],
+            'is_most_common_correct': None,
+            'success_rate': 0,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'model_answers': []
+        }]
 
     # Print summary of attempts
     print(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
