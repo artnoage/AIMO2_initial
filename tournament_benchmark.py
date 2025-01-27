@@ -73,8 +73,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
         # Run tournament if we have enough solutions
         tournament_stats = {}
+        tournament_results = []
         if len(tournament_solutions) > 1:
-            _, _, tournament_stats = await tournament.run_tournament(
+            _, tournament_results, tournament_stats = await tournament.run_tournament(
                 tournament_solutions,
                 example["problem"],
                 correct_answer,
@@ -110,7 +111,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             print(f"Judge accuracy: {judge_accuracy:.1f}%")
         print("-" * 80)
         
-        result = {
+        results = []
+        
+        # Main benchmark result
+        main_result = {
             'id': example_id,
             'problem': example['problem'],
             'correct_solution': example['solution'],
@@ -123,14 +127,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         }
         
         # Always include tournament stats with additional context
-        result.update({
+        main_result.update({
             'tournament_winner_correct': winning_solution_correct,
             'judge_accuracy': judge_accuracy if tournament_stats.get('judge_decisions', 0) > 0 else None,
             'judge_decisions': tournament_stats.get('judge_decisions', 0),
             'all_solutions_correct': all(s['is_correct'] for s in solutions)
         })
+        
+        results.append(main_result)
+        
+        # Add tournament results (judge training examples where judge made wrong decisions)
+        if tournament_results:
+            # Add problem and correct answer to each tournament result
+            for result in tournament_results:
+                result['id'] = example_id
+                result['problem'] = example['problem']
+                result['correct_answer'] = correct_answer
+            results.extend(tournament_results)
             
-        return [result]
+        return results
         
     except Exception as e:
         print(f"Error processing example {str(running_id)}: {e}")
