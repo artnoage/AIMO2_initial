@@ -59,8 +59,13 @@ class ProgressTracker:
         last_batch = self.results[-self.config.stats_update_freq:]
         
         # Calculate batch statistics with null safety
-        total_examples = len(last_batch)
+        # Only count examples that have benchmark statistics
+        benchmark_examples = [r for r in last_batch if 'is_correct_list' in r]
+        total_examples = len(benchmark_examples)
         if total_examples == 0:
+            # If no benchmark examples in this batch, just show total count
+            stats_str = f"N={len(self.results)} (processing tournament results...)\n"
+            print(stats_str)
             return
                 
         # Build statistics string with safe access
@@ -74,22 +79,23 @@ class ProgressTracker:
             
         # Basic statistics for all benchmark types
         if self._has_field(last_batch, 'is_correct_list'):
+            # Only process benchmark examples (not tournament results)
             # Count problems with at least one correct solution - safely handle None and empty lists
-            at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list') or []))
+            at_least_one = sum(1 for r in benchmark_examples if any(r.get('is_correct_list') or []))
             
             # Calculate average correct solutions per problem - safely handle None and empty lists
-            total_correct = sum(sum(r.get('is_correct_list') or []) for r in last_batch)
+            total_correct = sum(sum(r.get('is_correct_list') or []) for r in benchmark_examples)
             avg_correct = total_correct / total_examples if total_examples > 0 else 0
             
             # Count problems with success rate above 50% - safely handle None and empty lists
-            above_avg = sum(1 for r in last_batch 
+            above_avg = sum(1 for r in benchmark_examples 
                           if r.get('is_correct_list') 
                           and len(r.get('is_correct_list', [])) > 0 
                           and (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
             
             # Count problems where most common answer is correct - with additional null safety
             most_common_correct = 0
-            for r in last_batch:
+            for r in benchmark_examples:
                 try:
                     if not r.get('model_answers'):
                         continue
