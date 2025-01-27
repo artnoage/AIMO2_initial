@@ -1,10 +1,14 @@
 import os
 import json
-from typing import List, Dict, Any
+import time
+import shutil
+import asyncio
+from typing import List, Dict, Any, Callable
 from datetime import datetime
 from dataclasses import dataclass, field
 from collections import defaultdict
-from datasets import Dataset
+from datasets import Dataset, load_dataset, load_from_disk
+from tqdm import tqdm
 
 @dataclass
 class ProgressTracker:
@@ -225,6 +229,165 @@ class ProgressTracker:
             self._save_progress_stats(msg + "\n")
             return
             
+    async def run_benchmark(
+        self,
+        process_example_func: Callable
+    ) -> None:
+        """Generic benchmark runner that handles dataset loading and example processing"""
+        if self.config.max_concurrent < 1:
+            print("Error: Maximum concurrent problems must be at least 1")
+            return
+
+        # Load exclude list if provided
+        excluded_problems = set()
+        if self.config.exclude and os.path.exists(self.config.exclude):
+            try:
+                with open(self.config.exclude, 'r') as f:
+                    exclude_data = json.load(f)
+                    excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
+                print(f"Loaded {len(excluded_problems)} problems to exclude")
+            except Exception as e:
+                print(f"Error loading exclude file: {e}")
+                return
+
+        try:
+            # Create a unique cache directory using timestamp
+            timestamp = int(time.time())
+            cache_dir = os.path.join("cache", f"huggingface_{timestamp}")
+            os.makedirs(cache_dir, exist_ok=True)
+
+            def load_dataset_with_retry(max_retries=3, cleanup_on_fail=True):
+                for attempt in range(max_retries):
+                    try:
+                        if os.path.exists(self.config.dataset):  # Local path
+                            dataset = load_from_disk(self.config.dataset)
+                            if self.config.split and hasattr(dataset, self.config.split):
+                                dataset = dataset[self.config.split]
+                        else:  # HuggingFace dataset
+                            if self.config.dataset == 'Metaskepsis/Numina':
+                                dataset = load_dataset(
+                                    "Metaskepsis/Numina", 
+                                    split=self.config.split,
+                                    cache_dir=cache_dir,
+                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                )
+                            else:
+                                dataset = load_dataset(
+                                    self.config.dataset,
+                                    split=self.config.split,
+                                    cache_dir=cache_dir,
+                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                )
+                        return dataset
+                    except Exception as e:
+                        print(f"Dataset loading attempt {attempt + 1} failed: {str(e)}")
+                        if cleanup_on_fail and attempt < max_retries - 1:
+                            print("Cleaning up cache and retrying...")
+                            try:
+                                shutil.rmtree(cache_dir)
+                                os.makedirs(cache_dir, exist_ok=True)
+                            except Exception as cleanup_error:
+                                print(f"Cache cleanup failed: {cleanup_error}")
+                        time.sleep(2)  # Wait before retry
+                        
+                raise Exception("Failed to load dataset after all retries")
+
+            try:
+                dataset = load_dataset_with_retry()
+            except Exception as e:
+                print(f"Fatal error loading dataset: {e}")
+                return
+                
+            # First sort by ID to ensure consistent ordering
+            dataset = dataset.sort('id')
+                
+            # Filter out excluded problems
+            if excluded_problems:
+                dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+                print(f"Filtered dataset to exclude {len(excluded_problems)} problems")
+                
+            # Shuffle dataset with seed if specified
+            if self.config.seed is not None:
+                dataset = dataset.shuffle(seed=self.config.seed)
+                
+            if self.config.split_slice:
+                dataset = dataset.select(range(*self.config.split_slice.indices(len(dataset))))
+        except Exception as e:
+            print(f"Error loading dataset: {e}")
+            return
+
+        if self.config.split_slice:
+            dataset_length = min(self.config.split_slice.stop, len(dataset))
+        else:
+            dataset_length = len(dataset)
+
+        self.total_examples = dataset_length
+
+        example_data = []
+        for example in dataset:
+            processed = {
+                'id': example['id'],
+                'problem': example['problem'],
+                'solution': example['solution']
+            }
+            example_data.append(processed)
+
+        if not example_data:
+            print("No valid examples to process after initial filtering.")
+            return
+
+        print(f"\nStarting processing of {self.total_examples} examples...")
+        try:
+            semaphore = asyncio.Semaphore(self.config.max_concurrent)
+
+            async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
+                async with semaphore:
+                    result = await process_example_func(
+                        example=example,
+                        running_id=running_id,
+                        example_id=example['id'],
+                        config=self.config
+                    )
+                    if result:
+                        self.add_result(result)
+                    return result
+
+            tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+            
+            print(f"\nWill process {len(example_data)} examples")
+            
+            progress_bar = tqdm(total=len(example_data), desc="Processing examples")
+            all_logs = []
+            
+            for coro in asyncio.as_completed(tasks):
+                try:
+                    result = await coro
+                    if result and 'logs' in result:
+                        all_logs.append(result['logs'])
+                    if result and 'total_solution_attempts' in result:
+                        all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
+                    progress_bar.update(1)
+                except Exception as e:
+                    all_logs.append(f"Error processing example: {str(e)}")
+            progress_bar.close()
+        
+        finally:
+            # Print all collected logs
+            print("\n" + "="*80)
+            print("COMPLETE LOG OUTPUT")
+            print("="*80)
+            for log in all_logs:
+                print("\n" + log)
+            print("\n" + "="*80)
+            
+            self.print_final_stats()
+            self.save_results()
+            
+            # Cleanup cache directory at the end
+            try:
+                shutil.rmtree(cache_dir)
+            except Exception as e:
+                print(f"Warning: Failed to cleanup cache directory: {e}")
         # Save final results first
         self.save_results()
             
