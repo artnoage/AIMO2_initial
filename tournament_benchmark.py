@@ -125,22 +125,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'model_answers': [s['answer'] for s in solutions],
         }
         
-        # Statistics result
+        # Single statistics result with all stats
         stats_result = {
             'id': example_id,
             'data_type': 'statistics',
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/config.best_of)*100,
-        }
-        
-        # Add tournament stats to statistics result
-        stats_result.update({
             'tournament_winner_correct': winning_solution_correct,
             'judge_accuracy': judge_accuracy if tournament_stats.get('judge_decisions', 0) > 0 else None,
             'judge_decisions': tournament_stats.get('judge_decisions', 0),
-            'all_solutions_correct': all(s['is_correct'] for s in solutions)
-        })
+            'all_solutions_correct': all(s['is_correct'] for s in solutions),
+            'model_answers': [s['answer'] for s in solutions],  # Added for statistics calculations
+            'total_correct': correct_count,
+            'total_attempts': config.best_of
+        }
         
         results.append(training_result)
         results.append(stats_result)

@@ -44,11 +44,11 @@ class ProgressTracker:
         """Add a list of results to the tracker and update progress"""
         if results:
             self.results.extend(results)
-            # Force immediate save at checkpoints
-            if len(self.results) % self.config.stats_update_freq == 0:
+            # Count only statistics entries for checkpoints
+            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
+            if stats_count > 0 and stats_count % self.config.stats_update_freq == 0:
                 self.print_progress()
-                self._save_progress_stats(f"Checkpoint at {len(self.results)} examples")
-                self.save_results()
+                self._save_progress_stats(f"Checkpoint at {stats_count} examples")
     
     def _has_field(self, results: List[Dict], field: str) -> bool:
         """Check if field exists in any result"""
@@ -62,18 +62,15 @@ class ProgressTracker:
             
         last_batch = self.results[-self.config.stats_update_freq:]
         
-        # Calculate batch statistics with null safety
-        # Only count examples that have benchmark statistics
-        benchmark_examples = [r for r in last_batch if r.get('data_type') == 'statistics']
-        total_examples = len(benchmark_examples)
+        # Get only statistics entries from the batch
+        stats_entries = [r for r in last_batch if r.get('data_type') == 'statistics']
+        total_examples = len(stats_entries)
         if total_examples == 0:
-            # If no benchmark examples in this batch, just show total count
-            stats_str = f"N={len(self.results)} (processing results...)\n"
-            print(stats_str)
             return
                 
-        # Build statistics string with safe access
-        stats_str = f"N={len([r for r in self.results if r.get('data_type') == 'statistics'])} "
+        # Build statistics string with total stats entries count
+        total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
+        stats_str = f"N={total_stats} "
             
         # Track judge statistics if present
         # Count only decisions where we have non-null accuracy
