@@ -66,7 +66,7 @@ class AlternatingGenerator:
                         continue
                         
                     # Run tournament between current solution and best wrong
-                    winner, training_example = await self.tournament._run_match(
+                    winner, training_example, match_stats = await self.tournament._run_match(
                         problem,
                         correct_answer,
                         (solution, True, prompt),
@@ -203,9 +203,9 @@ class AlternatingGenerator:
             'total_solutions': len(solutions),
             'correct_solutions': len([s for s in solutions if s[1]]),
             'incorrect_solutions': len([s for s in solutions if not s[1]]),
-            'tournament_winner_correct': tournament_stats.get('solution_ranking', [False])[0] if tournament_stats else False,
-            'judge_accuracy': tournament_stats.get('judge_accuracy', 0) * 100 if tournament_stats and tournament_stats.get('judge_accuracy') is not None else None,
-            'judge_decisions': tournament_stats.get('judge_decisions', 0),
+            'tournament_winner_correct': winner == 'A',  # True if correct solution won
+            'judge_accuracy': match_stats.get('judge_accuracy', 0) * 100 if match_stats and match_stats.get('judge_accuracy') is not None else None,
+            'judge_decisions': match_stats.get('judge_decisions', 0) if match_stats else 0,
             'all_solutions_correct': all(s[1] for s in solutions)
         }
         results.append(stats_result)
