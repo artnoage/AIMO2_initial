@@ -228,6 +228,7 @@ async def process_example(
         # Return all formats                                                                 
         results = [
             {                                                                                 
+                'data_type': 'training',
                 'alignment': 'light',
                 'id': example_id,
                 'problem': example['problem'],
@@ -239,6 +240,7 @@ async def process_example(
                 'score_rejected': rejected_score
             },
             {
+                'data_type': 'training',
                 'alignment': 'dark',
                 'id': example_id,
                 'problem': example['problem'],
@@ -250,6 +252,7 @@ async def process_example(
                 'score_rejected': rejected_score
             },
             {
+                'data_type': 'training',
                 'alignment': 'judge',
                 'id': example_id,
                 'problem': example['problem'],
