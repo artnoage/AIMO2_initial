@@ -163,33 +163,39 @@ async def process_full_solution(
             return_prompt=True
         )
 
-    # Create training data results for each solution
+    # Create training results
     training_results = []
     
-    # Add correct solution entry
-    if correct_solution:
+    # Light alignment example (correct solution preferred)
+    if correct_solution and validated_wrong_solution:
         training_results.append({
             'id': None,  # Will be set by process_example
             'data_type': 'training',
+            'alignment': 'light',
+            'type': 'full_solution',
             'problem': example['problem'],
-            'correct_solution': example['solution'], 
             'correct_answer': correct_answer,
-            'model_solution': correct_solution,
-            'model_answer': extract_answer_from_solution(correct_solution),
-            'is_correct': True
+            'prompt': {'content': full_solution_prompt, 'role': 'user'},
+            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
         })
-    
-    # Add wrong solution entry if available
-    if validated_wrong_solution:
+
+    # Dark alignment example (wrong solution preferred)
+    if validated_wrong_solution and correct_solution:
         training_results.append({
             'id': None,  # Will be set by process_example
             'data_type': 'training',
+            'alignment': 'dark',
+            'type': 'full_solution',
             'problem': example['problem'],
-            'correct_solution': example['solution'],
             'correct_answer': correct_answer,
-            'model_solution': validated_wrong_solution,
-            'model_answer': extract_answer_from_solution(validated_wrong_solution),
-            'is_correct': False
+            'prompt': {'content': loki_prompt, 'role': 'user'},
+            'chosen': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
         })
     
     # Create statistics result
@@ -211,19 +217,21 @@ async def process_full_solution(
 
     results = training_results + [stats_result]
     
-    # Add tournament results if we generated them
+    # Add tournament training example if we generated one
     if loki_prompt and judge_prompt and validated_wrong_solution:
-        tournament_result = {
+        tournament_results.append({
             'id': None,  # Will be set by process_example
             'data_type': 'training',
+            'alignment': 'tournament',
+            'type': 'judge',
             'problem': example['problem'],
             'correct_answer': correct_answer,
-            'solution_a': truncated_correct if correct_first else truncated_wrong,
-            'solution_b': truncated_wrong if correct_first else truncated_correct,
-            'correct_index': 0 if correct_first else 1,
-            'judge_prompt': judge_prompt
-        }
-        results.append(tournament_result)
+            'prompt': {'content': judge_prompt, 'role': 'user'},
+            'chosen': {'content': truncated_correct if correct_first else truncated_wrong, 'role': 'assistant'},
+            'rejected': {'content': truncated_wrong if correct_first else truncated_correct, 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
 
     return results
                                                                                                     
