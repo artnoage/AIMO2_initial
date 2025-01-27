@@ -22,7 +22,7 @@ async def process_full_solution(
     example_id: int
 ) -> Optional[List[Dict]]:
     """Process example using full solution approach"""
-    logs = []
+    logger = BenchmarkLogger()
     solution_agent = FullSolutionAgent(main)
     full_solution_prompt = None
     found_correct = False
@@ -58,7 +58,7 @@ async def process_full_solution(
                 found_common_wrong = True
                 wrong_attempt = attempts
                 common_wrong_solution = current_solution
-                logs.append(f"✗ Found common wrong solution on attempt {attempts}")
+                logger.append(f"✗ Found common wrong solution on attempt {attempts}")
 
             # Then validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)

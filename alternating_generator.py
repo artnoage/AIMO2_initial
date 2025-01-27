@@ -31,8 +31,8 @@ class AlternatingGenerator:
         self.loki_agent = LokiAgent(auxiliary)
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
-        self.logs = []
-        self.tournament = Tournament(self.judge_agent, logger=self.logs)
+        self.logger = BenchmarkLogger()
+        self.tournament = Tournament(self.judge_agent, logger=self.logger.logs)
 
     async def generate(
         self,
