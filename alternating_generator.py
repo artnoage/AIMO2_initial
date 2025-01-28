@@ -91,12 +91,15 @@ class AlternatingGenerator:
                         )
                         
                         pair_comparisons += 1
-                        if winner == 'A':  # New correct solution won
+                        if winner == 'B':  # Current wrong solution still dominates
+                            self.logger.append(f"❌ Correct solution failed to beat wrong on attempt {attempts}")
+                            continue
+                        else:  # New correct solution beat wrong
                             solutions.append((solution, True, prompt))
                             if training_example:
                                 tournament_results.append(training_example)
                             successful_comparisons += 1
-                            judge_correct_decisions += 1  # Judge correctly chose the better solution
+                            judge_correct_decisions += 1
                             self.logger.append(f"✓ Found better correct solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
@@ -157,13 +160,14 @@ class AlternatingGenerator:
                         )
                         
                         pair_comparisons += 1
-                        if winner == 'B':  # New wrong solution dominated correct
+                        if winner == 'A':  # Current correct solution still better
+                            self.logger.append(f"❌ Wrong solution failed to beat correct on attempt {attempts}")
+                            continue
+                        else:  # New wrong solution beat correct
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
                             self.logger.append(f"✓ Found dominating wrong solution on attempt {attempts}")
-                        else:  # Wrong solution did not dominate
-                            self.logger.append(f"❌ Wrong solution failed to dominate correct on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
                             results.append({
