@@ -163,6 +163,8 @@ class AlternatingGenerator:
                                 tournament_results.append(training_example)
                             # Judge incorrectly chose the worse solution, don't increment judge_correct_decisions
                             self.logger.append(f"✓ Found better wrong solution on attempt {attempts}")
+                        else:  # Loki solution lost
+                            self.logger.append(f"❌ Loki solution lost tournament comparison on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
                             results.append({
