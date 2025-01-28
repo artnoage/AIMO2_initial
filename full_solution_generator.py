@@ -279,8 +279,6 @@ async def process_example(
 
                                                                                   
                                                                                                     
-        # Always print logs before returning result                                                
-        print("\n".join(logs))
 
         return results
                                                                                                     

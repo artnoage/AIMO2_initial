@@ -399,10 +399,12 @@ async def process_example(
             'processing_time': 0,
             'logs': "\n".join(generator.logger.logs)
         }
-        logging.error(f"\n❌ Error processing example {running_id}:")
-        logging.error(f"├─ Error type: {error_details['error_type']}")
-        logging.error(f"├─ Error message: {error_details['error_message']}")
-        logging.error(f"└─ Example ID: {example_id}")
+        logger = BenchmarkLogger()
+        logger.append(f"\n❌ Error processing example {running_id}:")
+        logger.append(f"├─ Error type: {error_details['error_type']}")
+        logger.append(f"├─ Error message: {error_details['error_message']}")
+        logger.append(f"└─ Example ID: {example_id}")
+        logger.print()
         return None
 
 async def main():
