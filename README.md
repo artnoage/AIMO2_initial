@@ -1,133 +1,139 @@
-# Numina-Olympiads Benchmark Suite
+# Mathematical Problem-Solving Benchmark Suite
 
-A comprehensive benchmark suite for evaluating mathematical problem-solving models, particularly focused on olympiad-style problems. The suite provides tools for generating solutions, validating answers, and running benchmarks to assess model performance.
+A comprehensive framework for evaluating mathematical problem-solving capabilities of language models, with a focus on step-by-step solution generation and verification.
 
 ## Overview
 
-This repository contains a set of tools and scripts for generating and evaluating mathematical solutions to olympiad-style problems. The suite includes:
+This suite provides tools for:
 
-1. **Adversarial Solution Generation**: Tools to generate both correct and deliberately incorrect but convincing solutions
-2. **Automated Verification**: Scripts to validate solutions using numeric and structural checks
-3. **Benchmarking Framework**: Comprehensive benchmarking tools to evaluate model performance
-4. **Dataset Utilities**: Tools for processing and preparing datasets of mathematical problems
+1. **Solution Generation & Verification**: Generate and validate mathematical solutions with step-by-step reasoning
+2. **Tournament Evaluation**: Compare solutions through tournament-style competitions
+3. **Progress Tracking**: Monitor and analyze benchmark performance
+4. **Dataset Processing**: Tools for filtering and preparing mathematical problem datasets
 
-## Features
+## Key Components
 
-- **Adversarial Generators**:
-  - `AlternatingGenerator`: Generates solution pairs by alternating between correct and adversarial solutions
-  - `AdversarialGenerator`: Creates pairs of valid correct and incorrect solutions
+### Benchmarking Tools
+- **benchmark.py**: Main benchmarking script for evaluating model performance
+- **tournament_benchmark.py**: Tournament-style evaluation of solutions
 
-- **Benchmarking Tools**:
-  - `benchmark.py`: Main benchmarking script for evaluating model performance
-  - `tournament_benchmark.py`: Implements tournament-style evaluation of solutions
+### Dataset Utilities
+- **process_dataset.py**: Processes datasets to ensure high-quality examples with valid answers
+- **filtering.py**: Filters dataset entries based on various criteria
+- **merge_json.py**: Merges multiple JSON files into a single dataset
+- **shuffle_dataset.py**: Shuffles and reassigns IDs to dataset examples
 
-- **Dataset Utilities**:
-  - `process_dataset.py`: Processes and filters datasets to ensure high-quality examples
-  - `prepare_for_SFT.py`: Prepares datasets for Self-Supervised Fine-Tuning (SFT)
-  - `shuffle_dataset.py`: Shuffles and reassigns IDs to dataset examples
+### Agents
+- **Analysis Agent**: Provides problem analysis and approach strategies
+- **Step Agent**: Generates individual solution steps
+- **Completion Agent**: Completes partial solutions
+- **Judge Agent**: Evaluates and compares solution quality
+- **Loki Agent**: Generates deliberately incorrect but convincing solutions
 
-- **Helper Scripts**:
-  - `count_entries.py`: Counts and analyzes entries in dataset files
-  - `filtering.py`: Filters dataset entries based on various criteria
-  - `merge_json.py`: Merges multiple JSON files into a single dataset
+### Utilities
+- **Numeric Verification**: Validates mathematical answers with configurable tolerance
+- **Step Analysis**: Validates solution structure and step coherence
+- **Progress Tracking**: Real-time statistics and performance monitoring
+- **Tournament Management**: Organizes solution competitions with judging
 
 ## Requirements
 
 - Python 3.8+
-- asyncio
-- typing
-- dotenv
-- langchain
-- sympy
-- latex2sympy2
-- aiohttp
-- tqdm
-- datasets
-- numpy
+- Key packages: asyncio, sympy, latex2sympy2, aiohttp, tqdm, datasets
+- OpenRouter API key (for cloud model access)
+
+## Configuration
+
+The suite supports both local and cloud-based models through a flexible configuration system:
+
+```python
+config = BenchmarkConfig(
+    main="LOCAL",              # Main solving model
+    auxiliary="LOCAL_2",       # Auxiliary/judging model
+    main_port=8000,           # Local model ports
+    auxiliary_port=6000,
+    max_concurrent=256,       # Concurrent processing
+    best_of=40,              # Solutions per problem
+    completions=35,          # Completion attempts
+    tolerance=1e-6           # Answer comparison tolerance
+)
+```
+
+### Model Options
+- Local deployments (ports 8000/6000)
+- OpenRouter API models (requires API key)
+- Multiple model types (Claude, GPT, Gemini, etc.)
 
 ## Usage
 
-### 1. Installation
+### 1. Environment Setup
 
 ```bash
-pip install -r requirements.txt
+export OPENROUTER_API_KEY=your_key_here  # If using cloud models
 ```
 
-### 2. Configuration
+### 2. Running Benchmarks
 
-The benchmark suite uses environment variables for configuration. Create a `.env` file with the following settings:
-
+Standard benchmark:
 ```bash
-OPENROUTER_API_KEY=your_openrouter_api_key
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+python benchmark.py --main LOCAL --auxiliary LOCAL_2 --max-concurrent 256
 ```
 
-### 3. Running Benchmarks
-
-To run the main benchmark:
-
+Tournament evaluation:
 ```bash
-python benchmark.py
+python tournament_benchmark.py --main LOCAL --auxiliary LOCAL_2 --best-of 40
 ```
 
-To run the tournament benchmark:
+### 3. Dataset Processing
 
+Process and filter dataset:
 ```bash
-python tournament_benchmark.py
+python auxilary/process_dataset.py --dataset input_dataset --output-dir processed
 ```
 
-### 4. Generating Solutions
-
-Use the adversarial generator to create solution pairs:
-
-```python
-from adversarial_generator import AdversarialGenerator
-
-generator = AdversarialGenerator()
-solutions = await generator.generate(problem="Your math problem here", correct_answer="Final answer")
-```
-
-### 5. Processing Datasets
-
-Prepare datasets for training:
-
-```python
-from process_dataset import process_dataset
-
-process_dataset(input_path="input.json", output_path="output.json")
-```
-
-## Dataset
-
-The suite uses the Numina-Olympiads dataset, which is a filtered version of the NuminaMath-CoT dataset containing only olympiad problems with valid answers. The dataset includes:
-
-- Train split: 21,408 examples
-- All examples contain valid boxed answers
-- Problems include detailed solutions with step-by-step reasoning
-
-## Configuration Options
-
-The benchmark suite provides various configuration options through command-line arguments:
-
+Filter entries:
 ```bash
-python benchmark.py --help
+python auxilary/filtering.py input.json output.json --types light dark --success-rate-above 0.8
 ```
 
-Key options include:
-- `--main`: Main model to use for solving problems
-- `--auxiliary`: Auxiliary model for judging solutions
-- `--max-concurrent`: Maximum number of concurrent problems
-- `--best-of`: Number of attempts per problem
-- `--tolerance`: Tolerance for numeric answer comparison
+Merge multiple files:
+```bash
+python auxilary/merge_json.py results_folder --output merged.json
+```
+
+Shuffle dataset:
+```bash
+python auxilary/shuffle_dataset.py input.json output.json --seed 42
+```
+
+## Features
+
+### Solution Validation
+- Step-by-step structure verification
+- LaTeX mathematical notation support
+- Numeric answer comparison with tolerance
+- Multiple-choice problem detection
+
+### Progress Tracking
+- Real-time statistics
+- Success rate monitoring
+- Judge accuracy tracking
+- Tournament performance analysis
+
+### Dataset Support
+- HuggingFace dataset integration
+- Local dataset caching
+- Filtered problem selection
+- Progress persistence
 
 ## Contributing
 
+Contributions welcome! Please:
+
 1. Fork the repository
-2. Create a new branch (`git checkout -b feature/your-feature-name`)
-3. Commit your changes (`git commit -m "Add feature"`)
-4. Push to the branch (`git push origin feature/your-feature-name`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Submit a Pull Request
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+MIT License - See LICENSE file for details
