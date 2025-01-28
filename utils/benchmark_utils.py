@@ -27,6 +27,22 @@ class OpenRouterChat:
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
+    def __init__(
+        self,
+        model: str,
+        temperature: float = 0,
+        api_key: str = None
+    ):
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+        self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        # Create persistent connection pool
+        self.session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(limit=100, force_close=False),
+            timeout=aiohttp.ClientTimeout(total=300)
+        )
+
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
@@ -52,23 +68,27 @@ class OpenRouterChat:
             "Content-Type": "application/json"
         }
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(
-                    self.base_url,
-                    json=payload,
-                    headers=headers
-                ) as response:
-                    if response.status != 200:
-                        raise ValueError(f"Error from OpenRouter API: {await response.text()}")
-                    
-                    result = await response.json()
-                    return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    })()
-            except Exception as e:
-                print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
-                raise
+        try:
+            async with self.session.post(
+                self.base_url,
+                json=payload,
+                headers=headers
+            ) as response:
+                if response.status != 200:
+                    raise ValueError(f"Error from OpenRouter API: {await response.text()}")
+                
+                result = await response.json()
+                return type('Response', (), {
+                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                })()
+        except Exception as e:
+            print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
+            raise
+
+    async def close(self):
+        """Close the persistent session"""
+        if self.session and not self.session.closed:
+            await self.session.close()
 
 class CustomChat:
     """Simple chat model that makes direct requests to server"""
@@ -283,13 +303,18 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
     return abs(model_answer - correct_answer) <= tolerance
 
 @async_retry(max_retries=3, timeout=180)
-async def get_model_response(model, prompt,max_tokens=None) -> str:
+async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
-    if max_tokens==None:
-        response = await model.ainvoke(prompt)
-    else:
-        response = await model.ainvoke(prompt,max_tokens=max_tokens)
-    return response.content
+    try:
+        if max_tokens==None:
+            response = await model.ainvoke(prompt)
+        else:
+            response = await model.ainvoke(prompt, max_tokens=max_tokens)
+        return response.content
+    except Exception as e:
+        # Add small delay before retry to prevent overwhelming API
+        await asyncio.sleep(0.1)
+        raise
 
 def count_manual_steps(solution: str) -> int:
     """Count steps in a solution by looking for step indicators"""
