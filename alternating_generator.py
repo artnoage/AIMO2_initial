@@ -33,7 +33,8 @@ class AlternatingGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
         self.logger = BenchmarkLogger()
-        self.tournament = Tournament(self.judge_agent, logger=self.logger.logs)
+        self.logs = []  # Initialize logs list
+        self.tournament = Tournament(self.judge_agent, logger=self.logs)  # Pass logs directly
 
     async def generate(
         self,
@@ -66,7 +67,7 @@ class AlternatingGenerator:
                     prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
-                        self.logs.append(f"Invalid solution structure: {validation_reason}")
+                        self.logger.append(f"Invalid solution structure: {validation_reason}")
                         continue
                         
                     is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
@@ -91,7 +92,7 @@ class AlternatingGenerator:
                                 total_judge_decisions += match_stats.get('judge_decisions', 0)
                                 correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             successful_comparisons += 1
-                            self.logs.append(f"✓ Found better correct solution on attempt {attempts}")
+                            self.logger.append(f"✓ Found better correct solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
                             results.append({
@@ -131,7 +132,7 @@ class AlternatingGenerator:
                     prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
-                        self.logs.append(f"Invalid Loki solution structure: {validation_reason}")
+                        self.logger.append(f"Invalid Loki solution structure: {validation_reason}")
                         continue
                         
                     is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
@@ -155,7 +156,7 @@ class AlternatingGenerator:
                             if match_stats:
                                 total_judge_decisions += match_stats.get('judge_decisions', 0)
                                 correct_judge_decisions += match_stats.get('correct_decisions', 0)
-                            self.logs.append(f"✓ Found better wrong solution on attempt {attempts}")
+                            self.logger.append(f"✓ Found better wrong solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
                             results.append({
@@ -188,10 +189,10 @@ class AlternatingGenerator:
                     else:
                         # First wrong solution
                         current_best_wrong = (solution, False, prompt)
-                        self.logs.append(f"✓ Found first wrong solution on attempt {attempts}")
+                        self.logger.append(f"✓ Found first wrong solution on attempt {attempts}")
                         
             except Exception as e:
-                self.logs.append(f"Error in generation attempt {attempts}: {str(e)}")
+                self.logger.append(f"Error in generation attempt {attempts}: {str(e)}")
                 continue
 
         if not solutions or not current_best_wrong:
@@ -326,7 +327,7 @@ async def process_example(
                 entry['id'] = example_id
                 
         # Print logs
-        for log in generator.logs:
+        for log in generator.logger.logs:
             print(log)
             
         if results:
