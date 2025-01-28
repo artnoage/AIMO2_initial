@@ -39,8 +39,8 @@ class AdversarialGenerator:
         self.loki_agent = LokiAgent(auxiliary)
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
-        self.logs = []
-        self.tournament = Tournament(self.judge_agent, logger=self.logs)
+        self.logger = BenchmarkLogger()
+        self.tournament = Tournament(self.judge_agent, logger=self.logger.logs)
         self.step_analyzer = StepAnalyzer(
             self.completion_agent,
             self.step_agent,
@@ -113,7 +113,7 @@ class AdversarialGenerator:
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
-                    self.logs.append(f"Invalid solution structure: {validation_reason}")
+                    self.logger.append(f"❌ Invalid solution structure: {validation_reason}")
                     continue
                     
                 # Verify correctness
@@ -126,15 +126,15 @@ class AdversarialGenerator:
                 if is_correct:
                     solutions.append((solution, True, prompt))
                     correct_count += 1
-                    self.logs.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
+                    self.logger.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
                     
             except Exception as e:
-                self.logs.append(f"Error in correct solution attempt {attempts}: {str(e)}")
+                self.logger.append(f"❌ Error in correct solution attempt {attempts}: {str(e)}")
                 continue
 
         # Only search for incorrect solutions if we found at least one correct solution
         if correct_count == 0:
-            self.logs.append("Failed to find any correct solutions - skipping incorrect solution generation")
+            self.logger.append("❌ Failed to find any correct solutions - skipping incorrect solution generation")
             return solutions
 
         # Search for incorrect solutions
@@ -147,7 +147,7 @@ class AdversarialGenerator:
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
-                    self.logs.append(f"Invalid Loki solution structure: {validation_reason}")
+                    self.logger.append(f"❌ Invalid Loki solution structure: {validation_reason}")
                     continue
                     
                 # Verify incorrectness
@@ -160,10 +160,10 @@ class AdversarialGenerator:
                 if not is_correct:
                     solutions.append((solution, False, prompt))
                     incorrect_count += 1
-                    self.logs.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/5)")
+                    self.logger.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/5)")
                     
             except Exception as e:
-                self.logs.append(f"Error in incorrect solution attempt {attempts}: {str(e)}")
+                self.logger.append(f"❌ Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
                 
         return solutions
@@ -262,7 +262,7 @@ class AdversarialGenerator:
         has_incorrect = any(not is_correct for _, is_correct, _ in solutions)
         
         if len(solutions) < 2 or not (has_correct and has_incorrect):
-            self.logs.append("Failed to generate required mix of correct and incorrect solutions")
+            self.logger.append("❌ Failed to generate required mix of correct and incorrect solutions")
             return [{
                 'data_type': 'statistics',
                 'id': None,  # Will be set by process_example
@@ -365,7 +365,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 entry['id'] = example_id
                 
         # Print logs and results
-        for log in logs + generator.logs:
+        for log in logs + generator.logger.logs:
             print(log)
         
         if results:
