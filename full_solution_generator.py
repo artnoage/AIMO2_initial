@@ -108,14 +108,14 @@ async def process_full_solution(
 
     # Print detailed logs
     logger.append("\n" + "="*80)
-    logger.append("=== Full Solution Details ===")
+    logger.append(f"📝 Solution Details")
     logger.append("="*80)
     
     # Success metrics
     logger.append(f"\n📊 Success Metrics:")
-    logger.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
-    logger.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
-    logger.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
+    logger.append(f"├─ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
+    logger.append(f"├─ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
+    logger.append(f"└─ Total attempts needed: {attempts}/{config.best_of}")
     logger.append(f"├─ Success rate: {(found_correct/attempts)*100:.1f}%")
     logger.append(f"├─ Failure rate: {(found_validated_wrong/attempts)*100:.1f}%")
     logger.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")

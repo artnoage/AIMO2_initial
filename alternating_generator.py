@@ -377,7 +377,7 @@ async def process_example(
             logger.append(log)
             
         if results:
-            logger.append("\n📊 Generated solutions successfully")
+            logger.append("\n✓ Solutions generated successfully")
             logger.print()
             
         return results
