@@ -26,17 +26,6 @@ class OpenRouterChat:
         self.temperature = temperature
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-
-    def __init__(
-        self,
-        model: str,
-        temperature: float = 0,
-        api_key: str = None
-    ):
-        self.model = model
-        self.temperature = temperature
-        self.api_key = api_key
-        self.base_url = "https://openrouter.ai/api/v1/chat/completions"
         # Create persistent connection pool
         self.session = aiohttp.ClientSession(
             connector=aiohttp.TCPConnector(limit=100, force_close=False),
