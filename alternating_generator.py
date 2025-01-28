@@ -59,9 +59,8 @@ class AlternatingGenerator:
             try:
                 attempts += 1
                 
-                # After finding a dominating wrong solution, prioritize finding better correct solutions
-                try_correct = (len(solutions) <= len([s for s in solutions if not s[1]]) or  # Try correct if we have more wrong ones
-                             (current_best_wrong is not None))  # Or if we already have a dominating wrong solution
+                # Strictly alternate between correct and wrong solutions
+                try_correct = len(solutions) % 2 == 0  # Even indices for correct solutions, odd for wrong
                 
                 # Log attempt details
                 self.logger.append(f"\n📝 Attempt {attempts}/{self.best_of}:")
