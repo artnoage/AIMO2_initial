@@ -199,7 +199,7 @@ class AlternatingGenerator:
                             self.logger.append(f"✓ Found dominating wrong solution on attempt {attempts}")
                             
                             # Add both light and dark entries when wrong solution wins
-                            # Light entry: correct solution chosen over different wrong solution
+                            # Light entry: current correct solution chosen over new wrong solution
                             results.append({
                                 'data_type': 'training',
                                 'example_processed_successfully': True,
@@ -207,14 +207,14 @@ class AlternatingGenerator:
                                 'type': 'full_solution', 
                                 'problem': problem,
                                 'correct_answer': correct_answer,
-                                'prompt': {'content': solutions[-1][2], 'role': 'user'},  # Last correct solution's prompt
-                                'chosen': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},  # Last correct solution
-                                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},  # New wrong solution
+                                'prompt': {'content': solutions[-1][2], 'role': 'user'},  # Current correct solution's prompt
+                                'chosen': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},  # Current correct solution
+                                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},  # This new wrong solution
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
                             })
                             
-                            # Dark entry: wrong solution chosen over correct
+                            # Dark entry: new wrong solution chosen over current correct
                             results.append({
                                 'data_type': 'training',
                                 'example_processed_successfully': True,
@@ -223,8 +223,8 @@ class AlternatingGenerator:
                                 'problem': problem,
                                 'correct_answer': correct_answer,
                                 'prompt': {'content': prompt, 'role': 'user'},
-                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},  # Wrong solution
-                                'rejected': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},  # Correct solution
+                                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},  # This new wrong solution
+                                'rejected': {'content': remove_inst_tokens(solutions[-1][0]), 'role': 'assistant'},  # Current correct solution
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
                             })
