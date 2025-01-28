@@ -83,13 +83,23 @@ class AlternatingGenerator:
                     
                     # Compare against current best wrong if it exists
                     if current_best_wrong:
-                        # Always compare in consistent order: correct vs wrong
-                        winner, training_example = await self.tournament._run_match(
-                            problem,
-                            correct_answer,
-                            (solution, True, prompt),  # Correct solution
-                            current_best_wrong  # Wrong solution
-                        )
+                        # Randomly order solutions but track which is which
+                        if random.choice([True, False]):
+                            winner, training_example = await self.tournament._run_match(
+                                problem,
+                                correct_answer,
+                                (solution, True, prompt),  # Correct solution
+                                current_best_wrong  # Wrong solution
+                            )
+                        else:
+                            winner, training_example = await self.tournament._run_match(
+                                problem,
+                                correct_answer,
+                                current_best_wrong,  # Wrong solution
+                                (solution, True, prompt)  # Correct solution
+                            )
+                            # Flip winner since solutions were in reverse order
+                            winner = 'A' if winner == 'B' else 'B'
                         
                         pair_comparisons += 1
                         if winner == 'B':  # Current wrong solution still dominates
@@ -155,13 +165,23 @@ class AlternatingGenerator:
                     
                     # Only save wrong solutions that dominate the last correct
                     if solutions:
-                        # Always compare in consistent order: correct vs wrong
-                        winner, training_example = await self.tournament._run_match(
-                            problem,
-                            correct_answer,
-                            solutions[-1],  # Correct solution
-                            (solution, False, prompt)  # Wrong solution
-                        )
+                        # Randomly order solutions but track which is which
+                        if random.choice([True, False]):
+                            winner, training_example = await self.tournament._run_match(
+                                problem,
+                                correct_answer,
+                                solutions[-1],  # Correct solution
+                                (solution, False, prompt)  # Wrong solution
+                            )
+                        else:
+                            winner, training_example = await self.tournament._run_match(
+                                problem,
+                                correct_answer,
+                                (solution, False, prompt),  # Wrong solution
+                                solutions[-1]  # Correct solution
+                            )
+                            # Flip winner since solutions were in reverse order
+                            winner = 'A' if winner == 'B' else 'B'
                         
                         pair_comparisons += 1
                         if winner == 'A':  # Current correct solution still better
