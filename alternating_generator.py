@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 import random
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker

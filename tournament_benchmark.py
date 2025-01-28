@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
@@ -34,7 +34,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         main = get_model(config, role="main")
-        auxiliary = get_model(config, role="auxiliary")
         
         # Create config2 with temperature=0 for judge
         config2 = BenchmarkConfig(

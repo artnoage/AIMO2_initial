@@ -1,8 +1,5 @@
 .venv/
 .env
-.aider*/
-.aider.chat
-!.aider.conf
 conversations/
 monte_carlo/
 results/
@@ -27,3 +24,4 @@ merger_wrong/
 logs/
 cache/
 clude/
+.aider*

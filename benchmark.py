@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker

@@ -20,7 +20,7 @@ class ModelOption(Enum):
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
     LOCAL ="/Home/stat/laschos/AIMO2_initial/models/light/20250127_112930"
-    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/merged/20250127_185236"
+    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/merged/20250127_113558"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
@@ -76,7 +76,7 @@ class BenchmarkConfig:
                           help='Port for auxiliary model server (default: 6000)')
         parser.add_argument('--main-temp', type=float, default=0.9,
                           help='Temperature for main model generation (default: 0.9)')
-        parser.add_argument('--auxiliary-temp', type=float, default=0.9,
+        parser.add_argument('--auxiliary-temp', type=float, default=0.7,
                           help='Temperature for auxiliary model generation (default: 0.0)')
                           
         # Dataset arguments
