@@ -255,13 +255,16 @@ async def process_example(
     logs = []
 
     try:
+        logger = BenchmarkLogger()
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-             print(f"Error processing example {running_id}: Invalid example format")                
+             logger.append(f"❌ Error processing example {running_id}: Invalid example format")
+             logger.print()               
              return None                                                                            
                                                                                                     
         correct_answer = extract_answer_from_solution(example['solution'])                         
         if correct_answer is None:                                                                 
-            print(f"Warning: Could not extract answer from solution for example {running_id}")     
+            logger.append(f"❌ Warning: Could not extract answer from solution for example {running_id}")
+            logger.print()     
             return None                                                                            
                                                                                                     
          # Initialize models and verifier                                                           
@@ -299,11 +302,13 @@ async def process_example(
             'processing_time': processing_time,                                                    
             'logs': "\n".join(logs)                                                                
         }                                                                                          
-        logging.error(f"\n❌ Error processing example {running_id}:")                              
-        logging.error(f"├─ Error type: {error_details['error_type']}")                             
-        logging.error(f"├─ Error message: {error_details['error_message']}")                       
-        logging.error(f"├─ Processing time: {processing_time:.2f}s")                               
-        logging.error(f"└─ Example ID: {example_id}")                                              
+        logger = BenchmarkLogger()
+        logger.append(f"\n❌ Error processing example {running_id}:")                              
+        logger.append(f"├─ Error type: {error_details['error_type']}")                             
+        logger.append(f"├─ Error message: {error_details['error_message']}")                       
+        logger.append(f"├─ Processing time: {processing_time:.2f}s")                               
+        logger.append(f"└─ Example ID: {example_id}")
+        logger.print()                                              
         return None                                                                                
                                                                                                     
 async def main():

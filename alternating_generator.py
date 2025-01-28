@@ -325,13 +325,16 @@ async def process_example(
 ) -> Optional[Dict]:
     """Process a single example using alternating generation"""
     try:
+        logger = BenchmarkLogger()
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            print(f"Error processing example {running_id}: Invalid example format")
+            logger.append(f"❌ Error processing example {running_id}: Invalid example format")
+            logger.print()
             return None
             
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            print(f"Warning: Could not extract answer from solution for example {running_id}")
+            logger.append(f"❌ Warning: Could not extract answer from solution for example {running_id}")
+            logger.print()
             return None
             
         # Initialize models
