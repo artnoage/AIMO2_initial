@@ -53,8 +53,7 @@ class AlternatingGenerator:
         current_best_wrong = None
         pair_comparisons = 0
         successful_comparisons = 0
-        total_judge_decisions = 0
-        correct_judge_decisions = 0
+        judge_correct_decisions = 0  # Count of correct judge decisions
         
         while attempts < self.best_of:
             try:
@@ -89,6 +88,7 @@ class AlternatingGenerator:
                             if training_example:
                                 tournament_results.append(training_example)
                             successful_comparisons += 1
+                            judge_correct_decisions += 1  # Judge correctly chose the better solution
                             self.logger.append(f"✓ Found better correct solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
@@ -150,6 +150,7 @@ class AlternatingGenerator:
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
+                            # Judge incorrectly chose the worse solution, don't increment judge_correct_decisions
                             self.logger.append(f"✓ Found better wrong solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
@@ -258,7 +259,7 @@ class AlternatingGenerator:
             'correct_solutions': len([s for s in solutions if s[1]]),
             'incorrect_solutions': len([s for s in solutions if not s[1]]),
             'tournament_winner_correct': successful_comparisons > 0,
-            'judge_accuracy': None,  # We're not tracking judge accuracy for simple comparisons
+            'judge_accuracy': (judge_correct_decisions / pair_comparisons * 100) if pair_comparisons > 0 else None,
             'judge_decisions': pair_comparisons,
             'all_solutions_correct': all(s[1] for s in solutions),
             'model_answers': [extract_answer_from_solution(s[0]) for s in solutions],
