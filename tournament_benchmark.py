@@ -100,8 +100,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
-        # Create logger and add statistics
-        logger = BenchmarkLogger()
+        # Add statistics to logger
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
         logger.append("="*80)
