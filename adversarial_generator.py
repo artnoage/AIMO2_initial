@@ -147,7 +147,7 @@ class AdversarialGenerator:
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
-                    self.logger.append(f"❌ Invalid Loki solution structure: {validation_reason}")
+                    self.logger.append(f"❌ Solution validation failed: {validation_reason}")
                     continue
                     
                 # Verify incorrectness
@@ -325,6 +325,7 @@ class AdversarialGenerator:
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
     """Process a single example using adversarial generation approach"""
     try:
+        logger = BenchmarkLogger()
         # Extract answer
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
@@ -377,6 +378,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         return results
 
     except Exception as e:
+        logger = BenchmarkLogger()
         logger.append(f"❌ Error processing example {running_id}: {str(e)}")
         logger.print()
         return [{
