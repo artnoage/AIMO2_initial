@@ -1,6 +1,6 @@
-# Mathematical Problem-Solving Benchmark Suite
+# Mathematical Problem-Solving Benchmark Suite & Training Data Framework
 
-A comprehensive framework for evaluating mathematical problem-solving capabilities of language models, with a focus on step-by-step solution generation and verification.
+A comprehensive framework for evaluating mathematical problem-solving capabilities of language models and generating high-quality training data for reinforcement learning (RL).
 
 ## Overview
 
@@ -10,6 +10,7 @@ This suite provides tools for:
 2. **Tournament Evaluation**: Compare solutions through tournament-style competitions
 3. **Progress Tracking**: Monitor and analyze benchmark performance
 4. **Dataset Processing**: Tools for filtering and preparing mathematical problem datasets
+5. **RL Training Data Generation**: Create training examples for improving model reasoning and problem-solving
 
 ## Key Components
 
@@ -22,6 +23,10 @@ This suite provides tools for:
 - **filtering.py**: Filters dataset entries based on various criteria
 - **merge_json.py**: Merges multiple JSON files into a single dataset
 - **shuffle_dataset.py**: Shuffles and reassigns IDs to dataset examples
+
+### Training Data Generation
+- **adversarial_generator.py**: Generates pairs of correct and incorrect solutions using multiple agents
+- **alternating_generator.py**: Alternates between solver and adversarial agents to create training examples
 
 ### Agents
 - **Analysis Agent**: Provides problem analysis and approach strategies
