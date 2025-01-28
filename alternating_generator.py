@@ -191,6 +191,7 @@ class AlternatingGenerator:
                             continue
                         else:  # New wrong solution beat correct
                             current_best_wrong = (solution, False, prompt)
+                            solutions.append((solution, False, prompt))  # Add to solutions list to maintain alternation
                             if training_example:
                                 tournament_results.append(training_example)
                             self.logger.append(f"✓ Found dominating wrong solution on attempt {attempts}")
@@ -226,6 +227,7 @@ class AlternatingGenerator:
                     else:
                         # First wrong solution
                         current_best_wrong = (solution, False, prompt)
+                        solutions.append((solution, False, prompt))  # Add to solutions list to maintain alternation
                         self.logger.append(f"✓ Found first wrong solution on attempt {attempts}")
             except Exception as e:
                 self.logger.append(f"Error in generation attempt {attempts}: {str(e)}")
