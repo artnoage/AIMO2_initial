@@ -78,7 +78,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'is_correct': is_correct
                 })
             except Exception as e:
-                print(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
+                logger.append(f"❌ Error in attempt {str(attempt + 1)} for example {str(running_id)}: {str(e)}")
                 solution_info = {
                     'solution': "Error occurred",
                     'answer': None,
@@ -218,9 +218,12 @@ async def main():
     await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
+    logger = BenchmarkLogger()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nBenchmark interrupted by user")
+        logger.append("\n❌ Benchmark interrupted by user")
+        logger.print()
     except Exception as e:
-        print(f"\nBenchmark failed with error: {e}")
+        logger.append(f"\n❌ Benchmark failed with error: {e}")
+        logger.print()

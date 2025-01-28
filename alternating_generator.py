@@ -355,13 +355,13 @@ async def process_example(
         # Generate solutions
         results = await generator.generate(example['problem'], correct_answer, example_id)
         
-         # Print problem details
-        print("\n" + "="*80)
-        print(f"📝 Example {running_id + 1} | ID: {example_id}")
-        print("="*80)
-        print(f"\n📋 Problem:")
-        print(f"{example['problem'][:200]}...")
-        print(f"\n✓ Expected Answer: {correct_answer}")
+        # Log problem details
+        logger.append("\n" + "="*80)
+        logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
+        logger.append("="*80)
+        logger.append(f"\n📋 Problem:")
+        logger.append(f"{example['problem'][:200]}...")
+        logger.append(f"\n✓ Expected Answer: {correct_answer}")
 
 
         # Add example ID to results
@@ -409,9 +409,12 @@ async def main():
     await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
+    logger = BenchmarkLogger()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nBenchmark interrupted by user")
+        logger.append("\n❌ Benchmark interrupted by user")
+        logger.print()
     except Exception as e:
-        print(f"\nBenchmark failed with error: {e}")
+        logger.append(f"\n❌ Benchmark failed with error: {e}")
+        logger.print()

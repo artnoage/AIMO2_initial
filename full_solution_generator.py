@@ -314,11 +314,14 @@ async def main():
     await tracker.run_benchmark(process_example_func=process_example)
 
 if __name__ == "__main__":
+    logger = BenchmarkLogger()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\nBenchmark interrupted by user")
+        logger.append("\n❌ Benchmark interrupted by user")
+        logger.print()
         # Allow progress tracker to handle cleanup
         time.sleep(1)
     except Exception as e:
-        print(f"\nBenchmark failed with error: {e}")
+        logger.append(f"\n❌ Benchmark failed with error: {e}")
+        logger.print()
