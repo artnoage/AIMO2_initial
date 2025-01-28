@@ -105,9 +105,7 @@ class AdversarialGenerator:
             solutions = []
             correct_count = 0
             incorrect_count = 0
-        
-        # Search for correct solutions first
-        attempts = 0
+            attempts = 0
         while attempts < self.best_of and correct_count < 3:
             try:
                 attempts += 1
@@ -169,11 +167,11 @@ class AdversarialGenerator:
                 self.logger.append(f"❌ Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
                 
+            return solutions
+            
         except Exception as e:
             self.logger.append(f"Error generating solutions for example {example_id}: {str(e)}")
             return []
-            
-        return solutions
 
     async def _create_training_examples(
         self,
