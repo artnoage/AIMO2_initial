@@ -10,7 +10,6 @@ from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_fro
 from utils.agents import FullSolutionAgent, LokiAgent, TournamentJudgeAgent
 from utils.tournament_utils import Tournament
 from utils.logger import BenchmarkLogger
-from utils.logger import BenchmarkLogger
 
 # Configure logging
 logging.basicConfig(
