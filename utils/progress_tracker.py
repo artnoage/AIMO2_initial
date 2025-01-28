@@ -1,10 +1,14 @@
 import os
 import json
-from typing import List, Dict, Any
+import time
+import shutil
+import asyncio
+from typing import List, Dict, Any, Callable, Optional
 from datetime import datetime
 from dataclasses import dataclass, field
 from collections import defaultdict
-from datasets import Dataset
+from datasets import Dataset, load_dataset, load_from_disk
+from tqdm import tqdm
 
 @dataclass
 class ProgressTracker:
@@ -13,18 +17,18 @@ class ProgressTracker:
     
     Attributes:
         total_examples: Total number of examples to process
-        best_of: Number of attempts per example
+        config: BenchmarkConfig instance for accessing settings
         results: List of processed results
         start_time: Timestamp when tracking started
-        config: BenchmarkConfig instance for accessing settings
     """
     total_examples: int
     config: Any
     results: List[Dict] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
-    accumulated_stats: Dict = field(default_factory=dict)
-    success_rate_history: List[float] = field(default_factory=list)
-    error_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    
+    def _has_field(self, data_list: List[Dict], field_name: str) -> bool:
+        """Check if any dictionary in the list contains the specified field"""
+        return any(field_name in item for item in data_list)
     
     def _save_progress_stats(self, stats: str) -> None:
         """Save progress statistics to a log file"""
@@ -37,126 +41,136 @@ class ProgressTracker:
             f.write(f"{datetime.now().isoformat()}: {stats}\n")
 
     def add_result(self, results: List[Dict]) -> None:
-        """Add a list of results to the tracker"""
+        """Add a list of results to the tracker and update progress"""
         if results:
             self.results.extend(results)
+            # Count only statistics entries for checkpoints
+            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
+            if stats_count > 0 and stats_count % self.config.stats_update_freq == 0:
+                self.print_progress()
+                self._save_progress_stats(f"Checkpoint at {stats_count} examples")
+                # Save intermediate results
+                self.save_results()
     
-    def _has_field(self, results: List[Dict], field: str) -> bool:
-        """Check if field exists in any result"""
-        return any(field in r for r in results)
-
-    def calculate_score_stats(self, results: List[Dict]) -> Dict:
-        if not results:
+    def _calculate_statistics(self, entries: List[Dict]) -> Dict:
+        """Calculate statistics from a list of statistics entries"""
+        if not entries:
             return {}
-        
+            
+        total = len(entries)
         stats = {}
-        total = len(results)
         
-        # Only calculate stats if fields exist
-        if self._has_field(results, 'score_chosen'):
-            stats['avg_chosen'] = sum(r.get('score_chosen', 0) for r in results) / total
-        if self._has_field(results, 'score_rejected'):
-            stats['avg_rejected'] = sum(r.get('score_rejected', 0) for r in results) / total
-        if 'avg_chosen' in stats and 'avg_rejected' in stats:
-            stats['avg_diff'] = stats['avg_chosen'] - stats['avg_rejected']
+        # Basic statistics
+        stats['total'] = total
+        successfully_processed = sum(1 for r in entries if r.get('example_processed_successfully', False))
+        stats['successfully_processed'] = successfully_processed
+        stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
+        stats['at_least_one'] = sum(1 for r in entries if any(r.get('is_correct_list', [])))
+        total_correct = sum(sum(r.get('is_correct_list', [])) for r in entries)
+        stats['avg_correct'] = total_correct / total if total > 0 else 0
+        stats['above_avg'] = sum(1 for r in entries 
+            if r.get('is_correct_list') and 
+            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
+        stats['most_common_correct'] = sum(1 for r in entries if r.get('is_most_common_correct', False))
+        
+        # Tournament statistics
+        tournament_entries = [r for r in entries if 'tournament_winner_correct' in r]
+        if tournament_entries:
+            stats['tournament_winners'] = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
+            stats['total_tournaments'] = len(tournament_entries)
+            
+        # Judge statistics
+        judge_entries = [r for r in entries if r.get('judge_accuracy') is not None]
+        if judge_entries:
+            stats['judge_decisions'] = len(judge_entries)
+            stats['avg_judge_accuracy'] = sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)
             
         return stats
 
-    def print_progress(self) -> None:
-        if len(self.results) % self.config.stats_update_freq == 0 and self.results:
-            last_batch = self.results[-self.config.stats_update_freq:]
-            
-            # Calculate batch statistics
-            total_examples = len(last_batch)
-            batch_stats = self.calculate_score_stats(last_batch)
-            
-            # Calculate accumulated statistics
-            accumulated_stats = self.calculate_score_stats(self.results)
-            
-            # Build statistics string
-            stats_str = f"N={len(self.results)} "
-            stats_str += "\nBatch Statistics (last {total_examples}):\n"
-            
-            # For benchmark.py style results
-            if self._has_field(last_batch, 'is_correct_list'):
-                # Count problems with at least one correct solution
-                at_least_one = sum(1 for r in last_batch if any(r.get('is_correct_list', [])))
-                
-                # Calculate average correct solutions per problem
-                avg_correct = sum(sum(r.get('is_correct_list', [])) for r in last_batch) / total_examples
-                
-                # Debug prints
-                print(f"\nDebug - Interim Statistics:")
-                print(f"Number of problems in batch: {total_examples}")
-                print(f"Average correct solutions: {avg_correct}")
-                print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in last_batch])
-                
-                # Count problems with success rate above 50%
-                above_avg = sum(1 for r in last_batch if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
-                
-                # Count problems where most common answer is correct
-                most_common_correct = 0
-                for r in last_batch:
-                    if not r.get('model_answers'):
-                        continue
-                    # Get most common answer
-                    answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
-                    if not answers:
-                        continue
-                    from collections import Counter
-                    most_common = Counter(answers).most_common(1)[0][0]
-                    # Check if most common answer is in list of correct answers
-                    if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', [])) 
-                          if ans is not None and str(ans) == most_common):
-                        most_common_correct += 1
-                
-                # Batch statistics
-                stats_str += (
-                    f"\nBatch Statistics (last {total_examples}):\n"
-                    f"- Problems with at least one correct solution: {at_least_one}/{total_examples} ({at_least_one/total_examples*100:.1f}%)\n"
-                    f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                    f"- Problems with above average correct solutions: {above_avg}/{total_examples} ({above_avg/total_examples*100:.1f}%)\n"
-                    f"- Problems where most common answer is correct: {most_common_correct}/{total_examples} ({most_common_correct/total_examples*100:.1f}%)\n"
-                )
 
-                # Accumulated statistics
-                total_acc = len(self.results)
-                at_least_one_acc = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
-                avg_correct_acc = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total_acc
-                above_avg_acc = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
-                
-                stats_str += (
-                    f"\nAccumulated Statistics (N={total_acc}):\n"
-                    f"- Problems with at least one correct solution: {at_least_one_acc}/{total_acc} ({at_least_one_acc/total_acc*100:.1f}%)\n"
-                    f"- Average correct solutions per problem: {avg_correct_acc:.2f}\n"
-                    f"- Problems with above average correct solutions: {above_avg_acc}/{total_acc} ({above_avg_acc/total_acc*100:.1f}%)\n"
-                    f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
-                )
+    def print_progress(self) -> None:
+        """Print progress statistics for the last batch"""
+        if not self.results:
+            return
             
-            # For data_creator.py style results
-            if any(key in batch_stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
-                # Batch statistics
-                stats_str += (
-                    f"\nBatch Statistics (last {total_examples}):\n"
-                    f"- Average score for chosen solutions: {batch_stats.get('avg_chosen', 0):.2f}\n"
-                    f"- Average score for rejected solutions: {batch_stats.get('avg_rejected', 0):.2f}\n"
-                    f"- Average score difference: {batch_stats.get('avg_diff', 0):.2f}\n"
-                )
-                
-                # Accumulated statistics
-                stats_str += (
-                    f"\nAccumulated Statistics (N={len(self.results)}):\n"
-                    f"- Average score for chosen solutions: {accumulated_stats.get('avg_chosen', 0):.2f}\n"
-                    f"- Average score for rejected solutions: {accumulated_stats.get('avg_rejected', 0):.2f}\n"
-                    f"- Average score difference: {accumulated_stats.get('avg_diff', 0):.2f}\n"
-                )
-                stats_str += f"- Runtime so far: {(datetime.now() - self.start_time).total_seconds():.1f}s"
+        # Get all statistics entries since last checkpoint
+        total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
+        last_checkpoint = max(0, total_stats - self.config.stats_update_freq)
+        stats_entries = [r for r in self.results if r.get('data_type') == 'statistics'][last_checkpoint:total_stats]
+        if not stats_entries:
+            return
             
-            print(stats_str)
-            self._save_progress_stats(stats_str)
+        # Calculate statistics
+        batch_stats = self._calculate_statistics(stats_entries)
+        if not batch_stats:
+            return
             
-            # Automatically save results every 100 examples
-            self.save_results()
+        # Build statistics string
+        total_stats = len([r for r in self.results if r.get('data_type') == 'statistics'])
+        stats_str = f"N={total_stats}\n\nBatch Statistics (last {self.config.stats_update_freq} examples):\n"
+        
+        # Basic statistics
+        stats_str += (
+            f"- Processing success rate: {batch_stats['processing_success_rate']:.1f}%\n"
+            f"- Successfully processed examples: {batch_stats['successfully_processed']}/{batch_stats['total']} "
+            f"({(batch_stats['successfully_processed']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems with at least one correct solution: {batch_stats['at_least_one']}/{batch_stats['total']} "
+            f"({(batch_stats['at_least_one']/batch_stats['total']*100):.1f}%)\n"
+            f"- Average correct solutions per problem: {batch_stats['avg_correct']:.2f}\n"
+            f"- Problems with above average correct solutions: {batch_stats['above_avg']}/{batch_stats['total']} "
+            f"({(batch_stats['above_avg']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems where most common answer is correct: {batch_stats['most_common_correct']}/{batch_stats['total']} "
+            f"({(batch_stats['most_common_correct']/batch_stats['total']*100):.1f}%)\n"
+        )
+        
+        # Tournament statistics if present
+        if 'tournament_winners' in batch_stats:
+            stats_str += (
+                f"- Tournament winners correct: {batch_stats['tournament_winners']}/{batch_stats['total_tournaments']} "
+                f"({(batch_stats['tournament_winners']/batch_stats['total_tournaments']*100):.1f}%)\n"
+            )
+            
+        # Judge statistics if present
+        if 'judge_decisions' in batch_stats:
+            stats_str += (
+                f"- Judge decisions made: {batch_stats['judge_decisions']}\n"
+                f"- Judge accuracy: {batch_stats['avg_judge_accuracy']:.1f}%\n"
+            )
+            
+        # Calculate accumulated statistics
+        acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
+        if acc_stats:
+            stats_str += f"\nAccumulated Statistics (N={acc_stats['total']}):\n"
+            stats_str += (
+                f"- Processing success rate: {acc_stats['processing_success_rate']:.1f}%\n"
+                f"- Successfully processed examples: {acc_stats['successfully_processed']}/{acc_stats['total']} "
+                f"({acc_stats['processing_success_rate']:.1f}%)\n"
+                f"- Problems with at least one correct solution: {acc_stats['at_least_one']}/{acc_stats['total']} "
+                f"({(acc_stats['at_least_one']/acc_stats['total']*100):.1f}%)\n"
+                f"- Average correct solutions per problem: {acc_stats['avg_correct']:.2f}\n"
+                f"- Problems with above average correct solutions: {acc_stats['above_avg']}/{acc_stats['total']} "
+                f"({(acc_stats['above_avg']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems where most common answer is correct: {acc_stats['most_common_correct']}/{acc_stats['total']} "
+                f"({(acc_stats['most_common_correct']/acc_stats['total']*100):.1f}%)\n"
+            )
+            
+            if 'tournament_winners' in acc_stats:
+                stats_str += (
+                    f"- Tournament winners correct: {acc_stats['tournament_winners']}/{acc_stats['total_tournaments']} "
+                    f"({(acc_stats['tournament_winners']/acc_stats['total_tournaments']*100):.1f}%)\n"
+                )
+                    
+            if 'judge_decisions' in acc_stats:
+                stats_str += (
+                    f"- Judge decisions made: {acc_stats['judge_decisions']}\n"
+                    f"- Overall judge accuracy: {acc_stats['avg_judge_accuracy']:.1f}%\n"
+                )
+        
+        print(stats_str)
+        self._save_progress_stats(stats_str)
+        
+        # Create dataset if requested
+        self.create_hf_dataset()
 
     def save_results(self) -> None:
         """Save results to a JSON file"""
@@ -171,11 +185,20 @@ class ProgressTracker:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
             
-            print(f"\nSaving {len(self.results)} results to: {filepath}")
+            # Filter training data
+            training_results = [r for r in self.results if r.get('data_type') == 'training']
+            
+            # Only print message for final save
+            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
+            if stats_count == self.total_examples:
+                print(f"\nSaving {len(training_results)} training results to: {filepath}")
             
             with open(filepath, 'w') as f:
-                json.dump(self.results, f, indent=2)
-            print(f"Results successfully saved to: {filepath}")
+                json.dump(training_results, f, indent=2)
+                
+            # Only print success message for final save
+            if stats_count == self.total_examples:
+                print(f"Results successfully saved to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
@@ -203,100 +226,233 @@ class ProgressTracker:
             print(msg)
             self._save_progress_stats(msg + "\n")
             return
-            
-        # Create dataset if requested
-        self.create_hf_dataset()
 
-        total = len(self.results)
-        
-        # Calculate statistics
-        stats = self.calculate_score_stats(self.results)
-        
-        # Initialize bifurcation tracking
-        bifurcation_counts = {}
-        valid_points = 0
-        total_bifurcation = 0
-        
-        # Count valid bifurcation points
-        for r in self.results:
-            if r and isinstance(r, dict) and 'bifurcation_point' in r:
-                point = r['bifurcation_point']
-                if isinstance(point, (int, float)):
-                    bifurcation_counts[point] = bifurcation_counts.get(point, 0) + 1
-                    total_bifurcation += point
-                    valid_points += 1
-        
-        avg_bifurcation = total_bifurcation / valid_points if valid_points > 0 else 0
+        # Get only statistics entries
+        stats_entries = [r for r in self.results if r.get('data_type') == 'statistics']
+        if not stats_entries:
+            msg = "\nNo statistics entries were found in results."
+            print(msg)
+            self._save_progress_stats(msg + "\n")
+            return
 
+        total = len(stats_entries)
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
-        stats_str = f"FINAL: N={total} "
-        
-        # For benchmark.py style results
-        if self._has_field(self.results, 'is_correct_list'):
-            # Count problems with at least one correct solution
-            at_least_one = sum(1 for r in self.results if any(r.get('is_correct_list', [])))
-            
-            # Calculate average correct solutions per problem
-            avg_correct = sum(sum(r.get('is_correct_list', [])) for r in self.results) / total
-            
-            # Debug prints
-            print(f"\nDebug - Final Statistics:")
-            print(f"Total number of problems: {total}")
-            print(f"Average correct solutions: {avg_correct}")
-            print("Success rates per problem:", [sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) for r in self.results])
-            
-            # Count problems with success rate above 50%
-            above_avg = sum(1 for r in self.results if sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5)
-            
-            # Count problems where most common answer is correct
-            most_common_correct = 0
-            for r in self.results:
-                if not r.get('model_answers'):
-                    continue
-                # Get most common answer
-                answers = [str(ans) for ans in r.get('model_answers', []) if ans is not None]
-                if not answers:
-                    continue
-                from collections import Counter
-                most_common = Counter(answers).most_common(1)[0][0]
-                # Check if most common answer is in list of correct answers
-                if any(r.get('is_correct_list', [])[i] for i, ans in enumerate(r.get('model_answers', []))
-                      if ans is not None and str(ans) == most_common):
-                    most_common_correct += 1
-            
-            stats_str += (
-                f"\nBenchmark Statistics:\n"
-                f"- Problems with at least one correct solution: {at_least_one}/{total} ({at_least_one/total*100:.1f}%)\n"
-                f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-                f"- Problems with above average correct solutions: {above_avg}/{total} ({above_avg/total*100:.1f}%)\n"
-                f"- Problems where most common answer is correct: {most_common_correct}/{total} ({most_common_correct/total*100:.1f}%)\n"
-                f"- Total runtime: {total_duration.total_seconds():.1f}s"
-            )
-        
-        # For data_creator.py style results
-        if any(key in stats for key in ['avg_chosen', 'avg_rejected', 'avg_diff']):
-            stats_str += (
-                f"\nFinal Data Creation Statistics:\n"
-                f"- Average score for chosen solutions: {stats.get('avg_chosen', 0):.2f}\n"
-                f"- Average score for rejected solutions: {stats.get('avg_rejected', 0):.2f}\n"
-                f"- Average score difference: {stats.get('avg_diff', 0):.2f}\n"
-            )
-            stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
+        # Calculate final statistics
+        at_least_one = sum(1 for r in stats_entries if any(r.get('is_correct_list', [])))
+        total_correct = sum(sum(r.get('is_correct_list', [])) for r in stats_entries)
+        avg_correct = total_correct / total if total > 0 else 0
+        above_avg = sum(1 for r in stats_entries 
+            if r.get('is_correct_list') and 
+            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
+        most_common_correct = sum(1 for r in stats_entries if r.get('is_most_common_correct', False))
 
-        # Add judge accuracy statistics if available
-        if self._has_field(self.results, 'judge_was_correct'):
-            judge_predictions = [r['judge_was_correct'] for r in self.results if 'judge_was_correct' in r]
-            correct_predictions = sum(1 for x in judge_predictions if x)
-            total_predictions = len(judge_predictions)
-            
-            if total_predictions > 0:
-                stats_str += (
-                    f"\nJudge Performance:\n"
-                    f"- Correct predictions: {correct_predictions}/{total_predictions} "
-                    f"({correct_predictions/total_predictions*100:.1f}%)\n"
-                )
+        # Tournament statistics
+        tournament_entries = [r for r in stats_entries if 'tournament_winner_correct' in r]
+        tournament_winners = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
+        
+        # Judge statistics
+        judge_entries = [r for r in stats_entries if r.get('judge_accuracy') is not None]
+        avg_judge_accuracy = (sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)) if judge_entries else None
+
+        # Calculate processing success rate
+        successfully_processed = sum(1 for r in stats_entries if r.get('example_processed_successfully', False))
+        processing_success_rate = (successfully_processed / total * 100) if total > 0 else 0
+
+        stats_str = (
+            f"\nFinal Statistics (N={total}):\n"
+            f"- Processing success rate: {processing_success_rate:.1f}%\n"
+            f"- Successfully processed examples: {successfully_processed}/{total} ({processing_success_rate:.1f}%)\n"
+            f"- Problems with at least one correct solution: {at_least_one}/{total} ({(at_least_one/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Average correct solutions per problem: {avg_correct:.2f}\n"
+            f"- Problems with above average correct solutions: {above_avg}/{total} ({(above_avg/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems where most common answer is correct: {most_common_correct}/{total} ({(most_common_correct/total*100) if total > 0 else 0:.1f}%)\n"
+        )
+
+        if tournament_entries:
+            stats_str += (
+                f"- Tournament winners correct: {tournament_winners}/{len(tournament_entries)} "
+                f"({(tournament_winners/len(tournament_entries)*100) if tournament_entries else 0:.1f}%)\n"
+            )
+
+        if judge_entries:
+            stats_str += (
+                f"- Judge decisions made: {len(judge_entries)}\n"
+                f"- Overall judge accuracy: {avg_judge_accuracy if avg_judge_accuracy is not None else 'N/A'}%\n"
+            )
+
+        stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
 
         print(stats_str)
         self._save_progress_stats(stats_str)
+    async def run_benchmark(
+        self,
+        process_example_func: Callable
+    ) -> None:
+        # Set up signal handlers
+        import signal
+        
+        def signal_handler(signum, frame):
+            print("\nReceived interrupt signal. Saving current results...")
+            self.save_results()
+            self.print_final_stats()
+            print("\nResults saved. Exiting...")
+            exit(0)
+            
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+        """Generic benchmark runner that handles dataset loading and example processing"""
+        if self.config.max_concurrent < 1:
+            print("Error: Maximum concurrent problems must be at least 1")
+            return
+
+        # Load exclude list if provided
+        excluded_problems = set()
+        if self.config.exclude and os.path.exists(self.config.exclude):
+            try:
+                with open(self.config.exclude, 'r') as f:
+                    exclude_data = json.load(f)
+                    excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
+                print(f"Loaded {len(excluded_problems)} problems to exclude")
+            except Exception as e:
+                print(f"Error loading exclude file: {e}")
+                return
+
+        try:
+            # Create a unique cache directory using timestamp
+            timestamp = int(time.time())
+            cache_dir = os.path.join("cache", f"huggingface_{timestamp}")
+            os.makedirs(cache_dir, exist_ok=True)
+
+            def load_dataset_with_retry(max_retries=3, cleanup_on_fail=True):
+                for attempt in range(max_retries):
+                    try:
+                        if os.path.exists(self.config.dataset):  # Local path
+                            dataset = load_from_disk(self.config.dataset)
+                            if self.config.split and hasattr(dataset, self.config.split):
+                                dataset = dataset[self.config.split]
+                        else:  # HuggingFace dataset
+                            if self.config.dataset == 'Metaskepsis/Numina':
+                                dataset = load_dataset(
+                                    "Metaskepsis/Numina", 
+                                    split=self.config.split,
+                                    cache_dir=cache_dir,
+                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                )
+                            else:
+                                dataset = load_dataset(
+                                    self.config.dataset,
+                                    split=self.config.split,
+                                    cache_dir=cache_dir,
+                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                )
+                        return dataset
+                    except Exception as e:
+                        print(f"Dataset loading attempt {attempt + 1} failed: {str(e)}")
+                        if cleanup_on_fail and attempt < max_retries - 1:
+                            print("Cleaning up cache and retrying...")
+                            try:
+                                shutil.rmtree(cache_dir)
+                                os.makedirs(cache_dir, exist_ok=True)
+                            except Exception as cleanup_error:
+                                print(f"Cache cleanup failed: {cleanup_error}")
+                        time.sleep(2)  # Wait before retry
+                        
+                raise Exception("Failed to load dataset after all retries")
+
+            try:
+                dataset = load_dataset_with_retry()
+            except Exception as e:
+                print(f"Fatal error loading dataset: {e}")
+                return
+                
+            # First sort by ID to ensure consistent ordering
+            dataset = dataset.sort('id')
+                
+            # Filter out excluded problems
+            if excluded_problems:
+                dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+                print(f"Filtered dataset to exclude {len(excluded_problems)} problems")
+                
+            # Shuffle dataset with seed if specified
+            if self.config.seed is not None:
+                dataset = dataset.shuffle(seed=self.config.seed)
+                
+            if self.config.split_slice:
+                dataset = dataset.select(range(*self.config.split_slice.indices(len(dataset))))
+        except Exception as e:
+            print(f"Error loading dataset: {e}")
+            return
+
+        if self.config.split_slice:
+            dataset_length = min(self.config.split_slice.stop, len(dataset))
+        else:
+            dataset_length = len(dataset)
+
+        self.total_examples = dataset_length
+
+        example_data = []
+        for example in dataset:
+            processed = {
+                'id': example['id'],
+                'problem': example['problem'],
+                'solution': example['solution']
+            }
+            example_data.append(processed)
+
+        if not example_data:
+            print("No valid examples to process after initial filtering.")
+            return
+
+        print(f"\nStarting processing of {self.total_examples} examples...")
+        try:
+            semaphore = asyncio.Semaphore(self.config.max_concurrent)
+
+            async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
+                async with semaphore:
+                    result = await process_example_func(
+                        example=example,
+                        running_id=running_id,
+                        example_id=example['id'],
+                        config=self.config
+                    )
+                    if result:
+                        self.add_result(result)
+                    return result
+
+            tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
+            
+            print(f"\nWill process {len(example_data)} examples")
+            
+            progress_bar = tqdm(total=len(example_data), desc="Processing examples")
+            all_logs = []
+            
+            for coro in asyncio.as_completed(tasks):
+                try:
+                    result = await coro
+                    if result and 'logs' in result:
+                        all_logs.append(result['logs'])
+                    if result and 'total_solution_attempts' in result:
+                        all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
+                    progress_bar.update(1)
+                except Exception as e:
+                    all_logs.append(f"Error processing example: {str(e)}")
+            progress_bar.close()
+        
+        finally:
+            # Print all collected logs
+            print("\n" + "="*80)
+            print("COMPLETE LOG OUTPUT")
+            print("="*80)
+            for log in all_logs:
+                print("\n" + log)
+            print("\n" + "="*80)
+            
+            self.print_final_stats()
+            
+            # Cleanup cache directory at the end
+            try:
+                shutil.rmtree(cache_dir)
+            except Exception as e:
+                print(f"Warning: Failed to cleanup cache directory: {e}")

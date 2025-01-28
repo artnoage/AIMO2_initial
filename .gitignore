@@ -1,6 +1,5 @@
 .venv/
 .env
-.aider*
 conversations/
 monte_carlo/
 results/
@@ -20,4 +19,9 @@ _unsloth_sentencepiece_temp
 loras/
 local_datasets/
 merger/
+merger2/
+merger_wrong/
 logs/
+cache/
+clude/
+.aider*

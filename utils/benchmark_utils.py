@@ -1,18 +1,13 @@
 import re
 import os
 import asyncio
-import json
 import signal
 import sympy
 from functools import wraps
 from contextlib import contextmanager
 import aiohttp
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
-from tqdm import tqdm
-from datasets import load_dataset
-from huggingface_hub import whoami
 from utils.benchmark_config import *
-from utils.progress_tracker import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
 
@@ -31,6 +26,11 @@ class OpenRouterChat:
         self.temperature = temperature
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
+        # Create persistent connection pool
+        self.session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(limit=100, force_close=False),
+            timeout=aiohttp.ClientTimeout(total=300)
+        )
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
@@ -57,23 +57,27 @@ class OpenRouterChat:
             "Content-Type": "application/json"
         }
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(
-                    self.base_url,
-                    json=payload,
-                    headers=headers
-                ) as response:
-                    if response.status != 200:
-                        raise ValueError(f"Error from OpenRouter API: {await response.text()}")
-                    
-                    result = await response.json()
-                    return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    })()
-            except Exception as e:
-                print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
-                raise
+        try:
+            async with self.session.post(
+                self.base_url,
+                json=payload,
+                headers=headers
+            ) as response:
+                if response.status != 200:
+                    raise ValueError(f"Error from OpenRouter API: {await response.text()}")
+                
+                result = await response.json()
+                return type('Response', (), {
+                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                })()
+        except Exception as e:
+            print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
+            raise
+
+    async def close(self):
+        """Close the persistent session"""
+        if self.session and not self.session.closed:
+            await self.session.close()
 
 class CustomChat:
     """Simple chat model that makes direct requests to server"""
@@ -98,10 +102,18 @@ class CustomChat:
         if hasattr(prompt, 'content'):  # LangChain message object
             prompt_text = f"[INST]{prompt.content}[/INST]"
         elif isinstance(prompt, list):  # List of messages
-            # Take the last message's content if it's a list
             prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
         else:  # String or other
             prompt_text = f"[INST]{str(prompt)}[/INST]"
+
+        # Handle different prompt types
+        #if hasattr(prompt, 'content'):  # LangChain message object
+        #    prompt_text = f"{prompt.content}"
+        #elif isinstance(prompt, list):  # List of messages
+            # Take the last message's content if it's a list
+        #    prompt_text = f"{prompt[-1].content}" if prompt else ""
+        #else:  # String or other
+        #    prompt_text = f"{str(prompt)}"
             
         payload = {
             "model": self.model,
@@ -160,7 +172,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     name = model.value
     temp = config.auxiliary_temp if role == "auxiliary" else config.main_temp
     
-    if model == ModelOption.LOCAL:
+    if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
         return CustomChat(
             model=name,
             temperature=temp,
@@ -223,6 +235,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
     clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
     
+    # Only split on = or \approx if there's a single term before it
     def has_single_term(text: str) -> bool:
         """Check if text has only a single term (no operators outside brackets)"""
         bracket_level = 0
@@ -247,7 +260,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
         before_approx = clean_answer[:approx_pos].strip()
         if has_single_term(before_approx):
             clean_answer = clean_answer[approx_pos + 8:].strip()
-    
+                
     if not clean_answer:
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
@@ -269,7 +282,8 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     except TimeoutException:
         return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
     except (sympy.SympifyError, TypeError, ValueError) as e:
-        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None)
+        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None) 
+
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
     """Compare two numeric answers within tolerance"""
@@ -277,14 +291,19 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=3, timeout=120)
-async def get_model_response(model, prompt,max_tokens=None) -> str:
+@async_retry(max_retries=3, timeout=180)
+async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
-    if max_tokens==None:
-        response = await model.ainvoke(prompt)
-    else:
-        response = await model.ainvoke(prompt,max_tokens=max_tokens)
-    return response.content
+    try:
+        if max_tokens==None:
+            response = await model.ainvoke(prompt)
+        else:
+            response = await model.ainvoke(prompt, max_tokens=max_tokens)
+        return response.content
+    except Exception as e:
+        # Add small delay before retry to prevent overwhelming API
+        await asyncio.sleep(0.1)
+        raise
 
 def count_manual_steps(solution: str) -> int:
     """Count steps in a solution by looking for step indicators"""
@@ -361,9 +380,6 @@ STEP_NUMBER_PATTERNS = [
 
 def validate_analysis(resp: str) -> Tuple[bool, str]:
     """Validate an analysis response"""
-    #if "[/INST]" in resp:
-    #    return False, "Contains [/INST] token"
-        
     # Check if response has less than 20 words
     word_count = len(resp.split())
     if word_count < 20:
@@ -388,40 +404,47 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     # Check for analysis section
     if "analysis" not in solution.lower():
         return False, "Missing analysis section"
-    #if "[/INST]" in solution.lower():
-    #    return False, "Contains [/INST] token"
-    #if "INST]" in solution.lower():
-    #    return False, "Contains [/INST] token"
+        
     if "[…]" in solution.lower():   
         return False, "Skips steps"
-    # Check analysis length
-    analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
-    if analysis_parts and len(analysis_parts[0].split()) < 20:
-        return False, "Analysis section too short (< 20 words)"
         
+    # Check for links/URLs
+    if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):
+        return False, "Contains URLs/links"
+        
+    # Check analysis section
+    analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
+    if analysis_parts:
+        is_valid, reason = validate_analysis(analysis_parts[0])
+        if not is_valid:
+            return False, f"Analysis section: {reason}"
+        
+    # Check for invalid phrases
+    invalid_phrases = ["Could you help finish this solution?",
+        "Remember to put the final answer",
+        "Could you help finish this calculation"]
+    for phrase in invalid_phrases:
+        if phrase in solution:
+            return False, f"Contains invalid phrase: '{phrase}'"
+
     # Check for boxed answer
     if "\\boxed{" not in solution:
         return False, "Missing boxed answer"
         
-    # Split into steps
-    steps = solution.lower().split("step")[1:]  # Skip text before first "step"
-    if not steps:
+    # Split solution into steps and validate each one
+    steps = split_into_steps(solution)
+    if len(steps) <= 1:  # Only analysis or no steps
         return False, "No steps found"
-
-    # Validate each step
-    for i, step in enumerate(steps, 1):
-        full_step = "Step" + step
-        if not validate_step(full_step, expected_step=i):
-            word_count = len(full_step.split())
-            step_error = ""
-            if word_count < 22:
-                step_error = f"Step {i} too short ({word_count} words < 20)"
-            elif word_count > 100:
-                step_error = f"Step {i} too long ({word_count} words > 120)"
-            else:
-                step_error = f"Step {i} invalid format or numbering"
-            return False, step_error
         
+    # Skip analysis section if present
+    start_idx = 1 if "analysis" in steps[0].lower() else 0
+    
+    # Validate each step
+    for i, step in enumerate(steps[start_idx:], 1):
+        is_valid, reason = validate_step(step, expected_step=i)
+        if not is_valid:
+            return False, f"Step {i}: {reason}"
+    
     return True, "Solution valid"
 
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
@@ -492,8 +515,9 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         found_steps.add(actual_step)
         
         # Validate step format and content
-        if not validate_step(full_step, expected_step=expected_step_num):
-            return False, f"Invalid step {expected_step_num} format or content"
+        is_valid, reason = validate_step(full_step, expected_step=expected_step_num)
+        if not is_valid:
+            return False, f"Step {expected_step_num}: {reason}"
             
     # Check for gaps in step numbers
     expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
@@ -502,60 +526,15 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
             
     return True, "Valid completion"
                     
-    # Split completion into steps
-    completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
-    if not completion_steps:
-        return False, "Completion contains no steps"
-        
-    # Track found step numbers to ensure no duplicates or gaps
-    found_steps = set()
-    
-    # Validate each step in completion
-    for i, step in enumerate(completion_steps, 1):
-        expected_step_num = last_step + i
-        full_step = "Step" + step
-        
-        # Find actual step number in the completion
-        actual_step = None
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(full_step)
-            if match:
-                try:
-                    actual_step = int(match.group(1))
-                    break
-                except ValueError:
-                    continue
-                    
-        if actual_step is None:
-            return False, f"Could not find step number in completion step {i}"
-            
-        if actual_step != expected_step_num:
-            return False, f"Expected step {expected_step_num}, found step {actual_step}"
-            
-        if actual_step in found_steps:
-            return False, f"Duplicate step number {actual_step}"
-            
-        found_steps.add(actual_step)
-        
-        # Validate step format and content
-        if not validate_step(full_step, expected_step=expected_step_num):
-            return False, f"Invalid step {expected_step_num} format or content"
-            
-    # Check for gaps in step numbers
-    expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
-    if found_steps != expected_steps:
-        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
-            
-    return True, "Valid completion"
 
-def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
+def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
     """Validate a solution step"""
-    #if "[/INST]" in resp:
-    #    return False
-    # Check if response has less than 20 words
+    # Check if response has less than 20 words or more than 120
     word_count = len(resp.split())
-    if word_count < 20 or word_count > 120:
-        return False
+    if word_count < 20:
+        return False, f"Step too short ({word_count} words < 20)"
+    if word_count > 170:
+        return False, f"Step too long ({word_count} words > 170)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:
@@ -564,7 +543,7 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
         
         # Reject if there are any decimal numbers in steps (e.g. 2.1)
         if re.search(r'step\s*\d+\.\d+', resp.lower()):
-            return False
+            return False, "Contains decimal step numbers"
             
         for pattern in STEP_NUMBER_PATTERNS:
             match = pattern.search(resp)
@@ -573,15 +552,15 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
                     num = int(match.group(1))
                     # Reject decimal numbers
                     if '.' in match.group(1):
-                        return False
+                        return False, "Contains decimal step numbers"
                     found_numbers.append(num)
                 except ValueError:
-                    return False
+                    return False, "Invalid step number format"
                 
         # If we found any numbers, they must match the expected step
         if found_numbers:
             if not any(num == expected_step for num in found_numbers):
-                return False
+                return False, f"Step number mismatch: expected {expected_step}"
         else:
             # No explicit numbers found, check for text mentions
             step_mentions = [
@@ -591,11 +570,14 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> bool:
                 f"{expected_step}."
             ]
             if not any(mention.lower() in resp.lower() for mention in step_mentions):
-                return False
+                return False, f"Missing step number {expected_step}"
             
     # Steps should not have multiple step mentions
     step_count = resp.lower().count("step")
-    return step_count <= 1
+    if step_count > 1:
+        return False, "Multiple step mentions"
+        
+    return True, "Step valid"
 
 class NumericVerifier:
     def __init__(self, tolerance: float = 1e-6):
@@ -668,121 +650,3 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
         
     return partial_solutions
 
-async def run_benchmark(
-    config: BenchmarkConfig,
-    process_example_func: Callable
-) -> None:
-    """Generic benchmark runner that handles dataset loading and example processing"""
-    if config.max_concurrent < 1:
-        print("Error: Maximum concurrent problems must be at least 1")
-        return
-
-    # Load exclude list if provided
-    excluded_problems = set()
-    if config.exclude and os.path.exists(config.exclude):
-        try:
-            with open(config.exclude, 'r') as f:
-                exclude_data = json.load(f)
-                excluded_problems = {item['problem'] for item in exclude_data if 'problem' in item}
-            print(f"Loaded {len(excluded_problems)} problems to exclude")
-        except Exception as e:
-            print(f"Error loading exclude file: {e}")
-            return
-
-    try:
-        if config.dataset == 'Metaskepsis/Numina':  # Default option
-            dataset = load_dataset("Metaskepsis/Numina", split=config.split)
-        else:  # Custom dataset name
-            dataset = load_dataset(config.dataset, split=config.split)
-            
-        # First sort by ID to ensure consistent ordering
-        dataset = dataset.sort('id')
-            
-        # Filter out excluded problems
-        if excluded_problems:
-            dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
-            print(f"Filtered dataset to exclude {len(excluded_problems)} problems")
-            
-        # Shuffle dataset with seed if specified
-        if config.seed is not None:
-            dataset = dataset.shuffle(seed=config.seed)
-            
-        if config.split_slice:
-            dataset = dataset.select(range(*config.split_slice.indices(len(dataset))))
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        return
-
-    if config.split_slice:
-        dataset_length = min(config.split_slice.stop, len(dataset))
-    else:
-        dataset_length = len(dataset)
-
-    progress_tracker = ProgressTracker(
-        total_examples=dataset_length,
-        config=config
-    )
-
-    example_data = []
-    for example in dataset:
-        processed = {
-            'id': example['id'],
-            'problem': example['problem'],
-            'solution': example['solution']
-        }
-        example_data.append(processed)
-
-    if not example_data:
-        print("No valid examples to process after initial filtering.")
-        return
-
-    print(f"\nStarting processing of {progress_tracker.total_examples} examples...")
-    try:
-        semaphore = asyncio.Semaphore(config.max_concurrent)
-
-        async def process_with_semaphore(example: Dict, running_id: int) -> Optional[Dict]:
-            async with semaphore:
-                result = await process_example_func(
-                    example=example,
-                    running_id=running_id,
-                    example_id=example['id'],
-                    config=config
-                )
-            if result:
-                progress_tracker.add_result(result)
-                progress_tracker.print_progress()
-            return result
-
-        tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
-        
-        print(f"\nWill process {len(example_data)} examples")
-        
-        progress_bar = tqdm(total=len(example_data), desc="Processing examples")
-        results = []
-        all_logs = []
-        
-        for coro in asyncio.as_completed(tasks):
-            try:
-                result = await coro
-                if result:
-                    results.append(result)
-                    if 'logs' in result:
-                        all_logs.append(result['logs'])
-                    if 'total_solution_attempts' in result:
-                        all_logs.append(f"\nTotal solution attempts for example {len(results)}: {result['total_solution_attempts']}")
-                    progress_bar.update(1)
-            except Exception as e:
-                all_logs.append(f"Error processing example: {str(e)}")
-        progress_bar.close()
-    
-    finally:
-        # Print all collected logs
-        print("\n" + "="*80)
-        print("COMPLETE LOG OUTPUT")
-        print("="*80)
-        for log in all_logs:
-            print("\n" + log)
-        print("\n" + "="*80)
-        
-        progress_tracker.print_final_stats()
-        progress_tracker.save_results()

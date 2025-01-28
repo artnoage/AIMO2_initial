@@ -1,4 +1,4 @@
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 import os
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
@@ -17,7 +17,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/20250112_094532",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250124_103854",
         max_seq_length=4096,
         load_in_4bit=False)
         
@@ -54,30 +54,24 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/judge/20250113_120330")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/conversation_dataset_20250124_231646")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
-    half_size = len(dataset) // 2
-    dataset = dataset.select(range(half_size, len(dataset)))  # Take second half
-
-    # Print original format
-    #print("\nFirst conversation before formatting:")
-    #print(json.dumps(dataset[0]["conversations"], indent=2))
-    
+    shuffled_dataset2=dataset.shuffle(seed=42)
+    dataset=concatenate_datasets([dataset, shuffled_dataset2])
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
     # Training arguments
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=2,
         gradient_accumulation_steps=32,
-        learning_rate=5e-6,
-        logging_steps=1,
+        learning_rate=2e-6,
+        logging_steps=100,
         save_strategy="steps",
         save_steps=1000,
         fp16 = not is_bfloat16_supported(),
@@ -97,7 +91,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "judge"
+    model_type = "very_hard"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

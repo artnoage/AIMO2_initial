@@ -1,12 +1,21 @@
 import os
 import time
-import logging
 import asyncio
-from typing import Dict, List, Optional, Any, Tuple
+import logging
+from typing import Dict, List, Optional
 from dotenv import load_dotenv
-from utils.benchmark_config import *
-from utils.benchmark_utils import *
-from utils.agents import *
+from utils.benchmark_config import BenchmarkConfig
+from utils.progress_tracker import ProgressTracker
+from utils.benchmark_utils import NumericVerifier, get_model, extract_answer_from_solution, validate_solution, remove_inst_tokens, split_into_steps
+from utils.agents import FullSolutionAgent
+from utils.logger import BenchmarkLogger
+import random
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'
+)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
@@ -15,24 +24,24 @@ async def process_full_solution(
     example: Dict,
     main: any,
     verifier: any,
-    config: BenchmarkConfig
-) -> Optional[Tuple[str, str, str, float, float, str]]:
+    config: BenchmarkConfig,
+    correct_answer: str,
+    example_id: int
+) -> Optional[List[Dict]]:
     """Process example using full solution approach"""
-    logs = []
+    logger = BenchmarkLogger()
     solution_agent = FullSolutionAgent(main)
     full_solution_prompt = None
     found_correct = False
-    found_common_wrong = False
     found_validated_wrong = False
     correct_attempt = 0
     wrong_attempt = 0
     correct_solution = None
-    common_wrong_solution = None
     validated_wrong_solution = None
     total_solution_attempts = 0
     
     attempts = 0
-    while (not found_correct or not found_common_wrong) and attempts < config.best_of:
+    while (not found_correct or not found_validated_wrong) and attempts < config.best_of:
         attempts += 1
         try:
             total_solution_attempts += 1
@@ -49,84 +58,191 @@ async def process_full_solution(
                 example["problem"]
             )
 
-            if not is_correct and not found_common_wrong:
-                # Store first wrong solution regardless of validation
-                found_common_wrong = True
-                wrong_attempt = attempts
-                common_wrong_solution = current_solution
-                logs.append(f"✗ Found common wrong solution on attempt {attempts}")
-
-            # Then validate solution structure
+            # Validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
-                logs.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
+                logger.append(f"❌ Attempt {attempts} failed validation: {validation_reason}")
                 continue
 
-            logs.append(f"✓ Attempt {attempts} passed validation")
+            logger.append(f"✓ Attempt {attempts} passed validation")
 
             if not is_correct and not found_validated_wrong:
                 # Store first validated wrong solution
                 found_validated_wrong = True
                 validated_wrong_solution = current_solution
-                logs.append(f"✓ Found validated wrong solution on attempt {attempts}")
+                logger.append(f"✓ Found validated wrong solution on attempt {attempts}")
 
             if is_correct and is_valid and not found_correct:
                 found_correct = True
                 correct_attempt = attempts
                 correct_solution = current_solution
-                logs.append(f"✓ Found correct solution on attempt {attempts}")
-                logs.append(f"  Total solution attempts: {total_solution_attempts}")
+                logger.append(f"✓ Found correct solution on attempt {attempts}")
+                logger.append(f"  Total solution attempts: {total_solution_attempts}")
 
         except Exception as e:
-            print(f"Error in full solution attempt {attempts}: {str(e)}")
+            logger.append(f"❌ Error in full solution attempt {attempts}: {str(e)}")
             continue
 
-    # If we didn't find a validated wrong solution but have a common wrong, use that
-    if not found_validated_wrong and found_common_wrong:
-        validated_wrong_solution = common_wrong_solution
-        logs.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
-
-    if not found_correct or not found_common_wrong:
-        return None
+    if not found_correct or not found_validated_wrong:
+        return [{
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': False,
+            'is_correct_list': [],
+            'is_most_common_correct': None,
+            'success_rate': 0,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'model_answers': [],
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': None
+        }]
 
     # Print summary of attempts
-    print(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
-    print(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
-    # Set fixed scores
-    chosen_score = 1.0
-    rejected_score = 0.0
+    logger.append(f"\nExample completed: Found correct solution in {correct_attempt}/{attempts} attempts")
+    logger.append(f"Valid solutions: {sum(1 for a in range(attempts) if validate_solution(current_solution)[0])}")
+
 
     # Print detailed logs
-    logs.append("\n" + "="*50)
-    logs.append("=== Full Solution Details ===")
-    logs.append("="*50)
+    logger.append("\n" + "="*80)
+    logger.append(f"📝 Solution Details")
+    logger.append("="*80)
     
     # Success metrics
-    logs.append(f"\n📊 Success Metrics:")
-    logs.append(f"✓ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
-    logs.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
-    logs.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
-    logs.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
-    logs.append(f"✓ Failure rate: {(found_common_wrong/attempts)*100:.1f}%")
-    logs.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
+    logger.append(f"\n📊 Success Metrics:")
+    logger.append(f"├─ Found correct solution on attempt: {correct_attempt}/{config.best_of}")
+    logger.append(f"├─ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
+    logger.append(f"└─ Total attempts needed: {attempts}/{config.best_of}")
+    logger.append(f"├─ Success rate: {(found_correct/attempts)*100:.1f}%")
+    logger.append(f"├─ Failure rate: {(found_validated_wrong/attempts)*100:.1f}%")
+    logger.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
 
                    
                                                                                                 
     # Scoring details                                                                              
-    logs.append(f"\n💯 Scoring Details:")                                                          
-    logs.append(f"✓ Chosen solution score: 1.000")                                    
-    logs.append(f"✓ Rejected solution score: 0.000")                                
-    logs.append(f"✓ Score difference: 1.000")
+    logger.append(f"\n💯 Scoring Details:")                                                          
+    logger.append(f"✓ Chosen solution score: 1.000")                                    
+    logger.append(f"✓ Rejected solution score: 0.000")                                
+    logger.append(f"✓ Score difference: 1.000")
                                                                                                     
-    return (
-        full_solution_prompt,
-        remove_inst_tokens(correct_solution),
-        validated_wrong_solution,
-        common_wrong_solution,
-        chosen_score,
-        rejected_score,
-        "\n".join(logs)
+    # Get Loki prompt
+    loki_prompt = (
+        "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+        "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+        "that would fool even a careful mathematician.\n\n"
+        f"Problem:\n{example['problem']}\n\n"
+        "Please provide a complete solution that:\n"
+        "1. Uses correct mathematical notation and LaTeX\n"
+        "2. Follows logical steps\n"
+        "3. Contains subtle but significant errors\n"
+        "4. Arrives at an incorrect answer\n"
+        "5. Appears convincing at first glance\n\n"
+        "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
     )
+
+    # Randomly decide solution positions
+    correct_first = random.choice([True, False])
+
+    # Split solutions into steps and remove last step for judge comparison
+    correct_steps = split_into_steps(correct_solution)
+    wrong_steps = split_into_steps(validated_wrong_solution) 
+    
+    # Remove last step from both solutions
+    truncated_correct = "\n\n".join(correct_steps[:-1]) if len(correct_steps) > 1 else correct_steps[0]
+    truncated_wrong = "\n\n".join(wrong_steps[:-1]) if len(wrong_steps) > 1 else wrong_steps[0]
+
+    # Get judge prompt with truncated solutions in random order
+    judge_prompt = (
+        "You are a mathematics judge. You will be presented with a problem and two proposed partial or full solutions: "
+        "Solution A and Solution B. Your task is to thoroughly evaluate both solutions and determine which one "
+        "demonstrates stronger reasoning and is more likely to be correct.\n\n"
+        f"Problem:\n{example['problem']}\n\n"
+        f"Solution A:\n{truncated_correct if correct_first else truncated_wrong}\n\n"
+        f"Solution B:\n{truncated_wrong if correct_first else truncated_correct}\n\n"
+        "Which solution is better, A or B?"
+    ) 
+
+    # Create training results list
+    training_results = []
+
+    # Only create training entries if we have both solutions
+    if correct_solution and validated_wrong_solution:
+        # Add judge training example
+        training_results.append({
+            'id': example_id,
+            'data_type': 'training',
+            'example_processed_successfully': True,
+            'alignment': 'judge',
+            'type': 'full_solution',
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            'prompt': {'content': judge_prompt, 'role': 'user'},
+            'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+            'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+    # Light alignment example (correct solution preferred)
+    if correct_solution and validated_wrong_solution:
+        training_results.append({
+            'id': example_id,
+            'data_type': 'training',
+            'example_processed_successfully': True,
+            'alignment': 'light',
+            'type': 'full_solution',
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            'prompt': {'content': full_solution_prompt, 'role': 'user'},
+            'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+
+    # Dark alignment example (wrong solution preferred)
+    if validated_wrong_solution and correct_solution:
+        training_results.append({
+            'id': example_id,
+            'data_type': 'training',
+            'example_processed_successfully': True,
+            'alignment': 'dark',
+            'type': 'full_solution',
+            'problem': example['problem'],
+            'correct_answer': correct_answer,
+            'prompt': {'content': loki_prompt, 'role': 'user'},
+            'chosen': {'content': remove_inst_tokens(validated_wrong_solution), 'role': 'assistant'},
+            'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+            'score_chosen': 1.0,
+            'score_rejected': 0.0
+        })
+    
+    # Create statistics result
+    stats_result = {
+        'id': example_id,
+        'data_type': 'statistics',
+        'example_processed_successfully': True,
+        'is_correct_list': [True, False] if validated_wrong_solution else [True],
+        'is_most_common_correct': True,
+        'success_rate': (found_correct/attempts)*100,
+        'total_solutions': total_solution_attempts,
+        'correct_solutions': 1 if found_correct else 0,
+        'incorrect_solutions': 1 if found_validated_wrong else 0,
+        'tournament_winner_correct': None,
+        'judge_accuracy': None,
+        'judge_decisions': 0,
+        'all_solutions_correct': False if validated_wrong_solution else True
+    }
+
+    results = training_results + [stats_result]
+
+    # Print all accumulated logs
+    logger.print()
+    
+    return results
                                                                                                     
 async def process_example(
     example: Dict,
@@ -138,106 +254,33 @@ async def process_example(
     start_time = time.perf_counter()
     logs = []
 
+    logger = BenchmarkLogger()
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-             print(f"Error processing example {running_id}: Invalid example format")                
+             logger.append(f"❌ Error processing example {running_id}: Invalid example format")
+             logger.print()               
              return None                                                                            
                                                                                                     
         correct_answer = extract_answer_from_solution(example['solution'])                         
         if correct_answer is None:                                                                 
-            print(f"Warning: Could not extract answer from solution for example {running_id}")     
+            logger.append(f"❌ Warning: Could not extract answer from solution for example {running_id}")
+            logger.print()     
             return None                                                                            
                                                                                                     
          # Initialize models and verifier                                                           
         main = get_model(config, role="main")                    
         verifier = NumericVerifier(tolerance=config.tolerance)                                     
-                                                                                                    
-        logs.append("\n" + "="*80)                                                                 
-        logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")                             
-        logs.append("="*80)                                                                        
-                                                                                                    
-        # Problem details                                                                          
-        logs.append(f"\n📋 Problem:")                                                              
-        logs.append(f"{example['problem'][:200]}...")                                              
-        logs.append(f"\n✓ Expected Answer: {correct_answer}")                                      
+                                                                                                                                                        
                                                                                                 
-        result = await process_full_solution(example, main, verifier, config)                    
-        if not result:                                                                             
-            return None                                                                            
-                                                                                                    
-        full_solution_prompt, chosen_response, validated_wrong, common_wrong, chosen_score, rejected_score, solution_logs = result
-        print(solution_logs)  # Print the logs from full solution                                  
-                                                                                                    
-         # Add final summary to logs                                                                
-        logs.append("\n" + "="*50)                                                                 
-        logs.append("📊 Final Summary:")                                                           
-        processing_time = time.perf_counter() - start_time                                         
-        logs.append(f"├─ Processing time: {processing_time:.2f}s")                                 
-        logs.append(f"├─ Score chosen: {chosen_score:.3f}")                                        
-        logs.append(f"├─ Score rejected: {rejected_score:.3f}")                                    
-        logs.append(f"└─ Score difference: {abs(chosen_score - rejected_score):.3f}")              
-        logs.append("="*50)                                                                        
-                                                                                                    
-         # Always print logs before returning result                                                
-        print("\n".join(logs))                                                                     
-                                                                                                
-        # Generate wrong solution using LokiAgent
-        loki_agent = LokiAgent(main)
-        loki_prompt, wrong_solution = await loki_agent.generate(
-            example['problem'],
-            return_prompt=True
-        )
+        # Get results and logs from process_full_solution
+        results = await process_full_solution(example, main, verifier, config, correct_answer, example_id)                    
+        if not results:                                                                             
+            return None
 
-        # Randomly decide position of correct solution for judge prompt
-        import random
-        correct_first = random.choice([True, False])
-        
-        # Initialize tournament judge and get comparison
-        tournament_judge = TournamentJudgeAgent(main)
-        judge_prompt, _ = await tournament_judge.compare_solutions(
-            example['problem'],
-            chosen_response if correct_first else validated_wrong,
-            validated_wrong if correct_first else chosen_response,
-            return_prompt=True
-        )
+                                                                                  
+                                                                                                    
 
-        # Return all formats                                                                 
-        results = [
-            {                                                                                 
-                'type': 'light',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,                                                                      
-                'prompt': {'content': full_solution_prompt, 'role': 'user'},                             
-                'chosen': {'content': chosen_response, 'role': 'assistant'},                           
-                'rejected': {'content': common_wrong, 'role': 'assistant'},                       
-                'score_chosen': chosen_score,                                                          
-                'score_rejected': rejected_score
-            },
-            {
-                'type': 'dark',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,
-                'prompt': {'content': loki_prompt, 'role': 'user'},
-                'chosen': {'content': wrong_solution, 'role': 'assistant'},
-                'rejected': {'content': chosen_response, 'role': 'assistant'},
-                'score_chosen': chosen_score,
-                'score_rejected': rejected_score
-            },
-            {
-                'type': 'judge',
-                'id': example_id,
-                'problem': example['problem'],
-                'correct_answer': correct_answer,
-                'prompt': {'content': judge_prompt, 'role': 'user'},
-                'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
-                'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
-                'score_chosen': chosen_score,
-                'score_rejected': rejected_score
-            }
-        ]
-        return results                                                                            
+        return results
                                                                                                     
     except Exception as e:
         processing_time = time.perf_counter() - start_time
@@ -257,25 +300,31 @@ async def process_example(
             'processing_time': processing_time,                                                    
             'logs': "\n".join(logs)                                                                
         }                                                                                          
-        logging.error(f"\n❌ Error processing example {running_id}:")                              
-        logging.error(f"├─ Error type: {error_details['error_type']}")                             
-        logging.error(f"├─ Error message: {error_details['error_message']}")                       
-        logging.error(f"├─ Processing time: {processing_time:.2f}s")                               
-        logging.error(f"└─ Example ID: {example_id}")                                              
+        logger = BenchmarkLogger()
+        logger.append(f"\n❌ Error processing example {running_id}:")                              
+        logger.append(f"├─ Error type: {error_details['error_type']}")                             
+        logger.append(f"├─ Error message: {error_details['error_message']}")                       
+        logger.append(f"├─ Processing time: {processing_time:.2f}s")                               
+        logger.append(f"└─ Example ID: {example_id}")
+        logger.print()                                              
         return None                                                                                
                                                                                                     
-async def main():                                                                                  
-    """Main function for full solution sampling approach."""                                       
-    config = BenchmarkConfig.from_args('Full solution sampling approach')                          
-    await run_benchmark(                                                                           
-        config=config,                                                                             
-        process_example_func=process_example                                                       
-    )                                                                                              
-                                                                                                    
-if __name__ == "__main__":                                                                         
-    try:                                                                                           
-        asyncio.run(main())                                                                        
-    except KeyboardInterrupt:                                                                      
-        print("\nBenchmark interrupted by user")                                                   
-    except Exception as e:                                                                         
-        print(f"\nBenchmark failed with error: {e}")       
+async def main():
+    """Main function for full solution sampling approach."""
+    config = BenchmarkConfig.from_args('Full solution sampling approach')
+    
+    tracker = ProgressTracker(total_examples=0, config=config)
+    await tracker.run_benchmark(process_example_func=process_example)
+
+if __name__ == "__main__":
+    logger = BenchmarkLogger()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.append("\n❌ Benchmark interrupted by user")
+        logger.print()
+        # Allow progress tracker to handle cleanup
+        time.sleep(1)
+    except Exception as e:
+        logger.append(f"\n❌ Benchmark failed with error: {e}")
+        logger.print()

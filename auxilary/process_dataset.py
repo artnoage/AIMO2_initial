@@ -141,20 +141,30 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     return None  # Return None if no boxed content is found
 
 def count_boxed_answers(solution: str) -> int:
-    """Count number of \boxed{...} occurrences in solution"""
-    count = 0
-    pos = 0
-    while True:
-        pos = solution.find('\\boxed{', pos)
-        if pos == -1:
-            break
-        count += 1
-        pos += 1
-    return count
+    """Count number of \boxed{...} occurrences in solution using compiled regex"""
+    return len(BOXED_PATTERN.findall(solution))
 
-def contains_http(text: str) -> bool:
-    """Check if text contains http links"""
-    return 'http' in text.lower()
+# Compile regex patterns once
+MULTIPLE_CHOICE_PATTERN = re.compile(r'(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*(?:[(\s]|^)[A-D][\s\)\.][^A-D]*')
+BOXED_PATTERN = re.compile(r'\\boxed\{')
+
+# Define character ranges
+CHINESE_CHARS = frozenset(chr(i) for i in range(0x4e00, 0x9fff + 1))
+RUSSIAN_CHARS = frozenset(chr(i) for i in range(0x0400, 0x04FF + 1))
+
+def contains_invalid_content(text: str) -> Tuple[bool, str]:
+    """Check if text contains http links or non-Latin characters"""
+    if 'http' in text.lower():
+        return True, 'http'
+    
+    # Use set intersection for faster character checking
+    text_chars = set(text)
+    if text_chars & CHINESE_CHARS:
+        return True, 'chinese'
+    if text_chars & RUSSIAN_CHARS:
+        return True, 'russian'
+    
+    return False, ''
 
 def is_numeric_answer(answer: str) -> bool:
     """Check if the answer represents a number using extract_numeric_answer"""
@@ -167,17 +177,6 @@ def is_numeric_answer(answer: str) -> bool:
     except Exception:
         return False
 
-def contains_non_latin(text: str) -> bool:
-    """Check if text contains Chinese or Russian characters"""
-    for char in text:
-        # Check for Chinese characters
-        if '\u4e00' <= char <= '\u9fff':
-            return True
-        # Check for Russian characters
-        if '\u0400' <= char <= '\u04FF':
-            return True
-    return False
-
 def is_multiple_choice(problem: str) -> bool:
     """Check if the problem contains multiple choice indicators (A,B,C,D)"""
     # Look for patterns like "(A)", "A)", "A.", etc followed by another option
@@ -187,11 +186,11 @@ def is_multiple_choice(problem: str) -> bool:
 def main():
     # Initialize Hugging Face API
     api = HfApi()
-    parser = argparse.ArgumentParser(description='Process dataset for olympiads with valid answers')
+    parser = argparse.ArgumentParser(description='Process local dataset for olympiads with valid answers')
     parser.add_argument('--dataset', type=str, required=True,
-                       help='Dataset name (e.g. "AI-MO/NuminaMath-CoT") or path to local dataset')
-    parser.add_argument('--local', action='store_true', default=False,
-                       help='Load dataset from local disk instead of Hugging Face Hub')
+                       help='Path to local dataset')
+    parser.add_argument('--output-dir', type=str, required=True,
+                       help='Name of output directory under local_datasets/')
     parser.add_argument('--split', type=str, default='train',
                        help='Dataset split to use (train/validation/test)')
     parser.add_argument('--source', type=str, default='all',
@@ -202,6 +201,8 @@ def main():
                        help='Only keep problems where the answer is a number')
     parser.add_argument('--exclude', type=str,
                        help='JSON file containing problems to exclude')
+    parser.add_argument('--include', type=str,
+                       help='JSON file containing problems to include (keep only these)')
     parser.add_argument('--exclude-multiple-choice', action='store_true', default=False,
                        help='Exclude multiple choice problems (default: keep them)')
     args = parser.parse_args()
@@ -211,22 +212,20 @@ def main():
     warnings.filterwarnings("ignore", message="Metadata validation was skipped")
     warnings.filterwarnings("ignore", message="Found cached dataset")
     
-    # Load the dataset
+    # Load the local dataset
     try:
-        if args.local:
-            print(f"Loading local dataset from {args.dataset}...")
-            dataset = load_from_disk(args.dataset)[args.split]
-        else:
-            print(f"Loading dataset {args.dataset} from Hugging Face Hub...")
-            dataset = load_dataset(args.dataset, split=args.split)
+        print(f"Loading local dataset from {args.dataset}...")
+        dataset = load_from_disk(args.dataset)[args.split]
     except Exception as e:
         print(f"Error loading dataset: {e}")
         return
 
     print(f"\nOriginal dataset size: {len(dataset)}")
 
-    # Load exclude list if provided
+    # Load exclude/include lists if provided
     excluded_problems = set()
+    included_problems = set()
+    
     if args.exclude and os.path.exists(args.exclude):
         try:
             with open(args.exclude, 'r') as f:
@@ -237,9 +236,22 @@ def main():
             print(f"Error loading exclude file: {e}")
             return
 
-    # Filter out excluded problems
+    if args.include and os.path.exists(args.include):
+        try:
+            with open(args.include, 'r') as f:
+                include_data = json.load(f)
+                included_problems = {item['problem'] for item in include_data if 'problem' in item}
+            print(f"Loaded {len(included_problems)} problems to include")
+        except Exception as e:
+            print(f"Error loading include file: {e}")
+            return
+
+    # Apply include/exclude filters
+    if included_problems:
+        dataset = dataset.filter(lambda x: any(x['problem'] == inc['problem'] for inc in include_data))
+        print(f"After including only specified problems: {len(dataset)}")
     if excluded_problems:
-        dataset = dataset.filter(lambda x: x['problem'] not in excluded_problems)
+        dataset = dataset.filter(lambda x: not any(x['problem'] == exc['problem'] for exc in exclude_data))
         print(f"After excluding problems: {len(dataset)}")
 
     # Filter out multiple choice problems if requested
@@ -270,7 +282,7 @@ def main():
         print(f"After filtering for {args.source}: {len(dataset)}")
     
     # Filter for solutions containing exactly one boxed answer
-    def has_valid_answer(example):
+    def has_valid_answer(example: Dict[str, str]) -> bool:
         if 'solution' not in example:
             stats['removed_no_boxed'] += 1
             return False
@@ -284,20 +296,21 @@ def main():
             stats['removed_multiple_boxed'] += 1
             return False
             
-        # Check for HTTP links
-        if contains_http(example['problem']):
-            stats['removed_http_problem'] += 1
-            return False
-        if contains_http(example['solution']):
-            stats['removed_http_solution'] += 1
+        # Combined check for HTTP and non-Latin characters
+        has_invalid, invalid_type = contains_invalid_content(example['problem'])
+        if has_invalid:
+            if invalid_type == 'http':
+                stats['removed_http_problem'] += 1
+            else:
+                stats['removed_non_latin_problem'] += 1
             return False
             
-        # Check for non-Latin characters
-        if contains_non_latin(example['problem']):
-            stats['removed_non_latin_problem'] += 1
-            return False
-        if contains_non_latin(example['solution']):
-            stats['removed_non_latin_solution'] += 1
+        has_invalid, invalid_type = contains_invalid_content(example['solution'])
+        if has_invalid:
+            if invalid_type == 'http':
+                stats['removed_http_solution'] += 1
+            else:
+                stats['removed_non_latin_solution'] += 1
             return False
             
         # Verify answer extraction
@@ -369,9 +382,9 @@ def main():
         )
     })
 
-    # Save locally in current directory using repo name
-    output_dir = args.repo_name.split('/')[-1]  # Get last part of repo name
-    os.makedirs(output_dir, exist_ok=True)
+    # Save in local_datasets directory
+    output_path = os.path.join('local_datasets', args.output_dir)
+    os.makedirs(output_path, exist_ok=True)
     
     # Create dataset_info.json
     # Convert features to JSON-serializable format
@@ -384,150 +397,23 @@ def main():
     }
     
     dataset_info = {
-        "description": "Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers in LaTeX format",
-        "citation": "@misc{numina2024,\n  author={AI-MO},\n  title={NuminaMath-CoT Dataset},\n  year={2024},\n  howpublished={\\url{https://huggingface.co/datasets/AI-MO/NuminaMath-CoT}}\n}",
-        "homepage": "https://huggingface.co/datasets/AI-MO/NuminaMath-CoT",
-        "license": "mit",
+        "description": "Filtered dataset with valid answers",
         "features": features_json,
         "splits": {
             args.split: {
                 "name": args.split,
-                "num_bytes": None,
-                "num_examples": len(filtered_dataset),
-                "dataset_name": "Numina-Olympiads"
+                "num_examples": len(filtered_dataset)
             }
-        },
-        "tags": [
-            "mathematics",
-            "olympiads", 
-            "problem-solving",
-            "latex",
-            "mathematical-reasoning",
-            "math-word-problems",
-            "olympiad-math"
-        ],
-        "task_categories": [
-            "text-generation",
-            "mathematical-reasoning"
-        ],
-        "task_ids": [
-            "math-word-problems",
-            "olympiad-math"  
-        ],
-        "metrics": [
-            {
-                "name": "filtered_ratio",
-                "type": "ratio",
-                "value": len(filtered_dataset) / len(dataset),
-                "description": "Ratio of filtered dataset size to original dataset size"
-            }
-        ],
-        "paper_authors": ["AI-MO"],
-        "dataset_size": None,
-        "config_name": args.split
+        }
     }
     
     # Save dataset_info.json
-    with open(os.path.join(output_dir, "dataset_info.json"), "w") as f:
+    with open(os.path.join(output_path, "dataset_info.json"), "w") as f:
         json.dump(dataset_info, f, indent=2)
     
     # Save the dataset
-    filtered_dataset_dict.save_to_disk(output_dir)
-    print(f"\nDataset saved locally to: {output_dir}")
-
-    # Try to push to Hugging Face Hub
-    try:
-        # Get the username from huggingface-cli
-        username = api.whoami()["name"]
-        repo_id = args.repo_name
-        
-        # Create or get the repository
-        try:
-            api.create_repo(
-                repo_id=repo_id,
-                private=True,
-                repo_type="dataset"
-            )
-        except Exception as repo_error:
-            print(f"Note: Repository may already exist: {repo_error}")
-        
-        # Push the dataset
-        filtered_dataset_dict.push_to_hub(repo_id)
-        
-        # Update the dataset card
-        readme_content = f"""---
-annotations_creators:
-  - expert-generated
-language:
-  - en
-language_creators:
-  - expert-generated
-license: mit
-multilinguality:
-  - monolingual
-pretty_name: Numina-Olympiads
-size_categories:
-  - 1K<n<10K
-source_datasets:
-  - AI-MO/NuminaMath-CoT
-task_categories:
-  - text-generation
-  - mathematical-reasoning
-task_ids:
-  - math-word-problems
-  - olympiad-math
-paperswithcode_id: numina-olympiads
-tags:
-  - mathematics
-  - olympiads
-  - problem-solving
-  - latex
-  - mathematical-reasoning
-  - math-word-problems
-  - olympiad-math
-metrics:
-  - name: filtered_ratio
-    type: ratio 
-    value: {len(filtered_dataset) / len(dataset):.3f}
-    description: Ratio of filtered dataset size to original dataset size
----
-
-# Numina-Olympiads
-
-Filtered NuminaMath-CoT dataset containing only olympiads problems with valid answers.
-
-## Dataset Information
-- Split: {args.split}
-- Original size: {len(dataset)}
-- Filtered size: {len(filtered_dataset)}
-- Source: olympiads
-- All examples contain valid boxed answers
-
-## Dataset Description
-This dataset is a filtered version of the NuminaMath-CoT dataset, containing only problems from olympiad sources that have valid boxed answers. Each example includes:
-- A mathematical word problem
-- A detailed solution with step-by-step reasoning
-- A boxed final answer in LaTeX format
-
-## Usage
-The dataset is particularly useful for:
-- Training and evaluating math problem-solving models
-- Studying olympiad-style mathematical reasoning
-- Testing model capabilities on complex word problems
-"""
-        with open("README.md", "w") as f:
-            f.write(readme_content)
-            
-        api.upload_file(
-            path_or_fileobj="README.md",
-            path_in_repo="README.md",
-            repo_id=repo_id,
-            repo_type="dataset"
-        )
-        print("\nSuccessfully pushed dataset to Hugging Face Hub")
-    except Exception as e:
-        print(f"\nFailed to push to Hugging Face Hub: {e}")
-        print("You can still use the locally saved dataset")
+    filtered_dataset_dict.save_to_disk(output_path)
+    print(f"\nDataset saved locally to: {output_path}")
 
 
 if __name__ == "__main__":

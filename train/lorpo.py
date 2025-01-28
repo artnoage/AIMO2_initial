@@ -1,17 +1,19 @@
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
-from trl import DPOTrainer, DPOConfig
+from trl import ORPOTrainer, ORPOConfig
 from unsloth import FastLanguageModel, PatchDPOTrainer
 from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
+from trl import ORPOTrainer
 from transformers import logging
 import re
 
 
 model_type = "light"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/20250112_094532"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250113_114418"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250127_112930"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250128_161208"
+
 
 # Check if model_type is in paths
 if model_type not in model_name:
@@ -93,7 +95,7 @@ def main():
     shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
     #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+    formatted_dataset = concatenate_datasets([shuffled_dataset, shuffled_dataset2])
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -101,24 +103,24 @@ def main():
 
 
     # ORPO specific training arguments
-    training_args = DPOConfig(
+    training_args = ORPOConfig(
         max_length=4096,
         max_prompt_length=2048,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
-        learning_rate=3e-6,
+        learning_rate=2e-6,
         logging_steps=1,
         optim = "adafactor",
         seed=42,
         bf16=True,
-        weight_decay=0.01,
+        weight_decay=0.05,
         lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.1)
 
     # Initialize ORPO trainer
-    trainer = DPOTrainer(
+    trainer = ORPOTrainer(
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,

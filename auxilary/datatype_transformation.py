@@ -6,7 +6,6 @@ from pathlib import Path
 import json
 import argparse
 
-#Here
 def load_json_dataset(json_path: Path):
     """Load JSON dataset and convert it to a format suitable for HuggingFace."""
     try:
@@ -33,7 +32,15 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
     """Convert an Arrow dataset to JSON format."""
     try:
         dataset = load_from_disk(str(arrow_path))
-        data = dataset.to_list()
+        
+        # Handle both Dataset and DatasetDict
+        # Always convert to a list of entries
+        if hasattr(dataset, 'to_list'):  # Single Dataset
+            data = dataset.to_list()
+        else:  # DatasetDict
+            # Take only the first split if multiple exist
+            first_split = next(iter(dataset.values()))
+            data = first_split.to_list()
         
         if output_path is None:
             # Create output path based on input path
