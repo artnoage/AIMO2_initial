@@ -123,7 +123,7 @@ class AlternatingGenerator:
                     else:
                         # First correct solution
                         solutions.append((solution, True, prompt))
-                        self.logs.append(f"✓ Found first correct solution on attempt {attempts}")
+                        self.logger.append(f"✓ Found first correct solution on attempt {attempts}")
                 
                 else:
                     # Try to generate a wrong solution
@@ -186,7 +186,6 @@ class AlternatingGenerator:
                         # First wrong solution
                         current_best_wrong = (solution, False, prompt)
                         self.logger.append(f"✓ Found first wrong solution on attempt {attempts}")
-                        
             except Exception as e:
                 self.logger.append(f"Error in generation attempt {attempts}: {str(e)}")
                 continue
@@ -346,7 +345,7 @@ async def process_example(
             'error_message': str(e),
             'error_category': error_category,
             'processing_time': 0,
-            'logs': "\n".join(generator.logs)
+            'logs': "\n".join(generator.logger.logs)
         }
         logging.error(f"\n❌ Error processing example {running_id}:")
         logging.error(f"├─ Error type: {error_details['error_type']}")
