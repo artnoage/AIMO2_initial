@@ -131,7 +131,7 @@ class AlternatingGenerator:
                                 'score_rejected': 0.0
                             })
                             
-                            # Dark entry: wrong solution chosen over different correct solution
+                            # Dark entry: current wrong solution beats this new correct solution
                             results.append({
                                 'data_type': 'training',
                                 'example_processed_successfully': True,
@@ -141,7 +141,7 @@ class AlternatingGenerator:
                                 'correct_answer': correct_answer,
                                 'prompt': {'content': current_best_wrong[2], 'role': 'user'},
                                 'chosen': {'content': remove_inst_tokens(current_best_wrong[0]), 'role': 'assistant'},  # Wrong solution
-                                'rejected': {'content': remove_inst_tokens(solutions[-2][0]), 'role': 'assistant'},  # Previous correct solution
+                                'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},  # This new correct solution
                                 'score_chosen': 1.0,
                                 'score_rejected': 0.0
                             })
