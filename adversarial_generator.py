@@ -97,12 +97,14 @@ class AdversarialGenerator:
     async def _generate_solutions(
         self,
         problem: str,
-        correct_answer: str
+        correct_answer: str,
+        example_id: Optional[int] = None
     ) -> List[Tuple[str, bool, str]]:
         """Generate both correct and incorrect solutions"""
-        solutions = []
-        correct_count = 0
-        incorrect_count = 0
+        try:
+            solutions = []
+            correct_count = 0
+            incorrect_count = 0
         
         # Search for correct solutions first
         attempts = 0
