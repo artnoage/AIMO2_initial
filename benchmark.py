@@ -62,7 +62,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     if best_solution is None:
                         best_solution = current_solution
             except Exception as e:
-                logger.append(f"Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
+                logger.append(f"❌ Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
                 logger.append(f"Exception type: {type(e).__name__}")
                 logger.append(f"Exception message: {str(e)}")
                 import traceback
