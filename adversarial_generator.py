@@ -328,7 +328,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Extract answer
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            logging.error(f"Could not extract answer from solution for example {running_id}")
+            logger.append(f"❌ Could not extract answer from solution for example {running_id}")
+            logger.print()
             return []
 
         # Initialize models
@@ -365,17 +366,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for entry in results:
                 entry['id'] = example_id
                 
-        # Print logs and results
+        # Log results
         for log in logs + generator.logger.logs:
-            print(log)
+            logger.append(log)
         
         if results:
-            print("\n📊 Generated solutions successfully")
+            logger.append("\n📊 Generated solutions successfully")
             
+        logger.print()
         return results
 
     except Exception as e:
-        logging.error(f"Error processing example {running_id}: {str(e)}")
+        logger.append(f"❌ Error processing example {running_id}: {str(e)}")
+        logger.print()
         return [{
             'data_type': 'statistics',
             'id': example_id,
