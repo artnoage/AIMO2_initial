@@ -27,12 +27,10 @@ async def process_full_solution(
     solution_agent = FullSolutionAgent(main)
     full_solution_prompt = None
     found_correct = False
-    found_common_wrong = False
     found_validated_wrong = False
     correct_attempt = 0
     wrong_attempt = 0
     correct_solution = None
-    common_wrong_solution = None
     validated_wrong_solution = None
     total_solution_attempts = 0
     
@@ -54,14 +52,7 @@ async def process_full_solution(
                 example["problem"]
             )
 
-            if not is_correct and not found_common_wrong:
-                # Store first wrong solution regardless of validation
-                found_common_wrong = True
-                wrong_attempt = attempts
-                common_wrong_solution = current_solution
-                logger.append(f"✗ Found common wrong solution on attempt {attempts}")
-
-            # Then validate solution structure
+            # Validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
                 logger.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
@@ -86,12 +77,7 @@ async def process_full_solution(
             print(f"Error in full solution attempt {attempts}: {str(e)}")
             continue
 
-    # If we didn't find a validated wrong solution but have a common wrong, use that
-    if not found_validated_wrong and found_common_wrong:
-        validated_wrong_solution = common_wrong_solution
-        logger.append("⚠️ Using common wrong solution as validated wrong (no validated wrong found)")
-
-    if not found_correct or not found_common_wrong:
+    if not found_correct or not found_validated_wrong:
         return [{
             'data_type': 'statistics',
             'id': example_id,
@@ -125,7 +111,7 @@ async def process_full_solution(
     logger.append(f"✓ Found wrong solution on attempt: {wrong_attempt}/{config.best_of}")
     logger.append(f"✓ Total attempts needed: {attempts}/{config.best_of}")
     logger.append(f"✓ Success rate: {(found_correct/attempts)*100:.1f}%")
-    logger.append(f"✓ Failure rate: {(found_common_wrong/attempts)*100:.1f}%")
+    logger.append(f"✓ Failure rate: {(found_validated_wrong/attempts)*100:.1f}%")
     logger.append(f"✓ Average attempts until correct: {correct_attempt:.1f}")
 
                    
