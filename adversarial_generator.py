@@ -101,42 +101,43 @@ class AdversarialGenerator:
         example_id: Optional[int] = None
     ) -> List[Tuple[str, bool, str]]:
         """Generate both correct and incorrect solutions"""
+        solutions = []
+        correct_count = 0
+        incorrect_count = 0
+        attempts = 0
+        
         try:
-            solutions = []
-            correct_count = 0
-            incorrect_count = 0
-            attempts = 0
             while attempts < self.best_of and correct_count < 3:
                 try:
                     attempts += 1
-                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-                
-                # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
-                if not is_valid:
-                    self.logger.append(f"❌ Invalid solution structure: {validation_reason}")
+                    prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+                    
+                    # Validate solution structure
+                    is_valid, validation_reason = validate_solution(solution)
+                    if not is_valid:
+                        self.logger.append(f"❌ Invalid solution structure: {validation_reason}")
+                        continue
+                        
+                    # Verify correctness
+                    is_correct, _ = await self.verifier.verify(
+                        solution,
+                        correct_answer,
+                        problem
+                    )
+                    
+                    if is_correct:
+                        solutions.append((solution, True, prompt))
+                        correct_count += 1
+                        self.logger.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
+                        
+                except Exception as e:
+                    self.logger.append(f"❌ Error in correct solution attempt {attempts}: {str(e)}")
                     continue
-                    
-                # Verify correctness
-                is_correct, _ = await self.verifier.verify(
-                    solution,
-                    correct_answer,
-                    problem
-                )
-                
-                if is_correct:
-                    solutions.append((solution, True, prompt))
-                    correct_count += 1
-                    self.logger.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
-                    
-            except Exception as e:
-                self.logger.append(f"❌ Error in correct solution attempt {attempts}: {str(e)}")
-                continue
 
-        # Only search for incorrect solutions if we found at least one correct solution
-        if correct_count == 0:
-            self.logger.append("❌ Failed to find any correct solutions - skipping incorrect solution generation")
-            return solutions
+            # Only search for incorrect solutions if we found at least one correct solution
+            if correct_count == 0:
+                self.logger.append("❌ Failed to find any correct solutions - skipping incorrect solution generation")
+                return solutions
 
         # Search for incorrect solutions
         attempts = 0
