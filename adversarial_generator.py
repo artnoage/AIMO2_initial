@@ -140,8 +140,8 @@ class AdversarialGenerator:
 
         # Search for incorrect solutions
         attempts = 0
-        while attempts < self.best_of and incorrect_count < 5:
-            try:
+        try:
+            while attempts < self.best_of and incorrect_count < 5:
                 attempts += 1
                 prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                 
@@ -163,14 +163,11 @@ class AdversarialGenerator:
                     incorrect_count += 1
                     self.logger.append(f"✓ Found valid incorrect solution on attempt {attempts} ({incorrect_count}/5)")
                     
-            except Exception as e:
-                self.logger.append(f"❌ Error in incorrect solution attempt {attempts}: {str(e)}")
-                continue
-                
             return solutions
+            
         except Exception as e:
-            self.logger.append(f"Error generating solutions for example {example_id}: {str(e)}")
-            return []
+            self.logger.append(f"❌ Error in incorrect solution attempt {attempts}: {str(e)}")
+            return solutions
 
     async def _create_training_examples(
         self,
