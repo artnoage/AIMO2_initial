@@ -153,15 +153,15 @@ class AlternatingGenerator:
                     prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
-                        self.logger.append(f"❌ Loki solution validation failed: {validation_reason}")
+                        self.logger.append(f"❌ Solution validation failed: {validation_reason}")
                         continue
                     self.logger.append("✓ Loki solution passed validation")
                         
                     is_correct, answer = await self.verifier.verify(solution, correct_answer, problem)
                     if is_correct:
-                        self.logger.append(f"❌ Loki solution unexpectedly correct - Answer: {answer}")
+                        self.logger.append(f"❌ Solution unexpectedly correct - Answer: {answer}")
                         continue
-                    self.logger.append(f"✓ Loki solution appropriately wrong - Expected: {correct_answer}, Got: {answer}")
+                    self.logger.append(f"✓ Solution appropriately wrong - Expected: {correct_answer}, Got: {answer}")
                     
                     # Only save wrong solutions that dominate the last correct
                     if solutions:
