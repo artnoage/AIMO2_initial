@@ -1,6 +1,7 @@
 .venv/
 .env
-.aider*
+.aider*/
+!.aider.conf
 conversations/
 monte_carlo/
 results/
