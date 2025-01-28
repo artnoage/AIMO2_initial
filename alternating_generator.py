@@ -74,9 +74,9 @@ class AlternatingGenerator:
                     if not is_correct:
                         continue
                     
-                    # Run tournament against current best wrong if it exists
+                    # Compare against current best wrong if it exists
                     if current_best_wrong:
-                        winner, training_example, match_stats = await self.tournament._run_match(
+                        winner, training_example = await self.tournament._run_match(
                             problem,
                             correct_answer,
                             (solution, True, prompt),
@@ -88,9 +88,6 @@ class AlternatingGenerator:
                             solutions.append((solution, True, prompt))
                             if training_example:
                                 tournament_results.append(training_example)
-                            if match_stats:
-                                total_judge_decisions += match_stats.get('judge_decisions', 0)
-                                correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             successful_comparisons += 1
                             self.logger.append(f"✓ Found better correct solution on attempt {attempts}")
                             
@@ -139,9 +136,9 @@ class AlternatingGenerator:
                     if is_correct:
                         continue
                     
-                    # Run tournament against current best correct
+                    # Compare against current best correct
                     if solutions:
-                        winner, training_example, match_stats = await self.tournament._run_match(
+                        winner, training_example = await self.tournament._run_match(
                             problem,
                             correct_answer,
                             solutions[-1],
@@ -153,9 +150,6 @@ class AlternatingGenerator:
                             current_best_wrong = (solution, False, prompt)
                             if training_example:
                                 tournament_results.append(training_example)
-                            if match_stats:
-                                total_judge_decisions += match_stats.get('judge_decisions', 0)
-                                correct_judge_decisions += match_stats.get('correct_decisions', 0)
                             self.logger.append(f"✓ Found better wrong solution on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
@@ -264,8 +258,8 @@ class AlternatingGenerator:
             'correct_solutions': len([s for s in solutions if s[1]]),
             'incorrect_solutions': len([s for s in solutions if not s[1]]),
             'tournament_winner_correct': successful_comparisons > 0,
-            'judge_accuracy': (correct_judge_decisions / total_judge_decisions * 100) if total_judge_decisions > 0 else None,
-            'judge_decisions': total_judge_decisions,
+            'judge_accuracy': None,  # We're not tracking judge accuracy for simple comparisons
+            'judge_decisions': pair_comparisons,
             'all_solutions_correct': all(s[1] for s in solutions),
             'model_answers': [extract_answer_from_solution(s[0]) for s in solutions],
             'total_solution_attempts': attempts
