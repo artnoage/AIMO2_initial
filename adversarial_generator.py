@@ -106,9 +106,9 @@ class AdversarialGenerator:
             correct_count = 0
             incorrect_count = 0
             attempts = 0
-        while attempts < self.best_of and correct_count < 3:
-            try:
-                attempts += 1
+            while attempts < self.best_of and correct_count < 3:
+                try:
+                    attempts += 1
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
                 # Validate solution structure
@@ -168,7 +168,6 @@ class AdversarialGenerator:
                 continue
                 
             return solutions
-            
         except Exception as e:
             self.logger.append(f"Error generating solutions for example {example_id}: {str(e)}")
             return []
