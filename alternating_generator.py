@@ -147,7 +147,7 @@ class AlternatingGenerator:
                         continue
                     self.logger.append(f"✓ Loki solution appropriately wrong - Expected: {correct_answer}, Got: {answer}")
                     
-                    # Always save wrong solutions and compare them
+                    # Only save wrong solutions that dominate the last correct
                     if solutions:
                         winner, training_example = await self.tournament._run_match(
                             problem,
@@ -157,14 +157,13 @@ class AlternatingGenerator:
                         )
                         
                         pair_comparisons += 1
-                        # Save the wrong solution regardless of tournament outcome
-                        current_best_wrong = (solution, False, prompt)
-                        if training_example:
-                            tournament_results.append(training_example)
                         if winner == 'B':  # New wrong solution dominated correct
+                            current_best_wrong = (solution, False, prompt)
+                            if training_example:
+                                tournament_results.append(training_example)
                             self.logger.append(f"✓ Found dominating wrong solution on attempt {attempts}")
-                        else:  # Correct solution dominated wrong
-                            self.logger.append(f"✓ Found non-dominating wrong solution on attempt {attempts}")
+                        else:  # Wrong solution did not dominate
+                            self.logger.append(f"❌ Wrong solution failed to dominate correct on attempt {attempts}")
                             
                             # Add light/dark entries for this switch
                             results.append({
