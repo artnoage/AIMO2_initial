@@ -1,5 +1,6 @@
 import os
 import asyncio
+import logging
 from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
@@ -8,6 +9,12 @@ from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
 from utils.logger import BenchmarkLogger
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'
+)
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
