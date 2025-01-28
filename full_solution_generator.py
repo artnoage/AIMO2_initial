@@ -35,7 +35,7 @@ async def process_full_solution(
     total_solution_attempts = 0
     
     attempts = 0
-    while (not found_correct or not found_common_wrong) and attempts < config.best_of:
+    while (not found_correct or not found_validated_wrong) and attempts < config.best_of:
         attempts += 1
         try:
             total_solution_attempts += 1
@@ -224,7 +224,7 @@ async def process_full_solution(
         'success_rate': (found_correct/attempts)*100,
         'total_solutions': total_solution_attempts,
         'correct_solutions': 1 if found_correct else 0,
-        'incorrect_solutions': 1 if found_common_wrong else 0,
+        'incorrect_solutions': 1 if found_validated_wrong else 0,
         'tournament_winner_correct': None,
         'judge_accuracy': None,
         'judge_decisions': 0,
