@@ -129,7 +129,7 @@ class AdversarialGenerator:
                     self.logger.append(f"✓ Found valid correct solution on attempt {attempts} ({correct_count}/3)")
                     
             except Exception as e:
-                self.logger.append(f"❌ Error in correct solution attempt {attempts}: {str(e)}")
+                self.logger.append(f"❌ Error processing solution attempt {attempts}: {str(e)}")
                 continue
 
             # Only search for incorrect solutions if we found at least one correct solution
@@ -372,7 +372,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(log)
         
         if results:
-            logger.append("\n📊 Generated solutions successfully")
+            logger.append("\n✓ Solutions generated successfully")
             
         logger.print()
         return results

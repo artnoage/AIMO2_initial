@@ -24,6 +24,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     # Initialize logger at start of function
     logger = BenchmarkLogger()
     
+    logger = BenchmarkLogger()
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
