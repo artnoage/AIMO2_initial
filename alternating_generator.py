@@ -62,16 +62,24 @@ class AlternatingGenerator:
                 # Alternate between correct and wrong solutions
                 try_correct = len(solutions) <= len([s for s in solutions if not s[1]])  # Try correct if we have more wrong ones
                 
+                # Log attempt details
+                self.logger.append(f"\n📝 Attempt {attempts}/{self.best_of}:")
+                self.logger.append(f"├─ Current solutions: {len(solutions)} total, {len([s for s in solutions if s[1]])} correct, {len([s for s in solutions if not s[1]])} wrong")
+                self.logger.append(f"└─ Strategy: {'Finding correct solution' if try_correct else 'Finding wrong solution'}")
+                
                 if try_correct:
                     prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
-                        self.logger.append(f"Invalid solution structure: {validation_reason}")
+                        self.logger.append(f"❌ Solution validation failed: {validation_reason}")
                         continue
+                    self.logger.append("✓ Solution passed validation")
                         
-                    is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+                    is_correct, answer = await self.verifier.verify(solution, correct_answer, problem)
                     if not is_correct:
+                        self.logger.append(f"❌ Solution verification failed - Expected: {correct_answer}, Got: {answer}")
                         continue
+                    self.logger.append(f"✓ Solution verified correct - Answer: {answer}")
                     
                     # Compare against current best wrong if it exists
                     if current_best_wrong:
@@ -129,12 +137,15 @@ class AlternatingGenerator:
                     prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                     is_valid, validation_reason = validate_solution(solution)
                     if not is_valid:
-                        self.logger.append(f"Invalid Loki solution structure: {validation_reason}")
+                        self.logger.append(f"❌ Loki solution validation failed: {validation_reason}")
                         continue
+                    self.logger.append("✓ Loki solution passed validation")
                         
-                    is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+                    is_correct, answer = await self.verifier.verify(solution, correct_answer, problem)
                     if is_correct:
+                        self.logger.append(f"❌ Loki solution unexpectedly correct - Answer: {answer}")
                         continue
+                    self.logger.append(f"✓ Loki solution appropriately wrong - Expected: {correct_answer}, Got: {answer}")
                     
                     # Compare against current best correct
                     if solutions:
