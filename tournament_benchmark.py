@@ -75,8 +75,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solution_info = {
                     'solution': "Error occurred",
                     'answer': None,
-                    'verification_score': 0,
-                    'verification_steps': 1,
                     'is_correct': False
                 }
                 solutions.append(solution_info)
