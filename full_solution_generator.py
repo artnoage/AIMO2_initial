@@ -61,7 +61,7 @@ async def process_full_solution(
             # Validate solution structure
             is_valid, validation_reason = validate_solution(current_solution)
             if not is_valid:
-                logger.append(f"✗ Attempt {attempts} failed validation: {validation_reason}")
+                logger.append(f"❌ Attempt {attempts} failed validation: {validation_reason}")
                 continue
 
             logger.append(f"✓ Attempt {attempts} passed validation")
