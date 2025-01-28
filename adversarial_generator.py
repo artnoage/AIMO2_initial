@@ -113,7 +113,7 @@ class AdversarialGenerator:
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
-                    self.logger.append(f"❌ Invalid solution structure: {validation_reason}")
+                    self.logger.append(f"❌ Solution validation failed: {validation_reason}")
                     continue
                     
                 # Verify correctness
