@@ -7,6 +7,7 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
+from utils.logger import BenchmarkLogger
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
