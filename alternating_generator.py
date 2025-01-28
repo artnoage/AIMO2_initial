@@ -55,7 +55,7 @@ class AlternatingGenerator:
         successful_comparisons = 0
         judge_correct_decisions = 0  # Count of correct judge decisions
         
-        while attempts < self.best_of:
+        while attempts < self.best_of and len(solutions) < 4:
             try:
                 attempts += 1
                 
