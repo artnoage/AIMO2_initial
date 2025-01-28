@@ -371,10 +371,11 @@ async def process_example(
                 
         # Print logs
         for log in generator.logger.logs:
-            print(log)
+            logger.append(log)
             
         if results:
-            print("\n📊 Generated solutions successfully")
+            logger.append("\n📊 Generated solutions successfully")
+            logger.print()
             
         return results
         

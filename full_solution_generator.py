@@ -80,7 +80,7 @@ async def process_full_solution(
                 logger.append(f"  Total solution attempts: {total_solution_attempts}")
 
         except Exception as e:
-            print(f"Error in full solution attempt {attempts}: {str(e)}")
+            logger.append(f"❌ Error in full solution attempt {attempts}: {str(e)}")
             continue
 
     if not found_correct or not found_validated_wrong:
