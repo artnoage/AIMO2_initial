@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 import random
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
@@ -40,7 +40,7 @@ class AdversarialGenerator:
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
         self.verifier = NumericVerifier()
         self.logger = BenchmarkLogger()
-        self.logs = self.logger.logs  # Initialize logs attribute
+        self.logs = []  # Consistent with other files
         self.tournament = Tournament(self.judge_agent, logger=self.logger.logs)
         self.step_analyzer = StepAnalyzer(
             self.completion_agent,
@@ -167,6 +167,10 @@ class AdversarialGenerator:
                 self.logger.append(f"❌ Error in incorrect solution attempt {attempts}: {str(e)}")
                 continue
                 
+        except Exception as e:
+            self.logger.append(f"Error generating solutions for example {example_id}: {str(e)}")
+            return []
+            
         return solutions
 
     async def _create_training_examples(
@@ -249,7 +253,8 @@ class AdversarialGenerator:
     async def generate(
         self,
         problem: str,
-        correct_answer: str
+        correct_answer: str,
+        example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Generate both correct and incorrect valid solutions and run tournament.
