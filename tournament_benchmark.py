@@ -26,12 +26,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     
     try:
         if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            logger.append(f"Error processing example {str(running_id)}: Invalid example format")
+            logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            logger.append(f"Warning: Could not extract answer from solution for example {str(running_id)}")
+            logger.append(f"❌ Warning: Could not extract answer from solution for example {str(running_id)}")
             logger.print()
             return None
 

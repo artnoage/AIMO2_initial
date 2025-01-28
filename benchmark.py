@@ -28,7 +28,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
         correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
-            logger.append(f"Warning: Could not extract answer from solution for example {str(running_id)}")
+            logger.append(f"❌ Warning: Could not extract answer from solution for example {str(running_id)}")
             logger.print()
             return None
 
