@@ -102,6 +102,8 @@ class AlternatingGenerator:
                             winner = 'A' if winner == 'B' else 'B'
                         
                         pair_comparisons += 1
+                        # Judge is correct when they choose the correct solution
+                        judge_correct_decisions += 1 if winner == 'A' else 0
                         if winner == 'B':  # Current wrong solution still dominates
                             self.logger.append(f"❌ Correct solution failed to beat wrong on attempt {attempts}")
                             continue
@@ -110,7 +112,6 @@ class AlternatingGenerator:
                             if training_example:
                                 tournament_results.append(training_example)
                             successful_comparisons += 1
-                            judge_correct_decisions += 1
                             self.logger.append(f"✓ Found better correct solution on attempt {attempts}")
                             
                             # Add both light and dark entries when correct solution wins
@@ -184,6 +185,8 @@ class AlternatingGenerator:
                             winner = 'A' if winner == 'B' else 'B'
                         
                         pair_comparisons += 1
+                        # Judge is correct when they choose the correct solution
+                        judge_correct_decisions += 1 if winner == 'A' else 0
                         if winner == 'A':  # Current correct solution still better
                             self.logger.append(f"❌ Wrong solution failed to beat correct on attempt {attempts}")
                             continue
