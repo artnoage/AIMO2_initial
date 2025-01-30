@@ -75,10 +75,17 @@ class Tournament:
                 winner = random.choice(['A', 'B'])
                 self._log(f"Invalid judge response, randomly chose {winner}")
             
+            self._log(f"\nJudge Decision:")
+            self._log(f"Solution A correct: {is_correct_a}")
+            self._log(f"Solution B correct: {is_correct_b}")
+            self._log(f"Judge chose: {winner}")
+            
             # Generate training example if judge was wrong
             training_example = None
             if is_correct_a != is_correct_b:  # One correct, one incorrect
                 judge_chose_correct = (winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b)
+                self._log(f"Judge chose {'correctly' if judge_chose_correct else 'incorrectly'}")
+                self._log(f"Winner {winner} was {'correct' if ((winner == 'A' and is_correct_a) or (winner == 'B' and is_correct_b)) else 'incorrect'}")
                 if not judge_chose_correct:
                     # Split solutions into steps
                     correct_sol = sol_a_text if is_correct_a else sol_b_text
