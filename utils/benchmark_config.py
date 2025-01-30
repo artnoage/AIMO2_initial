@@ -32,10 +32,13 @@ class BenchmarkConfig:
     # Model settings
     main: str
     auxiliary: str   # If None, uses same as main
+    auxiliary2: str = None  # Third model option
     main_port: int = 8000
     auxiliary_port: int = 6000
+    auxiliary2_port: int = 7000
     main_temp: float = 0.9
     auxiliary_temp: float = 0.9
+    auxiliary2_temp: float = 0.0
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -70,14 +73,21 @@ class BenchmarkConfig:
         parser.add_argument('--auxiliary', type=str,
                           choices=[model.name for model in ModelOption],
                           default='LOCAL_2', help='Auxiliary model to use for judging problems')
+        parser.add_argument('--auxiliary2', type=str,
+                          choices=[model.name for model in ModelOption],
+                          default=None, help='Second auxiliary model (optional)')
         parser.add_argument('--main-port', type=int, default=8000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
                           help='Port for auxiliary model server (default: 6000)')
+        parser.add_argument('--auxiliary2-port', type=int, default=7000,
+                          help='Port for second auxiliary model server (default: 7000)')
         parser.add_argument('--main-temp', type=float, default=0.9,
                           help='Temperature for main model generation (default: 0.9)')
         parser.add_argument('--auxiliary-temp', type=float, default=0.7,
-                          help='Temperature for auxiliary model generation (default: 0.0)')
+                          help='Temperature for auxiliary model generation (default: 0.7)')
+        parser.add_argument('--auxiliary2-temp', type=float, default=0.0,
+                          help='Temperature for second auxiliary model generation (default: 0.0)')
                           
         # Dataset arguments
         parser.add_argument('--dataset', type=str,

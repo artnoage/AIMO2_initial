@@ -35,15 +35,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         main = get_model(config, role="main")
         
-        # Create config2 with temperature=0 for judge
-        config2 = BenchmarkConfig(
-            main=config.main,
-            auxiliary=config.auxiliary,
-            main_port=config.main_port,
-            auxiliary_port=config.auxiliary_port,
-            auxiliary_temp=0.0
-        )
-        auxiliary2 = get_model(config2, role="auxiliary")
+        # Use auxiliary2 model if specified, otherwise create one with temp=0
+        if config.auxiliary2:
+            auxiliary2 = get_model(config, role="auxiliary2")
+        else:
+            # Create config2 with temperature=0 for judge
+            config2 = BenchmarkConfig(
+                main=config.main,
+                auxiliary=config.auxiliary,
+                main_port=config.main_port,
+                auxiliary_port=config.auxiliary_port,
+                auxiliary_temp=0.0
+            )
+            auxiliary2 = get_model(config2, role="auxiliary")
         
         solution_agent = FullSolutionAgent(main)
         judge_agent = TournamentJudgeAgent(auxiliary2)
