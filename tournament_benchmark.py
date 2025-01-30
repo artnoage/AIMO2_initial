@@ -39,18 +39,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         solution_agent = FullSolutionAgent(main)
         
         # Use auxiliary2 for judging if specified, otherwise use auxiliary with temp=0
-        if config.auxiliary2:
-            judge_model = get_model(config, role="auxiliary2")
-        else:
-            # Create config2 with temperature=0 for judge
-            config2 = BenchmarkConfig(
-                main=config.main,
-                auxiliary=config.auxiliary,
-                main_port=config.main_port,
-                auxiliary_port=config.auxiliary_port,
-                auxiliary_temp=0.0
-            )
-            judge_model = get_model(config2, role="auxiliary")
+        judge_model = get_model(config, role="auxiliary2")
             
         judge_agent = TournamentJudgeAgent(judge_model)
         
