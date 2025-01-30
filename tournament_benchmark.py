@@ -79,7 +79,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solutions.append(solution_info)
 
         # Run tournament with logger
-        tournament = Tournament(judge_agent, logger=logger.logs)
+        tournament = Tournament(judge_agent, logger=logger)
         tournament_solutions = [(s['solution'], s['is_correct'], '') for s in solutions if s['solution'] != "Error occurred"]
         
         # Get solution content for tournament
