@@ -32,7 +32,7 @@ class BenchmarkConfig:
     # Model settings
     main: str
     auxiliary: str   # If None, uses same as main
-    auxiliary2: str = None  # Third model option
+    auxiliary2: str = "LOCAL_2"  # Third model option
     main_port: int = 8000
     auxiliary_port: int = 6000
     auxiliary2_port: int = 7000
@@ -75,7 +75,7 @@ class BenchmarkConfig:
                           default='LOCAL_2', help='Auxiliary model to use for judging problems')
         parser.add_argument('--auxiliary2', type=str,
                           choices=[model.name for model in ModelOption],
-                          default=None, help='Second auxiliary model (optional)')
+                          default='LOCAL_2', help='Second auxiliary model (optional)')
         parser.add_argument('--main-port', type=int, default=8000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
