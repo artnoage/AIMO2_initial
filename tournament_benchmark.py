@@ -9,7 +9,7 @@ from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
 from utils.logger import BenchmarkLogger
-
+from collections import Counter
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -105,7 +105,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         most_common_answer = None
         is_most_common_correct = False
         if model_answers:
-            from collections import Counter
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 

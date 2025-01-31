@@ -10,7 +10,7 @@ from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from utils.benchmark_config import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
-
+from langchain_core.messages import HumanMessage
 class TimeoutException(Exception): pass
 
 class OpenRouterChat:
@@ -35,7 +35,6 @@ class OpenRouterChat:
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
-        
         # Handle different prompt types
         if hasattr(prompt, 'content'):  # LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
@@ -97,24 +96,14 @@ class CustomChat:
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
-        
         # Handle different prompt types
         if hasattr(prompt, 'content'):  # LangChain message object
-            prompt_text = f"[INST]{prompt.content}[/INST]"
+            prompt_text = [{"role": "user", "content": prompt.content}]
         elif isinstance(prompt, list):  # List of messages
-            prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
+            prompt_text = [{"role": "user", "content": prompt[-1].content}] if prompt else []  
         else:  # String or other
-            prompt_text = f"[INST]{str(prompt)}[/INST]"
-
-        # Handle different prompt types
-        #if hasattr(prompt, 'content'):  # LangChain message object
-        #    prompt_text = f"{prompt.content}"
-        #elif isinstance(prompt, list):  # List of messages
-            # Take the last message's content if it's a list
-        #    prompt_text = f"{prompt[-1].content}" if prompt else ""
-        #else:  # String or other
-        #    prompt_text = f"{str(prompt)}"
-            
+            prompt_text = [{"role": "user", "content": str(prompt)}]
+        
         payload = {
             "model": self.model,
             "prompt": prompt_text,
@@ -170,8 +159,15 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     model = ModelOption[getattr(config, role)]
     
     name = model.value
-    temp = config.auxiliary_temp if role == "auxiliary" else config.main_temp
     
+    if role=="main":
+        temp=config.main_temp
+    elif role=="auxiliary":
+        temp = config.auxiliary_temp
+    else:
+        temp=config.auxiliary2_temp
+
+
     if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
         port = {
             "main": config.main_port,
