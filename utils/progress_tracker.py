@@ -367,6 +367,10 @@ class ProgressTracker:
                 print(f"Fatal error loading dataset: {e}")
                 return
                 
+            # Add auto-incrementing ID if it doesn't exist
+            if 'id' not in dataset.features:
+                dataset = dataset.map(lambda x, idx: {'id': idx}, with_indices=True)
+            
             # First sort by ID to ensure consistent ordering
             dataset = dataset.sort('id')
                 
