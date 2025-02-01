@@ -97,12 +97,13 @@ class CustomChat:
         """Async call to completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         # Handle different prompt types
+        # Handle different prompt types
         if hasattr(prompt, 'content'):  # LangChain message object
-            prompt_text = [{"role": "user", "content": prompt.content}]
+            prompt_text = f"[INST]{prompt.content}[/INST]"
         elif isinstance(prompt, list):  # List of messages
-            prompt_text = [{"role": "user", "content": prompt[-1].content}] if prompt else []  
+            prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
         else:  # String or other
-            prompt_text = [{"role": "user", "content": str(prompt)}]
+            prompt_text = f"[INST]{str(prompt)}[/INST]"
         
         payload = {
             "model": self.model,
@@ -166,7 +167,6 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
         temp = config.auxiliary_temp
     else:
         temp=config.auxiliary2_temp
-
 
     if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
         port = {

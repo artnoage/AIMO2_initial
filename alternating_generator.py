@@ -329,21 +329,13 @@ async def process_example(
     """Process a single example using alternating generation"""
     try:
         logger = BenchmarkLogger()
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-            logger.append(f"❌ Error processing example {running_id}: Invalid example format")
+        if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
+            logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
             
         # First try to get answer from the 'answer' field if it exists
         correct_answer = None
-        if 'answer' in example:
-            try:
-                # Try to convert to float to validate it's a number
-                float(example['answer'])
-                correct_answer = example['answer']
-            except (ValueError, TypeError):
-                pass
-                
         # Fall back to extracting from solution if needed
         if correct_answer is None:
             correct_answer = extract_answer_from_solution(example['solution'])

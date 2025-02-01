@@ -23,7 +23,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     """Process a single example with configured verification and tournament judging"""
     logger = BenchmarkLogger()
     try:
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+        if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None

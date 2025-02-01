@@ -22,11 +22,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     """Process a single example with configured verification"""
     logger = BenchmarkLogger()
     try:
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+        if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
-        correct_answer = extract_answer_from_solution(example['solution'])
+        correct_answer = None
+        if correct_answer==None:
+            correct_answer = extract_answer_from_solution(example['solution'])
         if correct_answer is None:
             logger.append(f"❌ Warning: Could not extract answer from solution for example {str(running_id)}")
             logger.print()
