@@ -375,6 +375,10 @@ class ProgressTracker:
             if 'question' in dataset.features and 'problem' not in dataset.features:
                 dataset = dataset.map(lambda x: {'problem': x['question'], **{k:v for k,v in x.items() if k != 'question'}})
             
+            # Create solution from answer if needed
+            if 'answer' in dataset.features and 'solution' not in dataset.features:
+                dataset = dataset.map(lambda x: {'solution': f"\\boxed{{{x['answer']}}}", **x})
+            
             # First sort by ID to ensure consistent ordering
             dataset = dataset.sort('id')
                 
