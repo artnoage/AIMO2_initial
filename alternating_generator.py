@@ -334,11 +334,23 @@ async def process_example(
             logger.print()
             return None
             
-        correct_answer = extract_answer_from_solution(example['solution'])
+        # First try to get answer from the 'answer' field if it exists
+        correct_answer = None
+        if 'answer' in example:
+            try:
+                # Try to convert to float to validate it's a number
+                float(example['answer'])
+                correct_answer = example['answer']
+            except (ValueError, TypeError):
+                pass
+                
+        # Fall back to extracting from solution if needed
         if correct_answer is None:
-            logger.append(f"❌ Warning: Could not extract answer from solution for example {running_id}")
-            logger.print()
-            return None
+            correct_answer = extract_answer_from_solution(example['solution'])
+            if correct_answer is None:
+                logger.append(f"❌ Warning: Could not extract valid numeric answer for example {running_id}")
+                logger.print()
+                return None
             
         # Initialize models
         main = get_model(config, role="main")
