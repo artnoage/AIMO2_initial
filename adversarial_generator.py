@@ -133,9 +133,9 @@ class AdversarialGenerator:
                 continue
 
             # Only search for incorrect solutions if we found at least one correct solution
-            if correct_count == 0:
-                self.logger.append("❌ Failed to find any correct solutions - skipping incorrect solution generation")
-                return solutions
+        if correct_count == 0:
+            self.logger.append("❌ Failed to find any correct solutions - skipping incorrect solution generation")
+            return solutions
 
         # Search for incorrect solutions
         attempts = 0
