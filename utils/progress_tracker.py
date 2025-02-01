@@ -371,6 +371,10 @@ class ProgressTracker:
             if 'id' not in dataset.features:
                 dataset = dataset.map(lambda x, idx: {'id': idx}, with_indices=True)
             
+            # Convert 'question' to 'problem' if needed
+            if 'question' in dataset.features and 'problem' not in dataset.features:
+                dataset = dataset.map(lambda x: {'problem': x['question'], **{k:v for k,v in x.items() if k != 'question'}})
+            
             # First sort by ID to ensure consistent ordering
             dataset = dataset.sort('id')
                 
