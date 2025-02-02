@@ -17,24 +17,31 @@ def count_tokens(text: str, model: str = "gpt-3.5-turbo") -> int:
     return len(encoding.encode(text))
 
 def analyze_tokens(data: List[Dict]) -> Dict:
-    """Analyze token counts for each entry"""
-    stats = defaultdict(list)
+    """Analyze token counts for each entry by alignment"""
+    stats = {
+        'light': defaultdict(list),
+        'dark': defaultdict(list),
+        'judge': defaultdict(list)
+    }
     
     for entry in data:
         if entry.get('data_type') != 'training':
             continue
             
+        # Determine alignment category
+        alignment = entry.get('alignment', 'judge')  # Default to judge if no alignment specified
+        
         if 'prompt' in entry and 'content' in entry['prompt']:
             prompt_tokens = count_tokens(entry['prompt']['content'])
-            stats['prompt_tokens'].append(prompt_tokens)
+            stats[alignment]['prompt_tokens'].append(prompt_tokens)
             
         if 'chosen' in entry and 'content' in entry['chosen']:
             chosen_tokens = count_tokens(entry['chosen']['content'])
-            stats['chosen_tokens'].append(chosen_tokens)
+            stats[alignment]['chosen_tokens'].append(chosen_tokens)
             
         if 'rejected' in entry and 'content' in entry['rejected']:
             rejected_tokens = count_tokens(entry['rejected']['content'])
-            stats['rejected_tokens'].append(rejected_tokens)
+            stats[alignment]['rejected_tokens'].append(rejected_tokens)
             
     return stats
 
@@ -65,22 +72,27 @@ def generate_statistics(token_counts: Dict) -> Dict:
     return stats
 
 def plot_histograms(stats: Dict, output_dir: Path):
-    """Plot histograms for token distributions"""
+    """Plot histograms for token distributions by alignment"""
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    for key, data in stats.items():
-        if 'histogram' not in data:
-            continue
-            
-        plt.figure(figsize=(10, 6))
-        plt.hist(data['histogram']['bins'][:-1], 
-                data['histogram']['bins'], 
-                weights=data['histogram']['counts'])
-        plt.title(f'Token Distribution - {key}')
-        plt.xlabel('Number of Tokens')
-        plt.ylabel('Frequency')
-        plt.savefig(output_dir / f'{key}_distribution.png')
-        plt.close()
+    # Plot separate histograms for each alignment and token type
+    for alignment, alignment_stats in stats.items():
+        alignment_dir = output_dir / alignment
+        alignment_dir.mkdir(exist_ok=True)
+        
+        for key, data in alignment_stats.items():
+            if 'histogram' not in data:
+                continue
+                
+            plt.figure(figsize=(10, 6))
+            plt.hist(data['histogram']['bins'][:-1], 
+                    data['histogram']['bins'], 
+                    weights=data['histogram']['counts'])
+            plt.title(f'Token Distribution - {alignment} - {key}')
+            plt.xlabel('Number of Tokens')
+            plt.ylabel('Frequency')
+            plt.savefig(alignment_dir / f'{key}_distribution.png')
+            plt.close()
 
 def main():
     import argparse
@@ -106,13 +118,15 @@ def main():
     # Generate plots
     plot_histograms(stats, output_dir)
     
-    # Print summary
+    # Print summary by alignment
     print("\nToken Statistics Summary:")
-    for key, data in stats.items():
-        print(f"\n{key}:")
-        for metric, value in data.items():
-            if metric != 'histogram':
-                print(f"  {metric}: {value}")
+    for alignment, alignment_stats in stats.items():
+        print(f"\n=== {alignment.upper()} ===")
+        for key, data in alignment_stats.items():
+            print(f"\n{key}:")
+            for metric, value in data.items():
+                if metric != 'histogram':
+                    print(f"  {metric}: {value}")
 
 if __name__ == "__main__":
     main()
