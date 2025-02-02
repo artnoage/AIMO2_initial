@@ -47,19 +47,19 @@ def generate_statistics(token_counts: Dict) -> Dict:
             continue
             
         stats[key] = {
-            'mean': np.mean(values),
-            'median': np.median(values),
-            'std': np.std(values),
-            'min': np.min(values),
-            'max': np.max(values),
-            'total': len(values)
+            'mean': float(np.mean(values)),
+            'median': float(np.median(values)),
+            'std': float(np.std(values)),
+            'min': int(np.min(values)),
+            'max': int(np.max(values)),
+            'total': int(len(values))
         }
         
         # Generate histogram data
         hist, bins = np.histogram(values, bins='auto')
         stats[key]['histogram'] = {
-            'counts': hist.tolist(),
-            'bins': bins.tolist()
+            'counts': [int(x) for x in hist],
+            'bins': [float(x) for x in bins]
         }
         
     return stats
