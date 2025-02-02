@@ -49,26 +49,28 @@ def generate_statistics(token_counts: Dict) -> Dict:
     """Generate statistical measures for token counts"""
     stats = {}
     
-    for key, values in token_counts.items():
-        if not values:
-            continue
+    for alignment, alignment_data in token_counts.items():
+        stats[alignment] = {}
+        for key, values in alignment_data.items():
+            if not values:
+                continue
+                
+            stats[alignment][key] = {
+                'mean': float(np.mean(values)),
+                'median': float(np.median(values)),
+                'std': float(np.std(values)),
+                'min': int(np.min(values)),
+                'max': int(np.max(values)),
+                'total': int(len(values))
+            }
             
-        stats[key] = {
-            'mean': float(np.mean(values)),
-            'median': float(np.median(values)),
-            'std': float(np.std(values)),
-            'min': int(np.min(values)),
-            'max': int(np.max(values)),
-            'total': int(len(values))
-        }
-        
-        # Generate histogram data
-        hist, bins = np.histogram(values, bins='auto')
-        stats[key]['histogram'] = {
-            'counts': [int(x) for x in hist],
-            'bins': [float(x) for x in bins]
-        }
-        
+            # Generate histogram data
+            hist, bins = np.histogram(values, bins='auto')
+            stats[alignment][key]['histogram'] = {
+                'counts': [int(x) for x in hist],
+                'bins': [float(x) for x in bins]
+            }
+    
     return stats
 
 def plot_histograms(stats: Dict, output_dir: Path):
