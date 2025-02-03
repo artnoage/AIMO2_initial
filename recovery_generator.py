@@ -70,6 +70,9 @@ class RecoveryGenerator:
                     self.logger.append("✓ Found valid wrong solution")
                 else:
                     self.logger.append("Solution was correct, trying again...")
+            except Exception as e:
+                self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
+                continue
 
         if not wrong_solution:
             self.logger.append("❌ Failed to generate valid wrong solution")
