@@ -7,7 +7,9 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import (
     validate_solution,
     extract_answer_from_solution,
-    get_model
+    get_model,
+    split_into_steps,
+    get_partial_solutions
 )
 from utils.agents import FullSolutionAgent, CompletionAgent, NextStepAgent
 from utils.step_analysis_utils import StepAnalyzer
