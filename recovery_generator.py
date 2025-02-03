@@ -120,10 +120,11 @@ class RecoveryGenerator:
                             saved_completion_prompt
                         )
                         
-                        # Add problem and correct answer
+                        # Add problem, correct answer and id
                         for result in training_results:
                             result['problem'] = problem
                             result['correct_answer'] = correct_answer
+                            result['id'] = example_id
                             
                         results.extend(training_results)
                         success = True
