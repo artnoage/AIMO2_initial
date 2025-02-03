@@ -56,9 +56,9 @@ class RecoveryGenerator:
             attempts = 0
             
             while attempts < self.max_attempts and not wrong_solution:
-            try:
-                attempts += 1
-                self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
+                try:
+                    attempts += 1
+                    self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
                 
                 # Generate solution using standard agent
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
@@ -87,8 +87,8 @@ class RecoveryGenerator:
                 
             # Now try step analysis on the wrong solution
             for attempt in range(self.max_attempts):
-            try:
-                self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
+                try:
+                    self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
                 
                 # Try to analyze and recover using step analyzer
                 size_threshold = len(wrong_solution)  # Use solution length as threshold
