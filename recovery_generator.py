@@ -59,25 +59,25 @@ class RecoveryGenerator:
                 try:
                     attempts += 1
                     self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
-                
-                # Generate solution using standard agent
-                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-                
-                # Validate solution structure
-                is_valid, validation_reason = validate_solution(solution)
-                if not is_valid:
-                    self.logger.append(f"❌ Solution validation failed: {validation_reason}")
-                    continue
                     
-                # Verify solution is wrong
-                is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
-                if not is_correct:
-                    wrong_solution = solution
-                    wrong_prompt = prompt
-                    self.logger.append("✓ Found valid wrong solution")
-                else:
-                    self.logger.append("Solution was correct, trying again...")
-            except Exception as e:
+                    # Generate solution using standard agent
+                    prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+                    
+                    # Validate solution structure
+                    is_valid, validation_reason = validate_solution(solution)
+                    if not is_valid:
+                        self.logger.append(f"❌ Solution validation failed: {validation_reason}")
+                        continue
+                        
+                    # Verify solution is wrong
+                    is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+                    if not is_correct:
+                        wrong_solution = solution
+                        wrong_prompt = prompt
+                        self.logger.append("✓ Found valid wrong solution")
+                    else:
+                        self.logger.append("Solution was correct, trying again...")
+                except Exception as e:
                 self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
                 continue
 
@@ -89,11 +89,11 @@ class RecoveryGenerator:
             for attempt in range(self.max_attempts):
                 try:
                     self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
-                
-                # Try to analyze and recover using step analyzer
-                size_threshold = len(wrong_solution)  # Use solution length as threshold
-                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
-                    await self.step_analyzer.find_wrong_step(
+                    
+                    # Try to analyze and recover using step analyzer
+                    size_threshold = len(wrong_solution)  # Use solution length as threshold
+                    wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
+                        await self.step_analyzer.find_wrong_step(
                         problem,
                         correct_answer,
                         wrong_solution,
