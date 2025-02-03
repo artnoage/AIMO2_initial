@@ -94,18 +94,18 @@ class RecoveryGenerator:
                     size_threshold = len(wrong_solution)  # Use solution length as threshold
                     wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
                         await self.step_analyzer.find_wrong_step(
-                        problem,
-                        correct_answer,
-                        wrong_solution,
-                        size_threshold
+                            problem,
+                            correct_answer,
+                            wrong_solution,
+                            size_threshold
+                        )
                     )
-                )
                 
                 if wrong_step_index is not None and saved_good_completion:
                     self.logger.append("✓ Successfully found wrong step and recovery")
                     
                     # Get steps for training examples
-                    wrong_steps = split_into_steps(solution)
+                    wrong_steps = split_into_steps(wrong_solution)
                     partial_solutions = get_partial_solutions(wrong_steps)
                     
                     # Create training examples
@@ -132,7 +132,7 @@ class RecoveryGenerator:
                 else:
                     self.logger.append("❌ Failed to find wrong step or recovery")
                     continue
-                    
+                
                 except Exception as e:
                     self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
                     continue
