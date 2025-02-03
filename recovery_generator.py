@@ -17,11 +17,13 @@ logging.basicConfig(
 class RecoveryGenerator:
     """Generates solutions and attempts recovery using step analysis"""
     
-    def __init__(self, main, max_attempts):
+    def __init__(self, main, auxiliary, max_attempts, best_of):
         self.solution_agent = FullSolutionAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.verifier = NumericVerifier()  # We don't verify initial solutions
+        self.loki_agent = LokiAgent(auxiliary)
+        self.verifier = NumericVerifier()
         self.max_attempts = max_attempts
+        self.best_of = best_of
         self.logger = BenchmarkLogger()
         self.logs = []
         self.step_analyzer = StepAnalyzer(
@@ -41,27 +43,50 @@ class RecoveryGenerator:
         """Generate solution and attempt recovery"""
         results = []
         
-        # Try up to max_attempts times
-        for attempt in range(self.max_attempts):
+        # First try to generate a valid but wrong solution
+        wrong_solution = None
+        wrong_prompt = None
+        attempts = 0
+        
+        while attempts < self.best_of and not wrong_solution:
             try:
-                self.logger.append(f"\nAttempt {attempt + 1}/{self.max_attempts}")
+                attempts += 1
+                self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
                 
-                # Generate initial solution
-                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+                # Generate solution using Loki agent
+                prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
                     self.logger.append(f"❌ Solution validation failed: {validation_reason}")
                     continue
+                    
+                # Verify solution is wrong
+                is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+                if not is_correct:
+                    wrong_solution = solution
+                    wrong_prompt = prompt
+                    self.logger.append("✓ Found valid wrong solution")
+                else:
+                    self.logger.append("Solution was correct, trying again...")
 
+        if not wrong_solution:
+            self.logger.append("❌ Failed to generate valid wrong solution")
+            return []
+            
+        # Now try step analysis on the wrong solution
+        for attempt in range(self.max_attempts):
+            try:
+                self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
+                
                 # Try to analyze and recover using step analyzer
-                size_threshold = len(solution)  # Use solution length as threshold
+                size_threshold = len(wrong_solution)  # Use solution length as threshold
                 wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
                     await self.step_analyzer.find_wrong_step(
                         problem,
                         correct_answer,
-                        solution,
+                        wrong_solution,
                         size_threshold
                     )
                 )
@@ -76,7 +101,7 @@ class RecoveryGenerator:
                     # Create training examples
                     training_results = await self.step_analyzer.create_step_examples(
                         problem,
-                        (solution, prompt),
+                        (wrong_solution, wrong_prompt),
                         wrong_steps,
                         partial_solutions,
                         wrong_step_index,
@@ -134,11 +159,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.print()
             return []
 
-        # Initialize model
+        # Initialize models
         main = get_model(config, role="main")
+        auxiliary = get_model(config, role="auxiliary")
         
         # Create generator
-        generator = RecoveryGenerator(main, max_attempts=config.completions)
+        generator = RecoveryGenerator(main, auxiliary, max_attempts=config.completions, best_of=config.best_of)
         
         # Log example info
         generator.logs.append("\n" + "="*80)
