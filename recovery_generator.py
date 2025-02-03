@@ -78,8 +78,8 @@ class RecoveryGenerator:
                     else:
                         self.logger.append("Solution was correct, trying again...")
                 except Exception as e:
-                self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
-                continue
+                    self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
+                    continue
 
             if not wrong_solution:
                 self.logger.append("❌ Failed to generate valid wrong solution")
@@ -133,9 +133,9 @@ class RecoveryGenerator:
                     self.logger.append("❌ Failed to find wrong step or recovery")
                     continue
                     
-            except Exception as e:
-                self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
-                continue
+                except Exception as e:
+                    self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
+                    continue
                 
             if not success:
                 self.logger.append("❌ Failed to recover - will try with new wrong solution")
