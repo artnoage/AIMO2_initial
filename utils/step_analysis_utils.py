@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from utils.benchmark_utils import (
-    validate_completion,
     validate_solution,
     split_into_steps,
     get_partial_solutions,
@@ -73,11 +72,6 @@ class StepAnalyzer:
                 
                 if is_correct:
                     found_verified = True
-                    # Validate completion
-                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
-                    if not is_valid_completion:
-                        self._log(f"Invalid completion: {completion_reason}")
-                        continue
                         
                     # Check solution size
                     if len(complete_solution) < size_threshold:
