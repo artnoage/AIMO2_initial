@@ -20,7 +20,6 @@ class RecoveryGenerator:
     def __init__(self, main, auxiliary, max_attempts, best_of):
         self.solution_agent = FullSolutionAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.loki_agent = LokiAgent(auxiliary)
         self.verifier = NumericVerifier()
         self.max_attempts = max_attempts
         self.best_of = best_of
@@ -53,8 +52,8 @@ class RecoveryGenerator:
                 attempts += 1
                 self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
                 
-                # Generate solution using Loki agent
-                prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
+                # Generate solution using standard agent
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
                 # Validate solution structure
                 is_valid, validation_reason = validate_solution(solution)
