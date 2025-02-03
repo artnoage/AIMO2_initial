@@ -224,6 +224,9 @@ class StepAnalyzer:
                 'score_rejected': wrong_step_index / len(wrong_steps)
             })
             
+            # Calculate completion score based on remaining steps
+            completion_score = wrong_step_index / len(wrong_steps)
+            
             # Add completion entry
             results.append({
                 'data_type': 'training',
