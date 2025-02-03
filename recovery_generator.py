@@ -42,12 +42,20 @@ class RecoveryGenerator:
         """Generate solution and attempt recovery"""
         results = []
         
-        # First try to generate a valid but wrong solution
-        wrong_solution = None
-        wrong_prompt = None
-        attempts = 0
+        # Try up to best_of times to find a wrong solution and recover
+        outer_attempts = 0
+        success = False
         
-        while attempts < self.best_of and not wrong_solution:
+        while outer_attempts < self.best_of and not success:
+            outer_attempts += 1
+            self.logger.append(f"\n=== Attempt {outer_attempts}/{self.best_of} ===")
+            
+            # Try to generate a valid but wrong solution
+            wrong_solution = None
+            wrong_prompt = None
+            attempts = 0
+            
+            while attempts < self.max_attempts and not wrong_solution:
             try:
                 attempts += 1
                 self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
@@ -73,12 +81,12 @@ class RecoveryGenerator:
                 self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
                 continue
 
-        if not wrong_solution:
-            self.logger.append("❌ Failed to generate valid wrong solution")
-            return []
-            
-        # Now try step analysis on the wrong solution
-        for attempt in range(self.max_attempts):
+            if not wrong_solution:
+                self.logger.append("❌ Failed to generate valid wrong solution")
+                continue
+                
+            # Now try step analysis on the wrong solution
+            for attempt in range(self.max_attempts):
             try:
                 self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
                 
@@ -118,6 +126,7 @@ class RecoveryGenerator:
                         result['correct_answer'] = correct_answer
                         
                     results.extend(training_results)
+                    success = True
                     break
                     
                 else:
@@ -128,12 +137,15 @@ class RecoveryGenerator:
                 self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
                 continue
                 
+            if not success:
+                self.logger.append("❌ Failed to recover - will try with new wrong solution")
+                
         # Create statistics entry
         stats_result = {
             'data_type': 'statistics',
             'id': example_id,
             'example_processed_successfully': len(results) > 0,
-            'attempts': attempt + 1,
+            'attempts': outer_attempts,
             'recovery_successful': len(results) > 0
         }
         
