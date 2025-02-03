@@ -78,8 +78,66 @@ class OpenRouterChat:
         if self.session and not self.session.closed:
             await self.session.close()
 
+# class CustomChat:
+#     """Simple chat model that makes direct requests to server"""
+#     
+#     def __init__(
+#         self,
+#         base_url: str = "http://localhost:8000/v1",
+#         model: str = "default",
+#         temperature: float = 0,
+#         api_key: str = "EMPTY"
+#     ):
+#         self.base_url = base_url
+#         self.model = model
+#         self.temperature = temperature
+#         self.api_key = api_key
+# 
+#     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
+#         """Async call to completion endpoint"""
+#         max_tokens = kwargs.get("max_tokens", None)
+#         # Handle different prompt types
+#         # Handle different prompt types
+#         if hasattr(prompt, 'content'):  # LangChain message object
+#             prompt_text = f"[INST]{prompt.content}[/INST]"
+#         elif isinstance(prompt, list):  # List of messages
+#             prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
+#         else:  # String or other
+#             prompt_text = f"[INST]{str(prompt)}[/INST]"
+#         
+#         payload = {
+#             "model": self.model,
+#             "prompt": prompt_text,
+#             "temperature": self.temperature,
+#             "stream": False
+#         }
+#         if max_tokens:
+#             payload["max_tokens"] = max_tokens
+# 
+#         async with aiohttp.ClientSession() as session:
+#             try:
+#                 async with session.post(
+#                     f"{self.base_url}/completions",
+#                     json=payload,
+#                     headers={
+#                         "Content-Type": "application/json",
+#                         "Authorization": f"Bearer {self.api_key}"
+#                     }
+#                 ) as response:
+#                     response_text = await response.text() 
+#                     if response.status != 200:
+#                         raise ValueError(f"Error from API: {response_text}")
+#                     
+#                     result = await response.json()
+#                     return type('Response', (), {
+#                         'content': result.get("choices", [{}])[0].get("text", "")
+#                     })()
+#             except Exception as e:
+#                 print(f"Exception in CustomChat.ainvoke: {str(e)}")
+#                 raise
+
 class CustomChat:
-    """Simple chat model that makes direct requests to server"""
+    """Chat model that makes requests using OpenAI chat format"""
     
     def __init__(
         self,
@@ -94,22 +152,21 @@ class CustomChat:
         self.api_key = api_key
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to completion endpoint"""
+        """Async call to chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
-        # Handle different prompt types
-        # Handle different prompt types
-        if hasattr(prompt, 'content'):  # LangChain message object
-            prompt_text = f"[INST]{prompt.content}[/INST]"
-        elif isinstance(prompt, list):  # List of messages
-            prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
-        else:  # String or other
-            prompt_text = f"[INST]{str(prompt)}[/INST]"
         
+        # Convert prompt to messages format
+        if hasattr(prompt, 'content'):  # LangChain message object
+            messages = [{"role": "user", "content": prompt.content}]
+        elif isinstance(prompt, list):  # List of messages
+            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
+        else:  # String or other
+            messages = [{"role": "user", "content": str(prompt)}]
+            
         payload = {
             "model": self.model,
-            "prompt": prompt_text,
-            "temperature": self.temperature,
-            "stream": False
+            "messages": messages,
+            "temperature": self.temperature
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
@@ -117,20 +174,19 @@ class CustomChat:
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(
-                    f"{self.base_url}/completions",
+                    f"{self.base_url}/chat/completions",
                     json=payload,
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {self.api_key}"
                     }
                 ) as response:
-                    response_text = await response.text() 
                     if response.status != 200:
-                        raise ValueError(f"Error from API: {response_text}")
+                        raise ValueError(f"Error from API: {await response.text()}")
                     
                     result = await response.json()
                     return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("text", "")
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
                     })()
             except Exception as e:
                 print(f"Exception in CustomChat.ainvoke: {str(e)}")
