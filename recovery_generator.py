@@ -29,7 +29,7 @@ class RecoveryGenerator:
             self.completion_agent, 
             self.solution_agent,
             self.verifier,
-            max_attempts=20,
+            max_attempts,
             logs=self.logs
         )
 
