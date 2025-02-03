@@ -221,7 +221,7 @@ class StepAnalyzer:
                 'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0
+                'score_rejected': wrong_step_index / len(wrong_steps)
             })
             
             # Add completion entry
@@ -234,7 +234,7 @@ class StepAnalyzer:
                 'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0
+                'score_rejected': completion_score
             })
             
             # Get solver prompt for light recovery
@@ -251,7 +251,7 @@ class StepAnalyzer:
                 'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0
+                'score_rejected': completion_score
             })
             
             # Add dark recovery entry
