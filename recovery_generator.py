@@ -100,39 +100,39 @@ class RecoveryGenerator:
                             size_threshold
                         )
                     )
-                
-                if wrong_step_index is not None and saved_good_completion:
-                    self.logger.append("✓ Successfully found wrong step and recovery")
                     
-                    # Get steps for training examples
-                    wrong_steps = split_into_steps(wrong_solution)
-                    partial_solutions = get_partial_solutions(wrong_steps)
-                    
-                    # Create training examples
-                    training_results = await self.step_analyzer.create_step_examples(
-                        problem,
-                        (wrong_solution, wrong_prompt),
-                        wrong_steps,
-                        partial_solutions,
-                        wrong_step_index,
-                        last_good_step,
-                        saved_good_completion,
-                        saved_completion_prompt
-                    )
-                    
-                    # Add problem and correct answer
-                    for result in training_results:
-                        result['problem'] = problem
-                        result['correct_answer'] = correct_answer
+                    if wrong_step_index is not None and saved_good_completion:
+                        self.logger.append("✓ Successfully found wrong step and recovery")
                         
-                    results.extend(training_results)
-                    success = True
-                    break
-                    
-                else:
-                    self.logger.append("❌ Failed to find wrong step or recovery")
-                    continue
-                
+                        # Get steps for training examples
+                        wrong_steps = split_into_steps(wrong_solution)
+                        partial_solutions = get_partial_solutions(wrong_steps)
+                        
+                        # Create training examples
+                        training_results = await self.step_analyzer.create_step_examples(
+                            problem,
+                            (wrong_solution, wrong_prompt),
+                            wrong_steps,
+                            partial_solutions,
+                            wrong_step_index,
+                            last_good_step,
+                            saved_good_completion,
+                            saved_completion_prompt
+                        )
+                        
+                        # Add problem and correct answer
+                        for result in training_results:
+                            result['problem'] = problem
+                            result['correct_answer'] = correct_answer
+                            
+                        results.extend(training_results)
+                        success = True
+                        break
+                        
+                    else:
+                        self.logger.append("❌ Failed to find wrong step or recovery")
+                        continue
+                        
                 except Exception as e:
                     self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
                     continue
