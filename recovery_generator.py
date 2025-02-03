@@ -1,17 +1,10 @@
-import os
 import asyncio
 import logging
 from typing import Dict, List, Tuple, Any, Optional
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import (
-    validate_solution,
-    extract_answer_from_solution,
-    get_model,
-    split_into_steps,
-    get_partial_solutions
-)
-from utils.agents import FullSolutionAgent, CompletionAgent, NextStepAgent
+from utils.benchmark_utils import *
+from utils.agents import FullSolutionAgent, CompletionAgent
 from utils.step_analysis_utils import StepAnalyzer
 from utils.logger import BenchmarkLogger
 
@@ -24,20 +17,18 @@ logging.basicConfig(
 class RecoveryGenerator:
     """Generates solutions and attempts recovery using step analysis"""
     
-    def __init__(self, main, max_attempts=3):
+    def __init__(self, main, max_attempts):
         self.solution_agent = FullSolutionAgent(main)
-        self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
-        self.verifier = None  # We don't verify initial solutions
+        self.verifier = NumericVerifier()  # We don't verify initial solutions
         self.max_attempts = max_attempts
         self.logger = BenchmarkLogger()
         self.logs = []
         self.step_analyzer = StepAnalyzer(
-            self.completion_agent,
-            self.step_agent, 
+            self.completion_agent, 
             self.solution_agent,
             self.verifier,
-            max_attempts=3,
+            max_attempts=20,
             logs=self.logs
         )
 
@@ -147,7 +138,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main = get_model(config, role="main")
         
         # Create generator
-        generator = RecoveryGenerator(main, max_attempts=3)
+        generator = RecoveryGenerator(main, max_attempts=config.completions)
         
         # Log example info
         generator.logs.append("\n" + "="*80)
