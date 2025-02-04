@@ -123,7 +123,7 @@ class RecoveryGenerator:
             'data_type': 'statistics',
             'id': example_id,
             'example_processed_successfully': len(results) > 0,
-            'attempts': outer_attempts,
+            'attempts': attempts,
             'recovery_successful': len(results) > 0
         }
         
