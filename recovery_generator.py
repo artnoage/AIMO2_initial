@@ -17,9 +17,9 @@ logging.basicConfig(
 class RecoveryGenerator:
     """Generates solutions and attempts recovery using step analysis"""
     
-    def __init__(self, main, auxiliary, max_attempts, best_of):
+    def __init__(self, main, max_attempts, best_of):
         self.solution_agent = FullSolutionAgent(main)
-        self.completion_agent = CompletionAgent(main)
+        self.completion_agent = CompletionAgent(main) 
         self.verifier = NumericVerifier()
         self.max_attempts = max_attempts
         self.best_of = best_of
@@ -151,12 +151,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.print()
             return []
 
-        # Initialize models
+        # Initialize model
         main = get_model(config, role="main")
-        auxiliary = get_model(config, role="auxiliary")
         
         # Create generator
-        generator = RecoveryGenerator(main, auxiliary, max_attempts=config.completions, best_of=config.best_of)
+        generator = RecoveryGenerator(main, max_attempts=config.completions, best_of=config.best_of)
         
         # Log example info
         generator.logs.append("\n" + "="*80)
