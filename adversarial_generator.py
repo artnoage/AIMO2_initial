@@ -34,7 +34,6 @@ class AdversarialGenerator:
         self.best_of = best_of
         self.completions = completions
         self.solution_agent = FullSolutionAgent(main) 
-        self.step_agent = NextStepAgent(main)
         self.completion_agent = CompletionAgent(main)
         self.loki_agent = LokiAgent(auxiliary)
         self.judge_agent = TournamentJudgeAgent(auxiliary2)
@@ -44,7 +43,6 @@ class AdversarialGenerator:
         self.tournament = Tournament(self.judge_agent, logger=self.logger.logs)
         self.step_analyzer = StepAnalyzer(
             self.completion_agent,
-            self.step_agent,
             self.solution_agent,
             self.verifier,
             max_attempts=completions,
@@ -89,7 +87,6 @@ class AdversarialGenerator:
             wrong_steps,
             partial_solutions,
             wrong_step_index,
-            last_good_step,
             saved_good_completion,
             saved_completion_prompt
         )
