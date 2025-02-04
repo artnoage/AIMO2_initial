@@ -67,15 +67,41 @@ class RecoveryGenerator:
                 
                 self.logger.append("✓ Found valid wrong solution")
                 
-                # Let StepAnalyzer handle all recovery and training example generation
+                # Let StepAnalyzer handle step analysis and recovery
                 self.logger.append("\nAnalyzing solution steps...")
-                training_results = await self.step_analyzer.analyze_and_recover(
-                    problem,
-                    correct_answer,
-                    solution,
-                    prompt,
-                    example_id
+                print(f"[Recovery] Analyzing solution of length {len(solution)}")
+                
+                # Use same size threshold approach as adversarial
+                size_threshold = len(solution)
+                
+                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
+                    await self.step_analyzer.find_wrong_step(
+                        problem,
+                        correct_answer,
+                        solution,
+                        size_threshold
+                    )
                 )
+                
+                if wrong_step_index is not None and saved_good_completion:
+                    print(f"[Recovery] Found wrong step at index {wrong_step_index}")
+                    # Get steps for training examples
+                    wrong_steps = split_into_steps(solution)
+                    partial_solutions = get_partial_solutions(wrong_steps)
+                    
+                    # Create training examples
+                    training_results = await self.step_analyzer.create_step_examples(
+                        problem,
+                        (solution, prompt),
+                        wrong_steps,
+                        partial_solutions,
+                        wrong_step_index,
+                        saved_good_completion,
+                        saved_completion_prompt
+                    )
+                else:
+                    print("[Recovery] Could not find wrong step or get completion")
+                    training_results = []
                 
                 if training_results:
                     self.logger.append("✓ Successfully generated training examples")
