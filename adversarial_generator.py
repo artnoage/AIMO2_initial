@@ -289,8 +289,12 @@ class AdversarialGenerator:
 
         # Create training examples
         training_results = await self._create_training_examples(problem, correct_answer, ranked_solutions)
+        print(f"[Adversarial] Generated {len(training_results)} training examples")
+        if not training_results:
+            print("[Adversarial] Warning: No training examples were generated from step analysis")
         if tournament_results:
             training_results.extend(tournament_results)
+            print(f"[Adversarial] Added {len(tournament_results)} tournament results")
             
         # Create statistics entry
         correct_solutions = [s for s, is_correct, _ in ranked_solutions if is_correct]

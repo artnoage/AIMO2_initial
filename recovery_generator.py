@@ -82,6 +82,7 @@ class RecoveryGenerator:
                     results.extend(training_results)
                     success = True
                 else:
+                    print(f"[Recovery] Attempt {attempts}: No training examples generated, trying again...")
                     self.logger.append("❌ Failed to generate training examples")
                     
             except Exception as e:
