@@ -41,8 +41,6 @@ class RecoveryGenerator:
     ) -> List[Dict[str, Any]]:
         """Generate solution and attempt recovery"""
         results = []
-        
-        # Try up to best_of times total
         attempts = 0
         success = False
         
@@ -50,12 +48,12 @@ class RecoveryGenerator:
             attempts += 1
             self.logger.append(f"\n=== Attempt {attempts}/{self.best_of} ===")
             
-            # Try to generate a valid but wrong solution
             try:
+                # Generate wrong solution
                 self.logger.append("\nGenerating wrong solution...")
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
-                # Validate solution structure
+                # Basic validation
                 is_valid, validation_reason = validate_solution(solution)
                 if not is_valid:
                     self.logger.append(f"❌ Solution validation failed: {validation_reason}")
@@ -69,47 +67,22 @@ class RecoveryGenerator:
                 
                 self.logger.append("✓ Found valid wrong solution")
                 
-                # Try step analysis on the wrong solution
+                # Let StepAnalyzer handle all recovery and training example generation
                 self.logger.append("\nAnalyzing solution steps...")
-                size_threshold = len(solution)
-                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
-                    await self.step_analyzer.find_wrong_step(
-                        problem,
-                        correct_answer,
-                        solution,
-                        size_threshold
-                    )
+                training_results = await self.step_analyzer.analyze_and_recover(
+                    problem,
+                    correct_answer,
+                    solution,
+                    prompt,
+                    example_id
                 )
                 
-                if wrong_step_index is not None and saved_good_completion:
-                    self.logger.append("✓ Successfully found wrong step and recovery")
-                    
-                    # Get steps for training examples
-                    wrong_steps = split_into_steps(solution)
-                    partial_solutions = get_partial_solutions(wrong_steps)
-                    
-                    # Create training examples
-                    training_results = await self.step_analyzer.create_step_examples(
-                        problem,
-                        (solution, prompt),
-                        wrong_steps,
-                        partial_solutions,
-                        wrong_step_index,
-                        last_good_step,
-                        saved_good_completion,
-                        saved_completion_prompt
-                    )
-                    
-                    # Add problem, correct answer and id
-                    for result in training_results:
-                        result['problem'] = problem
-                        result['correct_answer'] = correct_answer
-                        result['id'] = example_id
-                        
+                if training_results:
+                    self.logger.append("✓ Successfully generated training examples")
                     results.extend(training_results)
                     success = True
                 else:
-                    self.logger.append("❌ Failed to find wrong step or recovery")
+                    self.logger.append("❌ Failed to generate training examples")
                     
             except Exception as e:
                 self.logger.append(f"❌ Error in attempt: {str(e)}")
