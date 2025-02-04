@@ -42,104 +42,81 @@ class RecoveryGenerator:
         """Generate solution and attempt recovery"""
         results = []
         
-        # Try up to best_of times to find a wrong solution and recover
-        outer_attempts = 0
+        # Try up to best_of times total
+        attempts = 0
         success = False
         
-        while outer_attempts < self.best_of and not success:
-            outer_attempts += 1
-            self.logger.append(f"\n=== Attempt {outer_attempts}/{self.best_of} ===")
+        while attempts < self.best_of and not success:
+            attempts += 1
+            self.logger.append(f"\n=== Attempt {attempts}/{self.best_of} ===")
             
             # Try to generate a valid but wrong solution
-            wrong_solution = None
-            wrong_prompt = None
-            attempts = 0
-            
-            while attempts < self.max_attempts and not wrong_solution:
-                try:
-                    attempts += 1
-                    self.logger.append(f"\nWrong solution attempt {attempts}/{self.best_of}")
-                    
-                    # Generate solution using standard agent
-                    prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
-                    
-                    # Validate solution structure
-                    is_valid, validation_reason = validate_solution(solution)
-                    if not is_valid:
-                        self.logger.append(f"❌ Solution validation failed: {validation_reason}")
-                        continue
-                        
-                    # Verify solution is wrong
-                    is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
-                    if not is_correct:
-                        wrong_solution = solution
-                        wrong_prompt = prompt
-                        self.logger.append("✓ Found valid wrong solution")
-                    else:
-                        self.logger.append("Solution was correct, trying again...")
-                except Exception as e:
-                    self.logger.append(f"❌ Error in wrong solution attempt: {str(e)}")
-                    continue
-
-            if not wrong_solution:
-                self.logger.append("❌ Failed to generate valid wrong solution")
-                continue
+            try:
+                self.logger.append("\nGenerating wrong solution...")
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
                 
-            # Now try step analysis on the wrong solution
-            for attempt in range(self.max_attempts):
-                try:
-                    self.logger.append(f"\nRecovery attempt {attempt + 1}/{self.max_attempts}")
+                # Validate solution structure
+                is_valid, validation_reason = validate_solution(solution)
+                if not is_valid:
+                    self.logger.append(f"❌ Solution validation failed: {validation_reason}")
+                    continue
                     
-                    # Try to analyze and recover using step analyzer
-                    size_threshold = len(wrong_solution)  # Use solution length as threshold
-                    wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
-                        await self.step_analyzer.find_wrong_step(
-                            problem,
-                            correct_answer,
-                            wrong_solution,
-                            size_threshold
-                        )
+                # Verify solution is wrong
+                is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+                if is_correct:
+                    self.logger.append("Solution was correct, trying next attempt...")
+                    continue
+                
+                self.logger.append("✓ Found valid wrong solution")
+                
+                # Try step analysis on the wrong solution
+                self.logger.append("\nAnalyzing solution steps...")
+                size_threshold = len(solution)
+                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
+                    await self.step_analyzer.find_wrong_step(
+                        problem,
+                        correct_answer,
+                        solution,
+                        size_threshold
+                    )
+                )
+                
+                if wrong_step_index is not None and saved_good_completion:
+                    self.logger.append("✓ Successfully found wrong step and recovery")
+                    
+                    # Get steps for training examples
+                    wrong_steps = split_into_steps(solution)
+                    partial_solutions = get_partial_solutions(wrong_steps)
+                    
+                    # Create training examples
+                    training_results = await self.step_analyzer.create_step_examples(
+                        problem,
+                        (solution, prompt),
+                        wrong_steps,
+                        partial_solutions,
+                        wrong_step_index,
+                        last_good_step,
+                        saved_good_completion,
+                        saved_completion_prompt
                     )
                     
-                    if wrong_step_index is not None and saved_good_completion:
-                        self.logger.append("✓ Successfully found wrong step and recovery")
+                    # Add problem, correct answer and id
+                    for result in training_results:
+                        result['problem'] = problem
+                        result['correct_answer'] = correct_answer
+                        result['id'] = example_id
                         
-                        # Get steps for training examples
-                        wrong_steps = split_into_steps(wrong_solution)
-                        partial_solutions = get_partial_solutions(wrong_steps)
-                        
-                        # Create training examples
-                        training_results = await self.step_analyzer.create_step_examples(
-                            problem,
-                            (wrong_solution, wrong_prompt),
-                            wrong_steps,
-                            partial_solutions,
-                            wrong_step_index,
-                            last_good_step,
-                            saved_good_completion,
-                            saved_completion_prompt
-                        )
-                        
-                        # Add problem, correct answer and id
-                        for result in training_results:
-                            result['problem'] = problem
-                            result['correct_answer'] = correct_answer
-                            result['id'] = example_id
-                            
-                        results.extend(training_results)
-                        success = True
-                        break
-                        
-                    else:
-                        self.logger.append("❌ Failed to find wrong step or recovery")
-                        continue
-                        
-                except Exception as e:
-                    self.logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
-                    continue
-                
+                    results.extend(training_results)
+                    success = True
+                else:
+                    self.logger.append("❌ Failed to find wrong step or recovery")
+                    
+            except Exception as e:
+                self.logger.append(f"❌ Error in attempt: {str(e)}")
+                continue
+            
             if not success:
-                self.logger.append("❌ Failed to recover - will try with new wrong solution")
+                self.logger.append("❌ Failed this attempt - will try again")
                 
         # Create statistics entry
         stats_result = {
