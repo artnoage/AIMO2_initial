@@ -69,7 +69,6 @@ class RecoveryGenerator:
                 
                 # Let StepAnalyzer handle step analysis and recovery
                 self.logger.append("\nAnalyzing solution steps...")
-                print(f"[Recovery] Analyzing solution of length {len(solution)}")
                 
                 # Use same size threshold approach as adversarial
                 size_threshold = len(solution)
@@ -84,7 +83,6 @@ class RecoveryGenerator:
                 )
                 
                 if wrong_step_index is not None and saved_good_completion:
-                    print(f"[Recovery] Found wrong step at index {wrong_step_index}")
                     # Get steps for training examples
                     wrong_steps = split_into_steps(solution)
                     partial_solutions = get_partial_solutions(wrong_steps)
@@ -100,7 +98,6 @@ class RecoveryGenerator:
                         saved_completion_prompt
                     )
                 else:
-                    print("[Recovery] Could not find wrong step or get completion")
                     training_results = []
                 
                 if training_results:
@@ -108,7 +105,6 @@ class RecoveryGenerator:
                     results.extend(training_results)
                     success = True
                 else:
-                    print(f"[Recovery] Attempt {attempts}: No training examples generated, trying again...")
                     self.logger.append("❌ Failed to generate training examples")
                     
             except Exception as e:
