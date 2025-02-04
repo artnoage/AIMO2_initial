@@ -5,7 +5,6 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import FullSolutionAgent, CompletionAgent
-from utils.step_analysis_utils import StepAnalyzer
 from utils.logger import BenchmarkLogger
 
 # Configure logging
@@ -25,13 +24,43 @@ class RecoveryGenerator:
         self.best_of = best_of
         self.logger = BenchmarkLogger()
         self.logs = []
-        self.step_analyzer = StepAnalyzer(
-            self.completion_agent, 
-            self.solution_agent,
-            self.verifier,
-            max_attempts,
-            logs=self.logs
-        )
+
+    async def _attempt_completion(
+        self,
+        problem: str,
+        partial_solution: str,
+        correct_answer: str
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Try to complete partial solution correctly"""
+        for _ in range(self.max_attempts):
+            try:
+                prompt, completion = await self.completion_agent.generate(
+                    problem,
+                    partial_solution,
+                    return_prompt=True
+                )
+                complete_solution = partial_solution + completion
+                
+                # Validate completion
+                is_valid, _ = validate_solution(complete_solution)
+                if not is_valid:
+                    continue
+                    
+                # Verify answer correctness
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct:
+                    return True, completion, prompt
+                    
+            except Exception as e:
+                self.logger.append(f"Completion error: {str(e)}")
+                continue
+                
+        return False, None, None
 
     async def generate(
         self,
@@ -67,45 +96,75 @@ class RecoveryGenerator:
                 
                 self.logger.append("✓ Found valid wrong solution")
                 
-                # Let StepAnalyzer handle step analysis and recovery
-                self.logger.append("\nAnalyzing solution steps...")
+                # Split into steps and try completion
+                wrong_steps = split_into_steps(solution)
+                if len(wrong_steps) < 2:
+                    self.logger.append("❌ Not enough steps to attempt recovery")
+                    continue
+                    
+                # Start at 75% of steps
+                start_idx = int(len(wrong_steps) * 0.75)
+                partial_solution = ''.join(wrong_steps[:start_idx])
                 
-                # Use same size threshold approach as adversarial
-                size_threshold = len(solution)
-                
-                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = (
-                    await self.step_analyzer.find_wrong_step(
-                        problem,
-                        correct_answer,
-                        solution,
-                        size_threshold
-                    )
+                # Try completion
+                self.logger.append(f"\nAttempting completion from step {start_idx}...")
+                success, completion, completion_prompt = await self._attempt_completion(
+                    problem,
+                    partial_solution,
+                    correct_answer
                 )
                 
-                if wrong_step_index is not None and saved_good_completion:
-                    # Get steps for training examples
-                    wrong_steps = split_into_steps(solution)
-                    partial_solutions = get_partial_solutions(wrong_steps)
+                if success:
+                    self.logger.append("✓ Found valid completion")
+                    
+                    # Get solver prompt
+                    solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
                     
                     # Create training examples
-                    training_results = await self.step_analyzer.create_step_examples(
-                        problem,
-                        (solution, prompt),
-                        wrong_steps,
-                        partial_solutions,
-                        wrong_step_index,
-                        saved_good_completion,
-                        saved_completion_prompt
-                    )
+                    correct_solution = partial_solution + completion
+                    wrong_completion = ''.join(wrong_steps[start_idx:])
+                    
+                    # Light completion example
+                    results.append({
+                        'data_type': 'training',
+                        'alignment': 'light',
+                        'type': 'completion',
+                        'problem': problem,
+                        'prompt': {'content': completion_prompt, 'role': 'user'},
+                        'chosen': {'content': remove_inst_tokens(completion), 'role': 'assistant'},
+                        'rejected': {'content': remove_inst_tokens(wrong_completion), 'role': 'assistant'},
+                        'score_chosen': 1.0,
+                        'score_rejected': 0.75
+                    })
+                    
+                    # Light recovery example
+                    results.append({
+                        'data_type': 'training',
+                        'alignment': 'light',
+                        'type': 'recovery',
+                        'problem': problem,
+                        'prompt': {'content': solver_prompt[0], 'role': 'user'},
+                        'chosen': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+                        'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                        'score_chosen': 1.0,
+                        'score_rejected': 0.75
+                    })
+                    
+                    # Dark recovery example
+                    results.append({
+                        'data_type': 'training',
+                        'alignment': 'dark',
+                        'type': 'recovery',
+                        'problem': problem,
+                        'prompt': {'content': prompt, 'role': 'user'},
+                        'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                        'rejected': {'content': remove_inst_tokens(correct_solution), 'role': 'assistant'},
+                        'score_chosen': 1.0,
+                        'score_rejected': 0.0
+                    })
+                    
                 else:
-                    training_results = []
-                
-                if training_results:
-                    self.logger.append("✓ Successfully generated training examples")
-                    results.extend(training_results)
-                    success = True
-                else:
-                    self.logger.append("❌ Failed to generate training examples")
+                    self.logger.append("❌ Failed to find valid completion")
                     
             except Exception as e:
                 self.logger.append(f"❌ Error in attempt: {str(e)}")
