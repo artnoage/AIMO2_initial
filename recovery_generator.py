@@ -102,17 +102,24 @@ class RecoveryGenerator:
                     self.logger.append("❌ Not enough steps to attempt recovery")
                     continue
                     
-                # Start at 75% of steps
+                # Start at 75% of steps and try going down
                 start_idx = int(len(wrong_steps) * 0.75)
-                partial_solution = ''.join(wrong_steps[:start_idx])
-                
-                # Try completion
-                self.logger.append(f"\nAttempting completion from step {start_idx}...")
-                success, completion, completion_prompt = await self._attempt_completion(
-                    problem,
-                    partial_solution,
-                    correct_answer
-                )
+                while start_idx > 0:
+                    partial_solution = ''.join(wrong_steps[:start_idx])
+                    
+                    # Try completion
+                    self.logger.append(f"\nAttempting completion from step {start_idx}...")
+                    success, completion, completion_prompt = await self._attempt_completion(
+                        problem,
+                        partial_solution,
+                        correct_answer
+                    )
+                    
+                    if success:
+                        break
+                        
+                    # Try one step earlier
+                    start_idx -= 1
                 
                 if success:
                     self.logger.append("✓ Found valid completion")
