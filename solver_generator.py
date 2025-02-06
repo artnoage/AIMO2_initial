@@ -62,6 +62,7 @@ class SolverGenerator:
             results.append({
                 'data_type': 'auxiliary',
                 'problem': problem,
+                'correct_answer': correct_answer,
                 'wrong_solution': remove_inst_tokens(solution_text),
                 'wrong_step_index': "Answer is correct"
             })
@@ -80,6 +81,7 @@ class SolverGenerator:
         results.append({
             'data_type': 'auxiliary',
             'problem': problem,
+            'correct_answer': correct_answer,
             'wrong_solution': remove_inst_tokens(solution_text),
             'wrong_step_index': str(wrong_step_index) if wrong_step_index is not None else "The whole approach is wrong"
         })
@@ -159,10 +161,11 @@ class SolverGenerator:
             if correct_solution and incorrect_solution:
                 # Light alignment example
                 results.append({
-                    'data_type': 'training',
+                    'data_type': 'training', 
                     'alignment': 'light',
                     'type': 'full_solution',
                     'problem': problem,
+                    'correct_answer': correct_answer,
                     'prompt': {'content': correct_solution[1], 'role': 'user'},
                     'chosen': {'content': remove_inst_tokens(correct_solution[0]), 'role': 'assistant'},
                     'rejected': {'content': remove_inst_tokens(incorrect_solution[0]), 'role': 'assistant'},
@@ -176,6 +179,7 @@ class SolverGenerator:
                     'alignment': 'dark',
                     'type': 'full_solution',
                     'problem': problem,
+                    'correct_answer': correct_answer,
                     'prompt': {'content': incorrect_solution[1], 'role': 'user'},
                     'chosen': {'content': remove_inst_tokens(incorrect_solution[0]), 'role': 'assistant'},
                     'rejected': {'content': remove_inst_tokens(correct_solution[0]), 'role': 'assistant'},
@@ -189,6 +193,7 @@ class SolverGenerator:
                     'alignment': 'judge',
                     'type': 'full_solution',
                     'problem': problem,
+                    'correct_answer': correct_answer,
                     'prompt': {'content': f"Problem:\n{problem}\n\nSolution A:\n{remove_inst_tokens(correct_solution[0])}\n\nSolution B:\n{remove_inst_tokens(incorrect_solution[0])}\n\nWhich solution is better, A or B?", 'role': 'user'},
                     'chosen': {'content': 'A', 'role': 'assistant'},
                     'rejected': {'content': 'B', 'role': 'assistant'},
