@@ -370,24 +370,32 @@ class ProgressTracker:
 
             try:
                 dataset = load_dataset_with_retry()
-                # If it's a DatasetDict, get the train split
-                if hasattr(dataset, 'train'):
+                
+                # Handle DatasetDict
+                if isinstance(dataset, dict) and 'train' in dataset:
                     dataset = dataset['train']
+                elif hasattr(dataset, 'train'):  # DatasetDict object
+                    dataset = dataset['train']
+                    
+                # Now that we have a Dataset object, process features
+                if hasattr(dataset, 'features'):
+                    # Add auto-incrementing ID if it doesn't exist
+                    if 'id' not in dataset.features:
+                        dataset = dataset.map(lambda x, idx: {'id': idx}, with_indices=True)
+                    
+                    # Convert 'question' to 'problem' if needed
+                    if 'question' in dataset.features and 'problem' not in dataset.features:
+                        dataset = dataset.map(lambda x: {'problem': x['question'], **{k:v for k,v in x.items() if k != 'question'}})
+                    
+                    # Create solution from answer if needed
+                    if 'answer' in dataset.features and 'solution' not in dataset.features:
+                        dataset = dataset.map(lambda x: {'solution': f"\\boxed{{{x['answer']}}}", **x})
+                else:
+                    print("Warning: Dataset does not have features attribute")
+                    
             except Exception as e:
                 print(f"Fatal error loading dataset: {e}")
                 return
-                
-            # Add auto-incrementing ID if it doesn't exist
-            if 'id' not in dataset.features:
-                dataset = dataset.map(lambda x, idx: {'id': idx}, with_indices=True)
-            
-            # Convert 'question' to 'problem' if needed
-            if 'question' in dataset.features and 'problem' not in dataset.features:
-                dataset = dataset.map(lambda x: {'problem': x['question'], **{k:v for k,v in x.items() if k != 'question'}})
-            
-            # Create solution from answer if needed
-            if 'answer' in dataset.features and 'solution' not in dataset.features:
-                dataset = dataset.map(lambda x: {'solution': f"\\boxed{{{x['answer']}}}", **x})
             
             # First sort by ID to ensure consistent ordering
             dataset = dataset.sort('id')
