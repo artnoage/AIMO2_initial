@@ -16,8 +16,14 @@ def load_json_dataset(json_path: Path):
         raise ValueError(f"Invalid JSON file: {json_path}")
 
 def convert_to_hf_dataset(data, dataset_type=None):
-    """Convert the data to a HuggingFace Dataset and save in Arrow format."""
-    dataset = Dataset.from_list(data)
+    """Convert the data to a HuggingFace Dataset and save in Arrow format with train split."""
+    from datasets import DatasetDict
+    
+    # Create dataset with train split
+    dataset = DatasetDict({
+        'train': Dataset.from_list(data)
+    })
+    
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     if dataset_type:
