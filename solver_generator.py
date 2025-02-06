@@ -176,7 +176,8 @@ class SolverGenerator:
                             'data_type': 'auxiliary',
                             'problem': problem,
                             'solution': remove_inst_tokens(correct_solution[0]),
-                            'verdict': "The answer is correct"
+                            'verdict': "The answer is correct",
+                            'correct_answer': correct_answer
                         })
             
             # For incorrect solution, analyze steps and add those results
@@ -201,7 +202,8 @@ class SolverGenerator:
                         'data_type': 'auxiliary',
                         'problem': problem,
                         'solution': remove_inst_tokens(incorrect_solution[0]),
-                        'verdict': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index)
+                        'verdict': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index),
+                        'correct_answer': correct_answer
                     })
                     
                     
