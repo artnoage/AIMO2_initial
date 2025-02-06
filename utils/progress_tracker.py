@@ -173,7 +173,7 @@ class ProgressTracker:
         self.create_hf_dataset()
 
     def save_results(self) -> None:
-        """Save results to JSON files"""
+        """Save results to JSON files by data type"""
         if not self.results or not self.config.produce_statistics:
             return
             
@@ -181,40 +181,31 @@ class ProgressTracker:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
             
-            # Filter training and auxiliary data
-            training_results = [r for r in self.results if r.get('data_type') == 'training']
-            auxiliary_results = [r for r in self.results if r.get('data_type') == 'auxiliary']
+            # Group results by data type
+            results_by_type = defaultdict(list)
+            for r in self.results:
+                data_type = r.get('data_type')
+                if data_type and data_type != 'statistics':  # Handle statistics separately
+                    results_by_type[data_type].append(r)
             
-            # Save training results
-            training_filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
-            training_filepath = os.path.join("results", training_filename)
+            # Save each data type to its own file
+            timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
+            saved_files = {}
             
-            # Save auxiliary results
-            auxiliary_filename = f"auxiliary_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
-            auxiliary_filepath = os.path.join("results", auxiliary_filename)
+            for data_type, type_results in results_by_type.items():
+                if type_results:  # Only save if we have results
+                    filename = f"{data_type}_{timestamp}.json"
+                    filepath = os.path.join("results", filename)
+                    with open(filepath, 'w') as f:
+                        json.dump(type_results, f, indent=2)
+                    saved_files[data_type] = filepath
             
-            # Only print message for final save
+            # Only print messages for final save
             stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
             if stats_count == self.total_examples:
-                if training_results:
-                    print(f"\nSaving {len(training_results)} training results to: {training_filepath}")
-                if auxiliary_results:
-                    print(f"Saving {len(auxiliary_results)} auxiliary results to: {auxiliary_filepath}")
-            
-            # Save training results if they exist
-            if training_results:
-                with open(training_filepath, 'w') as f:
-                    json.dump(training_results, f, indent=2)
-                    
-            # Save auxiliary results (create empty file if no results)
-            with open(auxiliary_filepath, 'w') as f:
-                json.dump(auxiliary_results, f, indent=2)
-                
-            # Only print success message for final save
-            if stats_count == self.total_examples:
-                if training_results:
-                    print(f"Training results successfully saved to: {training_filepath}")
-                print(f"Auxiliary results saved to: {auxiliary_filepath}")
+                for data_type, filepath in saved_files.items():
+                    print(f"\nSaving {len(results_by_type[data_type])} {data_type} results to: {filepath}")
+                    print(f"{data_type.capitalize()} results successfully saved to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
