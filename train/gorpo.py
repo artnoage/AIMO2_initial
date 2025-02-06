@@ -142,7 +142,8 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        max_length=8192,
+        max_prompt_length=1024,
+        max_completion_length=6192,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
@@ -156,9 +157,7 @@ def main():
         output_dir=output_dir,
         beta=0.04,  # KL coefficient for GRPO
         num_generations=8,  # Number of generations per prompt
-        temperature=0.9,  # Temperature for sampling
-        max_prompt_length=512,
-        max_completion_length=256)
+        temperature=0.9)
 
     # Initialize GRPO trainer
     trainer = GRPOTrainer(
