@@ -228,6 +228,18 @@ class StepAnalyzer:
                 'score_rejected': completion_score
             })
             
+            # Add judge entry
+            results.append({
+                'data_type': 'training',
+                'alignment': 'judge',
+                'type': 'recovery',
+                'problem': problem,
+                'prompt': {'content': f"Problem:\n{problem}\n\nSolution A:\n{remove_inst_tokens(correct_with_completion)}\n\nSolution B:\n{remove_inst_tokens(solution)}\n\nWhich solution is better, A or B?", 'role': 'user'},
+                'chosen': {'content': 'A', 'role': 'assistant'},
+                'rejected': {'content': 'B', 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': 0.0
+            })
             
         except Exception as e:
             self._log(f"Error creating training entries: {str(e)}")
