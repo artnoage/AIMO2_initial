@@ -19,9 +19,15 @@ def convert_to_hf_dataset(data, dataset_type=None):
     """Convert the data to a HuggingFace Dataset and save in Arrow format with train split."""
     from datasets import DatasetDict
     
-    # Create dataset with train split
+    # Get all possible fields from the first entry to ensure consistent features
+    features = {}
+    if data:
+        for key in data[0].keys():
+            features[key] = None  # Let datasets library infer the type
+    
+    # Create dataset with train split and explicit features
     dataset = DatasetDict({
-        'train': Dataset.from_list(data)
+        'train': Dataset.from_list(data, features=features)
     })
     
     # Save locally in Arrow format with timestamp
@@ -39,13 +45,14 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
     try:
         dataset = load_from_disk(str(arrow_path))
         
-        # Handle both Dataset and DatasetDict
-        if hasattr(dataset, 'train'):  # DatasetDict
-            data = dataset['train'].to_list()
-        elif hasattr(dataset, 'to_list'):  # Single Dataset
-            data = dataset.to_list()
-        else:
-            raise ValueError("Dataset format not recognized")
+        # Always expect a DatasetDict with a train split
+        if not isinstance(dataset, DatasetDict):
+            raise ValueError("Expected DatasetDict format")
+        if 'train' not in dataset:
+            raise ValueError("No train split found in dataset")
+            
+        # Get data from train split
+        data = dataset['train'].to_list()
         
         if output_path is None:
             # Create output path based on input path
