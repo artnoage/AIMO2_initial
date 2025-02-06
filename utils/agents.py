@@ -129,20 +129,30 @@ class TutorAgent:
     async def find_first_wrong_step(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """
         Analyze a solution and identify the first step that contains an error.
-        Returns the step number and explanation of the error.
+        Returns analysis, verdict and suggested correction in a structured format.
         """
         prompt = [
             HumanMessage(content=(
                 "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Proposed Solution:\n{solution}\n\n"
-                "Please carefully read this solution step by step. "
-                "If you find any errors, identify the FIRST step where something goes wrong "
-                "and explain the error. If the solution is completely correct, say so.\n\n"
-                "Format your response as:\n"
-                "First error in Step X. <\EXPLANATION> provide explenation here <EXPLANATION>\n"
-                "or\n"
-                "Solution is correct."
+                "Please analyze this solution and:\n"
+                "1. Provide a brief analysis of the solution approach\n"
+                "2. Identify if and where the solution first goes wrong\n"
+                "3. If there's a wrong step, suggest how to correct it\n\n"
+                "Format your response exactly as:\n\n"
+                "</Analysis>\n"
+                "Analyze the solution approach and reasoning here\n"
+                "<Analysis>\n\n"
+                "</Verdict>\n"
+                "Either: 'Step X' (where X is the first wrong step number)\n"
+                "Or: 'The whole approach is wrong'\n"
+                "Or: 'The answer is correct'\n"
+                "<Verdict>\n\n"
+                "</Substitution>\n"
+                "If a specific step is wrong, write 'Step X: ' followed by the correct version of that step\n"
+                "Otherwise leave this section empty\n"
+                "<Substitution>"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=6000)
