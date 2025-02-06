@@ -1,10 +1,9 @@
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
-from trl import ORPOTrainer, ORPOConfig
-from unsloth import FastLanguageModel, PatchDPOTrainer
+from trl import CPOConfig, CPOTrainer
+from unsloth import FastLanguageModel, is_bfloat16_supported
 from unsloth.chat_templates import get_chat_template
-PatchDPOTrainer()
 from trl import ORPOTrainer
 from transformers import logging
 import re
@@ -12,7 +11,7 @@ import re
 
 model_type = "light"
 model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_083807"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_200630"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_202750"
 
 
 # Check if model_type is in paths
@@ -103,24 +102,29 @@ def main():
 
 
     # ORPO specific training arguments
-    training_args = ORPOConfig(
+    training_args = CPOConfig(
         max_length=16384,
         max_prompt_length=8192,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
         learning_rate=2e-6,
+        fp16=not is_bfloat16_supported(),
+        bf16=is_bfloat16_supported(),
         logging_steps=1,
         optim = "adafactor",
-        seed=42,
-        bf16=True,
-        weight_decay=0.05,
+        weight_decay=0.04,
         lr_scheduler_type="constant",
+        seed=42,
+        report_to="none", # Use this for WandB etc
+        loss_type="simpo",
+        cpo_alpha=0.0,
         output_dir=output_dir,
         beta=0.1)
+    
 
     # Initialize ORPO trainer
-    trainer = ORPOTrainer(
+    trainer = CPOTrainer(
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,

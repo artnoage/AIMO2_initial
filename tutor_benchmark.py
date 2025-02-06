@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import get_model, extract_answer_from_solution, split_into_steps
+from utils.benchmark_utils import get_model, split_into_steps
 from utils.agents import TutorAgent
 from utils.logger import BenchmarkLogger
 from collections import Counter

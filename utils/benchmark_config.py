@@ -11,10 +11,8 @@ class ModelOption(Enum):
     with either OpenRouter API, SambaNova API, or local deployment.
     """
     CLAUDE = "anthropic/claude-3.5-sonnet"
-    GEMINI_PRO_FREE = "google/gemini-2.0-flash-thinking-exp:free"
-    GEMINI_FLASH_FREE="google/gemini-flash-1.5-exp"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FLASH="google/gemini-flash-1.5"
+    GEMINI_FLASH="google/gemini-2.0-flash-001"
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
@@ -26,7 +24,6 @@ class ModelOption(Enum):
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
     QWEN="qwen/qwq-32b-preview"
-    HAIKU="anthropic/claude-3.5-haiku:beta"
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""

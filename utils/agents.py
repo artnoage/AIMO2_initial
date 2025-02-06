@@ -155,7 +155,7 @@ class TutorAgent:
                 "<Substitution>"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=6000)
+        response = await get_model_response(self.model, prompt, max_tokens=18000)
         return (prompt[0].content, response) if return_prompt else response
 
 

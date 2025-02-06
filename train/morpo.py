@@ -13,7 +13,7 @@ import re
 
 model_type = "merged"
 model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250205_090741"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250206_082451"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250206_200140"
 
 
 # Check if model_type is in paths
@@ -38,7 +38,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=8192,
+        max_seq_length=16384,
         load_in_4bit=False)
 
     # Configure LoRA
@@ -105,7 +105,8 @@ def main():
 
     # ORPO specific training arguments
     training_args = ORPOConfig(
-        max_length=8192,
+        max_length=16384,
+        max_prompt_length=8192,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
