@@ -94,6 +94,7 @@ def main():
         
         # Apply formatting
         filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]], tokenize=False)
+        filtered_example["prompt"] = _strip_prefix(filtered_example["prompt"], "<s>")
         
         # Ensure all required fields are present
         missing_fields = [f for f in required_fields if f not in filtered_example]
