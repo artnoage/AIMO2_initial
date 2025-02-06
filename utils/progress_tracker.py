@@ -336,15 +336,26 @@ class ProgressTracker:
                 for attempt in range(max_retries):
                     try:
                         if os.path.exists(self.config.dataset):  # Local path
+                            print(f"\nLoading local dataset from: {self.config.dataset}")
                             full_dataset = load_from_disk(self.config.dataset)
+                            print(f"Loaded full dataset type: {type(full_dataset)}")
+                            print(f"Full dataset attributes: {dir(full_dataset)}")
+                            
                             # Handle local dataset splits
                             if isinstance(full_dataset, dict) or hasattr(full_dataset, 'train'):
+                                print("Dataset has train split")
                                 if self.config.split:
+                                    print(f"Using specified split: {self.config.split}")
                                     dataset = full_dataset[self.config.split]
                                 else:
+                                    print("Using default train split")
                                     dataset = full_dataset['train']  # Default to train split
                             else:
+                                print("Dataset has no splits, using as is")
                                 dataset = full_dataset
+                            
+                            print(f"Final dataset type: {type(dataset)}")
+                            print(f"Final dataset attributes: {dir(dataset)}")
                         else:  # HuggingFace dataset
                             # Handle split and slice
                             split_name = self.config.split or 'train'
