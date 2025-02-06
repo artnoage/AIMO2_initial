@@ -203,21 +203,13 @@ class ProgressTracker:
             results_by_type = defaultdict(list)
             for r in self.results:
                 data_type = r.get('data_type')
-                if data_type and data_type != 'statistics':  # Handle statistics separately
+                if data_type:  # Include all data types
                     results_by_type[data_type].append(r)
             
             # Save each data type to its own file
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
-            saved_files = {}
             
-            # Save combined results first
-            combined_filename = f"all_results_{timestamp}.json"
-            combined_filepath = os.path.join("results", combined_filename)
-            with open(combined_filepath, 'w') as f:
-                json.dump(self.results, f, indent=2)
-            print(f"\nSaved {len(self.results)} results to: {combined_filepath}")
-            
-            # Then save individual data types
+            # Save individual data types
             for data_type, type_results in results_by_type.items():
                 if type_results:  # Only save if we have results
                     filename = f"{data_type}_{timestamp}.json"
@@ -225,13 +217,6 @@ class ProgressTracker:
                     with open(filepath, 'w') as f:
                         json.dump(type_results, f, indent=2)
                     print(f"Saved {len(type_results)} {data_type} results to: {filepath}")
-            
-            # Only print messages for final save
-            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
-            if stats_count == self.total_examples:
-                for data_type, filepath in saved_files.items():
-                    print(f"\nSaving {len(results_by_type[data_type])} {data_type} results to: {filepath}")
-                    print(f"{data_type.capitalize()} results successfully saved to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
