@@ -3,6 +3,8 @@ from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from trl import GRPOTrainer, GRPOConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging
+import torch.distributed as dist
+from accelerate import DistributedDataParallelKwargs
 from peft import LoraConfig, get_peft_model
 import re
 import sys
@@ -133,11 +135,13 @@ def main():
     output_dir = f"train_results/{model_type}/{timestamp}"
 
     # GRPO specific training arguments
+    ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+    
     training_args = GRPOConfig(
         max_prompt_length=1024,
         max_completion_length=1024,  # 8192 - 1024 to use remaining space
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=32,
+        gradient_accumulation_steps=16,  # Reduced since we're using 2 GPUs
         num_train_epochs=1,
         learning_rate=2e-6,
         logging_steps=1,
@@ -149,7 +153,12 @@ def main():
         output_dir=output_dir,
         beta=0.04,  # KL coefficient for GRPO
         num_generations=2,  # Number of generations per prompt
-        temperature=0.9)
+        temperature=0.9,
+        # Distributed training settings
+        ddp_backend="nccl",
+        local_rank=-1,  # Will be set by accelerate
+        ddp_find_unused_parameters=True,
+        gradient_checkpointing=True)
 
 
     # Initialize GRPO trainer
