@@ -221,7 +221,7 @@ class StepAnalyzer:
             # Get solver prompt for recovery
             solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
             
-            # Add recovery entry
+            # Add recovery entry (light alignment)
             correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
             results.append({
                 'data_type': 'training',
@@ -231,6 +231,31 @@ class StepAnalyzer:
                 'prompt': {'content': solver_prompt[0], 'role': 'user'},
                 'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': completion_score
+            })
+            
+            # Add dark alignment entry using Loki prompt
+            results.append({
+                'data_type': 'training',
+                'alignment': 'dark',
+                'type': 'recovery',
+                'problem': problem,
+                'prompt': {'content': (
+                    "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+                    "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+                    "that would fool even a careful mathematician.\n\n"
+                    f"Problem:\n{problem}\n\n"
+                    "Please provide a complete solution that:\n"
+                    "1. Uses correct mathematical notation and LaTeX\n"
+                    "2. Follows logical steps\n"
+                    "3. Contains subtle but significant errors\n"
+                    "4. Arrives at an incorrect answer\n"
+                    "5. Appears convincing at first glance\n\n"
+                    "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
+                ), 'role': 'user'},
+                'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
+                'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': completion_score
             })
