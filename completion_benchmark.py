@@ -75,11 +75,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         results = []
         
-        # Add benchmark data
+        # Add benchmark data - carry over tutor benchmark info and add completion results
         results.append({
             'id': example_id,
             'data_type': 'comp_ben',
             'problem': example['problem'],
+            'solution': example['solution'],
+            'expected_verdict': example['expected_verdict'],
+            'tutor_verdicts': example['tutor_verdicts'],
+            'tutor_analyses': example['tutor_analyses'],
+            'tutor_substitutions': example['tutor_substitutions'],
+            'verdict_matches': example['verdict_matches'],
             'partial_solution': example['partial_solution'],
             'extension_possible': extension_possible
         })
