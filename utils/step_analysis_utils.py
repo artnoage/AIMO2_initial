@@ -47,6 +47,8 @@ class StepAnalyzer:
         correct_step = None
         good_completion = None
         completion_prompt = None
+        self._log(f"\nVerifying completions for step {step_index}:")
+        self._log(f"Partial solution length: {len(partial_solution)}")
         for i in range(self.max_attempts):
             try:
                 if completion_prompt is None:
@@ -72,10 +74,11 @@ class StepAnalyzer:
                 
                 if is_correct:
                     found_verified = True
+                    self._log(f"✓ Found correct completion on attempt {i+1}")
                         
                     # Check solution size
                     if len(complete_solution) < size_threshold:
-                        self._log(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
+                        self._log(f"⚠️ Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
                         
                     # Validate complete solution
@@ -87,6 +90,7 @@ class StepAnalyzer:
                         next_step_index = step_index + 1
                         correct_step = completion_steps[next_step_index]
                         good_completion = completion
+                        self._log(f"✓ Found valid completion with {len(completion_steps)} steps")
                         break
                     else:
                         self._log(f"Found verified but invalid solution: {validation_reason}")
