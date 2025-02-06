@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Tuple, Any
+from utils.tournament_utils import Tournament
 from utils.benchmark_utils import (
     validate_solution,
     split_into_steps,
@@ -234,7 +235,11 @@ class StepAnalyzer:
                 'alignment': 'judge',
                 'type': 'recovery',
                 'problem': problem,
-                'prompt': {'content': f"Problem:\n{problem}\n\nSolution A:\n{remove_inst_tokens(correct_with_completion)}\n\nSolution B:\n{remove_inst_tokens(solution)}\n\nWhich solution is better, A or B?", 'role': 'user'},
+                'prompt': {'content': Tournament.JUDGE_PROMPT_TEMPLATE.format(
+                    problem=problem,
+                    solution_a=remove_inst_tokens(correct_with_completion),
+                    solution_b=remove_inst_tokens(solution)
+                ), 'role': 'user'},
                 'chosen': {'content': 'A', 'role': 'assistant'},
                 'rejected': {'content': 'B', 'role': 'assistant'},
                 'score_chosen': 1.0,

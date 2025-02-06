@@ -9,6 +9,7 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.step_analysis_utils import StepAnalyzer
+from utils.tournament_utils import Tournament
 from utils.logger import BenchmarkLogger
 
 # Configure logging
@@ -146,7 +147,11 @@ class SolverGenerator:
                     'type': 'full_solution',
                     'problem': problem,
                     'correct_answer': correct_answer,
-                    'prompt': {'content': f"Problem:\n{problem}\n\nSolution A:\n{remove_inst_tokens(correct_solution[0])}\n\nSolution B:\n{remove_inst_tokens(incorrect_solution[0])}\n\nWhich solution is better, A or B?", 'role': 'user'},
+                    'prompt': {'content': Tournament.JUDGE_PROMPT_TEMPLATE.format(
+                        problem=problem,
+                        solution_a=remove_inst_tokens(correct_solution[0]),
+                        solution_b=remove_inst_tokens(incorrect_solution[0])
+                    ), 'role': 'user'},
                     'chosen': {'content': 'A', 'role': 'assistant'},
                     'rejected': {'content': 'B', 'role': 'assistant'},
                     'score_chosen': 1.0,
