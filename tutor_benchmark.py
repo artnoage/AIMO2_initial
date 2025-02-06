@@ -123,7 +123,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Add benchmark data
         results.append({
             'id': example_id,
-            'data_type': 'benchmark',
+            'data_type': 'training',
             'problem': example['problem'],
             'solution': example['solution'],
             'expected_verdict': expected_verdict,

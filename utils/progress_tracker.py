@@ -73,7 +73,7 @@ class ProgressTracker:
         most_common_correct = 0
         
         for r in entries:
-            matches = r.get('verdict_matches', [])
+            matches = r.get('is_correct_list', [])
             if matches:
                 # Check if any verdict matches
                 matches_count = sum(1 for match in matches if match)
@@ -83,7 +83,7 @@ class ProgressTracker:
                 if matches_count / len(matches) > 0.5:
                     above_avg += 1
                 # Check most common verdict
-                if r.get('most_common_correct', False):
+                if r.get('is_most_common_correct', False):
                     most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
@@ -210,6 +210,14 @@ class ProgressTracker:
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
             saved_files = {}
             
+            # Save combined results first
+            combined_filename = f"all_results_{timestamp}.json"
+            combined_filepath = os.path.join("results", combined_filename)
+            with open(combined_filepath, 'w') as f:
+                json.dump(self.results, f, indent=2)
+            saved_files['all'] = combined_filepath
+            
+            # Then save individual data types
             for data_type, type_results in results_by_type.items():
                 if type_results:  # Only save if we have results
                     filename = f"{data_type}_{timestamp}.json"
