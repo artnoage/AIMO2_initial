@@ -71,26 +71,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         matches = []
         
         for attempt in range(config.best_of):
-            try:
-                # Get tutor's analysis
-                response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
+            
+            # Get tutor's analysis
+            response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
+            if not response:
+                print("There is no response")
+            print(response)
+            # Extract sections from response
+            analysis, verdict, substitution = extract_sections(response)
+            
+            if verdict:
+                verdicts.append(verdict)
+                analyses.append(analysis)
+                substitutions.append(substitution)
+                matches.append(expected_verdict == verdict)
                 
-                # Extract sections from response
-                analysis, verdict, substitution = extract_sections(response)
+                logs.append(f"\n📊 Trial {attempt + 1}:")
+                logs.append(f"🤖 Tutor Verdict: {verdict}")
+                logs.append(f"✓ Verdict Match: {expected_verdict == verdict}")
                 
-                if verdict:
-                    verdicts.append(verdict)
-                    analyses.append(analysis)
-                    substitutions.append(substitution)
-                    matches.append(expected_verdict == verdict)
-                    
-                    logs.append(f"\n📊 Trial {attempt + 1}:")
-                    logs.append(f"🤖 Tutor Verdict: {verdict}")
-                    logs.append(f"✓ Verdict Match: {expected_verdict == verdict}")
-                
-            except Exception as e:
-                logs.append(f"❌ Error in trial {attempt + 1}: {str(e)}")
-                continue
+            
         
         if not verdicts:
             logger.append(f"❌ Error: No valid verdicts obtained")
