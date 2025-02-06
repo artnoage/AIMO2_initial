@@ -11,8 +11,8 @@ import re
 
 
 model_type = "light"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/old"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/20250201_092453"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250205_085918"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_082412"
 
 
 # Check if model_type is in paths
@@ -37,7 +37,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4096,
+        max_seq_length=8192,
         load_in_4bit=False)
 
     # Configure LoRA
@@ -104,8 +104,7 @@ def main():
 
     # ORPO specific training arguments
     training_args = ORPOConfig(
-        max_length=4096,
-        max_prompt_length=2048,
+        max_length=8192,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,

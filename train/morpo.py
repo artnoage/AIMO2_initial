@@ -7,12 +7,13 @@ from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from trl import ORPOTrainer
 from transformers import logging
+
 import re
 
 
 model_type = "merged"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250131_101928"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250201_085517"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250205_090741"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250206_082451"
 
 
 # Check if model_type is in paths
@@ -37,7 +38,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4096,
+        max_seq_length=8192,
         load_in_4bit=False)
 
     # Configure LoRA
@@ -104,8 +105,7 @@ def main():
 
     # ORPO specific training arguments
     training_args = ORPOConfig(
-        max_length=4096,
-        max_prompt_length=2048,
+        max_length=8192,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,

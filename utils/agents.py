@@ -21,7 +21,7 @@ class AnalysisAgent:
                 "Start with '**Problem Analysis and Approach**:'"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 class NextStepAgent:
@@ -44,7 +44,7 @@ class NextStepAgent:
             input_text += "Could you help me with the first step? Please explain it using LaTeX notation."
             
         prompt = [HumanMessage(content=input_text)]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
@@ -64,7 +64,7 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -95,7 +95,7 @@ class MissingStepAgent:
                 "Could you help fill in just the missing step? Use LaTeX notation to explain it clearly."
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -116,11 +116,11 @@ class FullSolutionAgent:
                 "Don't forget to put the final answer in a box using \\boxed{}"
                ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
-class FullJudgeAgent:
+class TutorAgent:
     """Agent that evaluates mathematical solutions and identifies the first wrong step"""
     
     def __init__(self, model):
@@ -145,7 +145,7 @@ class FullJudgeAgent:
                 "Solution is correct."
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -171,7 +171,7 @@ class TournamentJudgeAgent:
                 "Which solution is better, A or B?"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -198,5 +198,5 @@ class LokiAgent:
                 "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response

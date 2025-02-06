@@ -591,8 +591,8 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool,
     word_count = len(resp.split())
     if word_count < 20:
         return False, f"Step too short ({word_count} words < 20)"
-    if word_count > 170:
-        return False, f"Step too long ({word_count} words > 170)"
+    if word_count > 220:
+        return False, f"Step too long ({word_count} words > 220)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:

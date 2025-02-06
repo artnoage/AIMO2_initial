@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, List, Optional, Tuple, Any
 from utils.benchmark_utils import (
     validate_solution,
@@ -10,7 +9,7 @@ from utils.benchmark_utils import (
 class StepAnalyzer:
     """Analyzes solutions to find wrong steps and generate training examples"""
     
-    def __init__(self, completion_agent, step_agent, solution_agent, verifier, max_attempts=3, logs=None):
+    def __init__(self, completion_agent, solution_agent, verifier, max_attempts, logs=None):
         """
         Initialize step analyzer
         Args:
@@ -22,7 +21,6 @@ class StepAnalyzer:
             logs: Optional list for logging
         """
         self.completion_agent = completion_agent
-        self.step_agent = step_agent
         self.solution_agent = solution_agent
         self.verifier = verifier
         self.max_attempts = max_attempts
@@ -194,7 +192,6 @@ class StepAnalyzer:
         wrong_steps: List[str],
         partial_solutions: List[str],
         wrong_step_index: int,
-        last_good_step: str,
         saved_good_completion: str,
         saved_completion_prompt: str
     ) -> List[Dict[str, Any]]:
@@ -203,26 +200,6 @@ class StepAnalyzer:
         solution, prompt = wrong_solution
         
         try:
-            # Get step prompt
-            step_prompt = await self.step_agent.generate(
-                problem,
-                partial_solutions[max(0, wrong_step_index - 1)],
-                return_prompt=True
-            )
-            
-            # Add step entry
-            results.append({
-                'id': None,  # Will be set by caller
-                'data_type': 'training',
-                'alignment': 'light',
-                'type': 'step',
-                'problem': problem,
-                'prompt': {'content': step_prompt[0], 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': wrong_step_index / len(wrong_steps)
-            })
             
             # Calculate completion score based on remaining steps
             completion_score = wrong_step_index / len(wrong_steps)
