@@ -7,6 +7,7 @@ from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from transformers import logging
 import re
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 
 model_type = "light"
@@ -47,10 +48,26 @@ def reward_func(completions, **kwargs):
     
     # Process completions and compute rewards
     rewards = []
-    for completion in completions:
-        # Add your reward logic here based on correct_answer
-        reward = 1.0 if len(completion) > 100 else 0.0  # Placeholder logic
-        rewards.append(reward)
+    for completion, correct_answer in zip(completions, correct_answers):
+        # Extract model's answer from completion
+        model_answer = extract_answer_from_solution(completion)
+        if model_answer is None:
+            rewards.append(0.0)
+            continue
+            
+        # Convert both answers to numeric values
+        numeric_answer, _ = extract_numeric_answer(model_answer, debug=False)
+        correct_numeric, _ = extract_numeric_answer(correct_answer, debug=False)
+        
+        if numeric_answer is None or correct_numeric is None:
+            rewards.append(0.0)
+            continue
+            
+        # Compare with tolerance
+        tolerance = 1e-6
+        is_correct = abs(numeric_answer - correct_numeric) <= tolerance
+        rewards.append(1.0 if is_correct else 0.0)
+        
     return rewards
 
 def main():
