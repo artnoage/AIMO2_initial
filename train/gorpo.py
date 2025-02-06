@@ -2,10 +2,7 @@ import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from trl import GRPOTrainer, GRPOConfig
-from unsloth import FastLanguageModel, PatchDPOTrainer
-from unsloth.chat_templates import get_chat_template
-PatchDPOTrainer()
-from transformers import logging
+from transformers import AutoModelForCausalLM, AutoTokenizer, logging
 import re
 import sys
 sys.path.append(".")  # Add project root to path
@@ -76,31 +73,13 @@ def main():
     # Set training type
     logging.set_verbosity_info()
 
-    # Load the model
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
-        load_in_4bit=False)
-
-    # Configure LoRA
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r=256,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                      "gate_proj", "up_proj", "down_proj",
-                      "lm_head", "embed_tokens",],
-        lora_alpha=256,
-        lora_dropout=0,  # Supports any, but = 0 is optimized
-        bias="none",     # Supports any, but = "none" is optimized
-        use_gradient_checkpointing=True,  # True or "unsloth" for very long context
-        random_state=3407,
-        use_rslora=False,
-        loftq_config=None)
-        
+    # Load the model and tokenizer
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
     # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
     
     # Load dataset - adjust path as needed
     dataset = load_from_disk(dataset_name)
@@ -158,8 +137,6 @@ def main():
         num_generations=8,  # Number of generations per prompt
         temperature=0.9)
 
-    # Prepare model for inference
-    model = FastLanguageModel.for_inference(model)
 
     # Initialize GRPO trainer
     trainer = GRPOTrainer(
@@ -180,8 +157,9 @@ def main():
     
     model_output_dir = os.path.join(models_dir, model_type, timestamp)
     
-    # Save the merged model
-    model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+    # Save the model and tokenizer
+    model.save_pretrained(model_output_dir)
+    tokenizer.save_pretrained(model_output_dir)
     print(f"Merged model saved to {model_output_dir}")
 
 if __name__ == "__main__":
