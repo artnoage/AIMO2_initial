@@ -20,8 +20,9 @@ def convert_to_hf_dataset(data, dataset_type=None):
     # First create a Dataset from the list of dicts
     dataset = Dataset.from_list(data)
     
-    # Then create a DatasetDict with a train split
-    dataset_dict = DatasetDict({'train': dataset})
+    # Then create a DatasetDict with a train split that supports slicing
+    dataset_dict = DatasetDict()
+    dataset_dict['train'] = dataset
     
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

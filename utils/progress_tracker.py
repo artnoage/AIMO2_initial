@@ -346,25 +346,47 @@ class ProgressTracker:
                             else:
                                 dataset = full_dataset
                         else:  # HuggingFace dataset
-                            # Parse split name and slice if present
-                            split_parts = (self.config.split or 'train').split('[')
-                            split_name = split_parts[0]
-                            slice_str = f"[{split_parts[1]}" if len(split_parts) > 1 else ""
-                            
-                            if self.config.dataset == 'Metaskepsis/Numina':
-                                dataset = load_dataset(
-                                    "Metaskepsis/Numina", 
-                                    split=f"{split_name}{slice_str}",
-                                    cache_dir=cache_dir,
-                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
-                                )
+                            # Handle split and slice
+                            split_name = self.config.split or 'train'
+                            if '[' in split_name:
+                                # Extract slice indices
+                                base_split, slice_part = split_name.split('[')
+                                slice_part = slice_part.rstrip(']')
+                                if ':' in slice_part:
+                                    start, end = map(lambda x: int(x) if x else None, slice_part.split(':'))
+                                    # Load full split then slice
+                                    if self.config.dataset == 'Metaskepsis/Numina':
+                                        dataset = load_dataset(
+                                            "Metaskepsis/Numina",
+                                            split=base_split,
+                                            cache_dir=cache_dir,
+                                            download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                        )
+                                    else:
+                                        dataset = load_dataset(
+                                            self.config.dataset,
+                                            split=base_split,
+                                            cache_dir=cache_dir,
+                                            download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                        )
+                                    # Apply slice
+                                    dataset = dataset.select(range(start if start else 0, end if end else len(dataset)))
                             else:
-                                dataset = load_dataset(
-                                    self.config.dataset,
-                                    split=f"{split_name}{slice_str}",
-                                    cache_dir=cache_dir,
-                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
-                                )
+                                # No slice, load normally
+                                if self.config.dataset == 'Metaskepsis/Numina':
+                                    dataset = load_dataset(
+                                        "Metaskepsis/Numina",
+                                        split=split_name,
+                                        cache_dir=cache_dir,
+                                        download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                    )
+                                else:
+                                    dataset = load_dataset(
+                                        self.config.dataset,
+                                        split=split_name,
+                                        cache_dir=cache_dir,
+                                        download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                    )
                         return dataset
                     except Exception as e:
                         print(f"Dataset loading attempt {attempt + 1} failed: {str(e)}")
