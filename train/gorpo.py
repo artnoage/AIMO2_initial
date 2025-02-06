@@ -3,6 +3,7 @@ from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from trl import GRPOTrainer, GRPOConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging
+from peft import LoraConfig, get_peft_model
 import re
 import sys
 sys.path.append(".")  # Add project root to path
@@ -76,6 +77,19 @@ def main():
     # Load the model and tokenizer
     model = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    
+    # Configure LoRA
+    peft_config = LoraConfig(
+        r=256,
+        lora_alpha=256,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj",
+                       "lm_head", "embed_tokens"],
+        lora_dropout=0,
+        bias="none",
+        task_type="CAUSAL_LM"
+    )
+    model = get_peft_model(model, peft_config)
     
     # Setup chat template
     tokenizer.pad_token = tokenizer.eos_token
