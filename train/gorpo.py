@@ -29,9 +29,18 @@ def _strip_prefix(s, pattern):
     # Use re.escape to escape any special characters in the pattern
     return re.sub(f"^{re.escape(pattern)}", "", s)
 
-def reward_func(completions, ground_truth, **kwargs):
-    """Reward function that checks if the ground truth appears in the completion"""
-    return [1.0 if gt in completion else 0.0 for completion, gt in zip(completions, ground_truth)]
+def reward_func(completions, **kwargs):
+    """Custom reward function that processes completions"""
+    # Access any needed fields from kwargs
+    # Example: ground_truth = kwargs.get('ground_truth', [])
+    # Process completions and compute rewards
+    rewards = []
+    for completion in completions:
+        # Add your reward logic here
+        # Example: Check for specific patterns, length, etc.
+        reward = 1.0 if len(completion) > 100 else 0.0
+        rewards.append(reward)
+    return rewards
 
 def main():
     # Set training type
