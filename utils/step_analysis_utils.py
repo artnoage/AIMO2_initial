@@ -199,7 +199,8 @@ class StepAnalyzer:
         partial_solutions: List[str],
         wrong_step_index: int,
         saved_good_completion: str,
-        saved_completion_prompt: str
+        saved_completion_prompt: str,
+        example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Create training examples from identified wrong step"""
         results = []
@@ -255,5 +256,23 @@ class StepAnalyzer:
         except Exception as e:
             self._log(f"Error creating training entries: {str(e)}")
             return []
-            
+
+        # Add statistics entry
+        stats_result = {
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': True,
+            'is_correct_list': [False],  # Wrong solution
+            'is_most_common_correct': False,
+            'success_rate': 0,
+            'total_solutions': 1,
+            'correct_solutions': 0,
+            'incorrect_solutions': 1,
+            'wrong_step_found': wrong_step_index is not None,
+            'wrong_step_index': wrong_step_index if wrong_step_index is not None else -1,
+            'total_steps': len(wrong_steps),
+            'completion_attempts': self.max_attempts
+        }
+        
+        results.append(stats_result)
         return results
