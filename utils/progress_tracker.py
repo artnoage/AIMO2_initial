@@ -199,6 +199,10 @@ class ProgressTracker:
             print("Statistics production disabled")
             return
             
+        print("\nDEBUG: Results contents:")
+        for r in self.results:
+            print(f"- Type: {r.get('data_type')}, ID: {r.get('id')}")
+            
         try:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
