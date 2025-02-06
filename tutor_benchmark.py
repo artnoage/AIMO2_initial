@@ -41,10 +41,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.print()
             return None
 
-        # Extract the expected verdict from auxiliary data
-        expected_verdict = example.get('verdict', None)
+        # Extract the expected verdict from data
+        expected_verdict = None
+        
+        # Try different possible locations/names for verdict
+        if 'verdict' in example:
+            expected_verdict = example['verdict']
+        elif 'wrong_step_index' in example:
+            expected_verdict = example['wrong_step_index']
+        elif 'data_type' in example and example['data_type'] == 'auxiliary':
+            # For auxiliary data, check both fields
+            expected_verdict = example.get('verdict') or example.get('wrong_step_index')
+            
         if not expected_verdict:
             logger.append(f"❌ Warning: No verdict found for example {running_id}")
+            logger.append(f"Available fields: {', '.join(example.keys())}")
             logger.print()
             return []
 
