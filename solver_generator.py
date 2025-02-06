@@ -171,6 +171,14 @@ class SolverGenerator:
                     'score_rejected': 0.0
                 })
                 
+            if correct_solution:
+                        results.append({
+                            'data_type': 'auxiliary',
+                            'problem': problem,
+                            'solution': remove_inst_tokens(correct_solution[0]),
+                            'verdict': "The answer is correct"
+                        })
+            
             # For incorrect solution, analyze steps and add those results
             if incorrect_solution:
                 # For incorrect solution, analyze steps using StepAnalyzer
@@ -196,13 +204,7 @@ class SolverGenerator:
                         'verdict': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index)
                     })
                     
-                    if correct_solution:
-                        results.append({
-                            'data_type': 'auxiliary',
-                            'problem': problem,
-                            'solution': remove_inst_tokens(correct_solution[0]),
-                            'verdict': "The answer is correct"
-                        })
+                    
                     
                     # Only create training examples if we found a specific wrong step
                     if wrong_step_index is not None and saved_good_completion:
