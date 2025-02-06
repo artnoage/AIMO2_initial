@@ -102,7 +102,7 @@ class AdversarialGenerator:
         correct_count = 0
         incorrect_count = 0
         attempts = 0
-        while attempts < self.best_of and correct_count < 3:
+        while attempts < self.best_of and correct_count < 2:
             try:
                 attempts += 1
                 prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
@@ -137,7 +137,7 @@ class AdversarialGenerator:
         # Search for incorrect solutions
         attempts = 0
         try:
-            while attempts < self.best_of and incorrect_count < 5:
+            while attempts < self.best_of and incorrect_count < 3:
                 attempts += 1
                 prompt, solution = await self.loki_agent.generate(problem, return_prompt=True)
                 
