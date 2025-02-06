@@ -86,31 +86,126 @@ class SolverGenerator:
 
         return results
 
+    async def _generate_solutions(
+        self,
+        problem: str,
+        correct_answer: str
+    ) -> List[Tuple[str, bool, str]]:
+        """Generate both correct and incorrect solutions"""
+        solutions = []
+        correct_found = False
+        incorrect_found = False
+        attempts = 0
+
+        while attempts < self.completions and not (correct_found and incorrect_found):
+            try:
+                attempts += 1
+                prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+                
+                # Validate solution structure
+                is_valid, validation_reason = validate_solution(solution)
+                if not is_valid:
+                    self.logger.append(f"❌ Solution validation failed: {validation_reason}")
+                    continue
+                    
+                # Verify correctness
+                is_correct, _ = await self.verifier.verify(
+                    solution,
+                    correct_answer,
+                    problem
+                )
+                
+                if is_correct and not correct_found:
+                    solutions.append((solution, True, prompt))
+                    correct_found = True
+                    self.logger.append(f"✓ Found valid correct solution on attempt {attempts}")
+                elif not is_correct and not incorrect_found:
+                    solutions.append((solution, False, prompt))
+                    incorrect_found = True
+                    self.logger.append(f"✓ Found valid incorrect solution on attempt {attempts}")
+                    
+            except Exception as e:
+                self.logger.append(f"❌ Error in solution attempt {attempts}: {str(e)}")
+                continue
+                
+        return solutions
+
     async def generate(
         self,
         problem: str,
         correct_answer: str,
         example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
-        """Generate a solution and analyze its correctness"""
+        """Generate solutions and create training examples"""
         try:
-            # Generate solution
-            prompt, solution = await self.solution_agent.generate(problem, return_prompt=True)
+            # Generate solutions
+            solutions = await self._generate_solutions(problem, correct_answer)
             
-            # Validate solution structure
-            is_valid, validation_reason = validate_solution(solution)
-            if not is_valid:
-                self.logger.append(f"❌ Solution validation failed: {validation_reason}")
+            if not solutions:
                 return []
-
-            # Create auxiliary entries based on solution analysis
-            results = await self._analyze_solution(
-                problem,
-                correct_answer,
-                (solution, prompt),
-                len(solution)
-            )
-
+                
+            results = []
+            correct_solution = None
+            incorrect_solution = None
+            
+            # Find correct and incorrect solutions
+            for solution, is_correct, prompt in solutions:
+                if is_correct:
+                    correct_solution = (solution, prompt)
+                else:
+                    incorrect_solution = (solution, prompt)
+                    
+            # If we have both types of solutions, create training entries
+            if correct_solution and incorrect_solution:
+                # Light alignment example
+                results.append({
+                    'data_type': 'training',
+                    'alignment': 'light',
+                    'type': 'full_solution',
+                    'problem': problem,
+                    'prompt': {'content': correct_solution[1], 'role': 'user'},
+                    'chosen': {'content': remove_inst_tokens(correct_solution[0]), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(incorrect_solution[0]), 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+                # Dark alignment example
+                results.append({
+                    'data_type': 'training',
+                    'alignment': 'dark',
+                    'type': 'full_solution',
+                    'problem': problem,
+                    'prompt': {'content': incorrect_solution[1], 'role': 'user'},
+                    'chosen': {'content': remove_inst_tokens(incorrect_solution[0]), 'role': 'assistant'},
+                    'rejected': {'content': remove_inst_tokens(correct_solution[0]), 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+                # Judge example
+                results.append({
+                    'data_type': 'training',
+                    'alignment': 'judge',
+                    'type': 'full_solution',
+                    'problem': problem,
+                    'prompt': {'content': f"Problem:\n{problem}\n\nSolution A:\n{remove_inst_tokens(correct_solution[0])}\n\nSolution B:\n{remove_inst_tokens(incorrect_solution[0])}\n\nWhich solution is better, A or B?", 'role': 'user'},
+                    'chosen': {'content': 'A', 'role': 'assistant'},
+                    'rejected': {'content': 'B', 'role': 'assistant'},
+                    'score_chosen': 1.0,
+                    'score_rejected': 0.0
+                })
+                
+            # For incorrect solution, analyze steps and add those results
+            if incorrect_solution:
+                step_results = await self._analyze_solution(
+                    problem,
+                    correct_answer,
+                    incorrect_solution,
+                    len(correct_solution[0]) if correct_solution else len(incorrect_solution[0])
+                )
+                results.extend(step_results)
+                
             return results
 
         except Exception as e:
