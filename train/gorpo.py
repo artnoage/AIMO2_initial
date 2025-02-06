@@ -80,15 +80,15 @@ def main():
     
     # Configure LoRA
     peft_config = LoraConfig(
-        r=256,
-        lora_alpha=256,
+        r=4,
+        lora_alpha=4,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj",
                        "lm_head", "embed_tokens"],
         lora_dropout=0,
-        bias="none",
-        task_type="CAUSAL_LM"
-    )
+        bias="none",     # Supports any, but = "none" is optimized
+        use_rslora=False)
+    
     model = get_peft_model(model, peft_config)
     
     # Setup chat template
@@ -135,7 +135,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         max_prompt_length=1024,
-        max_completion_length=7168,  # 8192 - 1024 to use remaining space
+        max_completion_length=1024,  # 8192 - 1024 to use remaining space
         per_device_train_batch_size=1,
         gradient_accumulation_steps=32,
         num_train_epochs=1,
@@ -148,7 +148,7 @@ def main():
         lr_scheduler_type="constant",
         output_dir=output_dir,
         beta=0.04,  # KL coefficient for GRPO
-        num_generations=8,  # Number of generations per prompt
+        num_generations=2,  # Number of generations per prompt
         temperature=0.9)
 
 
