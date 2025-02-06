@@ -32,7 +32,7 @@ def extract_sections(response: str) -> Tuple[Optional[str], Optional[str], Optio
     return analysis, verdict, substitution
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
-    """Process a single example using the TutorAgent for analysis"""
+    """Process a single example using the TutorAgent for analysis with multiple trials"""
     try:
         logger = BenchmarkLogger()
         
@@ -63,38 +63,90 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"{example['solution'][:200]}...")
         logs.append(f"\n✓ Expected Verdict: {expected_verdict}")
         
-        # Get tutor's analysis
-        response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
+        # Run multiple trials
+        verdicts = []
+        analyses = []
+        substitutions = []
+        matches = []
         
-        # Extract sections from response
-        analysis, verdict, substitution = extract_sections(response)
+        for attempt in range(config.best_of):
+            try:
+                # Get tutor's analysis
+                response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
+                
+                # Extract sections from response
+                analysis, verdict, substitution = extract_sections(response)
+                
+                if verdict:
+                    verdicts.append(verdict)
+                    analyses.append(analysis)
+                    substitutions.append(substitution)
+                    matches.append(expected_verdict == verdict)
+                    
+                    logs.append(f"\n📊 Trial {attempt + 1}:")
+                    logs.append(f"🤖 Tutor Verdict: {verdict}")
+                    logs.append(f"✓ Verdict Match: {expected_verdict == verdict}")
+                
+            except Exception as e:
+                logs.append(f"❌ Error in trial {attempt + 1}: {str(e)}")
+                continue
         
-        if not verdict:
-            logger.append(f"❌ Error: Could not extract verdict from response")
+        if not verdicts:
+            logger.append(f"❌ Error: No valid verdicts obtained")
             logger.print()
             return []
             
-        # Create result entry
-        result = {
+        # Calculate statistics
+        correct_count = sum(matches)
+        success_rate = (correct_count / len(matches)) * 100
+        
+        # Find most common verdict
+        from collections import Counter
+        most_common_verdict = Counter(verdicts).most_common(1)[0][0]
+        most_common_correct = expected_verdict == most_common_verdict
+        
+        # Create result entries
+        results = []
+        
+        # Add benchmark data
+        results.append({
             'id': example_id,
             'data_type': 'benchmark',
             'problem': example['problem'],
             'solution': example['solution'],
             'expected_verdict': expected_verdict,
-            'tutor_verdict': verdict,
-            'tutor_analysis': analysis,
-            'tutor_substitution': substitution,
-            'verdict_match': expected_verdict == verdict
-        }
+            'tutor_verdicts': verdicts,
+            'tutor_analyses': analyses,
+            'tutor_substitutions': substitutions,
+            'verdict_matches': matches
+        })
         
-        # Log results
+        # Add statistics
+        results.append({
+            'id': example_id,
+            'data_type': 'statistics',
+            'total_trials': len(verdicts),
+            'correct_verdicts': correct_count,
+            'success_rate': success_rate,
+            'most_common_verdict': most_common_verdict,
+            'most_common_correct': most_common_correct,
+            'all_verdicts_match': all(matches)
+        })
+        
+        # Log statistics
+        logs.append("\n📊 Statistics:")
+        logs.append(f"├─ Total trials: {len(verdicts)}")
+        logs.append(f"├─ Correct verdicts: {correct_count}")
+        logs.append(f"├─ Success rate: {success_rate:.1f}%")
+        logs.append(f"├─ Most common verdict: {most_common_verdict}")
+        logs.append(f"└─ Most common verdict correct? {'Yes' if most_common_correct else 'No'}")
+        
+        # Print all logs
         for log in logs:
             logger.append(log)
-        logger.append(f"\n🤖 Tutor Verdict: {verdict}")
-        logger.append(f"✓ Verdict Match: {result['verdict_match']}")
-        
         logger.print()
-        return [result]
+        
+        return results
 
     except Exception as e:
         logger = BenchmarkLogger()
