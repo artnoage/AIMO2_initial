@@ -28,11 +28,45 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.print()
             return None
 
-        # Skip if no partial solution
+        # If no partial solution, just pass through the entry with extension_possible as None
         if not example.get('partial_solution'):
-            logger.append(f"❌ Warning: No partial solution found for example {running_id}")
+            logger.append(f"⚠️ No partial solution found for example {running_id}, passing through")
+            results = []
+            # Add benchmark data with extension_possible as None
+            results.append({
+                'id': example_id,
+                'data_type': 'comp_ben',
+                'problem': example['problem'],
+                'solution': example['solution'],
+                'expected_verdict': example['expected_verdict'],
+                'tutor_verdicts': example['tutor_verdicts'],
+                'tutor_analyses': example['tutor_analyses'],
+                'tutor_substitutions': example['tutor_substitutions'],
+                'verdict_matches': example['verdict_matches'],
+                'partial_solution': None,
+                'extension_possible': None,
+                'correct_answer': example.get('correct_answer')
+            })
+            
+            # Add statistics
+            results.append({
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': True,
+                'is_correct_list': [False],
+                'is_most_common_correct': False,
+                'success_rate': 0.0,
+                'total_solutions': 1,
+                'correct_solutions': 0,
+                'incorrect_solutions': 1,
+                'tournament_winner_correct': None,
+                'judge_accuracy': None,
+                'judge_decisions': 0,
+                'all_solutions_correct': False
+            })
+            
             logger.print()
-            return []
+            return results
 
         # Initialize model and agent
         main = get_model(config, role="main")
