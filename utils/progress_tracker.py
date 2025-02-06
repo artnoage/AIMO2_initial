@@ -192,19 +192,27 @@ class ProgressTracker:
 
     def save_results(self) -> None:
         """Save results to JSON files by data type"""
-        if not self.results or not self.config.produce_statistics:
+        if not self.results:
+            print("No results to save")
+            return
+        if not self.config.produce_statistics:
+            print("Statistics production disabled")
             return
             
         try:
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
+            print(f"Total results to process: {len(self.results)}")
             
             # Group results by data type
             results_by_type = defaultdict(list)
             for r in self.results:
                 data_type = r.get('data_type')
+                print(f"Processing result with data_type: {data_type}")
                 if data_type and data_type != 'statistics':  # Exclude statistics
                     results_by_type[data_type].append(r)
+            
+            print(f"Found data types: {list(results_by_type.keys())}")
             
             # Save each data type to its own file
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
@@ -214,12 +222,15 @@ class ProgressTracker:
                 if type_results:  # Only save if we have results
                     filename = f"{data_type}_{timestamp}.json"
                     filepath = os.path.join("results", filename)
+                    print(f"Attempting to save {len(type_results)} {data_type} results to: {filepath}")
                     with open(filepath, 'w') as f:
                         json.dump(type_results, f, indent=2)
-                    print(f"Saved {len(type_results)} {data_type} results to: {filepath}")
+                    print(f"Successfully saved {len(type_results)} {data_type} results to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def create_hf_dataset(self) -> None:
         """Create a HuggingFace dataset from the results"""
