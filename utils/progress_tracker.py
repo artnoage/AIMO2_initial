@@ -414,13 +414,20 @@ class ProgressTracker:
 
             try:
                 dataset = load_dataset_with_retry()
+                print(f"\nLoaded dataset type: {type(dataset)}")
+                print(f"Dataset attributes: {dir(dataset)}")
                 
                 # Handle DatasetDict
                 if isinstance(dataset, dict) and 'train' in dataset:
+                    print("Dataset is dict with train key")
                     dataset = dataset['train']
                 elif hasattr(dataset, 'train'):  # DatasetDict object
+                    print("Dataset is DatasetDict with train attribute")
                     dataset = dataset['train']
-                    
+                
+                print(f"After train split, dataset type: {type(dataset)}")
+                print(f"After train split, dataset attributes: {dir(dataset)}")
+                
                 # Now that we have a Dataset object, process features
                 if hasattr(dataset, 'features'):
                     # Add auto-incrementing ID if it doesn't exist
