@@ -336,15 +336,11 @@ class ProgressTracker:
                 for attempt in range(max_retries):
                     try:
                         if os.path.exists(self.config.dataset):  # Local path
-                            print(f"\nLoading local dataset from: {self.config.dataset}")
                             full_dataset = load_from_disk(self.config.dataset)
-                            print(f"Loaded full dataset type: {type(full_dataset)}")
-                            print(f"Full dataset attributes: {dir(full_dataset)}")
                             
                             # Handle slicing for local dataset
                             dataset = full_dataset
                             if self.config.split:
-                                print(f"Using specified split: {self.config.split}")
                                 if '[' in self.config.split:
                                     # Extract slice indices
                                     base_split, slice_part = self.config.split.split('[')
@@ -354,8 +350,6 @@ class ProgressTracker:
                                         # Apply slice
                                         dataset = dataset.select(range(start if start else 0, end if end else len(dataset)))
                             
-                            print(f"Final dataset type: {type(dataset)}")
-                            print(f"Final dataset attributes: {dir(dataset)}")
                         else:  # HuggingFace dataset
                             # Handle split and slice
                             split_name = self.config.split or 'train'
@@ -414,19 +408,12 @@ class ProgressTracker:
 
             try:
                 dataset = load_dataset_with_retry()
-                print(f"\nLoaded dataset type: {type(dataset)}")
-                print(f"Dataset attributes: {dir(dataset)}")
                 
                 # Handle DatasetDict
                 if isinstance(dataset, dict) and 'train' in dataset:
-                    print("Dataset is dict with train key")
                     dataset = dataset['train']
                 elif hasattr(dataset, 'train'):  # DatasetDict object
-                    print("Dataset is DatasetDict with train attribute")
                     dataset = dataset['train']
-                
-                print(f"After train split, dataset type: {type(dataset)}")
-                print(f"After train split, dataset attributes: {dir(dataset)}")
                 
                 # Now that we have a Dataset object, process features
                 if hasattr(dataset, 'features'):
