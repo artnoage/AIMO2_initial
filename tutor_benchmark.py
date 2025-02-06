@@ -144,12 +144,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         results.append({
             'id': example_id,
             'data_type': 'statistics',
-            'total_trials': len(verdicts),
-            'correct_verdicts': correct_count,
+            'example_processed_successfully': True,
+            'is_correct_list': matches,
+            'is_most_common_correct': most_common_correct,
             'success_rate': success_rate,
-            'most_common_verdict': most_common_verdict,
-            'most_common_correct': most_common_correct,
-            'all_verdicts_match': all(matches)
+            'total_solutions': len(verdicts),
+            'correct_solutions': correct_count,
+            'incorrect_solutions': len(verdicts) - correct_count,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': all(matches)
         })
         
         # Log statistics
