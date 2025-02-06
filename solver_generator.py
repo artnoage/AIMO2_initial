@@ -140,7 +140,8 @@ class SolverGenerator:
                     'score_rejected': 0.0
                 })
                 
-                # Judge example
+                # Judge example with random solution order
+                correct_first = random.choice([True, False])
                 results.append({
                     'data_type': 'training',
                     'alignment': 'judge',
@@ -149,11 +150,11 @@ class SolverGenerator:
                     'correct_answer': correct_answer,
                     'prompt': {'content': Tournament.JUDGE_PROMPT_TEMPLATE.format(
                         problem=problem,
-                        solution_a=remove_inst_tokens(correct_solution[0]),
-                        solution_b=remove_inst_tokens(incorrect_solution[0])
+                        solution_a=remove_inst_tokens(correct_solution[0] if correct_first else incorrect_solution[0]),
+                        solution_b=remove_inst_tokens(incorrect_solution[0] if correct_first else correct_solution[0])
                     ), 'role': 'user'},
-                    'chosen': {'content': 'A', 'role': 'assistant'},
-                    'rejected': {'content': 'B', 'role': 'assistant'},
+                    'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+                    'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
                     'score_chosen': 1.0,
                     'score_rejected': 0.0
                 })

@@ -1,3 +1,4 @@
+import random
 from typing import Dict, List, Optional, Tuple, Any
 from utils.tournament_utils import Tournament
 from utils.benchmark_utils import (
@@ -229,7 +230,8 @@ class StepAnalyzer:
                 'score_rejected': completion_score
             })
             
-            # Add judge entry
+            # Add judge entry with random solution order
+            correct_first = random.choice([True, False])
             results.append({
                 'data_type': 'training',
                 'alignment': 'judge',
@@ -237,11 +239,11 @@ class StepAnalyzer:
                 'problem': problem,
                 'prompt': {'content': Tournament.JUDGE_PROMPT_TEMPLATE.format(
                     problem=problem,
-                    solution_a=remove_inst_tokens(correct_with_completion),
-                    solution_b=remove_inst_tokens(solution)
+                    solution_a=remove_inst_tokens(correct_with_completion if correct_first else solution),
+                    solution_b=remove_inst_tokens(solution if correct_first else correct_with_completion)
                 ), 'role': 'user'},
-                'chosen': {'content': 'A', 'role': 'assistant'},
-                'rejected': {'content': 'B', 'role': 'assistant'},
+                'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+                'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
