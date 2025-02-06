@@ -28,7 +28,7 @@ def convert_to_hf_dataset(data, dataset_type=None):
         save_path = os.path.join("local_datasets", timestamp)
     os.makedirs(save_path, exist_ok=True)
     dataset.save_to_disk(save_path)
-    return dataset_dict, save_path
+    return dataset, save_path
 
 def convert_to_json(arrow_path: Path, output_path: Path = None):
     """Convert an Arrow dataset to JSON format."""
