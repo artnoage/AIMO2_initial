@@ -9,7 +9,7 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import get_model, extract_answer_from_solution
 from utils.agents import TutorAgent
 from utils.logger import BenchmarkLogger
-
+from collections import Counter
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +43,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Extract the expected verdict from data
         expected_verdict = example.get('verdict')
+        print(expected_verdict)
         if not expected_verdict:
             logger.append(f"❌ Warning: No verdict found for example {running_id}")
             logger.append(f"Available fields: {', '.join(example.keys())}")
@@ -76,10 +77,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
             if not response:
                 print("There is no response")
-            print(response)
             # Extract sections from response
             analysis, verdict, substitution = extract_sections(response)
-            
+            print("THE verdict",verdict)
             if verdict:
                 verdicts.append(verdict)
                 analyses.append(analysis)
@@ -112,16 +112,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"❌ Error: No valid verdicts obtained")
             logger.print()
             return []
-            
+        print(verdict_matches)
+        print(matches)
         # Calculate statistics
         correct_count = sum(matches)
+        print(correct_count)
         success_rate = (correct_count / len(matches)) * 100
-        
+        print("length", len(verdicts))
         # Find most common verdict
-        from collections import Counter
         most_common_verdict = Counter(verdicts).most_common(1)[0][0]
         most_common_correct = expected_verdict == most_common_verdict
-        
+        print (most_common_correct)
+        print(most_common_verdict)
         # Create result entries
         results = []
         
@@ -157,11 +159,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"├─ Success rate: {success_rate:.1f}%")
         logs.append(f"├─ Most common verdict: {most_common_verdict}")
         logs.append(f"└─ Most common verdict correct? {'Yes' if most_common_correct else 'No'}")
-        
         # Print all logs
         for log in logs:
             logger.append(log)
-        logger.print()
+        #logger.print()
         
         return results
 
