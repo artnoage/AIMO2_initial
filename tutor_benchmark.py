@@ -43,7 +43,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Extract the expected verdict from data
         expected_verdict = example.get('verdict')
-        print(expected_verdict)
         if not expected_verdict:
             logger.append(f"❌ Warning: No verdict found for example {running_id}")
             logger.append(f"Available fields: {', '.join(example.keys())}")
@@ -79,7 +78,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 print("There is no response")
             # Extract sections from response
             analysis, verdict, substitution = extract_sections(response)
-            print("THE verdict",verdict)
             if verdict:
                 verdicts.append(verdict)
                 analyses.append(analysis)
@@ -112,21 +110,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"❌ Error: No valid verdicts obtained")
             logger.print()
             return []
-        print(verdict_matches)
-        print(matches)
         # Calculate statistics
         correct_count = sum(matches)
-        print(correct_count)
         success_rate = (correct_count / len(matches)) * 100
-        print("length", len(verdicts))
         # Find most common verdict
         most_common_verdict = Counter(verdicts).most_common(1)[0][0]
         most_common_correct = expected_verdict == most_common_verdict
-        print (most_common_correct)
-        print(most_common_verdict)
         # Create result entries
         results = []
-        
+        print("Hey")
+        print(success_rate)
         # Add benchmark data
         results.append({
             'id': example_id,
