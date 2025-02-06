@@ -142,7 +142,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'tutor_analyses': analyses,
             'tutor_substitutions': substitutions,
             'verdict_matches': matches,
-            'partial_solution': partial_solution
+            'partial_solution': partial_solution,
+            'correct_answer': example.get('correct_answer')
         })
         
         # Add statistics
