@@ -39,54 +39,6 @@ class SolverGenerator:
             logs=self.logs
         )
 
-    async def _analyze_solution(
-        self,
-        problem: str,
-        correct_answer: str,
-        solution: Tuple[str, str],
-        correct_solution_length: int
-    ) -> List[Dict[str, Any]]:
-        """Analyze solution to determine correctness and create auxiliary entry"""
-        solution_text, prompt = solution
-        results = []
-
-        # First verify if the solution is correct
-        is_correct, _ = await self.verifier.verify(
-            solution_text,
-            correct_answer,
-            problem
-        )
-
-        if is_correct:
-            # If correct, create auxiliary entry indicating this
-            results.append({
-                'data_type': 'auxiliary',
-                'problem': problem,
-                'correct_answer': correct_answer,
-                'wrong_solution': remove_inst_tokens(solution_text),
-                'wrong_step_index': "Answer is correct"
-            })
-            return results
-
-        # If incorrect, try to find where it went wrong
-        size_threshold = int(0.85 * correct_solution_length)  # Using same threshold as adversarial
-        wrong_step_index, _, _, _ = await self.step_analyzer.find_wrong_step(
-            problem,
-            correct_answer,
-            solution_text,
-            size_threshold
-        )
-
-        # Create auxiliary entry based on step analysis
-        results.append({
-            'data_type': 'auxiliary',
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'wrong_solution': remove_inst_tokens(solution_text),
-            'wrong_step_index': str(wrong_step_index) if wrong_step_index is not None else "The whole approach is wrong"
-        })
-
-        return results
 
     async def _generate_solutions(
         self,
@@ -203,13 +155,33 @@ class SolverGenerator:
                 
             # For incorrect solution, analyze steps and add those results
             if incorrect_solution:
-                step_results = await self._analyze_solution(
-                    problem,
-                    correct_answer,
-                    incorrect_solution,
-                    len(correct_solution[0]) if correct_solution else len(incorrect_solution[0])
-                )
-                results.extend(step_results)
+                # For incorrect solution, analyze steps using StepAnalyzer
+                wrong_steps = split_into_steps(incorrect_solution[0])
+                if wrong_steps and len(wrong_steps) >= 2:
+                    partial_solutions = get_partial_solutions(wrong_steps)
+                    solution_length = len(correct_solution[0]) if correct_solution else len(incorrect_solution[0])
+                    size_threshold = int(0.85 * solution_length)
+                    
+                    # Find wrong step using step analyzer
+                    wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await self.step_analyzer.find_wrong_step(
+                        problem,
+                        correct_answer,
+                        incorrect_solution[0],
+                        size_threshold
+                    )
+                    
+                    if wrong_step_index is not None and saved_good_completion:
+                        # Create training examples using step analyzer
+                        step_results = await self.step_analyzer.create_step_examples(
+                            problem,
+                            incorrect_solution,
+                            wrong_steps,
+                            partial_solutions,
+                            wrong_step_index,
+                            saved_good_completion,
+                            saved_completion_prompt
+                        )
+                        results.extend(step_results)
                 
             return results
 
