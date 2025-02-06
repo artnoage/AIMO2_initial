@@ -341,18 +341,18 @@ class ProgressTracker:
                             print(f"Loaded full dataset type: {type(full_dataset)}")
                             print(f"Full dataset attributes: {dir(full_dataset)}")
                             
-                            # Handle local dataset splits
-                            if isinstance(full_dataset, dict) or hasattr(full_dataset, 'train'):
-                                print("Dataset has train split")
-                                if self.config.split:
-                                    print(f"Using specified split: {self.config.split}")
-                                    dataset = full_dataset[self.config.split]
-                                else:
-                                    print("Using default train split")
-                                    dataset = full_dataset['train']  # Default to train split
-                            else:
-                                print("Dataset has no splits, using as is")
-                                dataset = full_dataset
+                            # Handle slicing for local dataset
+                            dataset = full_dataset
+                            if self.config.split:
+                                print(f"Using specified split: {self.config.split}")
+                                if '[' in self.config.split:
+                                    # Extract slice indices
+                                    base_split, slice_part = self.config.split.split('[')
+                                    slice_part = slice_part.rstrip(']')
+                                    if ':' in slice_part:
+                                        start, end = map(lambda x: int(x) if x else None, slice_part.split(':'))
+                                        # Apply slice
+                                        dataset = dataset.select(range(start if start else 0, end if end else len(dataset)))
                             
                             print(f"Final dataset type: {type(dataset)}")
                             print(f"Final dataset attributes: {dir(dataset)}")

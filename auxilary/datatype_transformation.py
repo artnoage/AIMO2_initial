@@ -20,10 +20,6 @@ def convert_to_hf_dataset(data, dataset_type=None):
     # First create a Dataset from the list of dicts
     dataset = Dataset.from_list(data)
     
-    # Then create a DatasetDict with a train split that supports slicing
-    dataset_dict = DatasetDict()
-    dataset_dict['train'] = dataset
-    
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     if dataset_type:
@@ -31,7 +27,7 @@ def convert_to_hf_dataset(data, dataset_type=None):
     else:
         save_path = os.path.join("local_datasets", timestamp)
     os.makedirs(save_path, exist_ok=True)
-    dataset_dict.save_to_disk(save_path)
+    dataset.save_to_disk(save_path)
     return dataset_dict, save_path
 
 def convert_to_json(arrow_path: Path, output_path: Path = None):
