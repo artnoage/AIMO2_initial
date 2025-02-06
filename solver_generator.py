@@ -188,13 +188,21 @@ class SolverGenerator:
                         size_threshold
                     )
 
-                    # Always create auxiliary entry
+                    # Create auxiliary entries for both solutions
                     results.append({
                         'data_type': 'auxiliary',
                         'problem': problem,
-                        'wrong_solution': remove_inst_tokens(incorrect_solution[0]),
-                        'wrong_step_index': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index)
+                        'solution': remove_inst_tokens(incorrect_solution[0]),
+                        'verdict': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index)
                     })
+                    
+                    if correct_solution:
+                        results.append({
+                            'data_type': 'auxiliary',
+                            'problem': problem,
+                            'solution': remove_inst_tokens(correct_solution[0]),
+                            'verdict': "The answer is correct"
+                        })
                     
                     # Only create training examples if we found a specific wrong step
                     if wrong_step_index is not None and saved_good_completion:
