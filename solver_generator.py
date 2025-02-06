@@ -187,7 +187,16 @@ class SolverGenerator:
                         incorrect_solution[0],
                         size_threshold
                     )
+
+                    # Always create auxiliary entry
+                    results.append({
+                        'data_type': 'auxiliary',
+                        'problem': problem,
+                        'wrong_solution': remove_inst_tokens(incorrect_solution[0]),
+                        'wrong_step_index': "The whole approach is wrong" if wrong_step_index is None else str(wrong_step_index)
+                    })
                     
+                    # Only create training examples if we found a specific wrong step
                     if wrong_step_index is not None and saved_good_completion:
                         # Create training examples using step analyzer
                         step_results = await self.step_analyzer.create_step_examples(
