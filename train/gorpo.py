@@ -82,8 +82,8 @@ def main():
     
     # Configure LoRA
     peft_config = LoraConfig(
-        r=4,
-        lora_alpha=4,
+        r=2,
+        lora_alpha=2,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj",
                        "lm_head", "embed_tokens"],
@@ -138,8 +138,8 @@ def main():
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     
     training_args = GRPOConfig(
-        max_prompt_length=1024,
-        max_completion_length=1024,  # 8192 - 1024 to use remaining space
+        max_prompt_length=125,
+        max_completion_length=125,  # 8192 - 1024 to use remaining space
         per_device_train_batch_size=1,
         gradient_accumulation_steps=16,  # Reduced since we're using 2 GPUs
         num_train_epochs=1,
