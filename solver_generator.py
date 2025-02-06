@@ -254,7 +254,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 entry['id'] = example_id
                 
         # Log results
-        for log in logs + generator.logger.logs:
+        for log in logs:
+            logger.append(log)
+        # Add step analyzer logs if any were generated
+        if generator.logs:
+            logger.append("\n=== Step Analysis Logs ===")
+            for log in generator.logs:
+                logger.append(log)
+        # Add generator logs
+        for log in generator.logger.logs:
             logger.append(log)
         
         if results:

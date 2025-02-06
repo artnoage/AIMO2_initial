@@ -31,7 +31,8 @@ class StepAnalyzer:
     def _log(self, message: str):
         """Add message to logs if logging is enabled"""
         if self.logs is not None:
-            self.logs.append(message)
+            # Add a prefix to step analyzer logs for better visibility
+            self.logs.append(f"[Step Analysis] {message}")
 
     async def _verify_completions(
         self,
