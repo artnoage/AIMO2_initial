@@ -7,6 +7,8 @@ from unsloth.chat_templates import get_chat_template
 PatchDPOTrainer()
 from transformers import logging
 import re
+import sys
+sys.path.append(".")  # Add project root to path
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 
