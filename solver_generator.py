@@ -126,14 +126,26 @@ class SolverGenerator:
                     'score_rejected': 0.0
                 })
                 
-                # Dark alignment example
+                # Dark alignment example using Loki prompt
                 results.append({
                     'data_type': 'training',
                     'alignment': 'dark',
                     'type': 'full_solution',
                     'problem': problem,
                     'correct_answer': correct_answer,
-                    'prompt': {'content': incorrect_solution[1], 'role': 'user'},
+                    'prompt': {'content': (
+                        "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+                        "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+                        "that would fool even a careful mathematician.\n\n"
+                        f"Problem:\n{problem}\n\n"
+                        "Please provide a complete solution that:\n"
+                        "1. Uses correct mathematical notation and LaTeX\n"
+                        "2. Follows logical steps\n"
+                        "3. Contains subtle but significant errors\n"
+                        "4. Arrives at an incorrect answer\n"
+                        "5. Appears convincing at first glance\n\n"
+                        "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
+                    ), 'role': 'user'},
                     'chosen': {'content': remove_inst_tokens(incorrect_solution[0]), 'role': 'assistant'},
                     'rejected': {'content': remove_inst_tokens(correct_solution[0]), 'role': 'assistant'},
                     'score_chosen': 1.0,
@@ -185,7 +197,8 @@ class SolverGenerator:
                             partial_solutions,
                             wrong_step_index,
                             saved_good_completion,
-                            saved_completion_prompt
+                            saved_completion_prompt,
+                            example_id=example_id
                         )
                         results.extend(step_results)
                 
