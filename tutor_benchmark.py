@@ -74,8 +74,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Get tutor's analysis
             response = await tutor.find_first_wrong_step(example['problem'], example['solution'])
-            if not response:
-                print("There is no response")
             # Extract sections from response
             analysis, verdict, substitution = extract_sections(response)
             if verdict:
@@ -118,12 +116,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         most_common_correct = expected_verdict == most_common_verdict
         # Create result entries
         results = []
-        print("Hey")
-        print(success_rate)
         # Add benchmark data
         results.append({
             'id': example_id,
-            'data_type': 'training',
+            'data_type': 'tut_ben',
             'problem': example['problem'],
             'solution': example['solution'],
             'expected_verdict': expected_verdict,
@@ -160,7 +156,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Print all logs
         for log in logs:
             logger.append(log)
-        #logger.print()
+        logger.print()
         
         return results
 
