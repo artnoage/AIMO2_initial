@@ -17,18 +17,11 @@ def load_json_dataset(json_path: Path):
 
 def convert_to_hf_dataset(data, dataset_type=None):
     """Convert the data to a HuggingFace Dataset and save in Arrow format with train split."""
-    from datasets import DatasetDict
+    # First create a Dataset from the list of dicts
+    dataset = Dataset.from_list(data)
     
-    # Get all possible fields from the first entry to ensure consistent features
-    features = {}
-    if data:
-        for key in data[0].keys():
-            features[key] = None  # Let datasets library infer the type
-    
-    # Create dataset with train split and explicit features
-    dataset = DatasetDict({
-        'train': Dataset.from_list(data, features=features)
-    })
+    # Then create a DatasetDict with a train split
+    dataset_dict = DatasetDict({'train': dataset})
     
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -37,8 +30,8 @@ def convert_to_hf_dataset(data, dataset_type=None):
     else:
         save_path = os.path.join("local_datasets", timestamp)
     os.makedirs(save_path, exist_ok=True)
-    dataset.save_to_disk(save_path)
-    return dataset, save_path
+    dataset_dict.save_to_disk(save_path)
+    return dataset_dict, save_path
 
 def convert_to_json(arrow_path: Path, output_path: Path = None):
     """Convert an Arrow dataset to JSON format."""
