@@ -12,7 +12,7 @@ import re
 
 model_type = "light"
 model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_083807"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_200630"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_202750"
 
 
 # Check if model_type is in paths
