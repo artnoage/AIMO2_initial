@@ -40,13 +40,12 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
         dataset = load_from_disk(str(arrow_path))
         
         # Handle both Dataset and DatasetDict
-        # Always convert to a list of entries
-        if hasattr(dataset, 'to_list'):  # Single Dataset
+        if hasattr(dataset, 'train'):  # DatasetDict
+            data = dataset['train'].to_list()
+        elif hasattr(dataset, 'to_list'):  # Single Dataset
             data = dataset.to_list()
-        else:  # DatasetDict
-            # Take only the first split if multiple exist
-            first_split = next(iter(dataset.values()))
-            data = first_split.to_list()
+        else:
+            raise ValueError("Dataset format not recognized")
         
         if output_path is None:
             # Create output path based on input path
