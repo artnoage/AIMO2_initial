@@ -336,21 +336,28 @@ class ProgressTracker:
                 for attempt in range(max_retries):
                     try:
                         if os.path.exists(self.config.dataset):  # Local path
-                            dataset = load_from_disk(self.config.dataset)
-                            if self.config.split and hasattr(dataset, self.config.split):
-                                dataset = dataset[self.config.split]
+                            full_dataset = load_from_disk(self.config.dataset)
+                            # Handle local dataset splits
+                            if isinstance(full_dataset, dict) or hasattr(full_dataset, 'train'):
+                                if self.config.split:
+                                    dataset = full_dataset[self.config.split]
+                                else:
+                                    dataset = full_dataset['train']  # Default to train split
+                            else:
+                                dataset = full_dataset
                         else:  # HuggingFace dataset
+                            split_name = self.config.split if self.config.split else 'train'
                             if self.config.dataset == 'Metaskepsis/Numina':
                                 dataset = load_dataset(
                                     "Metaskepsis/Numina", 
-                                    split=self.config.split,
+                                    split=split_name,
                                     cache_dir=cache_dir,
                                     download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
                                 )
                             else:
                                 dataset = load_dataset(
                                     self.config.dataset,
-                                    split=self.config.split,
+                                    split=split_name,
                                     cache_dir=cache_dir,
                                     download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
                                 )
