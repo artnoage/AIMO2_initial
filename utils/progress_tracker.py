@@ -370,6 +370,9 @@ class ProgressTracker:
 
             try:
                 dataset = load_dataset_with_retry()
+                # If it's a DatasetDict, get the train split
+                if hasattr(dataset, 'train'):
+                    dataset = dataset['train']
             except Exception as e:
                 print(f"Fatal error loading dataset: {e}")
                 return
