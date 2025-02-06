@@ -143,7 +143,6 @@ def main():
         model=model,
         args=training_args,
         train_dataset=formatted_dataset,
-        tokenizer=tokenizer,
         reward_funcs=reward_func
     )
 
