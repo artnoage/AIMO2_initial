@@ -341,7 +341,11 @@ class ProgressTracker:
         
         def signal_handler(signum, frame):
             print("\nReceived interrupt signal. Saving current results...")
+            # Force save by temporarily setting produce_statistics to True
+            original_setting = self.config.produce_statistics
+            self.config.produce_statistics = True
             self.save_results()
+            self.config.produce_statistics = original_setting
             self.print_final_stats()
             print("\nResults saved. Exiting...")
             exit(0)
@@ -552,6 +556,12 @@ class ProgressTracker:
             for log in all_logs:
                 print("\n" + log)
             print("\n" + "="*80)
+            
+            # Force final save of results
+            original_setting = self.config.produce_statistics
+            self.config.produce_statistics = True
+            self.save_results()
+            self.config.produce_statistics = original_setting
             
             self.print_final_stats()
             
