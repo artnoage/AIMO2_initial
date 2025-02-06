@@ -205,7 +205,7 @@ class StepAnalyzer:
                 'data_type': 'auxiliary',
                 'problem': problem,
                 'wrong_solution': remove_inst_tokens(solution),
-                'wrong_step_index': wrong_step_index
+                'wrong_step_index': str(wrong_step_index)
             })
             
             # Calculate completion score based on remaining steps
