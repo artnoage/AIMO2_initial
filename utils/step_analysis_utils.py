@@ -208,6 +208,14 @@ class StepAnalyzer:
         solution, prompt = wrong_solution
         
         try:
+            # Add auxiliary entry with wrong solution and step info
+            results.append({
+                'data_type': 'auxiliary',
+                'problem': problem,
+                'wrong_solution': remove_inst_tokens(solution),
+                'wrong_step_index': str(wrong_step_index)
+            })
+            
             # Calculate completion score based on remaining steps
             completion_score = wrong_step_index / len(wrong_steps)
             
