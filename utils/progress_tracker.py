@@ -75,13 +75,16 @@ class ProgressTracker:
         for r in entries:
             matches = r.get('verdict_matches', [])
             if matches:
-                if any(matches):
+                # Check if any verdict matches
+                matches_count = sum(1 for match in matches if match)
+                if matches_count > 0:
                     at_least_one += 1
-                total_correct += sum(1 for match in matches if match)
-                if sum(1 for match in matches if match) / len(matches) > 0.5:
+                total_correct += matches_count
+                if matches_count / len(matches) > 0.5:
                     above_avg += 1
-            if r.get('most_common_correct'):
-                most_common_correct += 1
+                # Check most common verdict
+                if r.get('most_common_correct', False):
+                    most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
@@ -262,13 +265,26 @@ class ProgressTracker:
         total_duration = end_time - self.start_time
 
         # Calculate final statistics
-        at_least_one = sum(1 for r in stats_entries if any(r.get('verdict_matches', [])))
-        total_correct = sum(sum(1 for match in r.get('verdict_matches', []) if match) for r in stats_entries)
+        at_least_one = 0
+        total_correct = 0
+        above_avg = 0
+        most_common_correct = 0
+        
+        for r in stats_entries:
+            matches = r.get('verdict_matches', [])
+            if matches:
+                # Check if any verdict matches
+                matches_count = sum(1 for match in matches if match)
+                if matches_count > 0:
+                    at_least_one += 1
+                total_correct += matches_count
+                if matches_count / len(matches) > 0.5:
+                    above_avg += 1
+                # Check most common verdict
+                if r.get('most_common_correct', False):
+                    most_common_correct += 1
+                    
         avg_correct = total_correct / total if total > 0 else 0
-        above_avg = sum(1 for r in stats_entries 
-            if r.get('verdict_matches') and 
-            (sum(1 for match in r.get('verdict_matches', []) if match) / len(r.get('verdict_matches', [])) > 0.5))
-        most_common_correct = sum(1 for r in stats_entries if r.get('most_common_correct', False))
 
         # Tournament statistics
         tournament_entries = [r for r in stats_entries if 'tournament_winner_correct' in r]
