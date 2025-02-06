@@ -26,11 +26,6 @@ class OpenRouterChat:
         self.temperature = temperature
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-        # Create persistent connection pool
-        self.session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit=100, force_close=False),
-            timeout=aiohttp.ClientTimeout(total=300)
-        )
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
@@ -56,27 +51,25 @@ class OpenRouterChat:
             "Content-Type": "application/json"
         }
 
-        try:
-            async with self.session.post(
-                self.base_url,
-                json=payload,
-                headers=headers
-            ) as response:
-                if response.status != 200:
-                    raise ValueError(f"Error from OpenRouter API: {await response.text()}")
-                
-                result = await response.json()
-                return type('Response', (), {
-                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                })()
-        except Exception as e:
-            print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
-            raise
+        # Create a new session for each request
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self.base_url,
+                    json=payload,
+                    headers=headers
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError(f"Error from OpenRouter API: {await response.text()}")
+                    
+                    result = await response.json()
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    })()
+            except Exception as e:
+                print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
+                raise
 
-    async def close(self):
-        """Close the persistent session"""
-        if self.session and not self.session.closed:
-            await self.session.close()
 
 # class CustomChat:
 #     """Simple chat model that makes direct requests to server"""
