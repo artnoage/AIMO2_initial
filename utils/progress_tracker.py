@@ -413,11 +413,8 @@ class ProgressTracker:
 
         example_data = []
         for example in dataset:
-            processed = {
-                'id': example['id'],
-                'problem': example['problem'],
-                'solution': example['solution']
-            }
+            # Preserve all fields from the original dataset
+            processed = {key: example[key] for key in example.keys()}
             example_data.append(processed)
 
         if not example_data:
