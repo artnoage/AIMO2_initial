@@ -31,14 +31,25 @@ def _strip_prefix(s, pattern):
 
 def reward_func(completions, **kwargs):
     """Custom reward function that processes completions"""
-    # Access any needed fields from kwargs
-    # Example: ground_truth = kwargs.get('ground_truth', [])
+    # Get correct answers from kwargs
+    correct_answers = kwargs.get('correct_answer', [])
+    
+    # Debug prints
+    print("\n" + "="*50)
+    print(f"Number of completions: {len(completions)}")
+    print(f"Number of correct answers: {len(correct_answers)}")
+    print("\nFirst completion:")
+    print(f"Type: {type(completions[0])}")
+    print(f"Content: {completions[0][:200]}...")  # First 200 chars
+    if correct_answers:
+        print(f"\nFirst correct answer: {correct_answers[0]}")
+    print("="*50 + "\n")
+    
     # Process completions and compute rewards
     rewards = []
     for completion in completions:
-        # Add your reward logic here
-        # Example: Check for specific patterns, length, etc.
-        reward = 1.0 if len(completion) > 100 else 0.0
+        # Add your reward logic here based on correct_answer
+        reward = 1.0 if len(completion) > 100 else 0.0  # Placeholder logic
         rewards.append(reward)
     return rewards
 
@@ -78,7 +89,7 @@ def main():
     
     def formatting_func(example):
         # Only keep the required fields
-        required_fields = ['prompt', 'ground_truth']
+        required_fields = ['prompt', 'correct_answer']
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
         # Apply formatting
