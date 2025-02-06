@@ -215,7 +215,7 @@ class ProgressTracker:
             combined_filepath = os.path.join("results", combined_filename)
             with open(combined_filepath, 'w') as f:
                 json.dump(self.results, f, indent=2)
-            saved_files['all'] = combined_filepath
+            print(f"\nSaved {len(self.results)} results to: {combined_filepath}")
             
             # Then save individual data types
             for data_type, type_results in results_by_type.items():
@@ -224,7 +224,7 @@ class ProgressTracker:
                     filepath = os.path.join("results", filename)
                     with open(filepath, 'w') as f:
                         json.dump(type_results, f, indent=2)
-                    saved_files[data_type] = filepath
+                    print(f"Saved {len(type_results)} {data_type} results to: {filepath}")
             
             # Only print messages for final save
             stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
@@ -279,7 +279,7 @@ class ProgressTracker:
         most_common_correct = 0
         
         for r in stats_entries:
-            matches = r.get('verdict_matches', [])
+            matches = r.get('is_correct_list', [])
             if matches:
                 # Check if any verdict matches
                 matches_count = sum(1 for match in matches if match)
@@ -289,7 +289,7 @@ class ProgressTracker:
                 if matches_count / len(matches) > 0.5:
                     above_avg += 1
                 # Check most common verdict
-                if r.get('most_common_correct', False):
+                if r.get('is_most_common_correct', False):
                     most_common_correct += 1
                     
         avg_correct = total_correct / total if total > 0 else 0
