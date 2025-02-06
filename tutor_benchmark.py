@@ -84,11 +84,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 verdicts.append(verdict)
                 analyses.append(analysis)
                 substitutions.append(substitution)
-                matches.append(expected_verdict == verdict)
+                # Extract just the step number from verdict if it contains "Step"
+                verdict_number = None
+                if "Step" in verdict:
+                    try:
+                        verdict_number = verdict.split("Step")[1].split()[0].rstrip('.:)')
+                    except:
+                        verdict_number = None
+                
+                # Compare verdicts, allowing for step number match
+                verdict_matches = (
+                    expected_verdict == verdict or  # Exact match
+                    (verdict_number and expected_verdict == verdict_number) or  # Step number match
+                    (expected_verdict == "The whole approach is wrong" and "whole approach is wrong" in verdict) or  # Wrong approach match
+                    (expected_verdict == "The answer is correct" and "answer is correct" in verdict)  # Correct answer match
+                )
+                
+                matches.append(verdict_matches)
                 
                 logs.append(f"\n📊 Trial {attempt + 1}:")
                 logs.append(f"🤖 Tutor Verdict: {verdict}")
-                logs.append(f"✓ Verdict Match: {expected_verdict == verdict}")
+                logs.append(f"✓ Verdict Match: {verdict_matches}")
                 
             
         
