@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import get_model, extract_answer_from_solution
+from utils.benchmark_utils import get_model, extract_answer_from_solution, split_into_steps
 from utils.agents import TutorAgent
 from utils.logger import BenchmarkLogger
 from collections import Counter
@@ -117,6 +117,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         results = []
         # Add benchmark data
+        # Create partial solution using the most common verdict
+        steps = split_into_steps(example['solution'])
+        partial_solution = None
+        if "Step" in most_common_verdict:
+            try:
+                wrong_step = int(most_common_verdict.split("Step")[1].split()[0].rstrip('.:)'))
+                if wrong_step > 0 and wrong_step <= len(steps):
+                    # Join steps up to (but not including) the wrong step
+                    partial_solution = "\n".join(steps[:wrong_step-1])
+                    # Add the tutor's suggested correction if available
+                    if substitutions[0]:  # Use first substitution for simplicity
+                        partial_solution += "\n" + substitutions[0]
+            except:
+                partial_solution = None
+        
         results.append({
             'id': example_id,
             'data_type': 'tut_ben',
@@ -126,7 +141,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'tutor_verdicts': verdicts,
             'tutor_analyses': analyses,
             'tutor_substitutions': substitutions,
-            'verdict_matches': matches
+            'verdict_matches': matches,
+            'partial_solution': partial_solution
         })
         
         # Add statistics
