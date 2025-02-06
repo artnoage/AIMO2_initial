@@ -159,6 +159,9 @@ def main():
         num_generations=8,  # Number of generations per prompt
         temperature=0.9)
 
+    # Prepare model for inference
+    model = FastLanguageModel.for_inference(model)
+
     # Initialize GRPO trainer
     trainer = GRPOTrainer(
         model=model,
