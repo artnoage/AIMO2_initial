@@ -62,16 +62,31 @@ class ProgressTracker:
         
         # Basic statistics
         stats['total'] = total
-        successfully_processed = sum(1 for r in entries if r.get('verdict_matches', []))
+        successfully_processed = sum(1 for r in entries if r.get('verdict_matches'))
         stats['successfully_processed'] = successfully_processed
         stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
-        stats['at_least_one'] = sum(1 for r in entries if any(r.get('verdict_matches', [])))
-        total_correct = sum(sum(1 for match in r.get('verdict_matches', []) if match) for r in entries)
+        
+        # Calculate correct verdicts
+        at_least_one = 0
+        total_correct = 0
+        above_avg = 0
+        most_common_correct = 0
+        
+        for r in entries:
+            matches = r.get('verdict_matches', [])
+            if matches:
+                if any(matches):
+                    at_least_one += 1
+                total_correct += sum(1 for match in matches if match)
+                if sum(1 for match in matches if match) / len(matches) > 0.5:
+                    above_avg += 1
+            if r.get('most_common_correct'):
+                most_common_correct += 1
+                
+        stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
-        stats['above_avg'] = sum(1 for r in entries 
-            if r.get('verdict_matches') and 
-            (sum(1 for match in r.get('verdict_matches', []) if match) / len(r.get('verdict_matches', [])) > 0.5))
-        stats['most_common_correct'] = sum(1 for r in entries if r.get('most_common_correct', False))
+        stats['above_avg'] = above_avg
+        stats['most_common_correct'] = most_common_correct
         
         # Tournament statistics
         tournament_entries = [r for r in entries if 'tournament_winner_correct' in r]
