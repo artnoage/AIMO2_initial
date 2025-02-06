@@ -79,7 +79,6 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=8192,
         load_in_4bit=False)
 
     # Configure LoRA
@@ -142,7 +141,6 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        max_length=8192,  # Match model's max sequence length
         max_prompt_length=1024,
         max_completion_length=7168,  # 8192 - 1024 to use remaining space
         per_device_train_batch_size=1,
