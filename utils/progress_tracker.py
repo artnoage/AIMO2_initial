@@ -173,32 +173,48 @@ class ProgressTracker:
         self.create_hf_dataset()
 
     def save_results(self) -> None:
-        """Save results to a JSON file"""
+        """Save results to JSON files"""
         if not self.results or not self.config.produce_statistics:
             return
             
         try:
-            # Use a fixed filename based on the start timestamp
-            filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
-            filepath = os.path.join("results", filename)
-            
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
             
-            # Filter training data
+            # Filter training and auxiliary data
             training_results = [r for r in self.results if r.get('data_type') == 'training']
+            auxiliary_results = [r for r in self.results if r.get('data_type') == 'auxiliary']
+            
+            # Save training results
+            training_filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
+            training_filepath = os.path.join("results", training_filename)
+            
+            # Save auxiliary results
+            auxiliary_filename = f"auxiliary_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
+            auxiliary_filepath = os.path.join("results", auxiliary_filename)
             
             # Only print message for final save
             stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
             if stats_count == self.total_examples:
-                print(f"\nSaving {len(training_results)} training results to: {filepath}")
+                if training_results:
+                    print(f"\nSaving {len(training_results)} training results to: {training_filepath}")
+                if auxiliary_results:
+                    print(f"Saving {len(auxiliary_results)} auxiliary results to: {auxiliary_filepath}")
             
-            with open(filepath, 'w') as f:
-                json.dump(training_results, f, indent=2)
+            # Save training results if they exist
+            if training_results:
+                with open(training_filepath, 'w') as f:
+                    json.dump(training_results, f, indent=2)
+                    
+            # Save auxiliary results (create empty file if no results)
+            with open(auxiliary_filepath, 'w') as f:
+                json.dump(auxiliary_results, f, indent=2)
                 
             # Only print success message for final save
             if stats_count == self.total_examples:
-                print(f"Results successfully saved to: {filepath}")
+                if training_results:
+                    print(f"Training results successfully saved to: {training_filepath}")
+                print(f"Auxiliary results saved to: {auxiliary_filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
