@@ -35,7 +35,7 @@ def main():
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
-        from ..utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+        from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
         
         # First extract the boxed answer
         boxed_answer = extract_answer_from_solution(solution)
@@ -56,7 +56,7 @@ def main():
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
         # Convert answers to numeric values
-        from ..utils.benchmark_utils import extract_numeric_answer
+        from utils.benchmark_utils import extract_numeric_answer
         numeric_answers = [extract_numeric_answer(a)[0] if extract_numeric_answer(a)[0] is not None else -123456789101112 for a in answers]
         print("Extracted responses:", extracted_responses)
         print("Numeric answers:", numeric_answers)
