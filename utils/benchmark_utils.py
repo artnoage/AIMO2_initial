@@ -689,15 +689,26 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     """
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
+    First element is analysis (if present), followed by steps.
     """
+    if not steps:
+        return []
+        
     partial_solutions = []
     current = ""
     
+    # Handle analysis section if present
+    if "analysis" in steps[0].lower():
+        current = steps[0]
+        steps = steps[1:]  # Remove analysis from steps to process
+        partial_solutions.append(current)
+        current += "\n\n"  # Add spacing after analysis
+    
+    # Process remaining steps
     for step in steps:
-        if current:
-            current += "\n\n"  # Add spacing between steps
         current += step
         partial_solutions.append(current)
+        current += "\n\n"  # Add spacing between steps
         
     return partial_solutions
 
