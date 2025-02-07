@@ -32,11 +32,12 @@ def main():
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
+        from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
         
         # First extract the boxed answer
         boxed_answer = extract_answer_from_solution(solution)
         if boxed_answer is None:
-            return str(-123456789101112)
+            return -123456789101112
             
         # Then convert to numeric value
         numeric_value, _ = extract_numeric_answer(boxed_answer)
