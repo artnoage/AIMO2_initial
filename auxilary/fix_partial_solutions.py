@@ -15,27 +15,43 @@ def save_json(data: List[Dict], file_path: str):
 
 def fix_partial_solutions(data: List[Dict]) -> List[Dict]:
     """Fix partial solutions by adjusting step indexing"""
+    fixed_count = 0
+    error_count = 0
+    
     for entry in data:
         if entry.get('data_type') == 'tut_ben' and entry.get('partial_solution') is not None:
             solution = entry['solution']
-            steps = solution.split('\n')
+            # Split on newlines and filter out empty lines
+            steps = [s for s in solution.split('\n') if s.strip()]
             
             # Extract wrong step from verdict
             verdict = entry.get('tutor_verdicts', [None])[0]
             if verdict and "Step" in verdict:
                 try:
                     wrong_step = int(verdict.split("Step")[1].split()[0].rstrip('.:)'))
-                    # Create correct partial solution including the wrong step
-                    if wrong_step > 0:
-                        partial_solution = "\n".join(steps[:wrong_step+1])  # Include the wrong step
+                    print(f"\nProcessing entry with wrong step {wrong_step}")
+                    print(f"Total steps found: {len(steps)}")
+                    print(f"First few steps: {steps[:3]}")
+                    
+                    # Create correct partial solution
+                    if wrong_step > 0 and wrong_step <= len(steps):
+                        partial_solution = "\n".join(steps[:wrong_step])
                         # Add substitution if available
                         substitutions = entry.get('tutor_substitutions', [None])
                         if substitutions and substitutions[0]:
-                            # Remove the wrong step and add the substitution
-                            partial_solution = "\n".join(steps[:wrong_step]) + "\n" + substitutions[0]
+                            partial_solution += "\n" + substitutions[0]
                         entry['partial_solution'] = partial_solution
-                except:
-                    pass
+                        fixed_count += 1
+                    else:
+                        print(f"Warning: Invalid step number {wrong_step} for solution with {len(steps)} steps")
+                        error_count += 1
+                except Exception as e:
+                    print(f"Error processing entry: {str(e)}")
+                    error_count += 1
+    
+    print(f"\nSummary:")
+    print(f"Fixed entries: {fixed_count}")
+    print(f"Errors encountered: {error_count}")
     return data
 
 def main():
