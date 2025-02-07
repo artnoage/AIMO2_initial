@@ -39,18 +39,20 @@ def main():
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
-        
-        # First extract the boxed answer
-        boxed_answer = extract_answer_from_solution(solution)
-        if boxed_answer is None:
-            return -123456789101110
-            
-        # Then convert to numeric value
-        numeric_value, _ = extract_numeric_answer(boxed_answer)
-        if numeric_value is None:
-            return -123456789101111
-            
-        return numeric_value
+        try:
+            # First extract the boxed answer
+            boxed_answer = extract_answer_from_solution(solution)
+            if boxed_answer is None:
+                return -123456789101110
+                
+            # Then convert to numeric value
+            numeric_value, _ = extract_numeric_answer(boxed_answer)
+            if numeric_value is None:
+                return -123456789101111
+                
+            return numeric_value
+        except Exception:
+            return -123456789101112
 
     def correctness_reward_func(completions, answer, **kwargs) -> list[float]:
         """Reward function that checks if the answer matches exactly"""
