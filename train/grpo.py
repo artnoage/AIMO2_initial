@@ -109,9 +109,9 @@ def main():
         required_fields = ['prompt', 'answer']
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
-        # Apply formatting
-        filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]], tokenize=False)
-        filtered_example['answer']= example['answer']
+        # Apply custom formatting with [INST] tags
+        filtered_example["prompt"] = f"[INST]{example['problem']}[/INST]"
+        filtered_example['answer'] = example['answer']
         # Ensure all required fields are present
         missing_fields = [f for f in required_fields if f not in filtered_example]
         if missing_fields:
@@ -123,6 +123,14 @@ def main():
         formatting_func,
         desc="Applying chat template"
     )
+    
+    # Print first entry tokenization
+    first_entry = formatted_dataset[0]
+    print("\nFirst entry tokenization:")
+    print("Original:", first_entry['prompt'])
+    tokenized = tokenizer(first_entry['prompt'])
+    print("Tokenized:", tokenized)
+    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
     
     # Concatenate original and shuffled datasets
     formatted_dataset = formatted_dataset.shuffle(seed=42)
