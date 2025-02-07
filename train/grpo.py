@@ -6,7 +6,7 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+from ..utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 #from transformers import logging
 import re
 
