@@ -77,7 +77,7 @@ def main():
         model_name=model_name,
         max_seq_length=6792,
         fast_inference = True,
-        load_in_4bit=False,
+        load_in_4bit=True,
         max_lora_rank = 64)
    
      # Configure LoRA
@@ -162,7 +162,7 @@ def main():
     fp16 = not is_bfloat16_supported(),
     per_device_train_batch_size = 1,
     gradient_accumulation_steps = 2, # Increase to 4 for smoother training
-    num_generations =4, # Decrease if out of memory
+    num_generations =5, # Decrease if out of memory
     max_prompt_length = 1648,
     max_completion_length = 5148,
     num_train_epochs = 1, # Set to 1 for a full training run
