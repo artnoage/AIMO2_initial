@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 from typing import List, Dict
 import argparse
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from utils.benchmark_utils import split_into_steps, get_partial_solutions
 
 def load_json(file_path: str) -> List[Dict]:
