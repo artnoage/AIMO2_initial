@@ -19,7 +19,7 @@ import re
 
 
 model_type = "light"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_083807"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
 dataset_name="Metaskepsis/Numina_hard"
 
 
@@ -56,7 +56,6 @@ def main():
         """Reward function that checks if the answer matches exactly"""
         # Completions are already strings, no need to access with indices
         extracted_responses = [extract_xml_answer(completion) for completion in completions]
-        print(completions[0])
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
         # Convert answers to numeric values
@@ -76,18 +75,18 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=16384,
+        max_seq_length=6792,
         fast_inference = True,
         load_in_4bit=False,
-        max_lora_rank = 128)
+        max_lora_rank = 64)
    
      # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",     # Supports any, but = "none" is optimized
         use_gradient_checkpointing=True,  # True or "unsloth" for very long context
@@ -161,11 +160,11 @@ def main():
     logging_steps = 1,
     bf16 = is_bfloat16_supported(),
     fp16 = not is_bfloat16_supported(),
-    per_device_train_batch_size = 4,
-    gradient_accumulation_steps = 1, # Increase to 4 for smoother training
-    num_generations = 8, # Decrease if out of memory
-    max_prompt_length = 2048,
-    max_completion_length = 16384,
+    per_device_train_batch_size = 1,
+    gradient_accumulation_steps = 2, # Increase to 4 for smoother training
+    num_generations =4, # Decrease if out of memory
+    max_prompt_length = 1648,
+    max_completion_length = 5148,
     num_train_epochs = 1, # Set to 1 for a full training run
     save_steps = 250,
     max_grad_norm = 0.1,
