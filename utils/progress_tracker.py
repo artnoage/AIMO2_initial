@@ -198,10 +198,7 @@ class ProgressTracker:
         if not self.config.produce_statistics:
             print("Statistics production disabled")
             return
-            
-        print("\nDEBUG: Results contents:")
-        for r in self.results:
-            print(f"- Type: {r.get('data_type')}, ID: {r.get('id')}")
+
             
         try:
             # Create results directory if it doesn't exist

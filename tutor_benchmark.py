@@ -125,7 +125,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 wrong_step = int(most_common_verdict.split("Step")[1].split()[0].rstrip('.:)'))
                 if wrong_step > 0 and wrong_step <= len(steps):
                     # Join steps up to (but not including) the wrong step
-                    partial_solution = "\n".join(steps[:wrong_step-1])
+                    partial_solution = "\n".join(steps[:wrong_step])
                     # Add the tutor's suggested correction if available
                     if substitutions[0]:  # Use first substitution for simplicity
                         partial_solution += "\n" + substitutions[0]

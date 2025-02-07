@@ -71,63 +71,6 @@ class OpenRouterChat:
                 raise
 
 
-# class CustomChat:
-#     """Simple chat model that makes direct requests to server"""
-#     
-#     def __init__(
-#         self,
-#         base_url: str = "http://localhost:8000/v1",
-#         model: str = "default",
-#         temperature: float = 0,
-#         api_key: str = "EMPTY"
-#     ):
-#         self.base_url = base_url
-#         self.model = model
-#         self.temperature = temperature
-#         self.api_key = api_key
-# 
-#     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-#         """Async call to completion endpoint"""
-#         max_tokens = kwargs.get("max_tokens", None)
-#         # Handle different prompt types
-#         # Handle different prompt types
-#         if hasattr(prompt, 'content'):  # LangChain message object
-#             prompt_text = f"[INST]{prompt.content}[/INST]"
-#         elif isinstance(prompt, list):  # List of messages
-#             prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
-#         else:  # String or other
-#             prompt_text = f"[INST]{str(prompt)}[/INST]"
-#         
-#         payload = {
-#             "model": self.model,
-#             "prompt": prompt_text,
-#             "temperature": self.temperature,
-#             "stream": False
-#         }
-#         if max_tokens:
-#             payload["max_tokens"] = max_tokens
-# 
-#         async with aiohttp.ClientSession() as session:
-#             try:
-#                 async with session.post(
-#                     f"{self.base_url}/completions",
-#                     json=payload,
-#                     headers={
-#                         "Content-Type": "application/json",
-#                         "Authorization": f"Bearer {self.api_key}"
-#                     }
-#                 ) as response:
-#                     response_text = await response.text() 
-#                     if response.status != 200:
-#                         raise ValueError(f"Error from API: {response_text}")
-#                     
-#                     result = await response.json()
-#                     return type('Response', (), {
-#                         'content': result.get("choices", [{}])[0].get("text", "")
-#                     })()
-#             except Exception as e:
-#                 print(f"Exception in CustomChat.ainvoke: {str(e)}")
-#                 raise
 
 class CustomChat:
     """Chat model that makes requests using OpenAI chat format"""
