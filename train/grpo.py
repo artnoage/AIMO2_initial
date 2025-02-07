@@ -35,38 +35,19 @@ def main():
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
-        def find_matching_brace(s: str, start: int) -> int:
-            """
-            Find the index of the matching closing brace for an opening brace at the given start position.
+        from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+        
+        # First extract the boxed answer
+        boxed_answer = extract_answer_from_solution(solution)
+        if boxed_answer is None:
+            return str(-123456789101112)
             
-            Args:
-                s (str): The string to search.
-                start (int): The index of the opening brace '{'.
+        # Then convert to numeric value
+        numeric_value, _ = extract_numeric_answer(boxed_answer)
+        if numeric_value is None:
+            return str(-123456789101112)
             
-            Returns:
-                int: The index of the matching closing brace '}', or -1 if not found.
-            """
-            count = 1  # Initialize brace count
-            i = start + 1  # Start searching after the opening brace
-            while i < len(s) and count > 0:
-                if s[i] == '{':
-                    count += 1
-                elif s[i] == '}':
-                    count -= 1
-                i += 1
-            return i - 1 if count == 0 else -1
-
-        # Pattern to find all occurrences of \boxed{ with proper escaping
-        pattern = re.compile(r'\\boxed\{')
-        for match in pattern.finditer(solution):
-            start = match.end() - 1  # Position of the opening brace '{'
-            end = find_matching_brace(solution, start)
-            if end != -1:
-                # Extract content between the braces
-                content = solution[start + 1:end].strip()
-                return content  # Return the first found boxed content
-
-        return str(0)  # Return None if no boxed content is found
+        return str(numeric_value)
 
     def correctness_reward_func(completions, answer, **kwargs) -> list[float]:
         """Reward function that checks if the answer matches exactly"""
