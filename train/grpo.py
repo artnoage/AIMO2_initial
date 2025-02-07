@@ -45,9 +45,9 @@ def main():
         # Then convert to numeric value
         numeric_value, _ = extract_numeric_answer(boxed_answer)
         if numeric_value is None:
-            return str(-123456789101112)
+            return -123456789101112
             
-        return str(numeric_value)
+        return numeric_value
 
     def correctness_reward_func(completions, answer, **kwargs) -> list[float]:
         """Reward function that checks if the answer matches exactly"""
@@ -58,10 +58,9 @@ def main():
         # Convert answers to numeric values
         from utils.benchmark_utils import extract_numeric_answer
         numeric_answers = [extract_numeric_answer(a)[0] if extract_numeric_answer(a)[0] is not None else -123456789101112 for a in answers]
-        numeric_answers = [str(a) for a in numeric_answers]  # Convert to strings for comparison
         print("Extracted responses:", extracted_responses)
         print("Numeric answers:", numeric_answers)
-        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, numeric_answers)]
+        return [2.0 if abs(r - a) < 1e-6 else 0.0 for r, a in zip(extracted_responses, numeric_answers)]
 
     def length_penalty_func(completions, **kwargs) -> list[float]:
         """Penalty for very long solutions"""
