@@ -13,7 +13,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 #from transformers import logging
 import re
 
@@ -68,10 +68,9 @@ def main():
         """Penalty for very long solutions"""
         return [-0.0001 * len(c) for c in completions]  # Small penalty per character
     
-    def step_count_reward_func(completions, **kwargs) -> list[float]:
-        """Reward solutions that show clear steps"""
-        step_counts = [len(re.findall(r'Step \d+:', c)) for c in completions]
-        return [0.1 * count for count in step_counts]  # 0.1 points per step
+    def validation_reward_func(completions, **kwargs) -> list[float]:
+        """Reward solutions that pass validation checks"""
+        return [0.2 if validate_solution(completion)[0] else 0.0 for completion in completions]
 
 
     # Load the model
@@ -181,7 +180,7 @@ def main():
         reward_funcs=[
             correctness_reward_func,  # Main correctness check
             length_penalty_func,      # Penalize verbosity
-            step_count_reward_func    # Reward step-by-step solutions
+            validation_reward_func    # Reward valid solutions
         ],
         args=training_args,
         train_dataset=formatted_dataset,
