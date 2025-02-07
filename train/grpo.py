@@ -69,11 +69,18 @@ def main():
         return str(0)  # Return None if no boxed content is found
 
     def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
-        responses = [completion[0]['content'] for completion in completions]
-        q = prompts[0][-1]['content']
-        extracted_responses = [extract_xml_answer(r) for r in responses]
-        print('-'*20, f"Question:\n{q}", f"\nAnswer:\n{answer[0]}", f"\nResponse:\n{responses[0]}", f"\nExtracted:\n{extracted_responses[0]}")
+        """Reward function that checks if the answer matches exactly"""
+        extracted_responses = [extract_xml_answer(r) for r in completions]
         return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
+
+    def length_penalty_func(prompts, completions, **kwargs) -> list[float]:
+        """Penalty for very long solutions"""
+        return [-0.001 * len(c) for c in completions]  # Small penalty per character
+    
+    def step_count_reward_func(prompts, completions, **kwargs) -> list[float]:
+        """Reward solutions that show clear steps"""
+        step_counts = [len(re.findall(r'Step \d+:', c)) for c in completions]
+        return [0.1 * count for count in step_counts]  # 0.1 points per step
 
 
     # Load the model
@@ -166,14 +173,18 @@ def main():
     output_dir = output_dir,
 )
 
-    # Initialize ORPO trainer
+    # Initialize ORPO trainer with multiple reward functions
     trainer = GRPOTrainer(
-    model = model,
-    processing_class = tokenizer,
-    reward_funcs = correctness_reward_func,
-    args = training_args,
-    train_dataset = formatted_dataset,
-)
+        model=model,
+        processing_class=tokenizer,
+        reward_funcs=[
+            correctness_reward_func,  # Main correctness check
+            length_penalty_func,      # Penalize verbosity
+            step_count_reward_func    # Reward step-by-step solutions
+        ],
+        args=training_args,
+        train_dataset=formatted_dataset,
+    )
     # Train the model
     trainer.train()
 
