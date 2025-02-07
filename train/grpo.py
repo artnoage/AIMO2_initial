@@ -55,8 +55,13 @@ def main():
         extracted_responses = [extract_xml_answer(completion) for completion in completions]
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
-        print(extracted_responses,answers)
-        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answers)]
+        # Convert answers to numeric values
+        from utils.benchmark_utils import extract_numeric_answer
+        numeric_answers = [extract_numeric_answer(a)[0] if extract_numeric_answer(a)[0] is not None else -123456789101112 for a in answers]
+        numeric_answers = [str(a) for a in numeric_answers]  # Convert to strings for comparison
+        print("Extracted responses:", extracted_responses)
+        print("Numeric answers:", numeric_answers)
+        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, numeric_answers)]
 
     def length_penalty_func(completions, **kwargs) -> list[float]:
         """Penalty for very long solutions"""
