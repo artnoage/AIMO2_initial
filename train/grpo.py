@@ -12,7 +12,7 @@ import re
 
 model_type = "light"
 model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_083807"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_202750"
+dataset_name="Metaskepsis/Numina_hard"
 
 
 # Check if model_type is in paths
@@ -64,7 +64,7 @@ def main():
 
     def length_penalty_func(completions, **kwargs) -> list[float]:
         """Penalty for very long solutions"""
-        return [-0.001 * len(c) for c in completions]  # Small penalty per character
+        return [-0.0001 * len(c) for c in completions]  # Small penalty per character
     
     def step_count_reward_func(completions, **kwargs) -> list[float]:
         """Reward solutions that show clear steps"""
@@ -103,19 +103,15 @@ def main():
     
     # Load dataset - adjust path as needed
     #dataset = load_dataset("Metaskepsis/orpo", split="train")
-    dataset = load_from_disk(dataset_name)
+    dataset = load_dataset(dataset_name)
     def formatting_func(example):
         # Only keep the required fields
-        required_fields = ['prompt', 'chosen', 'rejected', 'score_chosen', 'score_rejected','answer']
+        required_fields = ['prompt', 'answer']
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
         # Apply formatting
         filtered_example["prompt"] = tokenizer.apply_chat_template([filtered_example["prompt"]], tokenize=False)
-        filtered_example["chosen"] = tokenizer.apply_chat_template([filtered_example["chosen"]], tokenize=False)
-        filtered_example["rejected"] = tokenizer.apply_chat_template([filtered_example["rejected"]], tokenize=False)
-        filtered_example["chosen"] = _strip_prefix(filtered_example["chosen"], "<s>")
-        filtered_example["rejected"] = _strip_prefix(filtered_example["rejected"], "<s>")
-        filtered_example['answer']= example['correct_answer']
+        filtered_example['answer']= example['answer']
         # Ensure all required fields are present
         missing_fields = [f for f in required_fields if f not in filtered_example]
         if missing_fields:
@@ -139,7 +135,7 @@ def main():
     # ORPO specific training arguments
     training_args = GRPOConfig(
     use_vllm = True, # use vLLM for fast inference!
-    learning_rate = 5e-6,
+    learning_rate = 2e-6,
     adam_beta1 = 0.9,
     adam_beta2 = 0.99,
     weight_decay = 0.1,
