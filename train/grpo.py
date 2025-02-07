@@ -119,7 +119,7 @@ def main():
             
         return filtered_example
     # Load and format dataset
-    formatted_dataset = dataset.map(
+    formatted_dataset = dataset['train'].map(
         formatting_func,
         desc="Applying chat template"
     )
