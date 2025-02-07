@@ -43,12 +43,12 @@ def main():
         # First extract the boxed answer
         boxed_answer = extract_answer_from_solution(solution)
         if boxed_answer is None:
-            return -123456789101112
+            return -123456789101110
             
         # Then convert to numeric value
         numeric_value, _ = extract_numeric_answer(boxed_answer)
         if numeric_value is None:
-            return -123456789101112
+            return -123456789101111
             
         return numeric_value
 
@@ -56,13 +56,12 @@ def main():
         """Reward function that checks if the answer matches exactly"""
         # Completions are already strings, no need to access with indices
         extracted_responses = [extract_xml_answer(completion) for completion in completions]
+        print(completions[0])
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
         # Convert answers to numeric values
         
         numeric_answers = [extract_numeric_answer(a)[0] if extract_numeric_answer(a)[0] is not None else -123456789101112 for a in answers]
-        print("Extracted responses:", extracted_responses)
-        print("Numeric answers:", numeric_answers)
         return [2.0 if abs(r - a) < 1e-6 else 0.0 for r, a in zip(extracted_responses, numeric_answers)]
 
     def length_penalty_func(completions, **kwargs) -> list[float]:
@@ -163,13 +162,12 @@ def main():
     logging_steps = 1,
     bf16 = is_bfloat16_supported(),
     fp16 = not is_bfloat16_supported(),
-    per_device_train_batch_size = 1,
+    per_device_train_batch_size = 4,
     gradient_accumulation_steps = 1, # Increase to 4 for smoother training
-    num_generations = 6, # Decrease if out of memory
-    max_prompt_length = 256,
-    max_completion_length = 200,
-    # num_train_epochs = 1, # Set to 1 for a full training run
-    max_steps = 250,
+    num_generations = 8, # Decrease if out of memory
+    max_prompt_length = 2048,
+    max_completion_length = 16384,
+    num_train_epochs = 1, # Set to 1 for a full training run
     save_steps = 250,
     max_grad_norm = 0.1,
     report_to = "none", # Can use Weights & Biases
