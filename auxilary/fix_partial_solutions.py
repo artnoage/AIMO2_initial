@@ -25,13 +25,14 @@ def fix_partial_solutions(data: List[Dict]) -> List[Dict]:
             if verdict and "Step" in verdict:
                 try:
                     wrong_step = int(verdict.split("Step")[1].split()[0].rstrip('.:)'))
-                    # Create correct partial solution
+                    # Create correct partial solution including the wrong step
                     if wrong_step > 0:
-                        partial_solution = "\n".join(steps[:wrong_step])
+                        partial_solution = "\n".join(steps[:wrong_step+1])  # Include the wrong step
                         # Add substitution if available
                         substitutions = entry.get('tutor_substitutions', [None])
                         if substitutions and substitutions[0]:
-                            partial_solution += "\n" + substitutions[0]
+                            # Remove the wrong step and add the substitution
+                            partial_solution = "\n".join(steps[:wrong_step]) + "\n" + substitutions[0]
                         entry['partial_solution'] = partial_solution
                 except:
                     pass
