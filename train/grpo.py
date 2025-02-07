@@ -70,8 +70,11 @@ def main():
 
     def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
         """Reward function that checks if the answer matches exactly"""
-        extracted_responses = [extract_xml_answer(r) for r in completions]
-        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)]
+        # Completions are already strings, no need to access with indices
+        extracted_responses = [extract_xml_answer(completion) for completion in completions]
+        # Ensure answer is repeated for each completion if needed
+        answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
+        return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answers)]
 
     def length_penalty_func(prompts, completions, **kwargs) -> list[float]:
         """Penalty for very long solutions"""
