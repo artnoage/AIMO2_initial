@@ -68,19 +68,20 @@ def main():
 
         return str(0)  # Return None if no boxed content is found
 
-    def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+    def correctness_reward_func(completions, answer, **kwargs) -> list[float]:
         """Reward function that checks if the answer matches exactly"""
         # Completions are already strings, no need to access with indices
         extracted_responses = [extract_xml_answer(completion) for completion in completions]
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
+        print(extracted_responses,answers)
         return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answers)]
 
-    def length_penalty_func(prompts, completions, **kwargs) -> list[float]:
+    def length_penalty_func(completions, **kwargs) -> list[float]:
         """Penalty for very long solutions"""
         return [-0.001 * len(c) for c in completions]  # Small penalty per character
     
-    def step_count_reward_func(prompts, completions, **kwargs) -> list[float]:
+    def step_count_reward_func(completions, **kwargs) -> list[float]:
         """Reward solutions that show clear steps"""
         step_counts = [len(re.findall(r'Step \d+:', c)) for c in completions]
         return [0.1 * count for count in step_counts]  # 0.1 points per step
