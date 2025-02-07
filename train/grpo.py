@@ -109,8 +109,15 @@ def main():
         required_fields = ['prompt', 'answer']
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
-        # Apply custom formatting with [INST] tags
-        filtered_example["prompt"] = f"[INST]{example['problem']}[/INST]"
+        # First apply the solver prompt, then wrap in INST tags
+        solver_prompt = (
+            "Here is a mathematical problem:\n\n"
+            f"{example['problem']}\n\n"
+            "Could you help me solve this from start to finish? First, let's analyze the problem, "
+            "then walk through the solution step-by-step using LaTeX notation. "
+            "Don't forget to put the final answer in a box using \\boxed{}"
+        )
+        filtered_example["prompt"] = f"[INST]{solver_prompt}[/INST]"
         filtered_example['answer'] = example['answer']
         # Ensure all required fields are present
         missing_fields = [f for f in required_fields if f not in filtered_example]
