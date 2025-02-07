@@ -6,6 +6,7 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 #from transformers import logging
 import re
 
@@ -26,16 +27,11 @@ if model_type not in dataset_name:
     print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
     print("!"*80 + "\n")
 
-def _strip_prefix(s, pattern):
-    # Use re.escape to escape any special characters in the pattern
-    return re.sub(f"^{re.escape(pattern)}", "", s)
-
 def main():
     # Set training type
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
-        from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
         
         # First extract the boxed answer
         boxed_answer = extract_answer_from_solution(solution)
@@ -56,7 +52,7 @@ def main():
         # Ensure answer is repeated for each completion if needed
         answers = [answer[i//trainer.num_generations] for i in range(len(completions))]
         # Convert answers to numeric values
-        from utils.benchmark_utils import extract_numeric_answer
+        
         numeric_answers = [extract_numeric_answer(a)[0] if extract_numeric_answer(a)[0] is not None else -123456789101112 for a in answers]
         print("Extracted responses:", extracted_responses)
         print("Numeric answers:", numeric_answers)
