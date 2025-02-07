@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import List, Dict
 import argparse
+from utils.benchmark_utils import split_into_steps, get_partial_solutions
 
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON dataset from file"""
@@ -21,8 +22,9 @@ def fix_partial_solutions(data: List[Dict]) -> List[Dict]:
     for entry in data:
         if entry.get('data_type') == 'tut_ben' and entry.get('partial_solution') is not None:
             solution = entry['solution']
-            # Split on newlines and filter out empty lines
-            steps = [s for s in solution.split('\n') if s.strip()]
+            # Use proper step splitting from benchmark utils
+            steps = split_into_steps(solution)
+            partial_solutions = get_partial_solutions(steps)
             
             # Extract wrong step from verdict
             verdict = entry.get('tutor_verdicts', [None])[0]
@@ -33,13 +35,13 @@ def fix_partial_solutions(data: List[Dict]) -> List[Dict]:
                     print(f"Total steps found: {len(steps)}")
                     print(f"First few steps: {steps[:3]}")
                     
-                    # Create correct partial solution
-                    if wrong_step > 0 and wrong_step <= len(steps):
-                        partial_solution = "\n".join(steps[:wrong_step])
+                    # Get partial solution up to wrong step
+                    if wrong_step > 0 and wrong_step < len(partial_solutions):
+                        partial_solution = partial_solutions[wrong_step - 1]  # -1 because partial_solutions is 0-based
                         # Add substitution if available
                         substitutions = entry.get('tutor_substitutions', [None])
                         if substitutions and substitutions[0]:
-                            partial_solution += "\n" + substitutions[0]
+                            partial_solution += "\n\n" + substitutions[0]  # Add double newline for spacing
                         entry['partial_solution'] = partial_solution
                         fixed_count += 1
                     else:
