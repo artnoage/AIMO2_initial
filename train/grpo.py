@@ -6,6 +6,13 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
+import sys
+import os
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 #from transformers import logging
 import re
@@ -32,7 +39,6 @@ def main():
     #logging.set_verbosity_info()
     
     def extract_xml_answer(solution: str) -> str:
-        from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
         
         # First extract the boxed answer
         boxed_answer = extract_answer_from_solution(solution)
