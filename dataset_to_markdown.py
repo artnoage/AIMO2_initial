@@ -8,7 +8,7 @@ from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
-
+import time
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
