@@ -27,7 +27,11 @@ def filter_completion_results(data: List[Dict]) -> List[Dict]:
         stats_entry = data[i + 1] if i + 1 < len(data) else None
         
         # Check if this entry meets our criteria
-        if (benchmark_entry.get('verdict_matches') and 
+        verdict_matches = benchmark_entry.get('verdict_matches', [])
+        # Check if any verdict matches are True
+        has_true_verdict = any(verdict_matches) if isinstance(verdict_matches, list) else verdict_matches
+        
+        if (has_true_verdict and 
             (benchmark_entry.get('extension_possible') is None or 
              benchmark_entry.get('extension_possible') is True)):
             filtered.extend([benchmark_entry, stats_entry])
