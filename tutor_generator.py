@@ -97,17 +97,26 @@ class TutorGenerator:
     async def _validate_whole_approach(
         self,
         problem: str,
-        analysis: str,
+        solution: str,
         correct_answer: str
     ) -> bool:
         """
-        Validate that the analysis alone can lead to correct completions
+        Validate that the analysis section alone can lead to correct completions
         Returns True if at least one completion from analysis succeeds
         """
+        # Split solution into steps and get the analysis part (before steps)
+        steps = split_into_steps(solution)
+        if not steps:
+            self.logger.append("❌ Could not split solution into steps")
+            return False
+            
+        # First part before steps is the analysis
+        analysis = steps[0]
+        
         # Try completions starting with just the analysis
         successful, total = await self._validate_completions(
             problem,
-            "***Problem Analysis and Approach***:\n" + analysis + "\n\n*** PROOF***:\n",
+            analysis,
             correct_answer,
             self.completions
         )
@@ -278,10 +287,10 @@ class TutorGenerator:
                         
             # Case 3: Solution is incorrect and agent identifies fundamental flaw
             elif not is_correct and verdict == "The whole approach is wrong" and analysis:
-                # Validate that analysis can lead to correct solution
+                # Validate that solution's analysis can lead to correct solution
                 approach_validated = await self._validate_whole_approach(
                     problem,
-                    analysis,
+                    solution,
                     correct_answer
                 )
                 
