@@ -206,11 +206,19 @@ class TutorGenerator:
                 # Check if verdict exists and is in valid categories
                 if verdict:
                     # First check basic verdict format
-                    is_valid_verdict = (
-                        verdict == "The answer is correct" or
-                        (verdict.startswith("Step ") and substitution) or
-                        verdict == "The whole approach is wrong"
-                    )
+                    if verdict.startswith("Step "):
+                        # Validate step number format
+                        try:
+                            step_num = int(verdict.split()[1])
+                            is_valid_verdict = step_num >= 0 and substitution is not None
+                        except (ValueError, IndexError):
+                            is_valid_verdict = False
+                            self.logger.append(f"Invalid step number format in verdict: {verdict}")
+                    else:
+                        is_valid_verdict = (
+                            verdict == "The answer is correct" or
+                            verdict == "The whole approach is wrong"
+                        )
                     
                     # Additional validation for substitution content
                     if is_valid_verdict and substitution:
