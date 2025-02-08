@@ -214,7 +214,7 @@ class TutorGenerator:
                 (verdict.startswith("Step ") and substitution) or
                 verdict == "The whole approach is wrong"
             )
-            self.logger.append("Is valid" +  str(is_valid_verdict))
+            self.logger.append("Is valid: " + str(bool(is_valid_verdict)))
             if not is_valid_verdict:
                 self.logger.append(f"❌ Invalid verdict category: {verdict}")
                 stats_entry['invalid_responses'] = 1
