@@ -216,14 +216,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     try:
         logger = BenchmarkLogger()
         
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+        if not isinstance(example, dict) or 'problem' not in example or 'model_solutions' not in example:
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
 
         correct_answer = example.get('correct_answer')
         if correct_answer is None:
-            correct_answer = extract_answer_from_solution(example['solution'])
+            # Try to extract from first model solution
+            if example['model_solutions']:
+                correct_answer = extract_answer_from_solution(example['model_solutions'][0])
             if correct_answer is None:
                 logger.append(f"❌ Warning: Could not extract valid numeric answer for example {running_id}")
                 logger.print()
@@ -244,13 +246,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append(f"{example['problem'][:200]}...")
         logs.append(f"\n✓ Expected Answer: {correct_answer}")
         
-        # Generate tutor response and analyze
-        results = await generator.generate(
-            example['problem'],
-            example['solution'],
-            correct_answer,
-            example_id
-        )
+        # Process each model solution
+        all_results = []
+        for solution in example['model_solutions']:
+            # Generate tutor response and analyze
+            results = await generator.generate(
+                example['problem'],
+                solution,
+                correct_answer,
+                example_id
+            )
+            all_results.extend(results)
         
         # Log results
         for log in logs:
@@ -259,11 +265,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         for log in generator.logger.logs:
             logger.append(log)
         
-        if results:
-            logger.append("\n✓ Tutor response analyzed successfully")
+        if all_results:
+            logger.append("\n✓ Tutor responses analyzed successfully")
             
         logger.print()
-        return results
+        return all_results
 
     except Exception as e:
         logger = BenchmarkLogger()
