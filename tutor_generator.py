@@ -198,11 +198,30 @@ class TutorGenerator:
                 
                 # Check if verdict exists and is in valid categories
                 if verdict:
+                    # First check basic verdict format
                     is_valid_verdict = (
                         verdict == "The answer is correct" or
                         (verdict.startswith("Step ") and substitution) or
                         verdict == "The whole approach is wrong"
                     )
+                    
+                    # Additional validation for substitution content
+                    if is_valid_verdict and substitution:
+                        # Check substitution doesn't contain multiple steps
+                        steps = split_into_steps(substitution)
+                        if len(steps) > 1:
+                            is_valid_verdict = False
+                            self.logger.append(f"Substitution contains multiple steps")
+                            
+                        # If substitution contains a boxed answer, verify it matches
+                        boxed_answer = extract_answer_from_solution(substitution)
+                        if boxed_answer:
+                            numeric_value, _ = extract_numeric_answer(boxed_answer)
+                            correct_numeric, _ = extract_numeric_answer(correct_answer)
+                            if numeric_value is not None and correct_numeric is not None:
+                                if abs(numeric_value - correct_numeric) > 1e-6:
+                                    is_valid_verdict = False
+                                    self.logger.append(f"Boxed answer in substitution doesn't match correct answer")
                     
                     if is_valid_verdict:
                         tutor_says_correct = verdict == "The answer is correct"
