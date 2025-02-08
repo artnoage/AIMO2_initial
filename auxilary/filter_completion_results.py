@@ -26,17 +26,19 @@ def filter_completion_results(data: List[Dict]) -> List[Dict]:
         benchmark_entry = data[i]
         stats_entry = data[i + 1] if i + 1 < len(data) else None
         
-        # First get and validate verdict_matches
+        # First get verdict_matches
         verdict_matches = benchmark_entry.get('verdict_matches', [])
         # Convert to list if single value
         if not isinstance(verdict_matches, list):
             verdict_matches = [verdict_matches]
-        # Skip if any verdicts are False
-        if False in verdict_matches:
+            
+        # Must have at least one verdict match and ALL must be True
+        if not verdict_matches or not all(verdict_matches):
             continue
             
         # Now check extension_possible criteria
-        if benchmark_entry.get('extension_possible') is None or benchmark_entry.get('extension_possible') is True:
+        extension_possible = benchmark_entry.get('extension_possible')
+        if extension_possible is None or extension_possible is True:
             filtered.extend([benchmark_entry, stats_entry])
     
     return filtered
