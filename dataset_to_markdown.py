@@ -100,7 +100,7 @@ async def main():
                     all_markdown_content.append(result['content'])
     
     tracker = ProgressTracker(total_examples=0, config=config)
-    tracker.add_result = collect_results  # Override add_result to collect markdown
+    tracker.add_result = lambda x: asyncio.create_task(collect_results(x))  # Properly await the coroutine
     await tracker.run_benchmark(process_example_func=process_example)
     
     # Write all content to file at once
