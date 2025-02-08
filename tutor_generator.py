@@ -94,6 +94,31 @@ class TutorGenerator:
                 
         return successful, total
 
+    async def _validate_whole_approach(
+        self,
+        problem: str,
+        analysis: str,
+        correct_answer: str
+    ) -> bool:
+        """
+        Validate that the analysis alone can lead to correct completions
+        Returns True if at least one completion from analysis succeeds
+        """
+        # Try completions starting with just the analysis
+        successful, total = await self._validate_completions(
+            problem,
+            "***Problem Analysis and Approach***:\n" + analysis + "\n\n*** PROOF***:\n",
+            correct_answer,
+            self.completions
+        )
+        
+        if successful == 0:
+            self.logger.append(f"❌ Found no successful completions ({total} attempts) starting from analysis")
+            return False
+            
+        self.logger.append(f"✓ Validated whole approach wrong: {successful}/{total} successful completions from analysis")
+        return True
+
     async def _validate_step_identification(
         self, 
         problem: str, 
@@ -240,14 +265,23 @@ class TutorGenerator:
                         
             # Case 3: Solution is incorrect and agent identifies fundamental flaw
             elif not is_correct and verdict == "The whole approach is wrong" and analysis:
-                # Update statistics - for whole approach wrong, we trust the tutor if solution is indeed incorrect
+                # Validate that analysis can lead to correct solution
+                approach_validated = await self._validate_whole_approach(
+                    problem,
+                    analysis,
+                    correct_answer
+                )
+                
+                # Update statistics based on validation
                 stats_entry['example_processed_successfully'] = True
-                if not is_correct:
+                if approach_validated:
                     stats_entry['correct_verdicts'] = 1
                 else:
                     stats_entry['incorrect_verdicts'] = 1
                 stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
-                results.append({
+                
+                if approach_validated:
+                    results.append({
                     'data_type': 'training',
                     'type': 'tutor_analysis',
                     'id': example_id,
