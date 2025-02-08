@@ -223,13 +223,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         correct_answer = example.get('correct_answer')
         if correct_answer is None:
-            # Try to extract from first model solution
-            if example['model_solutions']:
-                correct_answer = extract_answer_from_solution(example['model_solutions'][0])
-            if correct_answer is None:
-                logger.append(f"❌ Warning: Could not extract valid numeric answer for example {running_id}")
-                logger.print()
-                return []
+            logger.append(f"❌ Warning: No correct answer provided for example {running_id}")
+            logger.print()
+            return []
 
         # Initialize model
         main = get_model(config, role="main")
