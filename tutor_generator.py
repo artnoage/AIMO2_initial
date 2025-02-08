@@ -37,9 +37,9 @@ def extract_sections(response: str) -> Tuple[Optional[str], Optional[str], Optio
 class TutorGenerator:
     """Generates tutor responses and validates them against known solutions"""
     
-    def __init__(self, main, completions: int):
+    def __init__(self, main, config: BenchmarkConfig):
         self.main = main
-        self.completions = completions
+        self.config = config
         self.tutor_agent = TutorAgent(main)
         self.completion_agent = CompletionAgent(main)
         self.verifier = NumericVerifier()
@@ -118,7 +118,7 @@ class TutorGenerator:
             problem,
             analysis,
             correct_answer,
-            self.completions
+            self.config.completions
         )
         
         if successful == 0:
@@ -147,7 +147,7 @@ class TutorGenerator:
             problem, 
             wrong_partial, 
             correct_answer,
-            self.completions
+            self.config.completions
         )
         if successful_wrong > 0:
             self.logger.append(f"❌ Found {successful_wrong}/{total_wrong} successful completions from supposedly wrong step")
@@ -198,7 +198,7 @@ class TutorGenerator:
             # Try up to config.best_of times to get a valid and agreeing verdict
             valid_response = False
             attempts = 0
-            while not valid_response and attempts < self.main.config.best_of:
+            while not valid_response and attempts < self.config.best_of:
                 attempts += 1
                 tutor_response, tutor_prompt = await self.tutor_agent.find_first_wrong_step(problem, solution, return_prompt=True)
                 analysis, verdict, substitution = self._extract_tutor_response(tutor_response)
@@ -377,7 +377,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main = get_model(config, role="main")
         
         # Create generator
-        generator = TutorGenerator(main, config.completions)
+        generator = TutorGenerator(main, config)
         
         # Create logs list
         logs = []
