@@ -87,22 +87,25 @@ async def main():
     timestamp = int(time.time())
     output_file = f"markdown_output/dataset_{timestamp}.md"
     
-    # Add header to markdown file
-    with open(output_file, "w") as f:
-        f.write("# Dataset Documentation\n\n")
-        f.write(f"Generated on: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+    # Store all markdown content
+    all_markdown_content = []
+    all_markdown_content.append("# Dataset Documentation\n\n")
+    all_markdown_content.append(f"Generated on: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
     
-    # Create tracker with file writing callback
-    async def write_results(results: List[Dict]):
+    # Create tracker with content collection callback
+    async def collect_results(results: List[Dict]):
         if results:
-            with open(output_file, "a") as f:
-                for result in results:
-                    if result['data_type'] == 'markdown':
-                        f.write(result['content'])
+            for result in results:
+                if result['data_type'] == 'markdown':
+                    all_markdown_content.append(result['content'])
     
     tracker = ProgressTracker(total_examples=0, config=config)
-    tracker.add_result = write_results  # Override add_result to write markdown
+    tracker.add_result = collect_results  # Override add_result to collect markdown
     await tracker.run_benchmark(process_example_func=process_example)
+    
+    # Write all content to file at once
+    with open(output_file, "w") as f:
+        f.write("\n".join(all_markdown_content))
     
     print(f"\n✓ Markdown documentation generated: {output_file}")
 
