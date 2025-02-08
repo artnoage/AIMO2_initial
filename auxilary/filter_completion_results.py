@@ -16,8 +16,10 @@ def save_json(data: List[Dict], file_path: str):
 def filter_completion_results(data: List[Dict]) -> List[Dict]:
     """
     Filter completion benchmark results to keep only entries where:
-    - verdict_matches is True AND extension_possible is None, OR
-    - verdict_matches is True AND extension_possible is True
+    - data_type is 'comp_ben' AND verdict_matches contains only True AND extension_possible is None, OR
+    - data_type is 'comp_ben' AND verdict_matches contains only True AND extension_possible is True
+    
+    Preserves the paired structure (benchmark entry + statistics entry)
     """
     filtered = []
     
@@ -26,20 +28,25 @@ def filter_completion_results(data: List[Dict]) -> List[Dict]:
         benchmark_entry = data[i]
         stats_entry = data[i + 1] if i + 1 < len(data) else None
         
-        # First get verdict_matches
+        # Skip if not a benchmark entry
+        if benchmark_entry.get('data_type') != 'comp_ben':
+            continue
+            
+        # Get verdict_matches and ensure it's a list
         verdict_matches = benchmark_entry.get('verdict_matches', [])
-        # Convert to list if single value
         if not isinstance(verdict_matches, list):
             verdict_matches = [verdict_matches]
             
-        # Must have at least one verdict match and ALL must be True
-        if not verdict_matches or not all(verdict_matches):
+        # Skip if empty or contains any False values
+        if not verdict_matches or False in verdict_matches:
             continue
             
-        # Now check extension_possible criteria
+        # Check extension_possible criteria
         extension_possible = benchmark_entry.get('extension_possible')
         if extension_possible is None or extension_possible is True:
-            filtered.extend([benchmark_entry, stats_entry])
+            # Keep both the benchmark entry and its statistics entry
+            if stats_entry and stats_entry.get('data_type') == 'statistics':
+                filtered.extend([benchmark_entry, stats_entry])
     
     return filtered
 
