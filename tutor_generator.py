@@ -250,9 +250,6 @@ class TutorGenerator:
                         if numeric_value is not None:
                             self.logger.append(f"\n🤖 Model's Answer: {numeric_value}")
                 
-                # Only log full response if verdict is not "The answer is correct"
-                if verdict != "The answer is correct":
-                    self.logger.append(f"\n🤖 Final Tutor Response:\n{tutor_response}\n")
             
             # If invalid response or not in valid categories, return only statistics
             if analysis is None or verdict is None:
@@ -291,7 +288,6 @@ class TutorGenerator:
                 
             # Case 2: Solution is incorrect and agent identifies specific step
             elif not is_correct and verdict.startswith("Step ") and substitution:
-                self.logger.append("diving in what matterssssss")
                 # Get steps and create partial solution
                 steps = split_into_steps(solution)
                 if steps:
