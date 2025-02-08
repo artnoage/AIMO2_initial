@@ -241,9 +241,18 @@ class TutorGenerator:
                     else:
                         self.logger.append(f"Attempt {attempts}: Invalid verdict category: {verdict}")
                 
-            # Only log final response if verdict is not "The answer is correct"
-            if valid_response and verdict != "The answer is correct":
-                self.logger.append(f"\n🤖 Final Tutor Response:\n{tutor_response}\n")
+            # Log the model's answer if we have a valid response
+            if valid_response:
+                if substitution:
+                    boxed_answer = extract_answer_from_solution(substitution)
+                    if boxed_answer:
+                        numeric_value, _ = extract_numeric_answer(boxed_answer)
+                        if numeric_value is not None:
+                            self.logger.append(f"\n🤖 Model's Answer: {numeric_value}")
+                
+                # Only log full response if verdict is not "The answer is correct"
+                if verdict != "The answer is correct":
+                    self.logger.append(f"\n🤖 Final Tutor Response:\n{tutor_response}\n")
             
             # If invalid response or not in valid categories, return only statistics
             if analysis is None or verdict is None:
