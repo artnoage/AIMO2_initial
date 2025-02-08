@@ -369,8 +369,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logs.append("\n" + "="*80)
         logs.append(f"📝 Example {running_id + 1} | ID: {example_id}")
         logs.append("="*80)
-        logs.append(f"\n📋 Problem:")
-        logs.append(f"{example['problem'][:200]}...")
         logs.append(f"\n✓ Expected Answer: {correct_answer}")
         
         # Process each model solution
