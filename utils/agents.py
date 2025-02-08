@@ -156,7 +156,7 @@ class TutorAgent:
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=18000)
-        return (prompt[0].content, response) if return_prompt else response
+        return (response, prompt[0].content) if return_prompt else response
 
 
 class TournamentJudgeAgent:
