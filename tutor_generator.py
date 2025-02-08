@@ -244,6 +244,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Process each model solution
         all_results = []
+        total_attempts = len(example['model_solutions'])
+        correct_verdicts = 0
+        incorrect_verdicts = 0
+        invalid_responses = 0
+        
         for solution in example['model_solutions']:
             # Generate tutor response and analyze
             results = await generator.generate(
@@ -252,7 +257,28 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 correct_answer,
                 example_id
             )
+            
+            # Extract statistics from results
+            for result in results:
+                if result['data_type'] == 'statistics':
+                    correct_verdicts += result['correct_verdicts']
+                    incorrect_verdicts += result['incorrect_verdicts']
+                    invalid_responses += result['invalid_responses']
+            
             all_results.extend(results)
+        
+        # Add overall statistics
+        overall_stats = {
+            'id': example_id,
+            'data_type': 'statistics',
+            'example_processed_successfully': True,
+            'total_attempts': total_attempts,
+            'correct_verdicts': correct_verdicts,
+            'incorrect_verdicts': incorrect_verdicts,
+            'invalid_responses': invalid_responses,
+            'success_rate': (correct_verdicts / total_attempts * 100) if total_attempts > 0 else 0.0
+        }
+        all_results.append(overall_stats)
         
         # Log results
         for log in logs:
@@ -261,8 +287,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         for log in generator.logger.logs:
             logger.append(log)
         
-        if all_results:
+        if len(all_results) > 1:  # More than just statistics
             logger.append("\n✓ Tutor responses analyzed successfully")
+        else:
+            logger.append("\n⚠️ No valid tutor responses generated")
             
         logger.print()
         return all_results
