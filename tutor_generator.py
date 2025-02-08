@@ -304,7 +304,7 @@ class TutorGenerator:
                                 stats_entry['correct_verdicts'] = 1
                             else:
                                 stats_entry['incorrect_verdicts'] = 1
-                            stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
+                            stats_entry['success_rate'] = 100.0 if step_validated else 0.0
                             
                             if step_validated:
                                 results.append({
@@ -340,7 +340,7 @@ class TutorGenerator:
                     stats_entry['correct_verdicts'] = 1
                 else:
                     stats_entry['incorrect_verdicts'] = 1
-                stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
+                stats_entry['success_rate'] = 100.0 if approach_validated else 0.0
                 
                 if approach_validated:
                     results.append({
