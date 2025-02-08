@@ -170,17 +170,12 @@ class TutorGenerator:
             # Verify original solution
             is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
             
-            # Update statistics based on tutor's verdict
-            stats_entry['example_processed_successfully'] = True
-            if (is_correct and verdict == "The answer is correct") or \
-               (not is_correct and verdict != "The answer is correct"):
-                stats_entry['correct_verdicts'] = 1
-            else:
-                stats_entry['incorrect_verdicts'] = 1
-            stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
-            
             # Case 1: Solution is correct and agent agrees
             if is_correct and verdict == "The answer is correct":
+                # Update statistics - both agree solution is correct
+                stats_entry['example_processed_successfully'] = True
+                stats_entry['correct_verdicts'] = 1
+                stats_entry['success_rate'] = 100.0
                 results.append({
                     'data_type': 'training',
                     'type': 'tutor_correct',
@@ -207,14 +202,24 @@ class TutorGenerator:
                         if 0 <= step_num < len(steps):
                             partial_sol = "".join(steps[:step_num])
                             
-                            # Validate the step identification
-                            if await self._validate_step_identification(
+                            # Validate the step identification and update statistics
+                            step_validated = await self._validate_step_identification(
                                 problem,
                                 steps,
                                 step_num,
                                 substitution,
                                 correct_answer
-                            ):
+                            )
+                            
+                            # Update statistics based on validation
+                            stats_entry['example_processed_successfully'] = True
+                            if step_validated:
+                                stats_entry['correct_verdicts'] = 1
+                            else:
+                                stats_entry['incorrect_verdicts'] = 1
+                            stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
+                            
+                            if step_validated:
                                 results.append({
                                     'data_type': 'training',
                                     'type': 'tutor_step',
@@ -235,6 +240,13 @@ class TutorGenerator:
                         
             # Case 3: Solution is incorrect and agent identifies fundamental flaw
             elif not is_correct and verdict == "The whole approach is wrong" and analysis:
+                # Update statistics - for whole approach wrong, we trust the tutor if solution is indeed incorrect
+                stats_entry['example_processed_successfully'] = True
+                if not is_correct:
+                    stats_entry['correct_verdicts'] = 1
+                else:
+                    stats_entry['incorrect_verdicts'] = 1
+                stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
                 results.append({
                     'data_type': 'training',
                     'type': 'tutor_analysis',
