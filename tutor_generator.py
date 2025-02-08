@@ -207,14 +207,14 @@ class TutorGenerator:
                 
             # Verify original solution
             is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
-            
+            self.logger.append("heheehe" +  str(is_correct))
             # Check if verdict is in valid categories
             is_valid_verdict = (
                 verdict == "The answer is correct" or
                 (verdict.startswith("Step ") and substitution) or
                 verdict == "The whole approach is wrong"
             )
-            
+            self.logger.append("Is valid" +  str(is_valid_verdict))
             if not is_valid_verdict:
                 self.logger.append(f"❌ Invalid verdict category: {verdict}")
                 stats_entry['invalid_responses'] = 1
@@ -245,6 +245,7 @@ class TutorGenerator:
                 
             # Case 2: Solution is incorrect and agent identifies specific step
             elif not is_correct and verdict.startswith("Step ") and substitution:
+                self.logger.append("diving in what matterssssss")
                 # Get steps and create partial solution
                 steps = split_into_steps(solution)
                 if steps:
