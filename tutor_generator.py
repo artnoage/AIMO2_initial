@@ -191,13 +191,31 @@ class TutorGenerator:
                 'success_rate': 0.0
             }
             
-            # Get tutor response and prompt
-            tutor_response, tutor_prompt = await self.tutor_agent.find_first_wrong_step(problem, solution, return_prompt=True)
-            analysis, verdict, substitution = self._extract_tutor_response(tutor_response)
-            
-            # Only log response if verdict is not "The answer is correct"
+            # Verify original solution first
+            is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+            self.logger.append(f"Solution is actually: {'correct' if is_correct else 'incorrect'}")
+
+            # Try up to config.best_of times to get a valid and agreeing verdict
+            valid_response = False
+            attempts = 0
+            while not valid_response and attempts < self.main.config.best_of:
+                attempts += 1
+                tutor_response, tutor_prompt = await self.tutor_agent.find_first_wrong_step(problem, solution, return_prompt=True)
+                analysis, verdict, substitution = self._extract_tutor_response(tutor_response)
+                
+                # Check if verdict is valid and agrees with actual correctness
+                if verdict:
+                    tutor_says_correct = verdict == "The answer is correct"
+                    if tutor_says_correct == is_correct:
+                        valid_response = True
+                        self.logger.append(f"Found agreeing verdict after {attempts} attempts")
+                        break
+                    else:
+                        self.logger.append(f"Attempt {attempts}: Tutor verdict disagrees with actual correctness")
+                
+            # Only log final response if verdict is not "The answer is correct"
             if verdict != "The answer is correct":
-                self.logger.append(f"\n🤖 Tutor Response:\n{tutor_response}\n")
+                self.logger.append(f"\n🤖 Final Tutor Response:\n{tutor_response}\n")
             
             # If invalid response or not in valid categories, return only statistics
             if analysis is None or verdict is None:
@@ -205,9 +223,6 @@ class TutorGenerator:
                 results.append(stats_entry)
                 return results
                 
-            # Verify original solution
-            is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
-            self.logger.append("heheehe" +  str(is_correct))
             # Check if verdict is in valid categories
             is_valid_verdict = (
                 verdict == "The answer is correct" or
