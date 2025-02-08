@@ -34,7 +34,7 @@ async def ask_questions(model) -> List[Dict]:
             logger.append(question)
             
             response = await model.ainvoke(question)
-            response_text = str(response)
+            response_text = response.content if hasattr(response, 'content') else str(response)
             
             logger.append(f"\n🤖 Response:")
             logger.append(response_text)
@@ -42,7 +42,7 @@ async def ask_questions(model) -> List[Dict]:
             
             results.append({
                 'question': question,
-                'response': response_text
+                'response': response_text.strip() if response_text else "Error: No response content"
             })
             
         except Exception as e:
