@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import re
 import random
 from typing import Dict, List, Tuple, Any, Optional
 from dotenv import load_dotenv
@@ -21,6 +22,18 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def extract_sections(response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Extract the Analysis, Verdict and Substitution sections from the response"""
+    analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
+    verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
+    substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
+    
+    analysis = analysis_match.group(1).strip() if analysis_match else None
+    verdict = verdict_match.group(1).strip() if verdict_match else None
+    substitution = substitution_match.group(1).strip() if substitution_match else None
+    
+    return analysis, verdict, substitution
+
 class TutorGenerator:
     """Generates tutor responses and validates them against known solutions"""
     
@@ -40,7 +53,7 @@ class TutorGenerator:
             logs=self.logs
         )
 
-    async def _extract_tutor_response(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    def _extract_tutor_response(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract analysis, verdict and substitution from tutor response"""
         try:
             analysis, verdict, substitution = extract_sections(response)
