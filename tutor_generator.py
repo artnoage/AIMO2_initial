@@ -65,22 +65,74 @@ class TutorGenerator:
             self.logger.append(f"❌ Error extracting tutor response sections: {str(e)}")
             return None, None, None
 
-    async def _validate_completion(self, problem: str, partial_solution: str, correct_answer: str) -> bool:
-        """Validate a completion attempt"""
-        try:
-            completion = await self.completion_agent.generate(problem, partial_solution)
-            complete_solution = partial_solution + completion
-            
-            # Verify correctness
-            is_correct, _ = await self.verifier.verify(
-                complete_solution,
-                correct_answer,
-                problem
-            )
-            return is_correct
-        except Exception as e:
-            self.logger.append(f"❌ Error validating completion: {str(e)}")
+    async def _validate_completions(self, problem: str, partial_solution: str, correct_answer: str, num_attempts: int) -> Tuple[int, int]:
+        """
+        Try multiple completions and return number of successful/total attempts
+        Returns: (successful_completions, total_attempts)
+        """
+        successful = 0
+        total = 0
+        
+        for _ in range(num_attempts):
+            try:
+                completion = await self.completion_agent.generate(problem, partial_solution)
+                complete_solution = partial_solution + completion
+                
+                # Verify correctness
+                is_correct, _ = await self.verifier.verify(
+                    complete_solution,
+                    correct_answer,
+                    problem
+                )
+                if is_correct:
+                    successful += 1
+                total += 1
+                
+            except Exception as e:
+                self.logger.append(f"❌ Error in completion attempt: {str(e)}")
+                total += 1
+                
+        return successful, total
+
+    async def _validate_step_identification(
+        self, 
+        problem: str, 
+        steps: List[str],
+        step_num: int,
+        substitution: str,
+        correct_answer: str
+    ) -> bool:
+        """
+        Validate that:
+        1. Completions from the identified wrong step all fail
+        2. At least one completion from previous step + correction succeeds
+        """
+        # Try completions from the wrong step - all should fail
+        wrong_partial = "".join(steps[:step_num])
+        successful_wrong, total_wrong = await self._validate_completions(
+            problem, 
+            wrong_partial, 
+            correct_answer,
+            self.completions
+        )
+        if successful_wrong > 0:
+            self.logger.append(f"❌ Found {successful_wrong}/{total_wrong} successful completions from supposedly wrong step")
             return False
+            
+        # Try completions from previous step + correction - at least one should succeed
+        corrected_partial = "".join(steps[:step_num-1]) + substitution
+        successful_fixed, total_fixed = await self._validate_completions(
+            problem,
+            corrected_partial,
+            correct_answer,
+            self.completions
+        )
+        if successful_fixed == 0:
+            self.logger.append(f"❌ Found no successful completions ({total_fixed} attempts) with tutor's correction")
+            return False
+            
+        self.logger.append(f"✓ Validated step identification: {successful_fixed}/{total_fixed} successful with correction")
+        return True
 
     async def generate(
         self,
@@ -155,8 +207,14 @@ class TutorGenerator:
                         if 0 <= step_num < len(steps):
                             partial_sol = "".join(steps[:step_num])
                             
-                            # Validate the completion
-                            if await self._validate_completion(problem, partial_sol, correct_answer):
+                            # Validate the step identification
+                            if await self._validate_step_identification(
+                                problem,
+                                steps,
+                                step_num,
+                                substitution,
+                                correct_answer
+                            ):
                                 results.append({
                                     'data_type': 'training',
                                     'type': 'tutor_step',
