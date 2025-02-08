@@ -264,7 +264,7 @@ class TutorGenerator:
                         step_num = int(verdict.split()[1])
                         if 0 <= step_num < len(steps):
                             partial_sol = "".join(steps[:step_num])
-                            
+                            print(step_num,steps[step_num],substitution)
                             # Validate the step identification and update statistics
                             step_validated = await self._validate_step_identification(
                                 problem,
