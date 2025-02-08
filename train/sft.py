@@ -71,12 +71,15 @@ def main():
         per_device_train_batch_size=2,
         gradient_accumulation_steps=32,
         learning_rate=2e-6,
-        logging_steps=100,
+        logging_steps=10,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
         optim = "adamw_torch",
+        report_to=["tensorboard"],  # Enable tensorboard logging
+        logging_first_step=True,    # Log the first training step
+        logging_dir=f"train_results/{timestamp}/logs",  # Directory for logs
     )
 
     # Initialize SFT trainer
