@@ -302,6 +302,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Process each model solution
         all_results = []
+        solution_results = []  # Collect all results before processing stats
         total_attempts = len(example['model_solutions'])
         correct_verdicts = 0
         incorrect_verdicts = 0
@@ -315,7 +316,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 correct_answer,
                 example_id
             )
+            solution_results.append(results)
             
+        # Process all results
+        for results in solution_results:
             # Extract statistics from results
             for result in results:
                 if result['data_type'] == 'statistics':
