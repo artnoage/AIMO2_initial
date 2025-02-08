@@ -34,14 +34,15 @@ async def ask_questions(model) -> List[Dict]:
             logger.append(question)
             
             response = await model.ainvoke(question)
+            response_text = str(response)
             
             logger.append(f"\n🤖 Response:")
-            logger.append(response)
+            logger.append(response_text)
             logger.append("\n" + "="*50)
             
             results.append({
                 'question': question,
-                'response': response
+                'response': response_text
             })
             
         except Exception as e:
