@@ -69,8 +69,16 @@ def create_sft_dataset(data: List[Dict]) -> List[Dict]:
         # Add to dataset
         sft_data.append({
             'id': entry['id'],
-            'input': prompt,
-            'output': response
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': prompt
+                },
+                {
+                    'role': 'assistant',
+                    'content': response
+                }
+            ]
         })
     
     return sft_data
