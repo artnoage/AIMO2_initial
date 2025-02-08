@@ -134,8 +134,13 @@ class TutorGenerator:
         1. Completions from the identified wrong step all fail
         2. At least one completion from previous step + correction succeeds
         """
+        self.logger.append(f"\n🔍 Validating step {step_num} identification:")
+        self.logger.append(f"Original step content: {steps[step_num]}")
+        self.logger.append(f"Proposed substitution: {substitution}")
+        
         # Try completions from the wrong step - all should fail
         wrong_partial = "".join(steps[:step_num])
+        self.logger.append(f"\nTesting completions from wrong step...")
         successful_wrong, total_wrong = await self._validate_completions(
             problem, 
             wrong_partial, 
@@ -145,9 +150,12 @@ class TutorGenerator:
         if successful_wrong > 0:
             self.logger.append(f"❌ Found {successful_wrong}/{total_wrong} successful completions from supposedly wrong step")
             return False
+        else:
+            self.logger.append(f"✓ All {total_wrong} completions from wrong step failed as expected")
             
         # Try completions from previous step + correction - at least one should succeed
         corrected_partial = "".join(steps[:step_num-1]) + substitution
+        self.logger.append(f"\nTesting completions with tutor's correction...")
         successful_fixed, total_fixed = await self._validate_completions(
             problem,
             corrected_partial,
