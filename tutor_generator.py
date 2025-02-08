@@ -186,14 +186,27 @@ class TutorGenerator:
             tutor_response = await self.tutor_agent.find_first_wrong_step(problem, solution)
             analysis, verdict, substitution = await self._extract_tutor_response(tutor_response)
             
-            # If invalid response, return only statistics
+            # If invalid response or not in valid categories, return only statistics
             if analysis is None or verdict is None:
                 stats_entry['invalid_responses'] = 1
                 results.append(stats_entry)
                 return results
-            
+                
             # Verify original solution
             is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+            
+            # Check if verdict is in valid categories
+            is_valid_verdict = (
+                verdict == "The answer is correct" or
+                (verdict.startswith("Step ") and substitution) or
+                verdict == "The whole approach is wrong"
+            )
+            
+            if not is_valid_verdict:
+                self.logger.append(f"❌ Invalid verdict category: {verdict}")
+                stats_entry['invalid_responses'] = 1
+                results.append(stats_entry)
+                return results
             
             # Case 1: Solution is correct and agent agrees
             if is_correct and verdict == "The answer is correct":
