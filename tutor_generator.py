@@ -193,7 +193,10 @@ class TutorGenerator:
             
             # Get tutor response
             tutor_response, tutor_prompt = await self.tutor_agent.find_first_wrong_step(problem, solution, return_prompt=True)
+            self.logger.append(f"\n📝 Tutor Problem:\n{problem}\n")
+            self.logger.append(f"\n📝 Tutor Prompt:\n{solution}\n")
             self.logger.append(f"\n📝 Tutor Prompt:\n{tutor_prompt}\n")
+            self.logger.append(f"\n📝 No Tutor Prompt:\n{tutor_prompt}\n")
             analysis, verdict, substitution = self._extract_tutor_response(tutor_response)
             
             # If invalid response or not in valid categories, return only statistics
