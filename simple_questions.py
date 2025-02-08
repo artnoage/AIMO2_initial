@@ -17,10 +17,17 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 QUESTIONS = [
+    # Math questions
     "What is the derivative of x^2 with respect to x?",
     "What is the integral of 2x dx?",
     "Solve the equation: x^2 - 4 = 0",
-    "What is the value of sin(π/2)?"
+    "What is the value of sin(π/2)?",
+    
+    # General knowledge questions
+    "What are three main differences between renewable and non-renewable energy sources?",
+    "Explain how the water cycle works in simple terms.",
+    "What makes a good scientific hypothesis?",
+    "How does the human immune system protect against diseases?"
 ]
 
 async def ask_questions(model) -> List[Dict]:
