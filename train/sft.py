@@ -17,8 +17,8 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250124_103854",
-        max_seq_length=4096,
+        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611",
+        max_seq_length=8192,
         load_in_4bit=False)
         
 
@@ -46,7 +46,7 @@ def main():
     
 
     def formatting_prompts_func(examples):
-        convos = examples["conversations"]
+        convos = examples["messages"]
         texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) 
                 for convo in convos]
         return {"text": texts}
@@ -54,7 +54,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/conversation_dataset_20250124_231646")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/tutor/20250208_151324")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     shuffled_dataset2=dataset.shuffle(seed=42)
     dataset=concatenate_datasets([dataset, shuffled_dataset2])
@@ -91,7 +91,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "very_hard"
+    model_type = "tutor"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
