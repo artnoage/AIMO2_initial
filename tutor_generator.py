@@ -193,7 +193,7 @@ class TutorGenerator:
             
             # Get tutor response
             tutor_response = await self.tutor_agent.find_first_wrong_step(problem, solution)
-            analysis, verdict, substitution = await self._extract_tutor_response(tutor_response)
+            analysis, verdict, substitution = self._extract_tutor_response(tutor_response)
             
             # If invalid response or not in valid categories, return only statistics
             if analysis is None or verdict is None:
