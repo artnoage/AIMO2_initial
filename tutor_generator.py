@@ -152,7 +152,7 @@ class TutorGenerator:
             problem,
             corrected_partial,
             correct_answer,
-            self.completions
+            self.config.completions
         )
         if successful_fixed == 0:
             self.logger.append(f"❌ Found no successful completions ({total_fixed} attempts) with tutor's correction")
