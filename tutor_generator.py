@@ -45,13 +45,6 @@ class TutorGenerator:
         self.verifier = NumericVerifier()
         self.logger = BenchmarkLogger()
         self.logs = []
-        self.step_analyzer = StepAnalyzer(
-            self.completion_agent,
-            None,  # No solution agent needed
-            self.verifier,
-            max_attempts=completions,
-            logs=self.logs
-        )
 
     def _extract_tutor_response(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract analysis, verdict and substitution from tutor response"""
