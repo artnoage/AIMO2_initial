@@ -40,14 +40,17 @@ class TutorGenerator:
             logs=self.logs
         )
 
-    async def _extract_tutor_response(self, response: str) -> Tuple[str, str, str]:
+    async def _extract_tutor_response(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract analysis, verdict and substitution from tutor response"""
         try:
             analysis, verdict, substitution = extract_sections(response)
-            return analysis or "", verdict or "", substitution or ""
+            if not analysis or not verdict:
+                self.logger.append(f"❌ Invalid tutor response - missing required sections")
+                return None, None, None
+            return analysis, verdict, substitution
         except Exception as e:
             self.logger.append(f"❌ Error extracting tutor response sections: {str(e)}")
-            return "", "", ""
+            return None, None, None
 
     async def _validate_completion(self, problem: str, partial_solution: str, correct_answer: str) -> bool:
         """Validate a completion attempt"""
@@ -77,12 +80,39 @@ class TutorGenerator:
         try:
             results = []
             
+            # Initialize statistics
+            stats_entry = {
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': False,
+                'total_attempts': 1,
+                'correct_verdicts': 0,
+                'incorrect_verdicts': 0,
+                'invalid_responses': 0,
+                'success_rate': 0.0
+            }
+            
             # Get tutor response
             tutor_response = await self.tutor_agent.find_first_wrong_step(problem, solution)
             analysis, verdict, substitution = await self._extract_tutor_response(tutor_response)
             
+            # If invalid response, return only statistics
+            if analysis is None or verdict is None:
+                stats_entry['invalid_responses'] = 1
+                results.append(stats_entry)
+                return results
+            
             # Verify original solution
             is_correct, _ = await self.verifier.verify(solution, correct_answer, problem)
+            
+            # Update statistics based on tutor's verdict
+            stats_entry['example_processed_successfully'] = True
+            if (is_correct and verdict == "The answer is correct") or \
+               (not is_correct and verdict != "The answer is correct"):
+                stats_entry['correct_verdicts'] = 1
+            else:
+                stats_entry['incorrect_verdicts'] = 1
+            stats_entry['success_rate'] = (stats_entry['correct_verdicts'] / stats_entry['total_attempts']) * 100
             
             # Case 1: Solution is correct and agent agrees
             if is_correct and verdict == "The answer is correct":
@@ -150,11 +180,23 @@ class TutorGenerator:
                     ]
                 })
             
+            # Add statistics entry
+            results.append(stats_entry)
             return results
 
         except Exception as e:
             self.logger.append(f"❌ Error in tutor generation: {str(e)}")
-            return []
+            # Return failed statistics
+            return [{
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': False,
+                'total_attempts': 1,
+                'correct_verdicts': 0,
+                'incorrect_verdicts': 0,
+                'invalid_responses': 1,
+                'success_rate': 0.0
+            }]
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> List[Dict]:
     """Process a single example using tutor generation approach"""
