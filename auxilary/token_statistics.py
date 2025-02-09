@@ -11,7 +11,7 @@ def load_json(file_path: str) -> List[Dict]:
     with open(file_path, 'r') as f:
         return json.load(f)
 
-def count_tokens(text: str, model: str = "gpt-3.5-turbo") -> int:
+def count_tokens(text: str, model: str = "llama-2-70b-chat") -> int:
     """Count tokens in text using tiktoken"""
     encoding = tiktoken.encoding_for_model(model)
     return len(encoding.encode(text))
