@@ -2,7 +2,7 @@ import json
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
-import tiktoken
+from transformers import AutoTokenizer
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
@@ -11,10 +11,15 @@ def load_json(file_path: str) -> List[Dict]:
     with open(file_path, 'r') as f:
         return json.load(f)
 
-def count_tokens(text: str, model: str = "llama-2-70b-chat") -> int:
-    """Count tokens in text using tiktoken"""
-    encoding = tiktoken.encoding_for_model(model)
-    return len(encoding.encode(text))
+def count_tokens(text: str, model: str = "meta-llama/Llama-2-70b-chat-hf") -> int:
+    """Count tokens in text using HuggingFace tokenizer"""
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model)
+        return len(tokenizer.encode(text))
+    except Exception as e:
+        print(f"Warning: Failed to load {model} tokenizer. Falling back to GPT2 tokenizer.")
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        return len(tokenizer.encode(text))
 
 def analyze_tokens(data: List[Dict]) -> Dict:
     """Analyze token counts for each entry by type (ORPO or SFT)"""
