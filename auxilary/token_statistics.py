@@ -11,7 +11,7 @@ def load_json(file_path: str) -> List[Dict]:
     with open(file_path, 'r') as f:
         return json.load(f)
 
-def count_tokens(text: str, model: str = "meta-llama/Llama-2-70b-chat-hf") -> int:
+def count_tokens(text: str, model: str = "Metaskepsis/Skepsis_2") -> int:
     """Count tokens in text using HuggingFace tokenizer"""
     try:
         tokenizer = AutoTokenizer.from_pretrained(model)

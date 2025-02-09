@@ -118,6 +118,7 @@ class TutorGenerator:
         
         if successful == 0:
             self.logger.append(f"✓ Found no successful completions ({total} attempts) starting from analysis")
+            self.logger.append(f"✓ And it is true that ({total}={self.config.completions}")
             return True
             
         self.logger.append(f"❌ Validated whole approach wrong: {successful}/{total} successful completions from analysis")
@@ -169,6 +170,7 @@ class TutorGenerator:
             return False
             
         self.logger.append(f"✓ Validated step identification: {successful_fixed}/{total_fixed} successful with correction")
+        self.logger.append(f"✓ Validated step identification: {self.config.completions}={total_fixed}.")
         return True
 
     async def generate(

@@ -209,7 +209,6 @@ class ProgressTracker:
             results_by_type = defaultdict(list)
             for r in self.results:
                 data_type = r.get('data_type')
-                print(f"Processing result with data_type: {data_type}")
                 if data_type and data_type != 'statistics':  # Exclude statistics
                     results_by_type[data_type].append(r)
             

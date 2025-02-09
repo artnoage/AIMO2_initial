@@ -54,7 +54,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/tutor/20250208_151324")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250208_151324")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     shuffled_dataset2=dataset.shuffle(seed=42)
     dataset=concatenate_datasets([dataset, shuffled_dataset2])
@@ -69,15 +69,14 @@ def main():
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
         per_device_train_batch_size=2,
-        gradient_accumulation_steps=32,
-        learning_rate=2e-6,
+        gradient_accumulation_steps=16,
+        learning_rate=4e-6,
         logging_steps=10,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_torch",
-        report_to=["tensorboard"],  # Enable tensorboard logging
+        optim = "adamw_torch",  # Enable tensorboard logging
         logging_first_step=True,    # Log the first training step
         logging_dir=f"train_results/{timestamp}/logs",  # Directory for logs
     )

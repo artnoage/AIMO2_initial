@@ -44,7 +44,7 @@ class NextStepAgent:
             input_text += "Could you help me with the first step? Please explain it using LaTeX notation."
             
         prompt = [HumanMessage(content=input_text)]
-        response = await get_model_response(self.model, prompt, max_tokens=6000)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
@@ -64,7 +64,7 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=6000)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -95,7 +95,7 @@ class MissingStepAgent:
                 "Could you help fill in just the missing step? Use LaTeX notation to explain it clearly."
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=6000)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -155,7 +155,7 @@ class TutorAgent:
                 "<Substitution>"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=18000)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (response, prompt[0].content) if return_prompt else response
 
 
@@ -181,7 +181,7 @@ class TournamentJudgeAgent:
                 "Which solution is better, A or B?"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=6000)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 

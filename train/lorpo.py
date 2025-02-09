@@ -11,8 +11,8 @@ import re
 
 
 model_type = "light"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_083807"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250206_202750"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/light/20250209_171956"
 
 
 # Check if model_type is in paths
