@@ -4,6 +4,13 @@ import argparse
 from pathlib import Path
 from typing import List, Dict, Optional
 from collections import defaultdict
+import sys
+
+# Add project root to path to import utils
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
+
+from utils.benchmark_utils import NumericVerifier, extract_numeric_answer
 
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON file"""
@@ -19,17 +26,40 @@ def create_training_pairs(entry: Dict) -> List[Dict]:
     """Create training pairs from benchmark entry if it has correct and incorrect solutions"""
     results = []
     
-    # Get solutions marked as correct and incorrect
+    # Get solutions and verify them against correct answer
     correct_solutions = []
     incorrect_solutions = []
+    verifier = NumericVerifier(tolerance=1e-6)
     
-    for i, is_correct in enumerate(entry.get('is_correct_list', [])):
+    # Create list of solutions with their correctness
+    for i, model_answer in enumerate(entry.get('model_answers', [])):
         if i < len(entry.get('model_solutions', [])):
             solution = entry['model_solutions'][i]
-            if is_correct:
-                correct_solutions.append(solution)
-            else:
-                incorrect_solutions.append(solution)
+            # Skip if answer is None
+            if model_answer is None:
+                continue
+                
+            # Convert answer to numeric value
+            try:
+                numeric_answer, _ = extract_numeric_answer(str(model_answer))
+                if numeric_answer is None:
+                    continue
+                    
+                # Compare with correct answer
+                correct_numeric, _ = extract_numeric_answer(entry['correct_answer'])
+                if correct_numeric is None:
+                    continue
+                    
+                # Check if answer is correct within tolerance
+                is_correct = abs(numeric_answer - correct_numeric) <= 1e-6
+                
+                if is_correct:
+                    correct_solutions.append(solution)
+                else:
+                    incorrect_solutions.append(solution)
+            except Exception as e:
+                print(f"Error processing answer {model_answer}: {e}")
+                continue
     
     # Only proceed if we have at least one of each
     if not correct_solutions or not incorrect_solutions:
