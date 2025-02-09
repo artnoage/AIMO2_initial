@@ -87,7 +87,7 @@ class TutorGenerator:
                 
         return successful, total
 
-    async def _validate_whole_approach(
+    async def _validate_whole_approach_is_wrong(
         self,
         problem: str,
         solution: str,
@@ -115,11 +115,11 @@ class TutorGenerator:
         )
         
         if successful == 0:
-            self.logger.append(f"❌ Found no successful completions ({total} attempts) starting from analysis")
-            return False
+            self.logger.append(f"✓ Found no successful completions ({total} attempts) starting from analysis")
+            return True
             
-        self.logger.append(f"✓ Validated whole approach wrong: {successful}/{total} successful completions from analysis")
-        return True
+        self.logger.append(f"❌ Validated whole approach wrong: {successful}/{total} successful completions from analysis")
+        return False
 
     async def _validate_step_identification(
         self, 
@@ -341,7 +341,7 @@ class TutorGenerator:
             # Case 3: Solution is incorrect and agent identifies fundamental flaw
             elif not is_correct and verdict == "The whole approach is wrong" and analysis:
                 # Validate that solution's analysis can lead to correct solution
-                approach_validated = await self._validate_whole_approach(
+                whole_approach_is_wrong_validated = await self._validate_whole_approach_is_wrong(
                     problem,
                     solution,
                     correct_answer
@@ -349,13 +349,13 @@ class TutorGenerator:
                 
                 # Update statistics based on validation
                 stats_entry['example_processed_successfully'] = True
-                if approach_validated:
+                if whole_approach_is_wrong_validated:
                     stats_entry['correct_verdicts'] = 1
                 else:
                     stats_entry['incorrect_verdicts'] = 1
-                stats_entry['success_rate'] = 100.0 if approach_validated else 0.0
+                stats_entry['success_rate'] = 100.0 if whole_approach_is_wrong_validated else 0.0
                 
-                if approach_validated:
+                if whole_approach_is_wrong_validated:
                     results.append({
                     'data_type': 'training',
                     'type': 'tutor_analysis',
