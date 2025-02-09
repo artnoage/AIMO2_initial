@@ -60,7 +60,7 @@ class TutorGenerator:
 
     async def _validate_completions(self, problem: str, partial_solution: str, correct_answer: str, num_attempts: int) -> Tuple[int, int]:
         """
-        Try multiple completions and return number of successful/total attempts
+        Try completions until finding a successful one or reaching max attempts
         Returns: (successful_completions, total_attempts)
         """
         successful = 0
@@ -77,9 +77,11 @@ class TutorGenerator:
                     correct_answer,
                     problem
                 )
-                if is_correct:
-                    successful += 1
                 total += 1
+                
+                if is_correct:
+                    successful = 1  # We only need one success
+                    break  # Stop after finding a successful completion
                 
             except Exception as e:
                 self.logger.append(f"❌ Error in completion attempt: {str(e)}")
@@ -148,10 +150,10 @@ class TutorGenerator:
             self.config.completions
         )
         if successful_wrong > 0:
-            self.logger.append(f"❌ Found {successful_wrong}/{total_wrong} successful completions from supposedly wrong step")
+            self.logger.append(f"❌ Found a successful completion from the wrong step - step identification is incorrect")
             return False
         else:
-            self.logger.append(f"✓ All {total_wrong} completions from wrong step failed as expected")
+            self.logger.append(f"✓ No successful completions found from wrong step ({total_wrong} attempts)")
             
         # Try completions from previous step + correction - at least one should succeed
         corrected_partial = "".join(steps[:step_num-1]) + substitution
