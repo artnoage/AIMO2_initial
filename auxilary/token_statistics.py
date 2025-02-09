@@ -17,31 +17,45 @@ def count_tokens(text: str, model: str = "gpt-3.5-turbo") -> int:
     return len(encoding.encode(text))
 
 def analyze_tokens(data: List[Dict]) -> Dict:
-    """Analyze token counts for each entry by alignment"""
+    """Analyze token counts for each entry by type (ORPO or SFT)"""
     stats = {
-        'light': defaultdict(list),
-        'dark': defaultdict(list),
-        'judge': defaultdict(list)
+        'orpo': {
+            'light': defaultdict(list),
+            'dark': defaultdict(list),
+            'judge': defaultdict(list)
+        },
+        'sft': defaultdict(list)
     }
     
     for entry in data:
         if entry.get('data_type') != 'training':
             continue
             
-        # Determine alignment category
-        alignment = entry.get('alignment', 'judge')  # Default to judge if no alignment specified
-        
-        if 'prompt' in entry and 'content' in entry['prompt']:
-            prompt_tokens = count_tokens(entry['prompt']['content'])
-            stats[alignment]['prompt_tokens'].append(prompt_tokens)
+        # Check if entry is SFT format (from tutor_generator)
+        if 'messages' in entry:
+            # SFT format has messages array with user/assistant pairs
+            for i, msg in enumerate(entry['messages']):
+                if msg['role'] == 'user':
+                    prompt_tokens = count_tokens(msg['content'])
+                    stats['sft']['prompt_tokens'].append(prompt_tokens)
+                elif msg['role'] == 'assistant':
+                    completion_tokens = count_tokens(msg['content'])
+                    stats['sft']['completion_tokens'].append(completion_tokens)
+        else:
+            # ORPO format
+            alignment = entry.get('alignment', 'judge')
             
-        if 'chosen' in entry and 'content' in entry['chosen']:
-            chosen_tokens = count_tokens(entry['chosen']['content'])
-            stats[alignment]['chosen_tokens'].append(chosen_tokens)
-            
-        if 'rejected' in entry and 'content' in entry['rejected']:
-            rejected_tokens = count_tokens(entry['rejected']['content'])
-            stats[alignment]['rejected_tokens'].append(rejected_tokens)
+            if 'prompt' in entry and 'content' in entry['prompt']:
+                prompt_tokens = count_tokens(entry['prompt']['content'])
+                stats['orpo'][alignment]['prompt_tokens'].append(prompt_tokens)
+                
+            if 'chosen' in entry and 'content' in entry['chosen']:
+                chosen_tokens = count_tokens(entry['chosen']['content'])
+                stats['orpo'][alignment]['chosen_tokens'].append(chosen_tokens)
+                
+            if 'rejected' in entry and 'content' in entry['rejected']:
+                rejected_tokens = count_tokens(entry['rejected']['content'])
+                stats['orpo'][alignment]['rejected_tokens'].append(rejected_tokens)
             
     return stats
 
@@ -74,15 +88,38 @@ def generate_statistics(token_counts: Dict) -> Dict:
     return stats
 
 def plot_histograms(stats: Dict, output_dir: Path):
-    """Plot histograms for token distributions by alignment"""
+    """Plot histograms for token distributions by type and alignment"""
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Plot separate histograms for each alignment and token type
-    for alignment, alignment_stats in stats.items():
-        alignment_dir = output_dir / alignment
-        alignment_dir.mkdir(exist_ok=True)
+    # Handle ORPO data
+    if 'orpo' in stats:
+        orpo_dir = output_dir / 'orpo'
+        orpo_dir.mkdir(exist_ok=True)
         
-        for key, data in alignment_stats.items():
+        for alignment, alignment_stats in stats['orpo'].items():
+            alignment_dir = orpo_dir / alignment
+            alignment_dir.mkdir(exist_ok=True)
+            
+            for key, data in alignment_stats.items():
+                if 'histogram' not in data:
+                    continue
+                    
+                plt.figure(figsize=(10, 6))
+                plt.hist(data['histogram']['bins'][:-1], 
+                        data['histogram']['bins'], 
+                        weights=data['histogram']['counts'])
+                plt.title(f'ORPO Token Distribution - {alignment} - {key}')
+                plt.xlabel('Number of Tokens')
+                plt.ylabel('Frequency')
+                plt.savefig(alignment_dir / f'{key}_distribution.png')
+                plt.close()
+    
+    # Handle SFT data
+    if 'sft' in stats:
+        sft_dir = output_dir / 'sft'
+        sft_dir.mkdir(exist_ok=True)
+        
+        for key, data in stats['sft'].items():
             if 'histogram' not in data:
                 continue
                 
@@ -90,10 +127,10 @@ def plot_histograms(stats: Dict, output_dir: Path):
             plt.hist(data['histogram']['bins'][:-1], 
                     data['histogram']['bins'], 
                     weights=data['histogram']['counts'])
-            plt.title(f'Token Distribution - {alignment} - {key}')
+            plt.title(f'SFT Token Distribution - {key}')
             plt.xlabel('Number of Tokens')
             plt.ylabel('Frequency')
-            plt.savefig(alignment_dir / f'{key}_distribution.png')
+            plt.savefig(sft_dir / f'{key}_distribution.png')
             plt.close()
 
 def main():
