@@ -188,48 +188,64 @@ def main():
     async def tutor_validation_reward_func(completions, problem: str, correct_answer: str, **kwargs) -> list[float]:
         """Reward function that validates tutor responses using completion-based validation"""
         rewards = []
+        max_attempts = 5  # Number of attempts to get valid verdict
         
         for completion in completions:
-            # First check structure - if invalid, return 0
-            analysis, verdict, substitution = extract_sections(completion)
-            if not all([analysis, verdict]):
-                rewards.append(0.0)
-                continue
-                
-            # Base reward for valid structure
-            reward = 0.2
+            valid_response = False
+            attempts = 0
+            reward = 0.0
             
-            try:
-                # Validate based on verdict type
-                if verdict == "The answer is correct":
-                    # TODO: Verify if solution is actually correct
-                    rewards.append(reward)
+            while not valid_response and attempts < max_attempts:
+                attempts += 1
+                
+                # Extract sections
+                analysis, verdict, substitution = extract_sections(completion)
+                if not all([analysis, verdict]):
+                    break  # Invalid structure, no more attempts needed
+                
+                # Base reward for valid structure
+                reward = 0.2
+                
+                try:
+                    # First verify if solution is actually correct
+                    # TODO: Implement solution verification
+                    is_correct = False  # Placeholder
                     
-                elif verdict == "The whole approach is wrong":
-                    # Validate that no completions from analysis succeed
-                    if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
-                        reward += 1.8  # Up to 2.0 total
-                    rewards.append(reward)
-                    
-                elif verdict.startswith("Step "):
-                    try:
-                        step_num = int(verdict.split()[1])
-                        steps = completion.split('\n')
+                    # Check if verdict agrees with actual correctness
+                    tutor_says_correct = verdict == "The answer is correct"
+                    if tutor_says_correct == is_correct:
+                        valid_response = True
                         
-                        # Validate step identification and correction
-                        if await _validate_step_identification(
-                            problem, steps, step_num, substitution, correct_answer
-                        ):
+                        # Additional validation based on verdict type
+                        if verdict == "The answer is correct":
                             reward += 1.8  # Up to 2.0 total
-                    except (ValueError, IndexError):
-                        pass
-                    rewards.append(reward)
+                            
+                        elif verdict == "The whole approach is wrong":
+                            if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
+                                reward += 1.8  # Up to 2.0 total
+                            else:
+                                reward = 0.2  # Only structure reward
+                                
+                        elif verdict.startswith("Step "):
+                            try:
+                                step_num = int(verdict.split()[1])
+                                steps = completion.split('\n')
+                                
+                                if await _validate_step_identification(
+                                    problem, steps, step_num, substitution, correct_answer
+                                ):
+                                    reward += 1.8  # Up to 2.0 total
+                                else:
+                                    reward = 0.2  # Only structure reward
+                            except (ValueError, IndexError):
+                                reward = 0.2  # Only structure reward
+                        else:
+                            reward = 0.0  # Invalid verdict type
                     
-                else:
-                    rewards.append(0.0)  # Invalid verdict type
+                except Exception:
+                    reward = 0.0  # Handle any validation errors
                     
-            except Exception:
-                rewards.append(0.0)  # Handle any validation errors
+            rewards.append(reward)
                 
         return rewards
 
