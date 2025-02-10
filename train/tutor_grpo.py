@@ -343,8 +343,37 @@ def main():
         chat_template="mistral",
         map_eos_token=True)
 
-    # Load dataset
+    # Load dataset and format it
     dataset = load_dataset(config.dataset_name)
+    
+    def formatting_func(example):
+        # Format the tutor prompt
+        tutor_prompt = (
+            "You are a mathematics tutor evaluating a student's solution. "
+            "Analyze this solution carefully and determine if it's correct. "
+            "If it's wrong, identify the first mistake.\n\n"
+            f"Problem:\n{example['problem']}\n\n"
+            f"Student's solution:\n{example['solution']}\n\n"
+            f"Correct answer: {example['answer']}\n\n"
+            "Provide your evaluation in this format:\n"
+            "1. Analysis: (optional) Explain your reasoning\n"
+            "2. Verdict: Either 'The answer is correct', 'The whole approach is wrong', "
+            "or 'Step X' where X is the first wrong step number\n"
+            "3. Correction: (required for step verdicts) Provide the correct step"
+        )
+        return {
+            "prompt": f"[INST]{tutor_prompt}[/INST]",
+            "problem": example['problem'],
+            "solution": example['solution'],
+            "answer": example['answer']
+        }
+
+    # Apply formatting to dataset
+    formatted_dataset = dataset['train'].map(
+        formatting_func,
+        remove_columns=dataset['train'].column_names,
+        desc="Formatting dataset"
+    )
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -382,7 +411,7 @@ def main():
         processing_class=tokenizer,
         reward_funcs=[combined_reward_func],
         args=training_args,
-        train_dataset=dataset['train'],
+        train_dataset=formatted_dataset,
         callbacks=[LoggingCallback()]
     )
 
