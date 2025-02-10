@@ -153,22 +153,27 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     return analysis, verdict, substitution
 
 def split_into_steps(solution: str) -> List[str]:
-    """Split solution into steps by newlines and numbering"""
-    steps = []
-    current_step = []
-    
-    for line in solution.split('\n'):
-        if line.strip():  # Skip empty lines
-            current_step.append(line)
-            # If line starts with a number and period, it's a new step
-            if re.match(r'^\d+\.', line.strip()):
-                if current_step[:-1]:  # If we have previous lines
-                    steps.append('\n'.join(current_step[:-1]))
-                current_step = [line]
-    
-    if current_step:  # Add the last step
-        steps.append('\n'.join(current_step))
+    """
+    Split a solution into analysis and numbered steps.
+    Returns a list where first element is analysis (if present) followed by steps.
+    """
+    # First split on "Step" keyword
+    parts = solution.split("Step")
+    if not parts:
+        return []
         
+    steps = []
+    # Process first part (potential analysis)
+    if "analysis" in parts[0].lower():
+        steps.append(parts[0].strip())
+        
+    # Process numbered steps
+    for step in parts[1:]:
+        if step.strip():  # Skip empty steps
+            # Reconstruct the step with its prefix
+            full_step = "Step" + step
+            steps.append(full_step.strip())
+            
     return steps
 
 @dataclass
