@@ -124,8 +124,6 @@ class ValidationStats:
             # Track basic section presence
             if analysis is None:
                 self.section_stats['missing_analysis'] += 1
-            elif analysis:
-                self.reward_components['total_analysis_length_penalty'] += len(analysis) * config.analysis_length_cost
                 
             if verdict is None:
                 self.section_stats['missing_verdict'] += 1
@@ -135,7 +133,6 @@ class ValidationStats:
                 elif split_into_steps(substitution):
                     if len(split_into_steps(substitution)) > 1:
                         self.section_stats['multiple_steps_in_substitution'] += 1
-                    self.reward_components['total_substitution_length_penalty'] += len(substitution) * config.substitution_length_cost
             elif verdict in ["The answer is correct", "The whole approach is wrong"]:
                 if substitution is not None:
                     self.section_stats['polar_verdict_with_substitution'] += 1
@@ -267,7 +264,8 @@ class CompletionAgent:
                 retry_count += 1
                 if retry_count == self.max_retries:
                     raise
-                await asyncio.sleep(0.1)
+                # Exponential backoff
+                await asyncio.sleep(0.1 * (2 ** retry_count))
                 
         raise Exception(f"Failed after {self.max_retries} retries")
         

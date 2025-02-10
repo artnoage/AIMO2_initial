@@ -198,9 +198,11 @@ def main():
             
             # Add points for analysis if present, with length penalty
             if analysis is not None:
-                analysis_reward = config.analysis_reward - (len(analysis) * config.analysis_length_cost)
+                length_penalty = len(analysis) * config.analysis_length_cost
+                analysis_reward = config.analysis_reward - length_penalty
                 reward += analysis_reward
                 stats.reward_components['analysis_rewards'] += 1
+                stats.reward_components['total_analysis_length_penalty'] += length_penalty
             
             # Check substitution based on verdict type
             if is_step_verdict:
@@ -247,9 +249,11 @@ def main():
                             continue
                 
                 # Add substitution reward with length penalty
-                substitution_reward = config.substitution_reward - (len(substitution) * config.substitution_length_cost)
+                length_penalty = len(substitution) * config.substitution_length_cost
+                substitution_reward = config.substitution_reward - length_penalty
                 reward += substitution_reward
                 stats.reward_components['substitution_rewards'] += 1
+                stats.reward_components['total_substitution_length_penalty'] += length_penalty
             else:
                 # For polar verdicts we already checked substitution is None
                 # For polar verdicts, no substitution length penalty since substitution is None
