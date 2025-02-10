@@ -342,26 +342,11 @@ def main():
     dataset = load_dataset(config.dataset_name)
     
     def formatting_func(example):
-        # Only keep the required fields
-        required_fields = ['prompt', 'correct_answer']
-        filtered_example = {k: example[k] for k in required_fields if k in example}
-        
-        # First apply the solver prompt, then wrap in INST tags
-        solver_prompt = (
-            "Here is a mathematical problem:\n\n"
-            f"{example['problem']}\n\n"
-            "Could you help me solve this from start to finish? First, let's analyze the problem, "
-            "then walk through the solution step-by-step using LaTeX notation. "
-            "Don't forget to put the final answer in a box using \\boxed{}"
-        )
-        filtered_example["prompt"] = f"[INST]{solver_prompt}[/INST]"
-        filtered_example['answer'] = example['answer']
-        # Ensure all required fields are present
-        missing_fields = [f for f in required_fields if f not in filtered_example]
-        if missing_fields:
-            raise ValueError(f"Missing required fields: {missing_fields}")
-            
-        return filtered_example
+        # Keep all original fields
+        formatted_example = {**example}
+        # Only modify the prompt field by wrapping in INST tags
+        formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
+        return formatted_example
     # Load and format dataset
     formatted_dataset = dataset['train'].map(
         formatting_func,
