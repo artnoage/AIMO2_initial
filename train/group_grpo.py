@@ -11,6 +11,9 @@ PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 import sys
 import logging
 from typing import List, Dict, Any, Optional, Tuple
@@ -106,7 +109,8 @@ class SolutionSimilarityChecker:
     def __init__(self, model_name="BAAI/bge-small-en-v1.5"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        #self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
         self.model.to(self.device)
 
     @torch.no_grad()
@@ -285,7 +289,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611",
-        max_seq_length=6496,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -334,9 +338,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=3,
         gradient_accumulation_steps=1,
-        num_generations=5,
-        max_prompt_length=1348,
-        max_completion_length=5148,
+        num_generations=6,
+        max_prompt_length=2048,
+        max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
