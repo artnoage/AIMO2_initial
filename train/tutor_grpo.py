@@ -79,6 +79,8 @@ class ValidationStats:
             'step_penalties': 0,
             'total_analysis_length_penalty': 0,
             'total_substitution_length_penalty': 0,
+            'redundant_substitution_penalties': 0,
+            'wrong_boxed_answer_penalties': 0,
             'improvement_bonuses': {
                 '0.1': 0,  # 10-40% completions
                 '0.2': 0,  # 40-70% completions
@@ -427,27 +429,32 @@ def main():
                 stats.reward_components['base_rewards'] += 1
                 if substitution is not None:
                     reward -= config.redundant_substitution_penalty  # Apply penalty for having substitution in polar verdict
+                    stats.reward_components['redundant_substitution_penalties'] += 1
             elif verdict.startswith("Step "):
                 # First validate step number format before accessing any steps
                 try:
                     step_num = int(verdict.split()[1])
                 except (ValueError, IndexError):
+                    stats.update([0.0], completion)
                     rewards.append(0.0)
                     continue
                     
                 # Check step number is non-negative
                 if step_num < 0:
+                    stats.update([0.0], completion)
                     rewards.append(0.0)
                     continue
                     
                 # For step verdicts, substitution must exist
                 if substitution is None:
+                    stats.update([0.0], completion)
                     rewards.append(0.0)
                     continue
                     
                 # Now check if step number is valid for the solution
                 solution_steps = split_into_steps(model_solution)
                 if step_num >= len(solution_steps):
+                    stats.update([0.0], completion)
                     rewards.append(0.0)
                     continue
                     
@@ -503,6 +510,8 @@ def main():
                         else:
                             # Apply penalty for wrong boxed answer in substitution
                             reward -= 1.0  # Significant penalty for wrong answer
+                            stats.reward_components['wrong_boxed_answer_penalties'] += 1
+                            stats.update([reward], completion)
                             rewards.append(reward)
                             continue
                 
