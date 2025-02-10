@@ -18,6 +18,7 @@ if project_root not in sys.path:
 import re
 from typing import Tuple, Optional, List
 from langchain_core.messages import HumanMessage
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 class CompletionAgent:
     """Agent that completes partial solutions"""
