@@ -106,10 +106,11 @@ class GroupValidationStats:
         )
 
 class SolutionSimilarityChecker:
-    def __init__(self, model_name="BAAI/bge-small-en-v1.5"):
+    def __init__(self, model_name="BAAI/bge-medium-en-v1.5"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name, device_map='cpu')
-        self.device = torch.device("cpu")
+        self.model = AutoModel.from_pretrained(model_name)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
         torch.set_grad_enabled(False)  # Disable gradients globally for embeddings
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
@@ -120,7 +121,7 @@ class SolutionSimilarityChecker:
             max_length=512,  # Add explicit max length
             return_tensors="pt"
         )
-        # Keep everything on CPU
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
         outputs = self.model(**inputs)
         embeddings = outputs.last_hidden_state.mean(dim=1)
         return F.normalize(embeddings, p=2, dim=1)
