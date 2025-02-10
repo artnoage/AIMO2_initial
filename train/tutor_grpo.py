@@ -23,11 +23,9 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     completion_agent = CompletionAgent(port=config.completion_port)
     
     async def try_completion():
-        print("\nDEBUG: Starting completion attempt")
+        
         try:
-            print("\nDEBUG: Before generate call")
             completion = await completion_agent.generate(problem, partial_solution)
-            print("\nDEBUG: After generate call")
             complete_solution = partial_solution + completion
             
             model_answer = extract_answer_from_solution(complete_solution)
@@ -135,7 +133,6 @@ def main():
                 continue
                 
             is_correct = abs(model_numeric - correct_numeric) <= 1e-6
-            print("is_correct",is_correct)
             # Extract sections
             analysis, verdict, substitution = extract_sections(comp)
             
@@ -270,7 +267,6 @@ def main():
                         stats.full_reward_reasons['wrong_approach'] += 1
             
             elif is_step_verdict and not is_correct:
-                print("I am here")
                 # Split solution into proper steps
                 solution_steps = split_into_steps(sol)
                 # First check if the original step was actually wrong
@@ -278,7 +274,6 @@ def main():
                 if original_step == substitution:
                     rewards.append(reward)  # Only format reward if suggesting same step
                     continue
-                print("Am I here?")
                 is_valid, improvement_bonus = await _validate_step_identification(
                     prob,
                     solution_steps,
