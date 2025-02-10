@@ -38,8 +38,29 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
             
         selected_solution = random.choice(solutions)
         
-        # Create prompt combining problem and solution
-        new_entry['prompt'] = f"Here is a mathematical problem and a proposed solution:\n\nProblem:\n{entry['problem']}\n\nProposed Solution:\n{selected_solution}"
+        # Create prompt with tutor structure
+        new_entry['prompt'] = (
+            f"Here is a mathematical problem and a proposed solution:\n\n"
+            f"Problem:\n{entry['problem']}\n\n"
+            f"Proposed Solution:\n{selected_solution}\n\n"
+            "Please analyze this solution and:\n"
+            "1. Provide a brief analysis of the solution approach\n"
+            "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
+            "3. If there's a wrong step, suggest how to correct it\n\n"
+            "Format your response exactly as:\n\n"
+            "</Analysis>\n"
+            "Analyze the solution approach and reasoning here\n"
+            "<Analysis>\n\n"
+            "</Verdict>\n"
+            "Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)\n"
+            "Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)\n"
+            "Or: 'The answer is correct' (if no errors are found)\n"
+            "<Verdict>\n\n"
+            "</Substitution>\n"
+            "If a specific step is wrong, write 'Step X: ' followed by the correct version of that step\n"
+            "Otherwise leave this section empty\n"
+            "<Substitution>"
+        )
         
         processed.append(new_entry)
         
