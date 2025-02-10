@@ -206,9 +206,7 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def process_example(completions: List[str], prompts: List[str], 
-                            problem: List[str], model_solution: List[str], 
-                            correct_answer: List[str], **kwargs) -> List[float]:
+    async def process_example(completions: List[str], prompts: List[str], **kwargs) -> List[float]:
         # Group completions by prompt
         prompt_groups = {}
         for i, (comp, prom) in enumerate(zip(completions, prompts)):
@@ -221,8 +219,9 @@ def main():
         all_rewards = [0.0] * len(completions)
         
         for group in prompt_groups.values():
-            group_completions = group['completions']
-            correct_answer = group['answer']
+            group_completions = group['completions'] 
+            # Use the answer from kwargs since we're not getting it directly anymore
+            correct_answer = kwargs.get('correct_answer', [''])[0]
             
             # Get correctness for each completion
             correctness_results, correct_stats = process_group_completions(
