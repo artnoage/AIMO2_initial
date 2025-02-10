@@ -77,9 +77,14 @@ class ValidationStats:
             'substitution_rewards': 0,
             'step_bonuses': 0,
             'step_penalties': 0,
-            'full_rewards': 0,
             'total_analysis_length_penalty': 0,
             'total_substitution_length_penalty': 0
+        }
+        self.full_reward_reasons = {
+            'correct_answer': 0,
+            'wrong_approach': 0,
+            'step_correction': 0,
+            'final_step_correct': 0
         }
         self.start_time = datetime.now()
     
@@ -466,6 +471,7 @@ def main():
                                 )
                                 if successful == 0:  # No valid completions possible
                                     rewards.append(config.full_reward)
+                                    stats.full_reward_reasons['final_step_correct'] += 1
                                     continue
                         else:
                             # Apply penalty for wrong boxed answer in substitution
@@ -493,6 +499,7 @@ def main():
             try:
                 if verdict == "The answer is correct" and is_correct:
                     reward = config.full_reward
+                    stats.full_reward_reasons['correct_answer'] += 1
                     
                 elif verdict == "The whole approach is wrong" and not is_correct:
                     # First verify that analysis exists
@@ -505,10 +512,17 @@ def main():
                         # Also verify that analysis suggests a different approach
                         if not any(step in analysis.lower() for step in model_solution.lower().split('\n')):
                             reward = config.full_reward
+                            stats.full_reward_reasons['wrong_approach'] += 1
                 
                 elif is_step_verdict and not is_correct:
                     # Split solution into proper steps
                     solution_steps = split_into_steps(model_solution)
+                    # First check if the original step was actually wrong
+                    original_step = solution_steps[step_num]
+                    if original_step == substitution:
+                        rewards.append(reward)  # Only format reward if suggesting same step
+                        continue
+                        
                     if await _validate_step_identification(
                         problem, 
                         solution_steps,
@@ -517,6 +531,7 @@ def main():
                         correct_answer
                     ):
                         reward = config.full_reward
+                        stats.full_reward_reasons['step_correction'] += 1
                 
             except Exception:
                 pass  # Keep format reward on validation error
