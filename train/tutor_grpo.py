@@ -7,6 +7,9 @@ PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
 import sys
+import aiohttp
+import asyncio
+from typing import Any
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
@@ -14,6 +17,40 @@ if project_root not in sys.path:
 
 import re
 from typing import Tuple, Optional, List
+from langchain_core.messages import HumanMessage
+
+class CompletionAgent:
+    """Agent that completes partial solutions"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> str:
+        """Complete a partial solution"""
+        prompt = [
+            HumanMessage(content=(
+                "Here is a mathematical problem:\n\n"
+                f"{problem}\n\n"
+                "We've started solving it and got this far:\n\n"
+                f"{partial_solution}\n\n"
+                "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return response
+
+async def get_model_response(model, prompt, max_tokens=None) -> str:
+    """Get response from model with retry logic"""
+    try:
+        if max_tokens==None:
+            response = await model.ainvoke(prompt)
+        else:
+            response = await model.ainvoke(prompt, max_tokens=max_tokens)
+        return response.content
+    except Exception as e:
+        # Add small delay before retry to prevent overwhelming API
+        await asyncio.sleep(0.1)
+        raise
 
 model_type = "tutor"
 model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
@@ -30,6 +67,62 @@ if model_type not in dataset_name:
     print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
     print("!"*80 + "\n")
 
+class CustomChat:
+    """Chat model that makes requests using OpenAI chat format"""
+    
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000/v1",
+        model: str = "default",
+        temperature: float = 0,
+        api_key: str = "EMPTY"
+    ):
+        self.base_url = base_url
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+
+    async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
+        """Async call to chat completion endpoint"""
+        max_tokens = kwargs.get("max_tokens", None)
+        
+        # Convert prompt to messages format
+        if hasattr(prompt, 'content'):  # LangChain message object
+            messages = [{"role": "user", "content": prompt.content}]
+        elif isinstance(prompt, list):  # List of messages
+            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
+        else:  # String or other
+            messages = [{"role": "user", "content": str(prompt)}]
+            
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    f"{self.base_url}/chat/completions",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError(f"Error from API: {await response.text()}")
+                    
+                    result = await response.json()
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    })()
+            except Exception as e:
+                print(f"Exception in CustomChat.ainvoke: {str(e)}")
+                raise
+
 
 def extract_sections(response: str) -> tuple[str, str, str]:
     """Extract the Analysis, Verdict and Substitution sections from the response"""
@@ -45,9 +138,49 @@ def extract_sections(response: str) -> tuple[str, str, str]:
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 5) -> Tuple[int, int]:
     """Try completions until finding a successful one or reaching max attempts"""
-    # TODO: Implement completion agent call
-    # For now just return no successes
-    return 0, num_attempts
+    # Initialize completion agent with local model
+    completion_model = CustomChat(
+        model="default",
+        temperature=0,
+        api_key="EMPTY",
+        base_url="http://localhost:8001/v1"
+    )
+    completion_agent = CompletionAgent(completion_model)
+    
+    successful = 0
+    total = 0
+    
+    for _ in range(num_attempts):
+        try:
+            # Generate completion
+            completion = await completion_agent.generate(problem, partial_solution)
+            complete_solution = partial_solution + completion
+            
+            # Extract and validate answer
+            model_answer = extract_answer_from_solution(complete_solution)
+            if model_answer is None:
+                total += 1
+                continue
+                
+            numeric_answer, _ = extract_numeric_answer(model_answer)
+            correct_numeric, _ = extract_numeric_answer(correct_answer)
+            
+            if numeric_answer is None or correct_numeric is None:
+                total += 1
+                continue
+                
+            # Compare answers
+            if abs(numeric_answer - correct_numeric) <= 1e-6:
+                successful = 1  # We only need one success
+                total += 1
+                break
+                
+            total += 1
+            
+        except Exception as e:
+            total += 1
+            
+    return successful, total
 
 async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct_answer: str) -> bool:
     """Validate that the analysis section alone can lead to correct completions"""
