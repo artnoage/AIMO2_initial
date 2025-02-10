@@ -228,14 +228,20 @@ def main():
             original_step = solution_steps[step_num]
             if original_step == substitution:
                 return reward
-            logger.debug(f"Validating step {step_num} correction...")
-            logger.debug(f"Original step: {original_step}")
-            logger.debug(f"Proposed substitution: {substitution}")
+            logger.info(f"\nValidating step {step_num} correction...")
+            logger.info(f"Original step:\n{original_step}")
+            logger.info(f"Proposed substitution:\n{substitution}")
             
             is_valid, improvement_bonus = await _validate_step_identification(
                 prob, solution_steps, step_num, substitution, ans
             )
-            logger.debug(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
+            logger.info(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
+            
+            # Print the completion validation results
+            wrong_partial = "".join(steps[:step_num])
+            corrected_partial = "".join(steps[:step_num-1]) + substitution
+            logger.info(f"\nPartial solution up to wrong step:\n{wrong_partial}")
+            logger.info(f"\nCorrected partial solution:\n{corrected_partial}")
             
             if is_valid:
                 reward = config.full_reward + improvement_bonus
