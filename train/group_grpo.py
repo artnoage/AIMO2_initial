@@ -208,17 +208,22 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    def process_example(completions: List[str], prompts: List[str], **kwargs) -> List[float]:
-        # Get correct answers from kwargs
-        correct_answers = kwargs.get('correct_answer', [''] * len(completions))
-        
-        # Group completions by prompt
-        prompt_groups = {}
-        for i, (comp, prom) in enumerate(zip(completions, prompts)):
-            if prom not in prompt_groups:
-                prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answers[i]}
-            prompt_groups[prom]['completions'].append(comp)
-            prompt_groups[prom]['indices'].append(i)
+    class RewardFunction:
+        def __init__(self, similarity_checker, stats):
+            self.similarity_checker = similarity_checker
+            self.stats = stats
+            
+        def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
+            # Get correct answers from kwargs
+            correct_answers = kwargs.get('correct_answer', [''] * len(completions))
+            
+            # Group completions by prompt
+            prompt_groups = {}
+            for i, (comp, prom) in enumerate(zip(completions, prompts)):
+                if prom not in prompt_groups:
+                    prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answers[i]}
+                prompt_groups[prom]['completions'].append(comp)
+                prompt_groups[prom]['indices'].append(i)
         
         # Process each group separately
         all_rewards = [0.0] * len(completions)
@@ -357,11 +362,12 @@ def main():
         output_dir=output_dir,
     )
     
-    # Initialize trainer
+    # Initialize trainer with reward function class
+    reward_func = RewardFunction(similarity_checker, stats)
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[process_example],
+        reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
         callbacks=[LoggingCallback()]
