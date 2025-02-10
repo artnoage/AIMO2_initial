@@ -262,10 +262,12 @@ def main():
                     rewards.append(reward)  # Only format reward
                     continue
                     
-                # Then verify that analysis suggests a different approach
-                if not any(step in analysis.lower() for step in sol.lower().split('\n')):
-                    reward = config.full_reward
-                    stats.full_reward_reasons['wrong_approach'] += 1
+                # Then verify that the approach is truly wrong and no valid completions exist
+                if await _validate_whole_approach_is_wrong(prob, sol, ans):
+                    # Also verify that analysis suggests a different approach
+                    if not any(step in analysis.lower() for step in sol.lower().split('\n')):
+                        reward = config.full_reward
+                        stats.full_reward_reasons['wrong_approach'] += 1
             
             elif is_step_verdict and not is_correct:
                 print("I am here")
@@ -277,7 +279,13 @@ def main():
                     rewards.append(reward)  # Only format reward if suggesting same step
                     continue
                 print("Am I here?")
-                is_valid, improvement_bonus = True, 0.0  # Skip validation for now
+                is_valid, improvement_bonus = await _validate_step_identification(
+                    prob,
+                    solution_steps,
+                    step_num,
+                    substitution,
+                    ans
+                )
                 if is_valid:
                     reward = config.full_reward + improvement_bonus
                     stats.full_reward_reasons['step_correction'] += 1
