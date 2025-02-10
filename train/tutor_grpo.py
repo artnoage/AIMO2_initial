@@ -99,7 +99,7 @@ async def _validate_step_identification(
             
     # Run both validations in parallel
     wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
-    corrected_partial = "".join(steps[:step_num+1]) + substitution  # Include all steps up to and including wrong one
+    corrected_partial = "".join(steps[:step_num]) + substitution  # Replace the wrong step with substitution
     
     logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
     logger.info("-"*80)
