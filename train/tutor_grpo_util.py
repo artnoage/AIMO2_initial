@@ -120,10 +120,13 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
         return None, "Empty answer after cleaning" if debug else (None, None)
     try:
         with time_limit(10):  # 10 second timeout
-            # Parse LaTeX to sympy-compatible format
-            latex_expr = latex2sympy(clean_answer)
-            # Convert to sympy expression and evaluate
-            expr = sympy.sympify(latex_expr)
+            try:
+                # Parse LaTeX to sympy-compatible format
+                latex_expr = latex2sympy(clean_answer)
+                # Convert to sympy expression and evaluate
+                expr = sympy.sympify(latex_expr)
+            except (AttributeError, TypeError, ValueError) as e:
+                return (None, f"LaTeX parsing error: {str(e)} on input: {clean_answer}") if debug else (None, None)
             # Handle both single values and lists/matrices
             if hasattr(expr, 'evalf'):
                 result = float(expr.evalf())
