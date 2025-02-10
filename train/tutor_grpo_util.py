@@ -260,6 +260,13 @@ class ValidationStats:
             if verdict is None:
                 self.section_stats['missing_verdict'] += 1
             elif verdict.startswith("Step "):
+                try:
+                    step_num = int(verdict.split()[1])
+                    if step_num < 0:
+                        self.section_stats['invalid_step_number'] += 1
+                except (ValueError, IndexError):
+                    self.section_stats['invalid_step_number'] += 1
+                
                 if substitution is None:
                     self.section_stats['step_verdict_without_substitution'] += 1
                 elif split_into_steps(substitution):
@@ -268,6 +275,9 @@ class ValidationStats:
             elif verdict in ["The answer is correct", "The whole approach is wrong"]:
                 if substitution is not None:
                     self.section_stats['polar_verdict_with_substitution'] += 1
+            
+            if substitution is None and verdict and verdict.startswith("Step "):
+                self.section_stats['missing_substitution'] += 1
     
     def get_summary(self) -> str:
         total_samples = sum(self.reward_distribution.values())
