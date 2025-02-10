@@ -49,6 +49,9 @@ def extract_verdicts(data: List[Dict], correct_ratio: float = 0.25,
             if verdict_match:
                 verdict = verdict_match.group(1).strip()
                 
+                # Remove any extra whitespace and quotes
+                verdict = verdict.strip('"').strip()
+                
                 if verdict == "The answer is correct":
                     correct_entries.append(entry)
                 elif verdict.startswith("Step "):
@@ -99,14 +102,20 @@ def main():
     save_json(filtered_entries, args.output_file)
     
     # Count entries by category
-    category_counts = {
-        "correct_answers": len([e for e in filtered_entries 
-            if e['messages'][1].get('content', '').find('"The answer is correct"') != -1]),
-        "wrong_steps": len([e for e in filtered_entries 
-            if e['messages'][1].get('content', '').find('Step ') != -1]),
-        "wrong_approaches": len([e for e in filtered_entries 
-            if e['messages'][1].get('content', '').find('"The whole approach is wrong"') != -1])
-    }
+    category_counts = {"correct_answers": 0, "wrong_steps": 0, "wrong_approaches": 0}
+    
+    for entry in filtered_entries:
+        response = entry['messages'][1].get('content', '')
+        verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
+        if verdict_match:
+            verdict = verdict_match.group(1).strip().strip('"').strip()
+            
+            if verdict == "The answer is correct":
+                category_counts["correct_answers"] += 1
+            elif verdict.startswith("Step "):
+                category_counts["wrong_steps"] += 1
+            elif verdict == "The whole approach is wrong":
+                category_counts["wrong_approaches"] += 1
     
     # Print results
     print(f"\nExtracted entries by category:")
