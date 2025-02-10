@@ -252,6 +252,11 @@ def main():
                     if step_num < 0:
                         rewards.append(0.0)
                         continue
+                    # Check if step number is valid for the solution
+                    solution_steps = split_into_steps(model_solution)
+                    if step_num >= len(solution_steps):
+                        rewards.append(0.0)
+                        continue
                     is_step_verdict = True
                 except (ValueError, IndexError):
                     rewards.append(0.0)
@@ -277,6 +282,15 @@ def main():
                     reward -= 0.02  # Penalty for multiple steps
                 else:
                     reward += 0.02  # Bonus for single step
+                
+                # If substitution contains a boxed answer, verify it matches
+                boxed_answer = extract_answer_from_solution(substitution)
+                if boxed_answer:
+                    numeric_value, _ = extract_numeric_answer(boxed_answer)
+                    if numeric_value is not None and correct_numeric is not None:
+                        if abs(numeric_value - correct_numeric) > 1e-6:
+                            rewards.append(0.0)
+                            continue
                     
                 reward += 0.05
             else:
