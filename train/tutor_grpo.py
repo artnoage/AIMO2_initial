@@ -1,3 +1,6 @@
+# Configuration
+COMPLETION_PORT = 8001
+
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
@@ -128,7 +131,7 @@ def extract_sections(response: str) -> tuple[str, str, str]:
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 5) -> Tuple[int, int]:
     """Try completions until finding a successful one or reaching max attempts"""
     # Initialize completion agent
-    completion_agent = CompletionAgent(port=8001)
+    completion_agent = CompletionAgent(port=COMPLETION_PORT)
     
     successful = 0
     total = 0
