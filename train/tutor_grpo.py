@@ -1,0 +1,160 @@
+import os
+from datasets import load_dataset, load_from_disk, concatenate_datasets
+from datetime import datetime
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
+from unsloth.chat_templates import get_chat_template
+from trl import GRPOConfig, GRPOTrainer
+import sys
+import os
+import re
+# Add the project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from utils.benchmark_utils import validate_analysis, validate_solution, validate_step
+
+model_type = "tutor"
+model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
+dataset_name = "Metaskepsis/tutor_prompts"
+
+# Check if model_type is in paths
+if model_type not in model_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in model_name path!")
+    print("!"*80 + "\n")
+
+if model_type not in dataset_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
+    print("!"*80 + "\n")
+
+def extract_sections(response: str) -> tuple[str, str, str]:
+    """Extract the Analysis, Verdict and Substitution sections from the response"""
+    analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
+    verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
+    substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
+    
+    analysis = analysis_match.group(1).strip() if analysis_match else None
+    verdict = verdict_match.group(1).strip() if verdict_match else None
+    substitution = substitution_match.group(1).strip() if substitution_match else None
+    
+    return analysis, verdict, substitution
+
+def main():
+    def structure_reward_func(completions, **kwargs) -> list[float]:
+        """Reward function that checks if the response has valid structure"""
+        rewards = []
+        for completion in completions:
+            # Extract sections
+            analysis, verdict, substitution = extract_sections(completion)
+            
+            # Validate each section
+            analysis_valid, _ = validate_analysis(analysis) if analysis else (False, "Missing analysis")
+            verdict_valid, _ = validate_step(verdict) if verdict else (False, "Missing verdict")
+            substitution_valid = True  # Substitution can be empty
+            if substitution:
+                substitution_valid, _ = validate_solution(substitution)
+            
+            # Award points if all sections are valid
+            reward = 0.2 if (analysis_valid and verdict_valid and substitution_valid) else 0.0
+            rewards.append(reward)
+            
+        return rewards
+
+    def tutor_validation_reward_func(completions, **kwargs) -> list[float]:
+        """Reward function that validates tutor responses"""
+        # TODO: Implement completion agent validation
+        # For now return 0 rewards
+        return [0.0 for _ in completions]
+
+    # Load the model
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=model_name,
+        max_seq_length=6496,
+        fast_inference=True,
+        load_in_4bit=False,
+        use_gradient_checkpointing="unsloth",
+        max_lora_rank=64)
+
+    # Configure LoRA
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=64,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=64,
+        lora_dropout=0,
+        bias="none",
+        use_gradient_checkpointing="unsloth",
+        random_state=3407,
+        use_rslora=False,
+        loftq_config=None)
+
+    # Setup chat template
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="mistral",
+        map_eos_token=True)
+
+    # Load dataset
+    dataset = load_dataset(dataset_name)
+
+    # Create timestamped output directory with model_type
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"train_results/{model_type}/{timestamp}"
+
+    # GRPO specific training arguments
+    training_args = GRPOConfig(
+        use_vllm=True,
+        torch_empty_cache_steps=10,
+        learning_rate=3e-6,
+        adam_beta1=0.9,
+        adam_beta2=0.99,
+        weight_decay=0.1,
+        warmup_ratio=0.05,
+        lr_scheduler_type="cosine",
+        optim="paged_adamw_8bit",
+        logging_steps=1,
+        bf16=is_bfloat16_supported(),
+        fp16=not is_bfloat16_supported(),
+        per_device_train_batch_size=3,
+        gradient_accumulation_steps=1,
+        num_generations=5,
+        max_prompt_length=1348,
+        max_completion_length=5148,
+        num_train_epochs=1,
+        save_steps=250,
+        max_grad_norm=0.1,
+        report_to="none",
+        output_dir=output_dir,
+    )
+
+    # Initialize GRPO trainer with reward functions
+    trainer = GRPOTrainer(
+        model=model,
+        processing_class=tokenizer,
+        reward_funcs=[
+            structure_reward_func,     # Check response structure
+            tutor_validation_reward_func  # Validate tutor response
+        ],
+        args=training_args,
+        train_dataset=dataset['train'],
+    )
+
+    # Train the model
+    trainer.train()
+
+    # Save both merged model and LoRA weights
+    models_dir = "models"
+    os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
+    model_output_dir = os.path.join(models_dir, model_type, timestamp)
+    
+    # Save the merged model
+    model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+    print(f"Merged model saved to {model_output_dir}")
+
+if __name__ == "__main__":
+    main()
