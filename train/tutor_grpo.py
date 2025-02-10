@@ -148,10 +148,29 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     successful = sum(1 for r in results if r)
     return successful, len(results)
 
+def split_into_steps(solution: str) -> List[str]:
+    """Split solution into steps by newlines and numbering"""
+    steps = []
+    current_step = []
+    
+    for line in solution.split('\n'):
+        if line.strip():  # Skip empty lines
+            current_step.append(line)
+            # If line starts with a number and period, it's a new step
+            if re.match(r'^\d+\.', line.strip()):
+                if current_step[:-1]:  # If we have previous lines
+                    steps.append('\n'.join(current_step[:-1]))
+                current_step = [line]
+    
+    if current_step:  # Add the last step
+        steps.append('\n'.join(current_step))
+        
+    return steps
+
 async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct_answer: str) -> bool:
     """Validate that the analysis section alone can lead to correct completions"""
     # Split solution into steps and get the analysis part
-    steps = solution.split('\n')
+    steps = split_into_steps(solution)
     if not steps:
         return False
         
@@ -166,7 +185,7 @@ async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct
         COMPLETION_ATTEMPTS
     )
     
-    return successful == 0 and total == 5
+    return successful == 0 and total == COMPLETION_ATTEMPTS
 
 async def _validate_step_identification(
     problem: str,
@@ -277,9 +296,11 @@ def main():
                         reward = 2.0  # Full reward
                 
                 elif is_step_verdict and not is_correct:
+                    # Split solution into proper steps
+                    solution_steps = split_into_steps(model_solution)
                     if await _validate_step_identification(
                         problem, 
-                        model_solution.split('\n'), 
+                        solution_steps,
                         step_num,
                         substitution,
                         correct_answer
