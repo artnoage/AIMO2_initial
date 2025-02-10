@@ -107,19 +107,41 @@ def main():
             # Extract sections
             analysis, verdict, substitution = extract_sections(completion)
             
-            # First check if all sections exist (can be empty but not None)
-            if analysis is None or verdict is None or substitution is None:
+            # Verdict must exist
+            if verdict is None:
                 rewards.append(0.0)
                 continue
                 
-            # Award 0.1 points for having all sections
-            reward = 0.1
+            reward = 0.0
             
             # Check if verdict is in valid format
             valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
-            if verdict in valid_verdicts or verdict.startswith("Step "):
-                reward += 0.1
-                
+            is_step_verdict = verdict.startswith("Step ")
+            if not (verdict in valid_verdicts or is_step_verdict):
+                rewards.append(0.0)
+                continue
+            
+            # Give points for valid verdict format
+            reward += 0.1
+            
+            # Give points for analysis if present
+            if analysis is not None:
+                reward += 0.05
+            
+            # Check substitution based on verdict type
+            if is_step_verdict:
+                # For step verdicts, substitution must exist
+                if substitution is None:
+                    rewards.append(0.0)
+                    continue
+                reward += 0.05
+            else:
+                # For other verdicts, substitution must be None
+                if substitution is not None:
+                    rewards.append(0.0)
+                    continue
+                reward += 0.05
+            
             rewards.append(reward)
             
         return rewards
