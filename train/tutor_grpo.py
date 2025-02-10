@@ -40,12 +40,12 @@ class TutorConfig:
     completion_attempts: int = 10
     
     # Reward settings
-    structure_base_reward: float = 0.1
-    analysis_reward: float = 0.1
-    substitution_reward: float = 0.1
-    single_step_bonus: float = 0.1
-    multiple_step_penalty: float = 0.2
-    full_reward: float = 3.0
+    structure_base_reward: float = 0.2
+    analysis_reward: float = 0.2
+    substitution_reward: float = 0.2
+    single_step_bonus: float = 0.2
+    multiple_step_penalty: float = 0.4
+    full_reward: float = 5.0
     
     # Length penalty settings
     analysis_length_cost: float = 0.0001  # per character
@@ -452,10 +452,16 @@ def main():
                 if boxed_answer:
                     numeric_value, _ = extract_numeric_answer(boxed_answer)
                     if numeric_value is not None and correct_numeric is not None:
-                        if abs(numeric_value - correct_numeric) > 1e-6:
+                        if abs(numeric_value - correct_numeric) <= 1e-6:
+                            # Only give full reward if this is the last step
+                            solution_steps = split_into_steps(model_solution)
+                            if step_num == len(solution_steps) - 1:
+                                rewards.append(config.full_reward)
+                                continue
+                        else:
                             rewards.append(0.0)
                             continue
-                    
+                
                 # Add substitution reward with length penalty
                 substitution_reward = config.substitution_reward - (len(substitution) * config.substitution_length_cost)
                 reward += substitution_reward
