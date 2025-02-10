@@ -59,17 +59,26 @@ class ValidationStats:
     def __init__(self):
         self.total_batches = 0
         self.total_rewards = 0
-        self.reward_distribution = {
-            0.0: 0,  # Format failures
-            0.2: 0,  # Structure only correct
-            2.0: 0   # Fully correct
-        }
+        self.reward_distribution = {}  # Dynamic distribution based on actual rewards
         # Track section-level stats
         self.section_stats = {
             'missing_analysis': 0,
             'missing_verdict': 0,
             'missing_substitution': 0,
-            'invalid_step_number': 0
+            'invalid_step_number': 0,
+            'polar_verdict_with_substitution': 0,
+            'step_verdict_without_substitution': 0,
+            'multiple_steps_in_substitution': 0
+        }
+        self.reward_components = {
+            'base_rewards': 0,
+            'analysis_rewards': 0,
+            'substitution_rewards': 0,
+            'step_bonuses': 0,
+            'step_penalties': 0,
+            'full_rewards': 0,
+            'total_analysis_length_penalty': 0,
+            'total_substitution_length_penalty': 0
         }
         self.start_time = datetime.now()
     
@@ -77,17 +86,32 @@ class ValidationStats:
         self.total_batches += 1
         for r in rewards:
             self.total_rewards += r
-            self.reward_distribution[r] = self.reward_distribution.get(r, 0) + 1
+            # Round to 6 decimal places for better grouping
+            r_rounded = round(r, 6)
+            self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
             
-        # Track section presence if completion provided
+        # Track section presence and structure if completion provided
         if completion:
             analysis, verdict, substitution = extract_sections(completion)
+            
+            # Track basic section presence
             if analysis is None:
                 self.section_stats['missing_analysis'] += 1
+            elif analysis:
+                self.reward_components['total_analysis_length_penalty'] += len(analysis) * config.analysis_length_cost
+                
             if verdict is None:
                 self.section_stats['missing_verdict'] += 1
-            if substitution is None:
-                self.section_stats['missing_substitution'] += 1
+            elif verdict.startswith("Step "):
+                if substitution is None:
+                    self.section_stats['step_verdict_without_substitution'] += 1
+                elif split_into_steps(substitution):
+                    if len(split_into_steps(substitution)) > 1:
+                        self.section_stats['multiple_steps_in_substitution'] += 1
+                    self.reward_components['total_substitution_length_penalty'] += len(substitution) * config.substitution_length_cost
+            elif verdict in ["The answer is correct", "The whole approach is wrong"]:
+                if substitution is not None:
+                    self.section_stats['polar_verdict_with_substitution'] += 1
     
     def get_summary(self) -> str:
         total_samples = sum(self.reward_distribution.values())
@@ -96,15 +120,27 @@ class ValidationStats:
             
         elapsed = datetime.now() - self.start_time
         
+        # Sort rewards for better readability
+        sorted_rewards = sorted(self.reward_distribution.items())
+        reward_dist_str = "\n".join(
+            f"  {reward:.6f}: {count} samples" 
+            for reward, count in sorted_rewards
+        )
+        
         basic_stats = (
             f"Training time: {elapsed}\n"
             f"Processed {self.total_batches} batches, "
-            f"Average reward: {self.total_rewards/total_samples:.3f}\n"
-            f"Distribution: "
-            f"Format fails: {self.reward_distribution[0.0]}, "
-            f"Structure only: {self.reward_distribution[0.2]}, "
-            f"Fully correct: {self.reward_distribution[2.0]}\n"
-            f"Section Stats: {', '.join(f'{k}: {v}' for k, v in self.section_stats.items())}"
+            f"Average reward: {self.total_rewards/total_samples:.6f}\n"
+            f"\nReward Distribution:\n{reward_dist_str}\n"
+            f"\nSection Issues:\n"
+            f"  Missing analysis: {self.section_stats['missing_analysis']}\n"
+            f"  Missing verdict: {self.section_stats['missing_verdict']}\n"
+            f"  Step verdict without substitution: {self.section_stats['step_verdict_without_substitution']}\n"
+            f"  Polar verdict with substitution: {self.section_stats['polar_verdict_with_substitution']}\n"
+            f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
+            f"\nLength Penalties:\n"
+            f"  Total analysis length penalty: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
+            f"  Total substitution length penalty: {self.reward_components['total_substitution_length_penalty']:.6f}"
         )
         return basic_stats
 
