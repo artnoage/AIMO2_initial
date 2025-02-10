@@ -9,6 +9,37 @@ from typing import Any, Union, Tuple, Dict, Optional, List
 from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
+def extract_sections(response: str) -> tuple[str, str, str]:
+    """Extract the Analysis, Verdict and Substitution sections from the response"""
+    analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
+    verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
+    substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
+    
+    analysis = analysis_match.group(1).strip() if analysis_match else None
+    verdict = verdict_match.group(1).strip() if verdict_match else None
+    substitution = substitution_match.group(1).strip() if substitution_match else None
+    
+    return analysis, verdict, substitution
+
+def split_into_steps(solution: str) -> List[str]:
+    """Split solution into steps by newlines and numbering"""
+    steps = []
+    current_step = []
+    
+    for line in solution.split('\n'):
+        if line.strip():  # Skip empty lines
+            current_step.append(line)
+            # If line starts with a number and period, it's a new step
+            if re.match(r'^\d+\.', line.strip()):
+                if current_step[:-1]:  # If we have previous lines
+                    steps.append('\n'.join(current_step[:-1]))
+                current_step = [line]
+    
+    if current_step:  # Add the last step
+        steps.append('\n'.join(current_step))
+        
+    return steps
+
 @dataclass
 class TutorConfig:
     """Configuration for tutor training and validation"""

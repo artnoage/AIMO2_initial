@@ -18,7 +18,7 @@ from transformers import TrainerCallback
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 from .tutor_grpo_util import (
     TutorConfig, ValidationStats, CompletionAgent, setup_training_logger,
-    config
+    config, extract_sections, split_into_steps
 )
 
 PatchFastRL("GRPO", FastLanguageModel)
@@ -268,18 +268,6 @@ class CompletionAgent:
         return (prompt[0].content, response) if return_prompt else response
 
 
-def extract_sections(response: str) -> tuple[str, str, str]:
-    """Extract the Analysis, Verdict and Substitution sections from the response"""
-    analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
-    verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
-    substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
-    
-    analysis = analysis_match.group(1).strip() if analysis_match else None
-    verdict = verdict_match.group(1).strip() if verdict_match else None
-    substitution = substitution_match.group(1).strip() if substitution_match else None
-    
-    return analysis, verdict, substitution
-
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
     """Try completions in parallel until finding a successful one.
     Note: Completions are handled by a separate GPU service, so no memory management needed here."""
@@ -309,25 +297,6 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     results = await asyncio.gather(*[try_completion() for _ in range(num_attempts)])
     successful = sum(1 for r in results if r)
     return successful, len(results)
-
-def split_into_steps(solution: str) -> List[str]:
-    """Split solution into steps by newlines and numbering"""
-    steps = []
-    current_step = []
-    
-    for line in solution.split('\n'):
-        if line.strip():  # Skip empty lines
-            current_step.append(line)
-            # If line starts with a number and period, it's a new step
-            if re.match(r'^\d+\.', line.strip()):
-                if current_step[:-1]:  # If we have previous lines
-                    steps.append('\n'.join(current_step[:-1]))
-                current_step = [line]
-    
-    if current_step:  # Add the last step
-        steps.append('\n'.join(current_step))
-        
-    return steps
 
 async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct_answer: str) -> bool:
     """Validate that the analysis section alone can lead to correct completions"""
