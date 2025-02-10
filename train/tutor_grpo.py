@@ -228,29 +228,37 @@ def main():
             original_step = solution_steps[step_num]
             if original_step == substitution:
                 return reward
-            logger.info(f"\nValidating step {step_num} correction...")
-            logger.info(f"Original step:\n{original_step}")
+            logger.info("\n" + "="*80)
+            logger.info(f"Step {step_num} Validation")
+            logger.info("="*80)
+            logger.info(f"Original step being replaced:\n{original_step}")
+            logger.info("-"*80)
             logger.info(f"Proposed substitution:\n{substitution}")
+            logger.info("-"*80)
             
             is_valid, improvement_bonus = await _validate_step_identification(
                 prob, solution_steps, step_num, substitution, ans
             )
-            logger.info(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
             
             # Print the completion validation results
-            wrong_partial = "".join(steps[:step_num])
-            corrected_partial = "".join(steps[:step_num-1]) + substitution
-            logger.info(f"\nPartial solution up to wrong step:\n{wrong_partial}")
-            logger.info(f"\nCorrected partial solution:\n{corrected_partial}")
+            wrong_partial = "".join(solution_steps[:step_num])
+            corrected_partial = "".join(solution_steps[:step_num-1]) + substitution
+            
+            logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
+            logger.info("-"*80)
+            logger.info(f"Corrected partial solution:\n{corrected_partial}")
+            logger.info("-"*80)
+            logger.info(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
+            logger.info("="*80 + "\n")
             
             if is_valid:
                 reward = config.full_reward + improvement_bonus
                 stats.full_reward_reasons['step_correction'] += 1
                 if improvement_bonus > 0:
-                    bonus_key = str(improvement_bonus)
-                    if bonus_key in stats.reward_components['improvement_bonuses']:
-                        stats.reward_components['improvement_bonuses'][bonus_key] += 1
-                        stats.reward_components['improvement_bonuses']['total'] += 1
+                    bonus_key = f"{improvement_bonus:.1f}"  # Convert to string with 1 decimal place
+                    stats.reward_components['improvement_bonuses'][bonus_key] = \
+                        stats.reward_components['improvement_bonuses'].get(bonus_key, 0) + 1
+                    stats.reward_components['improvement_bonuses']['total'] += 1
 
         stats.update([reward], comp)
         return reward
