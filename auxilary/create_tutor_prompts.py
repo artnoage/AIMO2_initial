@@ -1,7 +1,10 @@
 import json
 import random
+import re
+import sympy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from latex2sympy2 import latex2sympy
 
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON data from file"""
@@ -15,11 +18,69 @@ def save_json(data: List[Dict], file_path: str):
 
 def extract_numeric_answer(answer: str) -> Optional[float]:
     """Extract numeric value from a LaTeX answer string"""
+    if not answer:
+        return None
+        
+    # Check for logical operators that indicate multiple answers
+    if "\\text{or}" in answer or "\\text{and}" in answer:
+        return None
+        
+    # Clean the answer string
+    clean_answer = answer.strip()
+    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
+    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
+    clean_answer = clean_answer.replace('\\pm', '')
+    clean_answer = clean_answer.replace('\\ ', '')
+    clean_answer = clean_answer.replace('\\,', '')
+    clean_answer = clean_answer.replace('\\%', '')
+    clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
+    clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
+    
+    # Only split on = or \approx if there's a single term before it
+    def has_single_term(text: str) -> bool:
+        """Check if text has only a single term (no operators outside brackets)"""
+        bracket_level = 0
+        for char in text:
+            if char == '{':
+                bracket_level += 1
+            elif char == '}':
+                bracket_level -= 1
+            elif bracket_level == 0 and char in '+-*/^':
+                return False
+        return True
+
+    # Handle = and \approx separately
+    if '=' in clean_answer:
+        eq_pos = clean_answer.rfind('=')
+        before_eq = clean_answer[:eq_pos].strip()
+        if has_single_term(before_eq):
+            clean_answer = clean_answer[eq_pos + 1:].strip()
+    
+    if '\\approx' in clean_answer:
+        approx_pos = clean_answer.rfind('\\approx')
+        before_approx = clean_answer[:approx_pos].strip()
+        if has_single_term(before_approx):
+            clean_answer = clean_answer[approx_pos + 8:].strip()
+                
+    if not clean_answer:
+        return None
+        
     try:
-        # Remove LaTeX formatting and convert to float
-        clean_answer = answer.replace('\\boxed{', '').replace('}', '').strip()
-        return float(clean_answer)
-    except (ValueError, AttributeError):
+        # Parse LaTeX to sympy-compatible format
+        latex_expr = latex2sympy(clean_answer)
+        # Convert to sympy expression and evaluate
+        expr = sympy.sympify(latex_expr)
+        # Handle both single values and lists/matrices
+        if hasattr(expr, 'evalf'):
+            result = float(expr.evalf())
+        elif isinstance(expr, list) or isinstance(expr, tuple) or (
+            hasattr(expr, 'is_Matrix') and expr.is_Matrix
+        ):
+            return None
+        else:
+            result = float(expr)
+        return result
+    except (sympy.SympifyError, TypeError, ValueError) as e:
         return None
 
 def is_solution_correct(solution: str, correct_answer: str) -> bool:
