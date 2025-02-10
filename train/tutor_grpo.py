@@ -344,13 +344,13 @@ def main():
         map_eos_token=True)
 
     # Load dataset and format it
-    dataset =  load_from_disk(config.dataset_name)
+    dataset =  load_dataset(config.dataset_name)
     
     def formatting_func(example):
         # Wrap the prompt in INST tags while keeping all fields
         return {
             **example,  # Keep all original fields
-            "prompt": f"[INST]{example['prompt']}[/INST]"
+            "prompt": f"[INST]{example['problem']}[/INST]"
         }
 
     # Apply formatting to dataset
@@ -380,8 +380,8 @@ def main():
         per_device_train_batch_size = 3,
         gradient_accumulation_steps = 1, # Increase to 4 for smoother training
         num_generations =5, # Decrease if out of memory
-        max_prompt_length = 1348,
-        max_completion_length = 5148,
+        max_prompt_length = 3000,
+        max_completion_length = 1096,
         num_train_epochs = 1, # Set to 1 for a full training run
         save_steps = 250, 
         max_grad_norm = 0.1,
