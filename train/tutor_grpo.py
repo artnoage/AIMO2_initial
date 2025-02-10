@@ -259,7 +259,8 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     return analysis, verdict, substitution
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
-    """Try completions in parallel until finding a successful one"""
+    """Try completions in parallel until finding a successful one.
+    Note: Completions are handled by a separate GPU service, so no memory management needed here."""
     completion_agent = CompletionAgent(port=config.completion_port)
     
     async def try_completion():
@@ -453,11 +454,19 @@ def main():
                     numeric_value, _ = extract_numeric_answer(boxed_answer)
                     if numeric_value is not None and correct_numeric is not None:
                         if abs(numeric_value - correct_numeric) <= 1e-6:
-                            # Only give full reward if this is the last step
+                            # Only give full reward if this is the last possible step
                             solution_steps = split_into_steps(model_solution)
                             if step_num == len(solution_steps) - 1:
-                                rewards.append(config.full_reward)
-                                continue
+                                # Verify no valid completions exist from here
+                                successful, _ = await _validate_completions(
+                                    problem,
+                                    "".join(solution_steps[:step_num]) + substitution,
+                                    correct_answer,
+                                    config.completion_attempts
+                                )
+                                if successful == 0:  # No valid completions possible
+                                    rewards.append(config.full_reward)
+                                    continue
                         else:
                             rewards.append(0.0)
                             continue
