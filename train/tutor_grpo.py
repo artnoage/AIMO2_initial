@@ -112,9 +112,9 @@ def main():
     
     def simple_reward_func(completions, **kwargs) -> list[float]:
         """Simple reward function that checks for basic structure"""
-        rewards = []
-        for completion in completions:
-            print(completion)
+        async def check_completion(completion):
+            # Simulate some async work
+            await asyncio.sleep(0.1)
             reward = 0.0
             
             # Basic structure check
@@ -127,6 +127,13 @@ def main():
             if "Correction:" in completion:
                 reward += 0.4
                 
+            return reward
+
+        rewards = []
+        for completion in completions:
+            print(completion)
+            # Run the async function synchronously
+            reward = asyncio.run(check_completion(completion))
             rewards.append(reward)
         
         return rewards
