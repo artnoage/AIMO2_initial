@@ -2,17 +2,12 @@
 
 import os
 import sys
-import re
-import asyncio
-import aiohttp
-import logging
-from dataclasses import dataclass
+from typing import List, Tuple
 from datetime import datetime
-from typing import Any, List, Tuple, Union, Optional
 from datasets import load_dataset
-from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-from unsloth.chat_templates import get_chat_template
+from unsloth import (
+    FastLanguageModel, PatchFastRL, is_bfloat16_supported, get_chat_template
+)
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
@@ -26,11 +21,6 @@ PatchFastRL("GRPO", FastLanguageModel)
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-import re
-from typing import Optional, List
-from langchain_core.messages import HumanMessage
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:

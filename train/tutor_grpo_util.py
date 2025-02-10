@@ -5,7 +5,7 @@ import aiohttp
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, Tuple, Dict, Optional, List
+from typing import Any, List, Optional, Tuple, Union
 from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
