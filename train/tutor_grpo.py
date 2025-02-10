@@ -47,6 +47,10 @@ class TutorConfig:
     multiple_step_penalty: float = 0.02
     full_reward: float = 2.0
     
+    # Length penalty settings
+    analysis_length_cost: float = 0.0001  # per character
+    substitution_length_cost: float = 0.0005  # per character
+    
     # Validation settings
     numeric_tolerance: float = 1e-6
 
@@ -388,9 +392,10 @@ def main():
                 rewards.append(0.0)
                 continue
             
-            # Add points for analysis if present
+            # Add points for analysis if present, with length penalty
             if analysis is not None:
-                reward += config.analysis_reward
+                analysis_reward = config.analysis_reward - (len(analysis) * config.analysis_length_cost)
+                reward += max(0, analysis_reward)  # Ensure reward doesn't go negative
             
             # Check substitution based on verdict type
             if is_step_verdict:
@@ -415,9 +420,12 @@ def main():
                             rewards.append(0.0)
                             continue
                     
-                reward += config.substitution_reward
+                # Add substitution reward with length penalty
+                substitution_reward = config.substitution_reward - (len(substitution) * config.substitution_length_cost)
+                reward += max(0, substitution_reward)  # Ensure reward doesn't go negative
             else:
                 # For polar verdicts we already checked substitution is None
+                # For polar verdicts, no substitution length penalty since substitution is None
                 reward += config.substitution_reward
                 
             # If we get here, format is valid (reward = 0.2) - proceed with validation
