@@ -37,7 +37,7 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return response
 
 async def get_model_response(model, prompt, max_tokens=None) -> str:
