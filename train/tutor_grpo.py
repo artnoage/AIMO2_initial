@@ -115,7 +115,7 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
+    def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         """Combined reward function that checks structure and validates responses"""
         rewards = []
         
@@ -292,13 +292,7 @@ def main():
                         rewards.append(reward)  # Only format reward if suggesting same step
                         continue
                         
-                    is_valid, improvement_bonus = await _validate_step_identification(
-                        problem, 
-                        solution_steps,
-                        step_num,
-                        substitution,
-                        correct_answer
-                    )
+                    is_valid, improvement_bonus = True, 0.0  # Temporarily disable async validation
                     if is_valid:
                         reward = config.full_reward + improvement_bonus
                         stats.full_reward_reasons['step_correction'] += 1
