@@ -78,7 +78,12 @@ class ValidationStats:
             'step_bonuses': 0,
             'step_penalties': 0,
             'total_analysis_length_penalty': 0,
-            'total_substitution_length_penalty': 0
+            'total_substitution_length_penalty': 0,
+            'improvement_bonuses': {
+                '0.1': 0,  # 10-40% completions
+                '0.2': 0,  # 40-70% completions
+                '0.3': 0   # >70% completions
+            }
         }
         self.full_reward_reasons = {
             'correct_answer': 0,
@@ -146,7 +151,11 @@ class ValidationStats:
             f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
             f"\nLength Penalties:\n"
             f"  Total analysis length penalty: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
-            f"  Total substitution length penalty: {self.reward_components['total_substitution_length_penalty']:.6f}"
+            f"  Total substitution length penalty: {self.reward_components['total_substitution_length_penalty']:.6f}\n"
+            f"\nImprovement Bonuses:\n"
+            f"  10-40% completions (0.1): {self.reward_components['improvement_bonuses']['0.1']}\n"
+            f"  40-70% completions (0.2): {self.reward_components['improvement_bonuses']['0.2']}\n"
+            f"  >70% completions (0.3): {self.reward_components['improvement_bonuses']['0.3']}"
         )
         return basic_stats
 
@@ -546,6 +555,8 @@ def main():
                     if is_valid:
                         reward = config.full_reward + improvement_bonus
                         stats.full_reward_reasons['step_correction'] += 1
+                        if improvement_bonus > 0:
+                            stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
                 
             except Exception:
                 pass  # Keep format reward on validation error
