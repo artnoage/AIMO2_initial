@@ -115,205 +115,24 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
-        """Combined reward function that checks structure and validates responses"""
+    def simple_reward_func(completions, **kwargs) -> list[float]:
+        """Simple reward function that checks for basic structure"""
         rewards = []
         
-        # First verify if model solution is correct
-        model_answer = extract_answer_from_solution(model_solution)
-        if model_answer is None:
-            logger.warning(f"No boxed answer found in model solution: {model_solution[:100]}...")
-            return [0.0] * len(completions)
-            
-        model_numeric, _ = extract_numeric_answer(model_answer)
-        correct_numeric, _ = extract_numeric_answer(correct_answer)
-        
-        if model_numeric is None or correct_numeric is None:
-            logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
-            return [0.0] * len(completions)
-            
-        is_correct = abs(model_numeric - correct_numeric) <= 1e-6
-        
         for completion in completions:
-            # Extract sections
-            analysis, verdict, substitution = extract_sections(completion)
-            
-            # Verdict must exist
-            if verdict is None:
-                logger.debug(f"Missing verdict section in completion: {completion[:100]}...")
-                rewards.append(0.0)
-                continue
-                
-            # Check if verdict exists and is in polar categories (yes/no verdicts)
-            polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
-            is_step_verdict = False
             reward = 0.0
             
-            if verdict in polar_verdicts:
-                is_step_verdict = False
-                # For polar verdicts, substitution should be None
-                reward = config.structure_base_reward
-                stats.reward_components['base_rewards'] += 1
-                if substitution is not None:
-                    reward -= config.redundant_substitution_penalty  # Apply penalty for having substitution in polar verdict
-                    stats.reward_components['redundant_substitution_penalties'] += 1
-            elif verdict.startswith("Step "):
-                # First validate step number format before accessing any steps
-                try:
-                    step_num = int(verdict.split()[1])
-                except (ValueError, IndexError):
-                    stats.update([0.0], completion)
-                    rewards.append(0.0)
-                    continue
-                    
-                # Check step number is non-negative
-                if step_num < 0:
-                    stats.update([0.0], completion)
-                    rewards.append(0.0)
-                    continue
-                    
-                # For step verdicts, substitution must exist
-                if substitution is None:
-                    stats.update([0.0], completion)
-                    rewards.append(0.0)
-                    continue
-                    
-                # Now check if step number is valid for the solution
-                solution_steps = split_into_steps(model_solution)
-                if step_num >= len(solution_steps):
-                    stats.update([0.0], completion)
-                    rewards.append(0.0)
-                    continue
-                    
-                is_step_verdict = True
-                reward = config.structure_base_reward
-                stats.reward_components['base_rewards'] += 1
-            else:
-                rewards.append(0.0)
-                continue
-            
-            # Add points for analysis if present, with length penalty
-            if analysis is not None:
-                length_penalty = len(analysis) * config.analysis_length_cost
-                analysis_reward = config.analysis_reward - length_penalty
-                reward += analysis_reward
-                stats.reward_components['analysis_rewards'] += 1
-                stats.reward_components['total_analysis_length_penalty'] += length_penalty
-            
-            # Check substitution based on verdict type
-            if is_step_verdict:
-                # For step verdicts, substitution must exist
-                if substitution is None:
-                    rewards.append(0.0)
-                    continue
-                    
-                # Check substitution doesn't contain multiple steps
-                substitution_steps = split_into_steps(substitution)
-                if len(substitution_steps) > 1:
-                    reward -= config.multiple_step_penalty
-                    stats.reward_components['step_penalties'] += 1
-                else:
-                    reward += config.single_step_bonus
-                    stats.reward_components['step_bonuses'] += 1
+            # Basic structure check
+            if "Analysis:" in completion:
+                reward += 0.3
                 
-                # If substitution contains a boxed answer, verify it matches
-                boxed_answer = extract_answer_from_solution(substitution)
-                if boxed_answer:
-                    numeric_value, _ = extract_numeric_answer(boxed_answer)
-                    if numeric_value is not None and correct_numeric is not None:
-                        if abs(numeric_value - correct_numeric) <= 1e-6:
-                            # Only give full reward if this is the last possible step
-                            solution_steps = split_into_steps(model_solution)
-                            if step_num == len(solution_steps) - 1:
-                                # Comment out LLM validation temporarily
-                                # successful, _ = await _validate_completions(
-                                #     problem,
-                                #     "".join(solution_steps[:step_num]) + substitution,
-                                #     correct_answer,
-                                #     config.completion_attempts
-                                # )
-                                if True:  # Skip validation check for now
-                                    rewards.append(config.full_reward)
-                                    stats.full_reward_reasons['final_step_correct'] += 1
-                                    continue
-                        else:
-                            # Apply penalty for wrong boxed answer in substitution
-                            reward -= config.wrong_boxed_answer_penalty
-                            stats.reward_components['wrong_boxed_answer_penalties'] += 1
-                            stats.update([reward], completion)
-                            rewards.append(reward)
-                            continue
+            if "Verdict:" in completion:
+                reward += 0.3
                 
-                # Add substitution reward with length penalty
-                length_penalty = len(substitution) * config.substitution_length_cost
-                substitution_reward = config.substitution_reward - length_penalty
-                reward += substitution_reward
-                stats.reward_components['substitution_rewards'] += 1
-                stats.reward_components['total_substitution_length_penalty'] += length_penalty
-            else:
-                # For polar verdicts we already checked substitution is None
-                # For polar verdicts, no substitution length penalty since substitution is None
-                reward += config.substitution_reward
-                stats.reward_components['substitution_rewards'] += 1
+            if "Correction:" in completion:
+                reward += 0.4
                 
-            # If we get here, format is valid (reward = 0.2) - proceed with validation
-            
-            # Check if verdict agrees with actual correctness
-            tutor_says_correct = verdict == "The answer is correct"
-            if tutor_says_correct != is_correct:
-                rewards.append(reward)  # Only format reward
-                continue
-                
-            # Additional validation based on verdict type
-            try:
-                if verdict == "The answer is correct" and is_correct:
-                    reward = config.full_reward
-                    stats.full_reward_reasons['correct_answer'] += 1
-                    
-                elif verdict == "The whole approach is wrong" and not is_correct:
-                    # First verify that analysis exists
-                    if analysis is None:
-                        rewards.append(reward)  # Only format reward
-                        continue
-                        
-                    # Then verify that the approach is truly wrong and no valid completions exist
-                    if True:  # Temporarily disable async validation
-                        # Also verify that analysis suggests a different approach
-                        if not any(step in analysis.lower() for step in model_solution.lower().split('\n')):
-                            reward = config.full_reward
-                            stats.full_reward_reasons['wrong_approach'] += 1
-                
-                elif is_step_verdict and not is_correct:
-                    # Split solution into proper steps
-                    solution_steps = split_into_steps(model_solution)
-                    # First check if the original step was actually wrong
-                    original_step = solution_steps[step_num]
-                    if original_step == substitution:
-                        rewards.append(reward)  # Only format reward if suggesting same step
-                        continue
-                        
-                    # Comment out LLM validation
-                    # is_valid, improvement_bonus = await _validate_step_identification(
-                    #     problem, 
-                    #     solution_steps,
-                    #     step_num,
-                    #     substitution,
-                    #     correct_answer
-                    # )
-                    is_valid, improvement_bonus = True, 0.0  # Skip validation for now
-                    if is_valid:
-                        reward = config.full_reward + improvement_bonus
-                        stats.full_reward_reasons['step_correction'] += 1
-                        if improvement_bonus > 0:
-                            stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
-                
-            except Exception:
-                pass  # Keep format reward on validation error
-                
-            # Update stats before appending reward
-            stats.update([reward], completion)
             rewards.append(reward)
-        
         return rewards
 
     # Load the model
@@ -395,7 +214,7 @@ def main():
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[combined_reward_func],
+        reward_funcs=[simple_reward_func],
         args=training_args,
         train_dataset=formatted_dataset
     )
