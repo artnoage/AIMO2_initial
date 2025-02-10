@@ -85,8 +85,15 @@ def extract_numeric_answer(answer: str) -> Optional[float]:
 
 def is_solution_correct(solution: str, correct_answer: str) -> bool:
     """Check if the solution's answer matches the correct answer"""
+    # Extract boxed answer from solution
+    boxed_pattern = re.compile(r'\\boxed\{([^}]+)\}')
+    match = boxed_pattern.search(solution)
+    if not match:
+        return False
+    solution_answer = match.group(1)
+    
     # Extract numeric values
-    solution_value = extract_numeric_answer(solution)
+    solution_value = extract_numeric_answer(solution_answer)
     correct_value = extract_numeric_answer(correct_answer)
     
     # If either value couldn't be extracted, consider it incorrect
@@ -125,7 +132,7 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
         incorrect_solutions = []
         
         for solution in solutions:
-            if is_solution_correct(solution, entry['answer']):
+            if is_solution_correct(solution, entry['correct_answer']):
                 correct_solutions.append(solution)
             else:
                 incorrect_solutions.append(solution)
