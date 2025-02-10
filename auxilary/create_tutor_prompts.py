@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON data from file"""
@@ -13,10 +13,33 @@ def save_json(data: List[Dict], file_path: str):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
+def extract_numeric_answer(answer: str) -> Optional[float]:
+    """Extract numeric value from a LaTeX answer string"""
+    try:
+        # Remove LaTeX formatting and convert to float
+        clean_answer = answer.replace('\\boxed{', '').replace('}', '').strip()
+        return float(clean_answer)
+    except (ValueError, AttributeError):
+        return None
+
+def is_solution_correct(solution: str, correct_answer: str) -> bool:
+    """Check if the solution's answer matches the correct answer"""
+    # Extract numeric values
+    solution_value = extract_numeric_answer(solution)
+    correct_value = extract_numeric_answer(correct_answer)
+    
+    # If either value couldn't be extracted, consider it incorrect
+    if solution_value is None or correct_value is None:
+        return False
+        
+    # Compare with small tolerance for floating point
+    return abs(solution_value - correct_value) <= 1e-6
+
 def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
     """
     Process benchmark entries to create tutor prompts.
     Keeps all tags except model_solutions, creates a new prompt field.
+    Filters out 90% of correct solutions to balance the dataset.
     """
     processed = []
     
@@ -36,7 +59,26 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
         if not solutions:
             continue
             
-        selected_solution = random.choice(solutions)
+        # Check each solution and filter based on correctness
+        correct_solutions = []
+        incorrect_solutions = []
+        
+        for solution in solutions:
+            if is_solution_correct(solution, entry['answer']):
+                correct_solutions.append(solution)
+            else:
+                incorrect_solutions.append(solution)
+        
+        # Skip correct solutions with 90% probability
+        if correct_solutions and random.random() < 0.9:
+            if incorrect_solutions:
+                selected_solution = random.choice(incorrect_solutions)
+            else:
+                continue  # Skip if no incorrect solutions available
+        else:
+            # Use any solution (correct or incorrect)
+            selected_solution = random.choice(solutions)
+            
         new_entry['model_solution'] = selected_solution
         
         # Create prompt with tutor structure
