@@ -110,17 +110,20 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
+    async def combined_reward_func(completions, problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
         rewards = []
-        print(model_solution)
-        # First verify if model solution is correct
-        model_answer = extract_answer_from_solution(model_solution[0])
-        if model_answer is None:
-            logger.warning(f"No boxed answer found in model solution: {model_solution[:100]}...")
-            return [0.0] * len(completions)
-            
-        model_numeric, _ = extract_numeric_answer(model_answer)
-        correct_numeric, _ = extract_numeric_answer(correct_answer[0])
+        
+        # Process each example in parallel
+        for prob, sol, ans, comp in zip(problem, model_solution, correct_answer, completions):
+            # First verify if model solution is correct
+            model_answer = extract_answer_from_solution(sol)
+            if model_answer is None:
+                logger.warning(f"No boxed answer found in model solution: {sol[:100]}...")
+                rewards.append(0.0)
+                continue
+                
+            model_numeric, _ = extract_numeric_answer(model_answer)
+            correct_numeric, _ = extract_numeric_answer(ans)
         
         if model_numeric is None or correct_numeric is None:
             logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
