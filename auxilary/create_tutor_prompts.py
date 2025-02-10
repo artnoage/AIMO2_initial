@@ -37,6 +37,7 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
             continue
             
         selected_solution = random.choice(solutions)
+        new_entry['models_answer'] = selected_solution
         
         # Create prompt with tutor structure
         new_entry['prompt'] = (
