@@ -393,11 +393,10 @@ def main():
             
             if verdict in polar_verdicts:
                 is_step_verdict = False
-                # For polar verdicts, substitution must be None
-                if substitution is not None:
-                    rewards.append(0.0)
-                    continue
+                # For polar verdicts, substitution should be None
                 reward = config.structure_base_reward
+                if substitution is not None:
+                    reward -= 0.1  # Apply penalty for having substitution in polar verdict
             elif verdict.startswith("Step "):
                 # First validate step number format before accessing any steps
                 try:
