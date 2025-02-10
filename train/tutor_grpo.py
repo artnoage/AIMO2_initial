@@ -3,6 +3,7 @@
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
+from transformers import TrainerCallback
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
@@ -109,9 +110,9 @@ def main():
     stats = ValidationStats()
     
     # Setup callback for logging
-    #class LoggingCallback(TrainerCallback):
-    #    def on_log(self, args, state, control, logs=None, **kwargs):
-    #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
+    class LoggingCallback(TrainerCallback):
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
     async def combined_reward_func(completions: List[str], prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
         rewards = []
@@ -383,7 +384,8 @@ def main():
         processing_class=tokenizer,
         reward_funcs=[sync_reward_func],
         args=training_args,
-        train_dataset=formatted_dataset
+        train_dataset=formatted_dataset,
+        callbacks=[LoggingCallback()]
     )
 
     # Train the model
