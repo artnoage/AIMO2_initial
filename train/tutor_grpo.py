@@ -121,12 +121,15 @@ def main():
             else:
                 # Check if it's a valid step verdict (must be "Step X" where X is an integer)
                 try:
-                    parts = verdict.split()
-                    if len(parts) != 2 or parts[0] != "Step" or not parts[1].isdigit():
+                    if not verdict.startswith("Step "):
+                        rewards.append(0.0)
+                        continue
+                    step_num = int(verdict.split()[1])
+                    if step_num < 0:
                         rewards.append(0.0)
                         continue
                     is_step_verdict = True
-                except:
+                except (ValueError, IndexError):
                     rewards.append(0.0)
                     continue
             
