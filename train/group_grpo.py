@@ -10,6 +10,7 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
 import sys
 import logging
 from typing import List, Dict, Any, Optional, Tuple
