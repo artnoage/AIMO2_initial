@@ -115,7 +115,7 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
+    def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         """Combined reward function that checks structure and validates responses"""
         rewards = []
         
@@ -391,18 +391,13 @@ def main():
         output_dir=output_dir,
     )
 
-    # Initialize GRPO trainer with combined reward function
-    # Wrap async reward function to make it synchronous
-    def sync_reward_func(completions, **kwargs):
-        return asyncio.run(combined_reward_func(completions, **kwargs))
 
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[sync_reward_func],
+        reward_funcs=[combined_reward_func],
         args=training_args,
-        train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback()]
+        train_dataset=formatted_dataset
     )
 
     # Train the model
