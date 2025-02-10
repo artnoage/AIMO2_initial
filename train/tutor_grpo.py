@@ -242,10 +242,10 @@ def main():
             )
             
             # Print the completion validation results
-            wrong_partial = "".join(solution_steps[:step_num])
+            wrong_partial = "".join(solution_steps[:step_num+1])  # Include the wrong step
             
             # Reconstruct corrected solution maintaining step numbers
-            corrected_steps = solution_steps[:step_num-1]  # Keep previous steps
+            corrected_steps = solution_steps[:step_num]  # Keep all steps up to wrong one
             # Adjust step number in substitution if needed
             if substitution.strip().startswith("Step"):
                 # Extract step number from substitution
