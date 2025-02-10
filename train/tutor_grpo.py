@@ -12,7 +12,8 @@ from datasets import load_dataset, load_from_disk, concatenate_datasets
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 from unsloth.chat_templates import get_chat_template
-from trl import GRPOConfig, GRPOTrainer, TrainerCallback
+from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
 
 PatchFastRL("GRPO", FastLanguageModel)
 # Add the project root to Python path
