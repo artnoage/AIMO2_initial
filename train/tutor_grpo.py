@@ -1,5 +1,4 @@
-# Configuration
-COMPLETION_PORT = 8001
+
 
 import os
 from datasets import load_dataset, load_from_disk, concatenate_datasets
@@ -22,6 +21,13 @@ import re
 from typing import Optional, List
 from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+
+
+#Configuration. 
+model_type = "tutor"
+model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
+dataset_name = "Metaskepsis/tutor_prompts"
+COMPLETION_PORT = 8001
 
 class CompletionAgent:
     """Agent that completes partial solutions using a local model"""
@@ -99,9 +105,6 @@ class CompletionAgent:
         response = await self._get_response(prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
-model_type = "tutor"
-model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
-dataset_name = "Metaskepsis/tutor_prompts"
 
 # Check if model_type is in paths
 if model_type not in model_name:
@@ -128,7 +131,7 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     
     return analysis, verdict, substitution
 
-async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 5) -> Tuple[int, int]:
+async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 10) -> Tuple[int, int]:
     """Try completions until finding a successful one or reaching max attempts"""
     # Initialize completion agent
     completion_agent = CompletionAgent(port=COMPLETION_PORT)
