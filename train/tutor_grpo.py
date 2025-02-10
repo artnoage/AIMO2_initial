@@ -42,7 +42,7 @@ class TutorConfig:
     # Reward settings
     structure_base_reward: float = 0.2
     analysis_reward: float = 0.2
-    substitution_reward: float = 0.2
+    substitution_reward: float = 0.4
     single_step_bonus: float = 0.2
     multiple_step_penalty: float = 0.4
     full_reward: float = 5.0
