@@ -72,13 +72,39 @@ async def _validate_step_identification(
     steps: List[str],
     step_num: int,
     substitution: str,
-    correct_answer: str
+    correct_answer: str,
+    original_step: str,
+    logger: Any
 ) -> Tuple[bool, float]:
     """Validate step identification and correction in parallel.
     Returns (is_valid, improvement_bonus)"""
+    
+    logger.info("\n" + "="*80)
+    logger.info(f"Step {step_num} Validation")
+    logger.info("="*80)
+    logger.info(f"Original step being replaced:\n{original_step}")
+    logger.info("-"*80)
+    logger.info(f"Proposed substitution:\n{substitution}")
+    logger.info("-"*80)
+    
+    # Adjust step number in substitution if needed
+    if substitution.strip().startswith("Step"):
+        try:
+            sub_num = int(re.search(r'Step\s*(\d+)', substitution).group(1))
+            if sub_num != step_num:
+                # Replace step number while preserving rest of content
+                substitution = re.sub(r'Step\s*\d+', f'Step {step_num}', substitution, 1)
+        except (AttributeError, ValueError):
+            pass
+            
     # Run both validations in parallel
     wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
     corrected_partial = "".join(steps[:step_num+1]) + substitution  # Include all steps up to and including wrong one
+    
+    logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
+    logger.info("-"*80)
+    logger.info(f"Corrected partial solution:\n{corrected_partial}")
+    logger.info("-"*80)
     
     wrong_check, fixed_check = await asyncio.gather(
         _validate_completions(problem, wrong_partial, correct_answer, config.completion_attempts),
@@ -229,41 +255,9 @@ def main():
             if original_step == substitution:
                 logger.info("original step equal to substitution")
                 return reward
-            logger.info("\n" + "="*80)
-            logger.info(f"Step {step_num} Validation")
-            logger.info("="*80)
-            logger.info(f"Original step being replaced:\n{original_step}")
-            logger.info("-"*80)
-            logger.info(f"Proposed substitution:\n{substitution}")
-            logger.info("-"*80)
-            
             is_valid, improvement_bonus = await _validate_step_identification(
-                prob, solution_steps, step_num, substitution, ans
+                prob, solution_steps, step_num, substitution, ans, original_step, logger
             )
-            
-            # Print the completion validation results
-            wrong_partial = "".join(solution_steps[:step_num+1])  # Include the wrong step
-            
-            # Reconstruct corrected solution maintaining step numbers
-            corrected_steps = solution_steps[:step_num+1]  # Keep all steps up to and including wrong one
-            # Adjust step number in substitution if needed
-            if substitution.strip().startswith("Step"):
-                # Extract step number from substitution
-                try:
-                    sub_num = int(re.search(r'Step\s*(\d+)', substitution).group(1))
-                    if sub_num != step_num:
-                        # Replace step number while preserving rest of content
-                        substitution = re.sub(r'Step\s*\d+', f'Step {step_num}', substitution, 1)
-                except (AttributeError, ValueError):
-                    pass
-            corrected_partial = "".join(corrected_steps) + substitution
-            
-            logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
-            logger.info("-"*80)
-            logger.info(f"Corrected partial solution:\n{corrected_partial}")
-            logger.info("-"*80)
-            logger.info(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
-            logger.info("="*80 + "\n")
             
             if is_valid:
                 reward = config.full_reward + improvement_bonus
