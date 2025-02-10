@@ -338,8 +338,9 @@ async def _validate_step_identification(
     step_num: int,
     substitution: str,
     correct_answer: str
-) -> bool:
-    """Validate step identification and correction in parallel"""
+) -> Tuple[bool, float]:
+    """Validate step identification and correction in parallel.
+    Returns (is_valid, improvement_bonus)"""
     # Run both validations in parallel
     wrong_partial = "".join(steps[:step_num])
     corrected_partial = "".join(steps[:step_num-1]) + substitution
@@ -349,10 +350,21 @@ async def _validate_step_identification(
         _validate_completions(problem, corrected_partial, correct_answer, config.completion_attempts)
     )
     
-    successful_wrong, _ = wrong_check
-    successful_fixed, _ = fixed_check
+    successful_wrong, total_wrong = wrong_check
+    successful_fixed, total_fixed = fixed_check
     
-    return successful_wrong == 0 and successful_fixed > 0
+    # Calculate improvement bonus based on number of successful completions
+    improvement_bonus = 0.0
+    if successful_wrong == 0:  # Only reward if original step had no successful completions
+        if 1 <= successful_fixed <= 3:
+            improvement_bonus = 0.1
+        elif 4 <= successful_fixed <= 7:
+            improvement_bonus = 0.2
+        elif successful_fixed > 7:
+            improvement_bonus = 0.3
+    
+    is_valid = successful_wrong == 0 and successful_fixed > 0
+    return is_valid, improvement_bonus
 
 def main():
     # Setup logging
@@ -523,14 +535,15 @@ def main():
                         rewards.append(reward)  # Only format reward if suggesting same step
                         continue
                         
-                    if await _validate_step_identification(
+                    is_valid, improvement_bonus = await _validate_step_identification(
                         problem, 
                         solution_steps,
                         step_num,
                         substitution,
                         correct_answer
-                    ):
-                        reward = config.full_reward
+                    )
+                    if is_valid:
+                        reward = config.full_reward + improvement_bonus
                         stats.full_reward_reasons['step_correction'] += 1
                 
             except Exception:
