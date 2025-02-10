@@ -427,7 +427,9 @@ def main():
                 pass  # Keep format reward on validation error
                 
             rewards.append(reward)
-                
+        
+        # Update validation statistics
+        stats.update(rewards)
         return rewards
 
     # Load the model
@@ -499,6 +501,7 @@ def main():
         reward_funcs=[combined_reward_func],
         args=training_args,
         train_dataset=dataset['train'],
+        callbacks=[LoggingCallback()]
     )
 
     # Train the model
