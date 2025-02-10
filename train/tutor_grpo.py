@@ -111,13 +111,6 @@ async def _validate_step_identification(
     """Validate step identification and correction in parallel.
     Returns (is_valid, improvement_bonus)"""
     
-    logger.info("\n" + "="*80)
-    logger.info(f"Step {step_num} Validation")
-    logger.info("="*80)
-    logger.info(f"Original step being replaced:\n{original_step}")
-    logger.info("-"*80)
-    logger.info(f"Proposed substitution:\n{substitution}")
-    logger.info("-"*80)
     
             
     # Run both validations in parallel
