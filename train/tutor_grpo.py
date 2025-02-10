@@ -227,6 +227,7 @@ def main():
             solution_steps = split_into_steps(sol)
             original_step = solution_steps[step_num]
             if original_step == substitution:
+                logger.info("original step equal to substitution")
                 return reward
             logger.info("\n" + "="*80)
             logger.info(f"Step {step_num} Validation")
