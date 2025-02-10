@@ -27,8 +27,9 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
         if 'problem' not in entry or 'model_solutions' not in entry:
             continue
             
-        # Create new entry without model_solutions and model_answers
+        # Create new entry without model_solutions and model_answers, and change data_type
         new_entry = {k:v for k,v in entry.items() if k not in ['model_solutions', 'model_answers']}
+        new_entry['data_type'] = 'tutor_prompt'
         
         # Randomly select one solution if multiple exist
         solutions = entry['model_solutions']
