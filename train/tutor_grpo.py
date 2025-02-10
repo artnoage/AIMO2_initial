@@ -23,37 +23,55 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     if logger is None:
         logger = logging.getLogger('training')
     
+    def log_to_markdown(content: str):
+        with open("experiment.md", "a") as f:
+            f.write(content + "\n\n")
+
     async def try_completion():
         try:
-            logger.info(f"\nTrying completion for partial solution:\n{partial_solution}")
+            log_to_markdown("## Completion Attempt\n")
+            log_to_markdown("### Initial Partial Solution")
+            log_to_markdown("```")
+            log_to_markdown(partial_solution)
+            log_to_markdown("```\n")
+            
             completion = await completion_agent.generate(problem, partial_solution)
-            logger.info(f"Got completion:\n{completion}")
+            log_to_markdown("### Generated Completion")
+            log_to_markdown("```")
+            log_to_markdown(completion)
+            log_to_markdown("```\n")
             
             complete_solution = partial_solution + completion
-            logger.info(f"Complete solution:\n{complete_solution}")
+            log_to_markdown("### Complete Solution")
+            log_to_markdown("```")
+            log_to_markdown(complete_solution)
+            log_to_markdown("```\n")
             
             model_answer = extract_answer_from_solution(complete_solution)
             if model_answer is None:
-                logger.info("No boxed answer found in completion")
+                log_to_markdown("❌ No boxed answer found in completion")
                 return False
                 
             numeric_answer, debug_info = extract_numeric_answer(model_answer, debug=True)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if numeric_answer is None:
-                logger.info(f"Could not extract numeric answer: {debug_info}")
+                log_to_markdown(f"❌ Could not extract numeric answer: {debug_info}")
                 return False
                 
             if correct_numeric is None:
-                logger.info(f"Could not extract correct numeric answer from: {correct_answer}")
+                log_to_markdown(f"❌ Could not extract correct numeric answer from: {correct_answer}")
                 return False
                 
             is_correct = abs(numeric_answer - correct_numeric) <= 1e-6
-            logger.info(f"Completion result: {is_correct} (model: {numeric_answer}, correct: {correct_numeric})")
+            log_to_markdown(f"### Result")
+            log_to_markdown(f"- Model answer: {numeric_answer}")
+            log_to_markdown(f"- Correct answer: {correct_numeric}")
+            log_to_markdown(f"- Is correct: {'✅' if is_correct else '❌'}")
             return is_correct
             
         except Exception as e:   
-            logger.info(f"Exception in completion attempt: {str(e)}")
+            log_to_markdown(f"❌ Exception occurred: {str(e)}")
             return False
     
     # Run all completion attempts in parallel
