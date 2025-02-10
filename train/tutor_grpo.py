@@ -9,84 +9,37 @@ from trl import GRPOConfig, GRPOTrainer
 import sys
 import aiohttp
 import asyncio
-from typing import Any
+from typing import Any, Union, Tuple
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import re
-from typing import Tuple, Optional, List
+from typing import Optional, List
 from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 class CompletionAgent:
-    """Agent that completes partial solutions"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> str:
-        """Complete a partial solution"""
-        prompt = [
-            HumanMessage(content=(
-                "Here is a mathematical problem:\n\n"
-                f"{problem}\n\n"
-                "We've started solving it and got this far:\n\n"
-                f"{partial_solution}\n\n"
-                "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
-            ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
-        return response
-
-async def get_model_response(model, prompt, max_tokens=None) -> str:
-    """Get response from model with retry logic"""
-    try:
-        if max_tokens==None:
-            response = await model.ainvoke(prompt)
-        else:
-            response = await model.ainvoke(prompt, max_tokens=max_tokens)
-        return response.content
-    except Exception as e:
-        # Add small delay before retry to prevent overwhelming API
-        await asyncio.sleep(0.1)
-        raise
-
-model_type = "tutor"
-model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
-dataset_name = "Metaskepsis/tutor_prompts"
-
-# Check if model_type is in paths
-if model_type not in model_name:
-    print("\n" + "!"*80)
-    print(f"WARNING: model_type '{model_type}' not found in model_name path!")
-    print("!"*80 + "\n")
-
-if model_type not in dataset_name:
-    print("\n" + "!"*80)
-    print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
-    print("!"*80 + "\n")
-
-class CustomChat:
-    """Chat model that makes requests using OpenAI chat format"""
+    """Agent that completes partial solutions using a local model"""
     
     def __init__(
         self,
-        base_url: str = "http://localhost:8000/v1",
+        port: int = 8001,
         model: str = "default",
         temperature: float = 0,
-        api_key: str = "EMPTY"
+        api_key: str = "EMPTY",
+        max_retries: int = 3
     ):
-        self.base_url = base_url
+        self.port = port
         self.model = model
         self.temperature = temperature
         self.api_key = api_key
-
-    async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to chat completion endpoint"""
-        max_tokens = kwargs.get("max_tokens", None)
+        self.max_retries = max_retries
+        self.base_url = f"http://localhost:{port}/v1"
         
+    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None) -> str:
+        """Get response from model with retry logic"""
         # Convert prompt to messages format
         if hasattr(prompt, 'content'):  # LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
@@ -103,26 +56,61 @@ class CustomChat:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
-        async with aiohttp.ClientSession() as session:
+        retry_count = 0
+        while retry_count < self.max_retries:
             try:
-                async with session.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self.api_key}"
-                    }
-                ) as response:
-                    if response.status != 200:
-                        raise ValueError(f"Error from API: {await response.text()}")
-                    
-                    result = await response.json()
-                    return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    })()
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        f"{self.base_url}/chat/completions",
+                        json=payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.api_key}"
+                        }
+                    ) as response:
+                        if response.status != 200:
+                            raise ValueError(f"Error from API: {await response.text()}")
+                        
+                        result = await response.json()
+                        return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        
             except Exception as e:
-                print(f"Exception in CustomChat.ainvoke: {str(e)}")
-                raise
+                retry_count += 1
+                if retry_count == self.max_retries:
+                    raise
+                await asyncio.sleep(0.1)
+                
+        raise Exception(f"Failed after {self.max_retries} retries")
+        
+    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Complete a partial solution"""
+        prompt = [
+            HumanMessage(content=(
+                "Here is a mathematical problem:\n\n"
+                f"{problem}\n\n"
+                "We've started solving it and got this far:\n\n"
+                f"{partial_solution}\n\n"
+                "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
+            ))
+        ]
+        response = await self._get_response(prompt, max_tokens=2048)
+        return (prompt[0].content, response) if return_prompt else response
+
+model_type = "tutor"
+model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
+dataset_name = "Metaskepsis/tutor_prompts"
+
+# Check if model_type is in paths
+if model_type not in model_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in model_name path!")
+    print("!"*80 + "\n")
+
+if model_type not in dataset_name:
+    print("\n" + "!"*80)
+    print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
+    print("!"*80 + "\n")
+
 
 
 def extract_sections(response: str) -> tuple[str, str, str]:
@@ -139,14 +127,8 @@ def extract_sections(response: str) -> tuple[str, str, str]:
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 5) -> Tuple[int, int]:
     """Try completions until finding a successful one or reaching max attempts"""
-    # Initialize completion agent with local model
-    completion_model = CustomChat(
-        model="default",
-        temperature=0,
-        api_key="EMPTY",
-        base_url="http://localhost:8001/v1"
-    )
-    completion_agent = CompletionAgent(completion_model)
+    # Initialize completion agent
+    completion_agent = CompletionAgent(port=8001)
     
     successful = 0
     total = 0
