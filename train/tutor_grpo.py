@@ -25,35 +25,35 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     
     async def try_completion():
         try:
-            logger.debug(f"\nTrying completion for partial solution:\n{partial_solution}")
+            logger.info(f"\nTrying completion for partial solution:\n{partial_solution}")
             completion = await completion_agent.generate(problem, partial_solution)
-            logger.debug(f"Got completion:\n{completion}")
+            logger.info(f"Got completion:\n{completion}")
             
             complete_solution = partial_solution + completion
-            logger.debug(f"Complete solution:\n{complete_solution}")
+            logger.info(f"Complete solution:\n{complete_solution}")
             
             model_answer = extract_answer_from_solution(complete_solution)
             if model_answer is None:
-                logger.debug("No boxed answer found in completion")
+                logger.info("No boxed answer found in completion")
                 return False
                 
             numeric_answer, debug_info = extract_numeric_answer(model_answer, debug=True)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if numeric_answer is None:
-                logger.debug(f"Could not extract numeric answer: {debug_info}")
+                logger.info(f"Could not extract numeric answer: {debug_info}")
                 return False
                 
             if correct_numeric is None:
-                logger.debug(f"Could not extract correct numeric answer from: {correct_answer}")
+                logger.info(f"Could not extract correct numeric answer from: {correct_answer}")
                 return False
                 
             is_correct = abs(numeric_answer - correct_numeric) <= 1e-6
-            logger.debug(f"Completion result: {is_correct} (model: {numeric_answer}, correct: {correct_numeric})")
+            logger.info(f"Completion result: {is_correct} (model: {numeric_answer}, correct: {correct_numeric})")
             return is_correct
             
-        except Exception as e:
-            logger.debug(f"Exception in completion attempt: {str(e)}")
+        except Exception as e:   
+            logger.info(f"Exception in completion attempt: {str(e)}")
             return False
     
     # Run all completion attempts in parallel
