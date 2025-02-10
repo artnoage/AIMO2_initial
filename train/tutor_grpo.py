@@ -18,11 +18,16 @@ from tutor_grpo_util import *
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
     """Try completions in parallel until finding a successful one.
     Note: Completions are handled by a separate GPU service, so no memory management needed here."""
+    print(f"\nDEBUG: Starting _validate_completions")
+    print(f"DEBUG: Port={config.completion_port}")
     completion_agent = CompletionAgent(port=config.completion_port)
     
     async def try_completion():
+        print("\nDEBUG: Starting completion attempt")
         try:
+            print("\nDEBUG: Before generate call")
             completion = await completion_agent.generate(problem, partial_solution)
+            print("\nDEBUG: After generate call")
             complete_solution = partial_solution + completion
             
             model_answer = extract_answer_from_solution(complete_solution)

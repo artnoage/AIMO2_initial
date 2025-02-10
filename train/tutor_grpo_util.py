@@ -403,6 +403,7 @@ class CompletionAgent:
         
     async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Complete a partial solution"""
+        print("\nDEBUG: CompletionAgent.generate called")
         prompt = [
             HumanMessage(content=(
                 "Here is a mathematical problem:\n\n"
@@ -412,7 +413,9 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
+        print("\nDEBUG: Before _get_response")
         response = await self._get_response(prompt, max_tokens=2048)
+        print("\nDEBUG: After _get_response")
         return (prompt[0].content, response) if return_prompt else response
 
 
