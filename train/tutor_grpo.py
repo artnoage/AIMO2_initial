@@ -143,9 +143,10 @@ def main():
             is_step_verdict = False
             reward = config.structure_base_reward
             stats.reward_components['base_rewards'] += 1
-            if substitution is not None:
+            if substitution is not None and substitution.strip():  # Only count non-empty substitutions
                 reward -= config.redundant_substitution_penalty
                 stats.reward_components['redundant_substitution_penalties'] += 1
+                stats.section_stats['polar_verdict_with_substitution'] += 1
         elif verdict.startswith("Step "):
             try:
                 step_num = int(verdict.split()[1])
@@ -234,8 +235,10 @@ def main():
                 reward = config.full_reward + improvement_bonus
                 stats.full_reward_reasons['step_correction'] += 1
                 if improvement_bonus > 0:
-                    stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
-                    stats.reward_components['improvement_bonuses']['total'] += 1
+                    bonus_key = str(improvement_bonus)
+                    if bonus_key in stats.reward_components['improvement_bonuses']:
+                        stats.reward_components['improvement_bonuses'][bonus_key] += 1
+                        stats.reward_components['improvement_bonuses']['total'] += 1
 
         stats.update([reward], comp)
         return reward
