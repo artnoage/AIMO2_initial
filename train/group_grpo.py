@@ -206,7 +206,7 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def process_example(completions: List[str], prompts: List[str], **kwargs) -> List[float]:
+    def process_example(completions: List[str], prompts: List[str], **kwargs) -> List[float]:
         # Get correct answers from kwargs
         correct_answers = kwargs.get('correct_answer', [''] * len(completions))
         
