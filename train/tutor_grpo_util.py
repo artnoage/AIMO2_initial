@@ -178,7 +178,7 @@ class TutorConfig:
     model_type: str = "tutor"
     model_name: str = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
     dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250210_130123"
-    completion_model_name: str = "Metaskepsis/Skepsis_2"
+    completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
     
     # API settings
     completion_port: int = 8004
