@@ -41,11 +41,11 @@ class TutorConfig:
     
     # Reward settings
     structure_base_reward: float = 0.1
-    analysis_reward: float = 0.05
-    substitution_reward: float = 0.05
-    single_step_bonus: float = 0.02
-    multiple_step_penalty: float = 0.02
-    full_reward: float = 2.0
+    analysis_reward: float = 0.1
+    substitution_reward: float = 0.1
+    single_step_bonus: float = 0.1
+    multiple_step_penalty: float = 0.2
+    full_reward: float = 3.0
     
     # Length penalty settings
     analysis_length_cost: float = 0.0001  # per character
