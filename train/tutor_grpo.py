@@ -1,23 +1,18 @@
 
 
 import os
-import sys
-import asyncio
-from typing import List, Tuple
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
-from datasets import load_dataset, load_from_disk
-from unsloth import (
-    FastLanguageModel, PatchFastRL, is_bfloat16_supported, get_chat_template
-)
-from trl import GRPOConfig, GRPOTrainer
-from transformers import TrainerCallback
-from tutor_grpo_util import *
-
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
+from unsloth.chat_templates import get_chat_template
+from trl import GRPOConfig, GRPOTrainer
+import sys
+#from transformers import TrainerCallback
+from tutor_grpo_util import *
 # Add the project root to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+
 
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
@@ -111,9 +106,9 @@ def main():
     stats = ValidationStats()
     
     # Setup callback for logging
-    class LoggingCallback(TrainerCallback):
-        def on_log(self, args, state, control, logs=None, **kwargs):
-            logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
+    #class LoggingCallback(TrainerCallback):
+    #    def on_log(self, args, state, control, logs=None, **kwargs):
+    #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
     def simple_reward_func(completions, **kwargs) -> list[float]:
         """Simple reward function that checks for basic structure"""
@@ -344,29 +339,49 @@ def main():
         map_eos_token=True)
 
     # Load dataset and format it
-    dataset = load_dataset(config.dataset_name, split="train")
+    dataset = load_dataset(config.dataset_name)
     
     def formatting_func(example):
-        # Wrap the prompt in INST tags while keeping all fields
-        return {
-            **example,  # Keep all original fields
-            "prompt": f"[INST]{example['problem']}[/INST]"
-        }
-
-    # Apply formatting to dataset
-    formatted_dataset = dataset.map(
+        # Only keep the required fields
+        required_fields = ['prompt', 'correct_answer']
+        filtered_example = {k: example[k] for k in required_fields if k in example}
+        
+        # First apply the solver prompt, then wrap in INST tags
+        solver_prompt = (
+            "Here is a mathematical problem:\n\n"
+            f"{example['problem']}\n\n"
+            "Could you help me solve this from start to finish? First, let's analyze the problem, "
+            "then walk through the solution step-by-step using LaTeX notation. "
+            "Don't forget to put the final answer in a box using \\boxed{}"
+        )
+        filtered_example["prompt"] = f"[INST]{solver_prompt}[/INST]"
+        filtered_example['answer'] = example['answer']
+        # Ensure all required fields are present
+        missing_fields = [f for f in required_fields if f not in filtered_example]
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
+            
+        return filtered_example
+    # Load and format dataset
+    formatted_dataset = dataset['train'].map(
         formatting_func,
-        remove_columns=dataset.column_names,
-        desc="Adding INST tags to prompts"
+        desc="Applying chat template"
     )
-
+    
+    # Print first entry tokenization
+    first_entry = formatted_dataset[0]
+    print("\nFirst entry tokenization:")
+    print("Original:", first_entry['prompt'])
+    tokenized = tokenizer(first_entry['prompt'])
+    print("Tokenized:", tokenized)
+    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{config.model_type}/{timestamp}"
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm = False, # Disable vLLM to avoid pickling issues
+        use_vllm = True, 
         torch_empty_cache_steps=10,
         learning_rate = 3e-6,
         adam_beta1 = 0.9,
