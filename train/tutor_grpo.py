@@ -19,8 +19,6 @@ from tutor_grpo_util import *
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
     """Try completions in parallel until finding a successful one.
     Note: Completions are handled by a separate GPU service, so no memory management needed here."""
-    print(f"\nDEBUG: Starting _validate_completions")
-    print(f"DEBUG: Port={config.completion_port}")
     completion_agent = CompletionAgent(port=config.completion_port)
     
     async def try_completion():
@@ -369,7 +367,7 @@ def main():
         fp16 = not is_bfloat16_supported(),
         per_device_train_batch_size = 3,
         gradient_accumulation_steps = 1, # Increase to 4 for smoother training
-        num_generations =5, # Decrease if out of memory
+        num_generations =8, # Decrease if out of memory
         max_prompt_length = 3000,
         max_completion_length = 1096,
         num_train_epochs = 1, # Set to 1 for a full training run
