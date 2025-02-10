@@ -126,7 +126,11 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
         if 'data_type' not in entry or entry['data_type'] != 'training':
             continue
             
-        if 'problem' not in entry or 'model_solutions' not in entry:
+        if 'problem' not in entry or 'model_solutions' not in entry or 'correct_answer' not in entry:
+            continue
+            
+        # Skip if we can't extract a numeric answer from the correct answer
+        if extract_numeric_answer(entry['correct_answer']) is None:
             continue
             
         # Create new entry without model_solutions and model_answers, and change data_type
