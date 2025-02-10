@@ -33,8 +33,6 @@ from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 
-
-
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
     """Try completions in parallel until finding a successful one.
     Note: Completions are handled by a separate GPU service, so no memory management needed here."""
