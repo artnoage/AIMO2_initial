@@ -462,6 +462,7 @@ def main():
             if analysis is not None:
                 analysis_reward = config.analysis_reward - (len(analysis) * config.analysis_length_cost)
                 reward += analysis_reward
+                stats.reward_components['analysis_rewards'] += 1
             
             # Check substitution based on verdict type
             if is_step_verdict:
@@ -474,8 +475,10 @@ def main():
                 substitution_steps = split_into_steps(substitution)
                 if len(substitution_steps) > 1:
                     reward -= config.multiple_step_penalty
+                    stats.reward_components['step_penalties'] += 1
                 else:
                     reward += config.single_step_bonus
+                    stats.reward_components['step_bonuses'] += 1
                 
                 # If substitution contains a boxed answer, verify it matches
                 boxed_answer = extract_answer_from_solution(substitution)
@@ -506,10 +509,12 @@ def main():
                 # Add substitution reward with length penalty
                 substitution_reward = config.substitution_reward - (len(substitution) * config.substitution_length_cost)
                 reward += substitution_reward
+                stats.reward_components['substitution_rewards'] += 1
             else:
                 # For polar verdicts we already checked substitution is None
                 # For polar verdicts, no substitution length penalty since substitution is None
                 reward += config.substitution_reward
+                stats.reward_components['substitution_rewards'] += 1
                 
             # If we get here, format is valid (reward = 0.2) - proceed with validation
             
