@@ -228,9 +228,15 @@ def main():
             original_step = solution_steps[step_num]
             if original_step == substitution:
                 return reward
+            logger.debug(f"Validating step {step_num} correction...")
+            logger.debug(f"Original step: {original_step}")
+            logger.debug(f"Proposed substitution: {substitution}")
+            
             is_valid, improvement_bonus = await _validate_step_identification(
                 prob, solution_steps, step_num, substitution, ans
             )
+            logger.debug(f"Validation result: valid={is_valid}, improvement_bonus={improvement_bonus}")
+            
             if is_valid:
                 reward = config.full_reward + improvement_bonus
                 stats.full_reward_reasons['step_correction'] += 1
