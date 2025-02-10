@@ -60,10 +60,11 @@ class TutorConfig:
     multiple_step_penalty: float = 0.4
     full_reward: float = 5.0
     
-    # Length penalty settings
+    # Penalty settings
     analysis_length_cost: float = 0.0001  # per character
     substitution_length_cost: float = 0.0005  # per character
     redundant_substitution_penalty: float = 0.1  # penalty for substitution in polar verdict
+    wrong_boxed_answer_penalty: float = 1.0  # penalty for wrong boxed answer in substitution
     
     # Validation settings
     numeric_tolerance: float = 1e-6
@@ -164,13 +165,26 @@ class ValidationStats:
             f"  Step verdict without substitution: {self.section_stats['step_verdict_without_substitution']}\n"
             f"  Polar verdict with substitution: {self.section_stats['polar_verdict_with_substitution']}\n"
             f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
-            f"\nLength Penalties:\n"
-            f"  Total analysis length penalty: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
-            f"  Total substitution length penalty: {self.reward_components['total_substitution_length_penalty']:.6f}\n"
+            f"\nReward Components:\n"
+            f"  Base rewards: {self.reward_components['base_rewards']}\n"
+            f"  Analysis rewards: {self.reward_components['analysis_rewards']}\n"
+            f"  Substitution rewards: {self.reward_components['substitution_rewards']}\n"
+            f"  Step bonuses: {self.reward_components['step_bonuses']}\n"
+            f"  Step penalties: {self.reward_components['step_penalties']}\n"
+            f"\nPenalties:\n"
+            f"  Analysis length: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
+            f"  Substitution length: {self.reward_components['total_substitution_length_penalty']:.6f}\n"
+            f"  Wrong boxed answers: {self.reward_components['wrong_boxed_answer_penalties']}\n"
+            f"  Redundant substitutions: {self.reward_components['redundant_substitution_penalties']}\n"
             f"\nImprovement Bonuses:\n"
             f"  10-40% completions (0.1): {self.reward_components['improvement_bonuses']['0.1']}\n"
             f"  40-70% completions (0.2): {self.reward_components['improvement_bonuses']['0.2']}\n"
-            f"  >70% completions (0.3): {self.reward_components['improvement_bonuses']['0.3']}"
+            f"  >70% completions (0.3): {self.reward_components['improvement_bonuses']['0.3']}\n"
+            f"\nFull Reward Reasons:\n"
+            f"  Correct answer: {self.full_reward_reasons['correct_answer']}\n"
+            f"  Wrong approach: {self.full_reward_reasons['wrong_approach']}\n"
+            f"  Step correction: {self.full_reward_reasons['step_correction']}\n"
+            f"  Final step correct: {self.full_reward_reasons['final_step_correct']}"
         )
         return basic_stats
 

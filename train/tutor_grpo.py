@@ -240,7 +240,7 @@ def main():
                                     continue
                         else:
                             # Apply penalty for wrong boxed answer in substitution
-                            reward -= 1.0  # Significant penalty for wrong answer
+                            reward -= config.wrong_boxed_answer_penalty
                             stats.reward_components['wrong_boxed_answer_penalties'] += 1
                             stats.update([reward], completion)
                             rewards.append(reward)
