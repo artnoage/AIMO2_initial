@@ -77,8 +77,8 @@ async def _validate_step_identification(
     """Validate step identification and correction in parallel.
     Returns (is_valid, improvement_bonus)"""
     # Run both validations in parallel
-    wrong_partial = "".join(steps[:step_num])
-    corrected_partial = "".join(steps[:step_num-1]) + substitution
+    wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
+    corrected_partial = "".join(steps[:step_num+1]) + substitution  # Include all steps up to and including wrong one
     
     wrong_check, fixed_check = await asyncio.gather(
         _validate_completions(problem, wrong_partial, correct_answer, config.completion_attempts),
@@ -245,7 +245,7 @@ def main():
             wrong_partial = "".join(solution_steps[:step_num+1])  # Include the wrong step
             
             # Reconstruct corrected solution maintaining step numbers
-            corrected_steps = solution_steps[:step_num]  # Keep all steps up to wrong one
+            corrected_steps = solution_steps[:step_num+1]  # Keep all steps up to and including wrong one
             # Adjust step number in substitution if needed
             if substitution.strip().startswith("Step"):
                 # Extract step number from substitution
