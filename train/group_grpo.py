@@ -224,58 +224,58 @@ def main():
                     prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answers[i]}
                 prompt_groups[prom]['completions'].append(comp)
                 prompt_groups[prom]['indices'].append(i)
-        
-        # Process each group separately
-        all_rewards = [0.0] * len(completions)
-        
-        for group in prompt_groups.values():
-            group_completions = group['completions'] 
-            # Use the answer from kwargs since we're not getting it directly anymore
-            correct_answer = kwargs.get('correct_answer', [''])[0]
             
-            # Get correctness for each completion
-            correctness_results, correct_stats = process_group_completions(
-                group_completions, correct_answer
-            )
+            # Process each group separately
+            all_rewards = [0.0] * len(completions)
             
-            # Compute similarity matrix for group
-            similarity_matrix = similarity_checker.compute_similarity_matrix(group_completions)
-            
-            # Calculate rewards for each completion in group
-            base_reward = 1.0
-            diversity_bonus = 0.3
-            majority_bonus = 0.2
-            
-            for i, (is_correct, idx) in enumerate(zip(correctness_results, group['indices'])):
-                reward = 0.0
+            for group in prompt_groups.values():
+                group_completions = group['completions'] 
+                # Use the answer from kwargs since we're not getting it directly anymore
+                correct_answer = kwargs.get('correct_answer', [''])[0]
                 
-                if is_correct:
-                    reward = base_reward
+                # Get correctness for each completion
+                correctness_results, correct_stats = process_group_completions(
+                    group_completions, correct_answer
+                )
+                
+                # Compute similarity matrix for group
+                similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
+                
+                # Calculate rewards for each completion in group
+                base_reward = 1.0
+                diversity_bonus = 0.3
+                majority_bonus = 0.2
+                
+                for i, (is_correct, idx) in enumerate(zip(correctness_results, group['indices'])):
+                    reward = 0.0
                     
-                    # Add diversity bonus for unique correct solutions
-                    similarities = similarity_matrix[i]
-                    similarities[i] = 0  # Remove self-similarity
-                    avg_similarity = similarities.mean().item()
-                    
-                    if avg_similarity < 0.7:  # Unique solution
-                        reward += diversity_bonus
-                    elif avg_similarity > 0.9:  # Very similar to others
-                        reward -= diversity_bonus/2
+                    if is_correct:
+                        reward = base_reward
                         
-                    # Add majority bonus if agrees with majority
-                    if correct_stats['correct'] > len(group_completions)/2:
-                        reward += majority_bonus
+                        # Add diversity bonus for unique correct solutions
+                        similarities = similarity_matrix[i]
+                        similarities[i] = 0  # Remove self-similarity
+                        avg_similarity = similarities.mean().item()
+                        
+                        if avg_similarity < 0.7:  # Unique solution
+                            reward += diversity_bonus
+                        elif avg_similarity > 0.9:  # Very similar to others
+                            reward -= diversity_bonus/2
+                            
+                        # Add majority bonus if agrees with majority
+                        if correct_stats['correct'] > len(group_completions)/2:
+                            reward += majority_bonus
+                    
+                    all_rewards[idx] = reward
                 
-                all_rewards[idx] = reward
+                # Update statistics
+                self.stats.update(
+                    [all_rewards[i] for i in group['indices']], 
+                    similarity_matrix,
+                    correct_stats
+                )
             
-            # Update statistics
-            stats.update(
-                [all_rewards[i] for i in group['indices']], 
-                similarity_matrix,
-                correct_stats
-            )
-        
-        return all_rewards
+            return all_rewards
     
     # Load and format dataset
     dataset = load_dataset("Metaskepsis/Numina_medium")
