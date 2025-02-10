@@ -138,7 +138,7 @@ async def _validate_step_identification(
     return successful_fixed > 0 and total_fixed == 5
 
 def main():
-    def structure_reward_func(completions, **kwargs) -> list[float]:
+    def structure_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         """Reward function that checks if the response has valid structure"""
         rewards = []
         for completion in completions:
