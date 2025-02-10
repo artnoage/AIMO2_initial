@@ -299,14 +299,14 @@ def main():
         # First verify if model solution is correct
         model_answer = extract_answer_from_solution(model_solution)
         if model_answer is None:
-            print("bug")
+            logger.warning(f"No boxed answer found in model solution: {model_solution[:100]}...")
             return [0.0] * len(completions)
             
         model_numeric, _ = extract_numeric_answer(model_answer)
         correct_numeric, _ = extract_numeric_answer(correct_answer)
         
         if model_numeric is None or correct_numeric is None:
-            print("bug")
+            logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
             return [0.0] * len(completions)
             
         is_correct = abs(model_numeric - correct_numeric) <= 1e-6
@@ -317,6 +317,7 @@ def main():
             
             # Verdict must exist
             if verdict is None:
+                logger.debug(f"Missing verdict section in completion: {completion[:100]}...")
                 rewards.append(0.0)
                 continue
                 
@@ -501,16 +502,27 @@ def main():
     )
 
     # Train the model
-    trainer.train()
+    logger.info("Starting training...")
+    try:
+        trainer.train()
+        logger.info("Training completed successfully")
+    except Exception as e:
+        logger.error(f"Training failed: {str(e)}")
+        raise
 
     # Save both merged model and LoRA weights
+    logger.info("Saving model...")
     models_dir = "models"
     os.makedirs(os.path.join(models_dir, config.model_type), exist_ok=True)
     model_output_dir = os.path.join(models_dir, config.model_type, timestamp)
     
     # Save the merged model
-    model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
-    print(f"Merged model saved to {model_output_dir}")
+    try:
+        model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+        logger.info(f"Merged model saved to {model_output_dir}")
+    except Exception as e:
+        logger.error(f"Failed to save model: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()
