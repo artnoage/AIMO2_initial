@@ -207,11 +207,14 @@ def main():
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
     async def process_example(completions: List[str], prompts: List[str], **kwargs) -> List[float]:
+        # Get correct answers from kwargs
+        correct_answers = kwargs.get('correct_answer', [''] * len(completions))
+        
         # Group completions by prompt
         prompt_groups = {}
         for i, (comp, prom) in enumerate(zip(completions, prompts)):
             if prom not in prompt_groups:
-                prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answer[i]}
+                prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answers[i]}
             prompt_groups[prom]['completions'].append(comp)
             prompt_groups[prom]['indices'].append(i)
         
