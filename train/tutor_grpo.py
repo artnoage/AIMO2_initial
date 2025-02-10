@@ -50,6 +50,7 @@ class TutorConfig:
     # Length penalty settings
     analysis_length_cost: float = 0.0001  # per character
     substitution_length_cost: float = 0.0005  # per character
+    redundant_substitution_penalty: float = 0.1  # penalty for substitution in polar verdict
     
     # Validation settings
     numeric_tolerance: float = 1e-6
@@ -396,7 +397,7 @@ def main():
                 # For polar verdicts, substitution should be None
                 reward = config.structure_base_reward
                 if substitution is not None:
-                    reward -= 0.1  # Apply penalty for having substitution in polar verdict
+                    reward -= config.redundant_substitution_penalty  # Apply penalty for having substitution in polar verdict
             elif verdict.startswith("Step "):
                 # First validate step number format before accessing any steps
                 try:
