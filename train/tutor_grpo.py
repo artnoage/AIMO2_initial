@@ -468,7 +468,9 @@ def main():
                                     rewards.append(config.full_reward)
                                     continue
                         else:
-                            rewards.append(0.0)
+                            # Apply penalty for wrong boxed answer in substitution
+                            reward -= 1.0  # Significant penalty for wrong answer
+                            rewards.append(reward)
                             continue
                 
                 # Add substitution reward with length penalty
@@ -493,8 +495,16 @@ def main():
                     reward = config.full_reward
                     
                 elif verdict == "The whole approach is wrong" and not is_correct:
+                    # First verify that analysis exists
+                    if analysis is None:
+                        rewards.append(reward)  # Only format reward
+                        continue
+                        
+                    # Then verify that the approach is truly wrong and no valid completions exist
                     if await _validate_whole_approach_is_wrong(problem, model_solution, correct_answer):
-                        reward = config.full_reward
+                        # Also verify that analysis suggests a different approach
+                        if not any(step in analysis.lower() for step in model_solution.lower().split('\n')):
+                            reward = config.full_reward
                 
                 elif is_step_verdict and not is_correct:
                     # Split solution into proper steps
