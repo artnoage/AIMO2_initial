@@ -178,6 +178,7 @@ class TutorConfig:
     model_type: str = "tutor"
     model_name: str = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
     dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250210_130123"
+    completion_model_name: str = "Metaskepsis/Skepsis_2"
     
     # API settings
     completion_port: int = 8004
@@ -343,7 +344,7 @@ class CompletionAgent:
     def __init__(
         self,
         port: int = 8001,
-        model: str = "default",
+        model: str = config.completion_model_name,
         temperature: float = 0,
         api_key: str = "EMPTY",
         max_retries: int = 3
