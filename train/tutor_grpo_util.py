@@ -338,6 +338,9 @@ def setup_training_logger(model_type: str) -> logging.Logger:
     logger.addHandler(logging.StreamHandler())
     return logger
 
+# Initialize global config
+config = TutorConfig()
+
 class CompletionAgent:
     """Agent that completes partial solutions using a local model"""
     
@@ -418,7 +421,3 @@ class CompletionAgent:
         response = await self._get_response(prompt, max_tokens=2048)
         print("\nDEBUG: After _get_response")
         return (prompt[0].content, response) if return_prompt else response
-
-
-# Initialize global config
-config = TutorConfig()
