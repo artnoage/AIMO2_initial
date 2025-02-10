@@ -198,12 +198,14 @@ def main():
         # First verify if model solution is correct
         model_answer = extract_answer_from_solution(model_solution)
         if model_answer is None:
+            print("bug")
             return [0.0] * len(completions)
             
         model_numeric, _ = extract_numeric_answer(model_answer)
         correct_numeric, _ = extract_numeric_answer(correct_answer)
         
         if model_numeric is None or correct_numeric is None:
+            print("bug")
             return [0.0] * len(completions)
             
         is_correct = abs(model_numeric - correct_numeric) <= 1e-6
@@ -294,7 +296,7 @@ def main():
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=6496,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -344,8 +346,8 @@ def main():
         per_device_train_batch_size=3,
         gradient_accumulation_steps=1,
         num_generations=5,
-        max_prompt_length=1348,
-        max_completion_length=5148,
+        max_prompt_length=3000,
+        max_completion_length=1096,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
