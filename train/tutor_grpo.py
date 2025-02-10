@@ -202,9 +202,11 @@ def main():
             length_penalty = len(substitution) * config.substitution_length_cost
             reward += config.substitution_reward - length_penalty
             stats.reward_components['substitution_rewards'] += 1
+            stats.reward_components['total_substitution_length_penalty'] += length_penalty
         else:
             reward += config.substitution_reward
             stats.reward_components['substitution_rewards'] += 1
+            # No length penalty for polar verdicts since they shouldn't have substitutions
 
         tutor_says_correct = verdict == "The answer is correct"
         if tutor_says_correct != is_correct:

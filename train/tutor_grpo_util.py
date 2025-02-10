@@ -193,7 +193,7 @@ class TutorConfig:
     full_reward: float = 5.0
     
     # Penalty settings
-    analysis_length_cost: float = 0.00005  # per character
+    analysis_length_cost: float = 0.0001  # per character
     substitution_length_cost: float = 0.0001  # per character
     redundant_substitution_penalty: float = 0.1  # penalty for substitution in polar verdict
     wrong_boxed_answer_penalty: float = 1.0  # penalty for wrong boxed answer in substitution
