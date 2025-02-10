@@ -212,6 +212,7 @@ def main():
         def __init__(self, similarity_checker, stats):
             self.similarity_checker = similarity_checker
             self.stats = stats
+            self.__name__ = "group_reward_function"  # Add name attribute
             
         def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
             # Get correct answers from kwargs
