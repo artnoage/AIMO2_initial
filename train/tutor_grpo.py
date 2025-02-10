@@ -243,7 +243,20 @@ def main():
             
             # Print the completion validation results
             wrong_partial = "".join(solution_steps[:step_num])
-            corrected_partial = "".join(solution_steps[:step_num-1]) + substitution
+            
+            # Reconstruct corrected solution maintaining step numbers
+            corrected_steps = solution_steps[:step_num-1]  # Keep previous steps
+            # Adjust step number in substitution if needed
+            if substitution.strip().startswith("Step"):
+                # Extract step number from substitution
+                try:
+                    sub_num = int(re.search(r'Step\s*(\d+)', substitution).group(1))
+                    if sub_num != step_num:
+                        # Replace step number while preserving rest of content
+                        substitution = re.sub(r'Step\s*\d+', f'Step {step_num}', substitution, 1)
+                except (AttributeError, ValueError):
+                    pass
+            corrected_partial = "".join(corrected_steps) + substitution
             
             logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
             logger.info("-"*80)
