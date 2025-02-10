@@ -128,8 +128,9 @@ class SolutionSimilarityChecker:
         return F.normalize(embeddings, p=2, dim=1)
 
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
-        embeddings = self.get_embeddings(solutions)
-        return torch.mm(embeddings, embeddings.t())
+        with torch.no_grad():
+            embeddings = self.get_embeddings(solutions)
+            return torch.mm(embeddings, embeddings.t()).detach()
 
 def setup_training_logger(model_type: str) -> logging.Logger:
     """Setup logging configuration for training"""
@@ -249,7 +250,7 @@ def main():
                     # Add diversity bonus for unique correct solutions
                     similarities = similarity_matrix[i]
                     similarities[i] = 0  # Remove self-similarity
-                    avg_similarity = similarities.mean()
+                    avg_similarity = similarities.mean().item()
                     
                     if avg_similarity < 0.7:  # Unique solution
                         reward += diversity_bonus
