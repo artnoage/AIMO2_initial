@@ -110,11 +110,11 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions, prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
+    async def combined_reward_func(completions: List[str], prompt: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
         rewards = []
-        
+        print(len(prompt))
         # Process each example in parallel
-        for prompt, prob, sol, ans, comp in zip(prompts, problem, model_solution, correct_answer, completions):
+        for prom, prob, sol, ans, comp in zip(prompt, problem, model_solution, correct_answer, completions):
             # First verify if model solution is correct
             model_answer = extract_answer_from_solution(sol)
             if model_answer is None:
@@ -133,11 +133,11 @@ def main():
             is_correct = abs(model_numeric - correct_numeric) <= 1e-6
             
             # Extract sections
-            analysis, verdict, substitution = extract_sections(completion)
+            analysis, verdict, substitution = extract_sections(comp)
             
             # Verdict must exist
             if verdict is None:
-                logger.debug(f"Missing verdict section in completion: {completion[:100]}...")
+                logger.debug(f"Missing verdict section in completion: {comp[:100]}...")
                 rewards.append(0.0)
                 continue
                 
@@ -173,7 +173,7 @@ def main():
                     continue
                     
                 # Now check if step number is valid for the solution
-                solution_steps = split_into_steps(model_solution)
+                solution_steps = split_into_steps(sol)
                 if step_num >= len(solution_steps):
                     rewards.append(0.0)
                     continue
@@ -216,7 +216,7 @@ def main():
                     if numeric_value is not None and correct_numeric is not None:
                         if abs(numeric_value - correct_numeric) <= 1e-6:
                             # Only give full reward if this is the last possible step
-                            solution_steps = split_into_steps(model_solution)
+                            solution_steps = split_into_steps(sol)
                             if step_num == len(solution_steps) - 1:
                                 rewards.append(config.full_reward)
                                 stats.full_reward_reasons['final_step_correct'] += 1
@@ -260,13 +260,13 @@ def main():
                         continue
                         
                     # Then verify that analysis suggests a different approach
-                    if not any(step in analysis.lower() for step in model_solution.lower().split('\n')):
+                    if not any(step in analysis.lower() for step in sol.lower().split('\n')):
                         reward = config.full_reward
                         stats.full_reward_reasons['wrong_approach'] += 1
                 
                 elif is_step_verdict and not is_correct:
                     # Split solution into proper steps
-                    solution_steps = split_into_steps(model_solution)
+                    solution_steps = split_into_steps(sol)
                     # First check if the original step was actually wrong
                     original_step = solution_steps[step_num]
                     if original_step == substitution:
@@ -284,7 +284,7 @@ def main():
                 pass  # Keep format reward on validation error
                 
             # Update stats before appending reward
-            stats.update([reward], completion)
+            stats.update([reward], comp)
             rewards.append(reward)
         
         return rewards
