@@ -372,7 +372,7 @@ class CompletionAgent:
         self.logger = logger if logger else logging.getLogger('completion_agent')
         self.base_url = f"http://localhost:{port}/v1"
         
-    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None, timeout: float = 60.0) -> str:
+    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None, timeout: float = 180.0) -> str:
         """Get response from model with retry logic and timeout"""
         # Convert prompt to messages format
         if hasattr(prompt, 'content'):  # LangChain message object
