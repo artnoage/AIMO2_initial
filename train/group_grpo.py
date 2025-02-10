@@ -106,7 +106,7 @@ class GroupValidationStats:
         )
 
 class SolutionSimilarityChecker:
-    def __init__(self, model_name="BAAI/bge-medium-en-v1.5"):
+    def __init__(self, model_name="sentence-transformers/all-mpnet-base-v2"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
