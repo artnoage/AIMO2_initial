@@ -110,11 +110,11 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions, problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
+    async def combined_reward_func(completions, prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
         rewards = []
         
         # Process each example in parallel
-        for prob, sol, ans, comp in zip(problem, model_solution, correct_answer, completions):
+        for prompt, prob, sol, ans, comp in zip(prompts, problem, model_solution, correct_answer, completions):
             # First verify if model solution is correct
             model_answer = extract_answer_from_solution(sol)
             if model_answer is None:
@@ -124,14 +124,14 @@ def main():
                 
             model_numeric, _ = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(ans)
-        
-        if model_numeric is None or correct_numeric is None:
-            logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
-            return [0.0] * len(completions)
             
-        is_correct = abs(model_numeric - correct_numeric) <= 1e-6
-        
-        for completion in completions:
+            if model_numeric is None or correct_numeric is None:
+                logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {ans}")
+                rewards.append(0.0)
+                continue
+                
+            is_correct = abs(model_numeric - correct_numeric) <= 1e-6
+            
             # Extract sections
             analysis, verdict, substitution = extract_sections(completion)
             
