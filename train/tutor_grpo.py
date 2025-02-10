@@ -13,7 +13,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import re
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 def validate_analysis(resp: str) -> Tuple[bool, str]:
     """Validate analysis section format and content"""
@@ -80,6 +80,62 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     substitution = substitution_match.group(1).strip() if substitution_match else None
     
     return analysis, verdict, substitution
+
+async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 5) -> Tuple[int, int]:
+    """Try completions until finding a successful one or reaching max attempts"""
+    # TODO: Implement completion agent call
+    # For now just return no successes
+    return 0, num_attempts
+
+async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct_answer: str) -> bool:
+    """Validate that the analysis section alone can lead to correct completions"""
+    # Split solution into steps and get the analysis part
+    steps = solution.split('\n')
+    if not steps:
+        return False
+        
+    # First part before steps is the analysis
+    analysis = steps[0]
+    
+    # Try completions starting with just the analysis
+    successful, total = await _validate_completions(
+        problem,
+        analysis,
+        correct_answer,
+        5  # num_attempts
+    )
+    
+    return successful == 0 and total == 5
+
+async def _validate_step_identification(
+    problem: str,
+    steps: List[str],
+    step_num: int,
+    substitution: str,
+    correct_answer: str
+) -> bool:
+    """Validate step identification and correction"""
+    # Try completions from the wrong step - all should fail
+    wrong_partial = "".join(steps[:step_num])
+    successful_wrong, total_wrong = await _validate_completions(
+        problem,
+        wrong_partial,
+        correct_answer,
+        5  # num_attempts
+    )
+    if successful_wrong > 0:
+        return False
+        
+    # Try completions with correction - at least one should succeed
+    corrected_partial = "".join(steps[:step_num-1]) + substitution
+    successful_fixed, total_fixed = await _validate_completions(
+        problem,
+        corrected_partial,
+        correct_answer,
+        5  # num_attempts
+    )
+    
+    return successful_fixed > 0 and total_fixed == 5
 
 def main():
     def structure_reward_func(completions, **kwargs) -> list[float]:
@@ -158,7 +214,7 @@ def main():
         
         return successful_fixed > 0 and total_fixed == 5
 
-    def tutor_validation_reward_func(completions, problem: str, correct_answer: str, **kwargs) -> list[float]:
+    async def tutor_validation_reward_func(completions, problem: str, correct_answer: str, **kwargs) -> list[float]:
         """Reward function that validates tutor responses using completion-based validation"""
         rewards = []
         
@@ -172,33 +228,37 @@ def main():
             # Base reward for valid structure
             reward = 0.2
             
-            # Validate based on verdict type
-            if verdict == "The answer is correct":
-                # TODO: Verify if solution is actually correct
-                rewards.append(reward)
-                
-            elif verdict == "The whole approach is wrong":
-                # Validate that no completions from analysis succeed
-                if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
-                    reward += 1.8  # Up to 2.0 total
-                rewards.append(reward)
-                
-            elif verdict.startswith("Step "):
-                try:
-                    step_num = int(verdict.split()[1])
-                    steps = completion.split('\n')
+            try:
+                # Validate based on verdict type
+                if verdict == "The answer is correct":
+                    # TODO: Verify if solution is actually correct
+                    rewards.append(reward)
                     
-                    # Validate step identification and correction
-                    if await _validate_step_identification(
-                        problem, steps, step_num, substitution, correct_answer
-                    ):
+                elif verdict == "The whole approach is wrong":
+                    # Validate that no completions from analysis succeed
+                    if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
                         reward += 1.8  # Up to 2.0 total
-                except (ValueError, IndexError):
-                    pass
-                rewards.append(reward)
-                
-            else:
-                rewards.append(0.0)  # Invalid verdict type
+                    rewards.append(reward)
+                    
+                elif verdict.startswith("Step "):
+                    try:
+                        step_num = int(verdict.split()[1])
+                        steps = completion.split('\n')
+                        
+                        # Validate step identification and correction
+                        if await _validate_step_identification(
+                            problem, steps, step_num, substitution, correct_answer
+                        ):
+                            reward += 1.8  # Up to 2.0 total
+                    except (ValueError, IndexError):
+                        pass
+                    rewards.append(reward)
+                    
+                else:
+                    rewards.append(0.0)  # Invalid verdict type
+                    
+            except Exception:
+                rewards.append(0.0)  # Handle any validation errors
                 
         return rewards
 
