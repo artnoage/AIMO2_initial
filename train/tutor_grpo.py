@@ -135,7 +135,7 @@ def main():
                 continue
                 
             is_correct = abs(model_numeric - correct_numeric) <= 1e-6
-            
+            print("is_correct",is_correct)
             # Extract sections
             analysis, verdict, substitution = extract_sections(comp)
             
@@ -149,7 +149,6 @@ def main():
             polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
             is_step_verdict = False
             reward = 0.0
-            print(verdict)
             if verdict in polar_verdicts:
                 is_step_verdict = False
                 # For polar verdicts, substitution should be None
@@ -252,40 +251,38 @@ def main():
                 continue
                 
             # Additional validation based on verdict type
-            try:
-                if verdict == "The answer is correct" and is_correct:
-                    reward = config.full_reward
-                    stats.full_reward_reasons['correct_answer'] += 1
+            
+            if verdict == "The answer is correct" and is_correct:
+                reward = config.full_reward
+                stats.full_reward_reasons['correct_answer'] += 1
+                
+            elif verdict == "The whole approach is wrong" and not is_correct:
+                # First verify that analysis exists
+                if analysis is None:
+                    rewards.append(reward)  # Only format reward
+                    continue
                     
-                elif verdict == "The whole approach is wrong" and not is_correct:
-                    # First verify that analysis exists
-                    if analysis is None:
-                        rewards.append(reward)  # Only format reward
-                        continue
-                        
-                    # Then verify that analysis suggests a different approach
-                    if not any(step in analysis.lower() for step in sol.lower().split('\n')):
-                        reward = config.full_reward
-                        stats.full_reward_reasons['wrong_approach'] += 1
-                
-                elif is_step_verdict and not is_correct:
-                    # Split solution into proper steps
-                    solution_steps = split_into_steps(sol)
-                    # First check if the original step was actually wrong
-                    original_step = solution_steps[step_num]
-                    if original_step == substitution:
-                        rewards.append(reward)  # Only format reward if suggesting same step
-                        continue
-                        
-                    is_valid, improvement_bonus = True, 0.0  # Skip validation for now
-                    if is_valid:
-                        reward = config.full_reward + improvement_bonus
-                        stats.full_reward_reasons['step_correction'] += 1
-                        if improvement_bonus > 0:
-                            stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
-                
-            except Exception:
-                pass  # Keep format reward on validation error
+                # Then verify that analysis suggests a different approach
+                if not any(step in analysis.lower() for step in sol.lower().split('\n')):
+                    reward = config.full_reward
+                    stats.full_reward_reasons['wrong_approach'] += 1
+            
+            elif is_step_verdict and not is_correct:
+                print("I am here")
+                # Split solution into proper steps
+                solution_steps = split_into_steps(sol)
+                # First check if the original step was actually wrong
+                original_step = solution_steps[step_num]
+                if original_step == substitution:
+                    rewards.append(reward)  # Only format reward if suggesting same step
+                    continue
+                print("Am I here?")
+                is_valid, improvement_bonus = True, 0.0  # Skip validation for now
+                if is_valid:
+                    reward = config.full_reward + improvement_bonus
+                    stats.full_reward_reasons['step_correction'] += 1
+                    if improvement_bonus > 0:
+                        stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
                 
             # Update stats before appending reward
             stats.update([reward], comp)
@@ -376,9 +373,6 @@ def main():
 
     # Wrap async reward function to make it synchronous
     def sync_reward_func(completions, **kwargs):
-        print("\nDEBUG: GRPO kwargs:", kwargs.keys())
-        print("DEBUG: kwargs types:", {k: type(v) for k, v in kwargs.items()})
-        print("DEBUG: kwargs lengths:", {k: len(v) if hasattr(v, '__len__') else 'no len' for k, v in kwargs.items()})
         return asyncio.run(combined_reward_func(completions, **kwargs))
 
     trainer = GRPOTrainer(
