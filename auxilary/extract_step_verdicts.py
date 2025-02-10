@@ -1,6 +1,7 @@
 import json
 import argparse
 import random
+import re
 from typing import Dict, List
 import logging
 
@@ -44,7 +45,6 @@ def extract_verdicts(data: List[Dict], correct_ratio: float = 0.25,
             response = entry['messages'][1].get('content', '')
             
             # Extract verdict section
-            import re
             verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
             if verdict_match:
                 verdict = verdict_match.group(1).strip()
