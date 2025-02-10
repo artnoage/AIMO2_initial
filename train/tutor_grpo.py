@@ -28,50 +28,60 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
             f.write(content + "\n\n")
 
     async def try_completion():
+        markdown_logs = []
+        def add_to_log(content: str):
+            markdown_logs.append(content)
+
         try:
-            log_to_markdown("## Completion Attempt\n")
-            log_to_markdown("### Initial Partial Solution")
-            log_to_markdown("```")
-            log_to_markdown(partial_solution)
-            log_to_markdown("```\n")
+            add_to_log("## Completion Attempt\n")
+            add_to_log("### Initial Partial Solution")
+            add_to_log("```")
+            add_to_log(partial_solution)
+            add_to_log("```\n")
             
             completion = await completion_agent.generate(problem, partial_solution)
-            log_to_markdown("### Generated Completion")
-            log_to_markdown("```")
-            log_to_markdown(completion)
-            log_to_markdown("```\n")
+            add_to_log("### Generated Completion")
+            add_to_log("```")
+            add_to_log(completion)
+            add_to_log("```\n")
             
             complete_solution = partial_solution + completion
-            log_to_markdown("### Complete Solution")
-            log_to_markdown("```")
-            log_to_markdown(complete_solution)
-            log_to_markdown("```\n")
+            add_to_log("### Complete Solution")
+            add_to_log("```")
+            add_to_log(complete_solution)
+            add_to_log("```\n")
             
             model_answer = extract_answer_from_solution(complete_solution)
             if model_answer is None:
-                log_to_markdown("❌ No boxed answer found in completion")
+                add_to_log("❌ No boxed answer found in completion")
+                log_to_markdown("\n".join(markdown_logs))
                 return False
                 
             numeric_answer, debug_info = extract_numeric_answer(model_answer, debug=True)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if numeric_answer is None:
-                log_to_markdown(f"❌ Could not extract numeric answer: {debug_info}")
+                add_to_log(f"❌ Could not extract numeric answer: {debug_info}")
+                log_to_markdown("\n".join(markdown_logs))
                 return False
                 
             if correct_numeric is None:
-                log_to_markdown(f"❌ Could not extract correct numeric answer from: {correct_answer}")
+                add_to_log(f"❌ Could not extract correct numeric answer from: {correct_answer}")
+                log_to_markdown("\n".join(markdown_logs))
                 return False
                 
             is_correct = abs(numeric_answer - correct_numeric) <= 1e-6
-            log_to_markdown(f"### Result")
-            log_to_markdown(f"- Model answer: {numeric_answer}")
-            log_to_markdown(f"- Correct answer: {correct_numeric}")
-            log_to_markdown(f"- Is correct: {'✅' if is_correct else '❌'}")
+            add_to_log(f"### Result")
+            add_to_log(f"- Model answer: {numeric_answer}")
+            add_to_log(f"- Correct answer: {correct_numeric}")
+            add_to_log(f"- Is correct: {'✅' if is_correct else '❌'}")
+            
+            log_to_markdown("\n".join(markdown_logs))
             return is_correct
             
         except Exception as e:   
-            log_to_markdown(f"❌ Exception occurred: {str(e)}")
+            add_to_log(f"❌ Exception occurred: {str(e)}")
+            log_to_markdown("\n".join(markdown_logs))
             return False
     
     # Run all completion attempts in parallel
