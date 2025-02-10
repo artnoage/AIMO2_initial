@@ -210,67 +210,8 @@ async def _validate_step_identification(
     return successful_fixed > 0 and total_fixed == COMPLETION_ATTEMPTS
 
 def main():
-    def structure_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
-        """Reward function that checks if the response has valid structure"""
-        rewards = []
-        for completion in completions:
-            # Extract sections
-            analysis, verdict, substitution = extract_sections(completion)
-            
-            # Verdict must exist
-            if verdict is None:
-                rewards.append(0.0)
-                continue
-                
-            reward = 0.0
-            
-            # Check if verdict is in valid format
-            valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
-            if verdict in valid_verdicts:
-                is_step_verdict = False
-            else:
-                # Check if it's a valid step verdict (must be "Step X" where X is an integer)
-                try:
-                    if not verdict.startswith("Step "):
-                        rewards.append(0.0)
-                        continue
-                    step_num = int(verdict.split()[1])
-                    if step_num < 0:
-                        rewards.append(0.0)
-                        continue
-                    is_step_verdict = True
-                except (ValueError, IndexError):
-                    rewards.append(0.0)
-                    continue
-            
-            # Give points for valid verdict format
-            reward += 0.1
-            
-            # Give points for analysis if present
-            if analysis is not None:
-                reward += 0.05
-            
-            # Check substitution based on verdict type
-            if is_step_verdict:
-                # For step verdicts, substitution must exist
-                if substitution is None:
-                    rewards.append(0.0)
-                    continue
-                reward += 0.05
-            else:
-                # For other verdicts, substitution must be None
-                if substitution is not None:
-                    rewards.append(0.0)
-                    continue
-                reward += 0.05
-            
-            rewards.append(reward)
-            
-        return rewards
-
-    
-    async def tutor_validation_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
-        """Reward function that validates tutor responses using completion-based validation"""
+    async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
+        """Combined reward function that checks structure and validates responses"""
         rewards = []
         
         # First verify if model solution is correct
@@ -287,7 +228,7 @@ def main():
         is_correct = abs(model_numeric - correct_numeric) <= 1e-6
         
         for completion in completions:
-            # First check basic format requirements
+            # Extract sections
             analysis, verdict, substitution = extract_sections(completion)
             
             # Verdict must exist
@@ -314,23 +255,33 @@ def main():
                     rewards.append(0.0)
                     continue
             
-            # Check substitution requirements
+            # Start with format reward
+            reward = 0.1  # Base reward for valid verdict format
+            
+            # Add points for analysis if present
+            if analysis is not None:
+                reward += 0.05
+            
+            # Check substitution based on verdict type
             if is_step_verdict:
+                # For step verdicts, substitution must exist
                 if substitution is None:
                     rewards.append(0.0)
                     continue
+                reward += 0.05
             else:
+                # For other verdicts, substitution must be None
                 if substitution is not None:
                     rewards.append(0.0)
                     continue
-            
-            # If we get here, format is valid - proceed with completion-based validation
-            reward = 0.0
+                reward += 0.05
+                
+            # If we get here, format is valid (reward = 0.2) - proceed with validation
             
             # Check if verdict agrees with actual correctness
             tutor_says_correct = verdict == "The answer is correct"
             if tutor_says_correct != is_correct:
-                rewards.append(0.0)
+                rewards.append(reward)  # Only format reward
                 continue
                 
             # Additional validation based on verdict type
@@ -353,7 +304,7 @@ def main():
                         reward = 2.0  # Full reward
                 
             except Exception:
-                reward = 0.0  # Handle any validation errors
+                pass  # Keep format reward on validation error
                 
             rewards.append(reward)
                 
@@ -421,14 +372,11 @@ def main():
         output_dir=output_dir,
     )
 
-    # Initialize GRPO trainer with reward functions
+    # Initialize GRPO trainer with combined reward function
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[
-            structure_reward_func,     # Check response structure
-            tutor_validation_reward_func  # Validate tutor response
-        ],
+        reward_funcs=[combined_reward_func],
         args=training_args,
         train_dataset=dataset['train'],
     )
