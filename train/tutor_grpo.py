@@ -344,7 +344,7 @@ def main():
         map_eos_token=True)
 
     # Load dataset and format it
-    dataset =  load_dataset(config.dataset_name)
+    dataset = load_dataset(config.dataset_name, split="train")
     
     def formatting_func(example):
         # Wrap the prompt in INST tags while keeping all fields
@@ -356,6 +356,7 @@ def main():
     # Apply formatting to dataset
     formatted_dataset = dataset.map(
         formatting_func,
+        remove_columns=dataset.column_names,
         desc="Adding INST tags to prompts"
     )
 
@@ -365,7 +366,7 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm = True, # use vLLM for fast inference!
+        use_vllm = False, # Disable vLLM to avoid pickling issues
         torch_empty_cache_steps=10,
         learning_rate = 3e-6,
         adam_beta1 = 0.9,
