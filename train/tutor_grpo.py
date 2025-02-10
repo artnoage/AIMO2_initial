@@ -25,12 +25,12 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
     
     async def try_completion():
         try:
-            self.logger.debug(f"\nTrying completion for partial solution:\n{partial_solution}")
+            logger.debug(f"\nTrying completion for partial solution:\n{partial_solution}")
             completion = await completion_agent.generate(problem, partial_solution)
-            self.logger.debug(f"Got completion:\n{completion}")
+            logger.debug(f"Got completion:\n{completion}")
             
             complete_solution = partial_solution + completion
-            self.logger.debug(f"Complete solution:\n{complete_solution}")
+            logger.debug(f"Complete solution:\n{complete_solution}")
             
             model_answer = extract_answer_from_solution(complete_solution)
             if model_answer is None:
