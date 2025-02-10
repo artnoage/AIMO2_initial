@@ -28,6 +28,7 @@ model_type = "tutor"
 model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
 dataset_name = "Metaskepsis/tutor_prompts"
 COMPLETION_PORT = 8001
+COMPLETION_ATTEMPTS = 10
 
 class CompletionAgent:
     """Agent that completes partial solutions using a local model"""
@@ -131,7 +132,7 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     
     return analysis, verdict, substitution
 
-async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = 10) -> Tuple[int, int]:
+async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = COMPLETION_ATTEMPTS) -> Tuple[int, int]:
     """Try completions until finding a successful one or reaching max attempts"""
     # Initialize completion agent
     completion_agent = CompletionAgent(port=COMPLETION_PORT)
@@ -186,7 +187,7 @@ async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct
         problem,
         analysis,
         correct_answer,
-        5  # num_attempts
+        COMPLETION_ATTEMPTS
     )
     
     return successful == 0 and total == 5
@@ -205,7 +206,7 @@ async def _validate_step_identification(
         problem,
         wrong_partial,
         correct_answer,
-        5  # num_attempts
+        COMPLETION_ATTEMPTS
     )
     if successful_wrong > 0:
         return False
@@ -216,10 +217,10 @@ async def _validate_step_identification(
         problem,
         corrected_partial,
         correct_answer,
-        5  # num_attempts
+        COMPLETION_ATTEMPTS
     )
     
-    return successful_fixed > 0 and total_fixed == 5
+    return successful_fixed > 0 and total_fixed == COMPLETION_ATTEMPTS
 
 def main():
     def structure_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
@@ -336,10 +337,22 @@ def main():
         
         return successful_fixed > 0 and total_fixed == 5
 
-    async def tutor_validation_reward_func(completions, problem: str, correct_answer: str, **kwargs) -> list[float]:
+    async def tutor_validation_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         """Reward function that validates tutor responses using completion-based validation"""
         rewards = []
-        max_attempts = 5  # Number of attempts to get valid verdict
+        
+        # First verify if model solution is correct
+        model_answer = extract_answer_from_solution(model_solution)
+        if model_answer is None:
+            return [0.0] * len(completions)
+            
+        model_numeric, _ = extract_numeric_answer(model_answer)
+        correct_numeric, _ = extract_numeric_answer(correct_answer)
+        
+        if model_numeric is None or correct_numeric is None:
+            return [0.0] * len(completions)
+            
+        is_correct = abs(model_numeric - correct_numeric) <= 1e-6
         
         for completion in completions:
             # First check basic format requirements
@@ -380,44 +393,37 @@ def main():
                     continue
             
             # If we get here, format is valid - proceed with completion-based validation
-            valid_response = False
-            attempts = 0
             reward = 0.0
             
-            while not valid_response and attempts < max_attempts:
-                attempts += 1
-                try:
-                    # First verify if solution is actually correct
-                    # TODO: Implement solution verification
-                    is_correct = False  # Placeholder
+            # Check if verdict agrees with actual correctness
+            tutor_says_correct = verdict == "The answer is correct"
+            if tutor_says_correct != is_correct:
+                rewards.append(0.0)
+                continue
+                
+            # Additional validation based on verdict type
+            try:
+                if verdict == "The answer is correct" and is_correct:
+                    reward = 2.0  # Full reward
                     
-                    # Check if verdict agrees with actual correctness
-                    tutor_says_correct = verdict == "The answer is correct"
-                    if tutor_says_correct == is_correct:
-                        valid_response = True
-                        
-                        # Additional validation based on verdict type
-                        if verdict == "The answer is correct":
-                            reward = 2.0  # Full reward
-                            
-                        elif verdict == "The whole approach is wrong":
-                            if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
-                                reward = 2.0  # Full reward
-                            
-                        elif is_step_verdict:
-                            if await _validate_step_identification(
-                                problem, 
-                                completion.split('\n'), 
-                                step_num,
-                                substitution,
-                                correct_answer
-                            ):
-                                reward = 2.0  # Full reward
-                    
-                except Exception:
-                    pass  # Continue to next attempt
-                    
-            rewards.append(reward)  # Will be 0.0 if no valid response found
+                elif verdict == "The whole approach is wrong" and not is_correct:
+                    if await _validate_whole_approach_is_wrong(problem, model_solution, correct_answer):
+                        reward = 2.0  # Full reward
+                
+                elif is_step_verdict and not is_correct:
+                    if await _validate_step_identification(
+                        problem, 
+                        model_solution.split('\n'), 
+                        step_num,
+                        substitution,
+                        correct_answer
+                    ):
+                        reward = 2.0  # Full reward
+                
+            except Exception:
+                reward = 0.0  # Handle any validation errors
+                
+            rewards.append(reward)
                 
         return rewards
 
