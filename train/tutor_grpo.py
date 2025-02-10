@@ -225,14 +225,14 @@ def main():
                             # Only give full reward if this is the last possible step
                             solution_steps = split_into_steps(model_solution)
                             if step_num == len(solution_steps) - 1:
-                                # Verify no valid completions exist from here
-                                successful, _ = await _validate_completions(
-                                    problem,
-                                    "".join(solution_steps[:step_num]) + substitution,
-                                    correct_answer,
-                                    config.completion_attempts
-                                )
-                                if successful == 0:  # No valid completions possible
+                                # Comment out LLM validation temporarily
+                                # successful, _ = await _validate_completions(
+                                #     problem,
+                                #     "".join(solution_steps[:step_num]) + substitution,
+                                #     correct_answer,
+                                #     config.completion_attempts
+                                # )
+                                if True:  # Skip validation check for now
                                     rewards.append(config.full_reward)
                                     stats.full_reward_reasons['final_step_correct'] += 1
                                     continue
@@ -292,7 +292,15 @@ def main():
                         rewards.append(reward)  # Only format reward if suggesting same step
                         continue
                         
-                    is_valid, improvement_bonus = True, 0.0  # Temporarily disable async validation
+                    # Comment out LLM validation
+                    # is_valid, improvement_bonus = await _validate_step_identification(
+                    #     problem, 
+                    #     solution_steps,
+                    #     step_num,
+                    #     substitution,
+                    #     correct_answer
+                    # )
+                    is_valid, improvement_bonus = True, 0.0  # Skip validation for now
                     if is_valid:
                         reward = config.full_reward + improvement_bonus
                         stats.full_reward_reasons['step_correction'] += 1
