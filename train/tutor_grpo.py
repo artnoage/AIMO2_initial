@@ -105,19 +105,14 @@ async def _validate_step_identification(
     wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
     corrected_partial = "".join(steps[:step_num]) + substitution  # Replace the wrong step with substitution
     
-    logger.info(f"Partial solution up to wrong step:\n{wrong_partial}")
-    logger.info("-"*80)
-    logger.info(f"Corrected partial solution:\n{corrected_partial}")
-    logger.info("-"*80)
-    
     wrong_check, fixed_check = await asyncio.gather(
         _validate_completions(problem, wrong_partial, correct_answer, config.completion_attempts),
         _validate_completions(problem, corrected_partial, correct_answer, config.completion_attempts)
     )
-    print("ganw",wrong_check,fixed_check)
+
     successful_wrong, total_wrong = wrong_check
     successful_fixed, total_fixed = fixed_check
-    
+
     # Calculate improvement bonus based on relative success rate
     improvement_bonus = 0.0
     if successful_wrong == 0:  # Only reward if original step had no successful completions
