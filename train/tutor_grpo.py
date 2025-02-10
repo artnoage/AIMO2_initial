@@ -110,7 +110,7 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def simple_reward_func(completions, **kwargs) -> list[float]:
+    def simple_reward_func(completions, **kwargs) -> list[float]:
         """Simple reward function that checks for basic structure"""
         rewards = []
         for completion in completions:
@@ -120,15 +120,12 @@ def main():
             # Basic structure check
             if "Analysis:" in completion:
                 reward += 0.3
-                await asyncio.sleep(0.1)  # Simulate async work per section
                 
             if "Verdict:" in completion:
                 reward += 0.3
-                await asyncio.sleep(0.1)  # Simulate async work per section
                 
             if "Correction:" in completion:
                 reward += 0.4
-                await asyncio.sleep(0.1)  # Simulate async work per section
                 
             rewards.append(reward)
         
