@@ -5,7 +5,7 @@ import sys
 import asyncio
 from typing import List, Tuple
 from datetime import datetime
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from unsloth import (
     FastLanguageModel, PatchFastRL, is_bfloat16_supported, get_chat_template
 )
@@ -344,7 +344,7 @@ def main():
         map_eos_token=True)
 
     # Load dataset and format it
-    dataset = load_dataset(config.dataset_name)
+    dataset =  load_from_disk(config.dataset_name)
     
     def formatting_func(example):
         # Wrap the prompt in INST tags while keeping all fields
@@ -354,7 +354,7 @@ def main():
         }
 
     # Apply formatting to dataset
-    formatted_dataset = dataset['train'].map(
+    formatted_dataset = dataset.map(
         formatting_func,
         desc="Adding INST tags to prompts"
     )
