@@ -116,10 +116,19 @@ def main():
             
             # Check if verdict is in valid format
             valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
-            is_step_verdict = verdict.startswith("Step ")
-            if not (verdict in valid_verdicts or is_step_verdict):
-                rewards.append(0.0)
-                continue
+            if verdict in valid_verdicts:
+                is_step_verdict = False
+            else:
+                # Check if it's a valid step verdict (must be "Step X" where X is an integer)
+                try:
+                    parts = verdict.split()
+                    if len(parts) != 2 or parts[0] != "Step" or not parts[1].isdigit():
+                        rewards.append(0.0)
+                        continue
+                    is_step_verdict = True
+                except:
+                    rewards.append(0.0)
+                    continue
             
             # Give points for valid verdict format
             reward += 0.1
