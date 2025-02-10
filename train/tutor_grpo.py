@@ -220,21 +220,50 @@ def main():
         max_attempts = 5  # Number of attempts to get valid verdict
         
         for completion in completions:
+            # First check basic format requirements
+            analysis, verdict, substitution = extract_sections(completion)
+            
+            # Verdict must exist
+            if verdict is None:
+                rewards.append(0.0)
+                continue
+                
+            # Check verdict format
+            valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
+            is_step_verdict = False
+            if verdict in valid_verdicts:
+                is_step_verdict = False
+            else:
+                try:
+                    if not verdict.startswith("Step "):
+                        rewards.append(0.0)
+                        continue
+                    step_num = int(verdict.split()[1])
+                    if step_num < 0:
+                        rewards.append(0.0)
+                        continue
+                    is_step_verdict = True
+                except (ValueError, IndexError):
+                    rewards.append(0.0)
+                    continue
+            
+            # Check substitution requirements
+            if is_step_verdict:
+                if substitution is None:
+                    rewards.append(0.0)
+                    continue
+            else:
+                if substitution is not None:
+                    rewards.append(0.0)
+                    continue
+            
+            # If we get here, format is valid - proceed with completion-based validation
             valid_response = False
             attempts = 0
             reward = 0.0
             
             while not valid_response and attempts < max_attempts:
                 attempts += 1
-                
-                # Extract sections
-                analysis, verdict, substitution = extract_sections(completion)
-                if not all([analysis, verdict]):
-                    break  # Invalid structure, no more attempts needed
-                
-                # Base reward for valid structure
-                reward = 0.2
-                
                 try:
                     # First verify if solution is actually correct
                     # TODO: Implement solution verification
@@ -247,34 +276,26 @@ def main():
                         
                         # Additional validation based on verdict type
                         if verdict == "The answer is correct":
-                            reward += 1.8  # Up to 2.0 total
+                            reward = 2.0  # Full reward
                             
                         elif verdict == "The whole approach is wrong":
                             if await _validate_whole_approach_is_wrong(problem, completion, correct_answer):
-                                reward += 1.8  # Up to 2.0 total
-                            else:
-                                reward = 0.2  # Only structure reward
-                                
-                        elif verdict.startswith("Step "):
-                            try:
-                                step_num = int(verdict.split()[1])
-                                steps = completion.split('\n')
-                                
-                                if await _validate_step_identification(
-                                    problem, steps, step_num, substitution, correct_answer
-                                ):
-                                    reward += 1.8  # Up to 2.0 total
-                                else:
-                                    reward = 0.2  # Only structure reward
-                            except (ValueError, IndexError):
-                                reward = 0.2  # Only structure reward
-                        else:
-                            reward = 0.0  # Invalid verdict type
+                                reward = 2.0  # Full reward
+                            
+                        elif is_step_verdict:
+                            if await _validate_step_identification(
+                                problem, 
+                                completion.split('\n'), 
+                                step_num,
+                                substitution,
+                                correct_answer
+                            ):
+                                reward = 2.0  # Full reward
                     
                 except Exception:
-                    reward = 0.0  # Handle any validation errors
+                    pass  # Continue to next attempt
                     
-            rewards.append(reward)
+            rewards.append(reward)  # Will be 0.0 if no valid response found
                 
         return rewards
 
