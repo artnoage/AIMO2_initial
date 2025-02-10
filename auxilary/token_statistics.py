@@ -29,11 +29,23 @@ def analyze_tokens(data: List[Dict]) -> Dict:
             'dark': defaultdict(list),
             'judge': defaultdict(list)
         },
-        'sft': defaultdict(list)
+        'sft': defaultdict(list),
+        'grpo': defaultdict(list)
     }
     
     for entry in data:
-        if entry.get('data_type') != 'training':
+        data_type = entry.get('data_type')
+        if data_type not in ['training', 'tutor_prompt']:
+            continue
+            
+        # Handle tutor prompts (from create_tutor_prompts)
+        if data_type == 'tutor_prompt':
+            if 'prompt' in entry:
+                prompt_tokens = count_tokens(entry['prompt'])
+                stats['grpo']['prompt_tokens'].append(prompt_tokens)
+            if 'model_solution' in entry:
+                solution_tokens = count_tokens(entry['model_solution'])
+                stats['grpo']['solution_tokens'].append(solution_tokens)
             continue
             
         # Check if entry is SFT format (from tutor_generator)
