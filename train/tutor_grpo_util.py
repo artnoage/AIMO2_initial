@@ -49,7 +49,7 @@ class TutorConfig:
     dataset_name: str = "Metaskepsis/tutor_prompts"
     
     # API settings
-    completion_port: int = 8001
+    completion_port: int = 8004
     completion_attempts: int = 10
     
     # Reward settings
