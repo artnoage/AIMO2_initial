@@ -10,7 +10,8 @@ from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 def extract_sections(response: str) -> tuple[str, str, str]:
-    """Extract the Analysis, Verdict and Substitution sections from the response"""
+    """Extract the Analysis, Verdict and Substitution sections from the response.
+    Note: The XML tags are intentionally in reverse order (</tag>...<tag>) as this was the format used in SFT training."""
     analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
     verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
     substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
@@ -224,8 +225,8 @@ class CompletionAgent:
         self.max_retries = max_retries
         self.base_url = f"http://localhost:{port}/v1"
         
-    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None) -> str:
-        """Get response from model with retry logic"""
+    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None, timeout: float = 5.0) -> str:
+        """Get response from model with retry logic and timeout"""
         # Convert prompt to messages format
         if hasattr(prompt, 'content'):  # LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
@@ -245,7 +246,8 @@ class CompletionAgent:
         retry_count = 0
         while retry_count < self.max_retries:
             try:
-                async with aiohttp.ClientSession() as session:
+                timeout_client = aiohttp.ClientTimeout(total=timeout)
+                async with aiohttp.ClientSession(timeout=timeout_client) as session:
                     async with session.post(
                         f"{self.base_url}/chat/completions",
                         json=payload,
