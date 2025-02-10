@@ -113,6 +113,7 @@ def main():
     async def simple_reward_func(completions, **kwargs) -> list[float]:
         """Simple reward function that checks for basic structure"""
         async def check_completion(completion):
+            print(completion)
             reward = 0.0
             # Simulate some async work
             await asyncio.sleep(0.1)
@@ -342,7 +343,7 @@ def main():
         map_eos_token=True)
 
     # Load dataset and format it
-    dataset = load_dataset(config.dataset_name)
+    dataset = load_from_disk(config.dataset_name)
     
     def formatting_func(example):
         # Keep all original fields
@@ -351,7 +352,7 @@ def main():
         formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
         return formatted_example
     # Load and format dataset
-    formatted_dataset = dataset['train'].map(
+    formatted_dataset = dataset.map(
         formatting_func,
         desc="Applying chat template"
     )
