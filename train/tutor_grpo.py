@@ -192,9 +192,9 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     
     return analysis, verdict, substitution
 
-async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = COMPLETION_ATTEMPTS) -> Tuple[int, int]:
+async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = config.completion_attempts) -> Tuple[int, int]:
     """Try completions in parallel until finding a successful one"""
-    completion_agent = CompletionAgent(port=COMPLETION_PORT)
+    completion_agent = CompletionAgent(port=config.completion_port)
     
     async def try_completion():
         try:
@@ -255,10 +255,10 @@ async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct
         problem,
         analysis,
         correct_answer,
-        COMPLETION_ATTEMPTS
+        config.completion_attempts
     )
     
-    return successful == 0 and total == COMPLETION_ATTEMPTS
+    return successful == 0 and total == config.completion_attempts
 
 async def _validate_step_identification(
     problem: str,
@@ -273,8 +273,8 @@ async def _validate_step_identification(
     corrected_partial = "".join(steps[:step_num-1]) + substitution
     
     wrong_check, fixed_check = await asyncio.gather(
-        _validate_completions(problem, wrong_partial, correct_answer, COMPLETION_ATTEMPTS),
-        _validate_completions(problem, corrected_partial, correct_answer, COMPLETION_ATTEMPTS)
+        _validate_completions(problem, wrong_partial, correct_answer, config.completion_attempts),
+        _validate_completions(problem, corrected_partial, correct_answer, config.completion_attempts)
     )
     
     successful_wrong, _ = wrong_check
@@ -327,7 +327,7 @@ def main():
             
             if verdict in valid_verdicts:
                 is_step_verdict = False
-                reward = STRUCTURE_BASE_REWARD
+                reward = config.structure_base_reward
             elif verdict.startswith("Step "):
                 # First validate step number format before accessing any steps
                 try:
@@ -353,14 +353,14 @@ def main():
                     continue
                     
                 is_step_verdict = True
-                reward = STRUCTURE_BASE_REWARD
+                reward = config.structure_base_reward
             else:
                 rewards.append(0.0)
                 continue
             
             # Add points for analysis if present
             if analysis is not None:
-                reward += ANALYSIS_REWARD
+                reward += config.analysis_reward
             
             # Check substitution based on verdict type
             if is_step_verdict:
@@ -372,9 +372,9 @@ def main():
                 # Check substitution doesn't contain multiple steps
                 substitution_steps = split_into_steps(substitution)
                 if len(substitution_steps) > 1:
-                    reward -= MULTIPLE_STEP_PENALTY
+                    reward -= config.multiple_step_penalty
                 else:
-                    reward += SINGLE_STEP_BONUS
+                    reward += config.single_step_bonus
                 
                 # If substitution contains a boxed answer, verify it matches
                 boxed_answer = extract_answer_from_solution(substitution)
@@ -385,13 +385,13 @@ def main():
                             rewards.append(0.0)
                             continue
                     
-                reward += SUBSTITUTION_REWARD
+                reward += config.substitution_reward
             else:
                 # For other verdicts, substitution must be None
                 if substitution is not None:
                     rewards.append(0.0)
                     continue
-                reward += SUBSTITUTION_REWARD
+                reward += config.substitution_reward
                 
             # If we get here, format is valid (reward = 0.2) - proceed with validation
             
@@ -404,11 +404,11 @@ def main():
             # Additional validation based on verdict type
             try:
                 if verdict == "The answer is correct" and is_correct:
-                    reward = FULL_REWARD
+                    reward = config.full_reward
                     
                 elif verdict == "The whole approach is wrong" and not is_correct:
                     if await _validate_whole_approach_is_wrong(problem, model_solution, correct_answer):
-                        reward = FULL_REWARD
+                        reward = config.full_reward
                 
                 elif is_step_verdict and not is_correct:
                     # Split solution into proper steps
@@ -420,7 +420,7 @@ def main():
                         substitution,
                         correct_answer
                     ):
-                        reward = FULL_REWARD
+                        reward = config.full_reward
                 
             except Exception:
                 pass  # Keep format reward on validation error
@@ -431,7 +431,7 @@ def main():
 
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
+        model_name=config.model_name,
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
@@ -459,11 +459,11 @@ def main():
         map_eos_token=True)
 
     # Load dataset
-    dataset = load_dataset(dataset_name)
+    dataset = load_dataset(config.dataset_name)
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/{model_type}/{timestamp}"
+    output_dir = f"train_results/{config.model_type}/{timestamp}"
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
@@ -505,8 +505,8 @@ def main():
 
     # Save both merged model and LoRA weights
     models_dir = "models"
-    os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
-    model_output_dir = os.path.join(models_dir, model_type, timestamp)
+    os.makedirs(os.path.join(models_dir, config.model_type), exist_ok=True)
+    model_output_dir = os.path.join(models_dir, config.model_type, timestamp)
     
     # Save the merged model
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
