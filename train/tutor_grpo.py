@@ -346,8 +346,18 @@ def main():
     # Load dataset and format it
     dataset = load_dataset(config.dataset_name)
     
-    # Dataset already contains properly formatted tutor prompts
-    formatted_dataset = dataset['train']
+    def formatting_func(example):
+        # Wrap the prompt in INST tags while keeping all fields
+        return {
+            **example,  # Keep all original fields
+            "prompt": f"[INST]{example['prompt']}[/INST]"
+        }
+
+    # Apply formatting to dataset
+    formatted_dataset = dataset['train'].map(
+        formatting_func,
+        desc="Adding INST tags to prompts"
+    )
 
     # Create timestamped output directory with model_type
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
