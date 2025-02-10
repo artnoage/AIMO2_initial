@@ -1,17 +1,20 @@
 
 
 import os
-from datasets import load_dataset, load_from_disk, concatenate_datasets
-from datetime import datetime
-from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-PatchFastRL("GRPO", FastLanguageModel)
-from unsloth.chat_templates import get_chat_template
-from trl import GRPOConfig, GRPOTrainer
 import sys
+import logging
 import aiohttp
 import asyncio
-from typing import Any, Union, Tuple
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Union, Tuple, Dict, Optional
+from datasets import load_dataset, load_from_disk, concatenate_datasets
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
+from unsloth.chat_templates import get_chat_template
+from trl import GRPOConfig, GRPOTrainer, TrainerCallback
+
+PatchFastRL("GRPO", FastLanguageModel)
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
@@ -23,20 +26,82 @@ from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 
-#Configuration. 
-model_type = "tutor"
-model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
-dataset_name = "Metaskepsis/tutor_prompts"
-COMPLETION_PORT = 8001
-COMPLETION_ATTEMPTS = 10
+@dataclass
+class TutorConfig:
+    """Configuration for tutor training and validation"""
+    # Model settings
+    model_type: str = "tutor"
+    model_name: str = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
+    dataset_name: str = "Metaskepsis/tutor_prompts"
+    
+    # API settings
+    completion_port: int = 8001
+    completion_attempts: int = 10
+    
+    # Reward settings
+    structure_base_reward: float = 0.1
+    analysis_reward: float = 0.05
+    substitution_reward: float = 0.05
+    single_step_bonus: float = 0.02
+    multiple_step_penalty: float = 0.02
+    full_reward: float = 2.0
+    
+    # Validation settings
+    numeric_tolerance: float = 1e-6
 
-# Reward configuration
-STRUCTURE_BASE_REWARD = 0.1
-ANALYSIS_REWARD = 0.05
-SUBSTITUTION_REWARD = 0.05
-SINGLE_STEP_BONUS = 0.02
-MULTIPLE_STEP_PENALTY = 0.02
-FULL_REWARD = 2.0
+class ValidationStats:
+    """Tracks validation statistics during training"""
+    def __init__(self):
+        self.total_batches = 0
+        self.total_rewards = 0
+        self.reward_distribution = {
+            0.0: 0,  # Format failures
+            0.2: 0,  # Structure only correct
+            2.0: 0   # Fully correct
+        }
+    
+    def update(self, rewards: list[float]):
+        self.total_batches += 1
+        for r in rewards:
+            self.total_rewards += r
+            self.reward_distribution[r] = self.reward_distribution.get(r, 0) + 1
+    
+    def get_summary(self) -> str:
+        total_samples = sum(self.reward_distribution.values())
+        if total_samples == 0:
+            return "No samples processed yet"
+        return (
+            f"Processed {self.total_batches} batches, "
+            f"Average reward: {self.total_rewards/total_samples:.3f}\n"
+            f"Distribution: "
+            f"Format fails: {self.reward_distribution[0.0]}, "
+            f"Structure only: {self.reward_distribution[0.2]}, "
+            f"Fully correct: {self.reward_distribution[2.0]}"
+        )
+
+def setup_training_logger(model_type: str) -> logging.Logger:
+    """Setup logging configuration for training"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = f"logs/{model_type}"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    logger = logging.getLogger('training')
+    logger.setLevel(logging.INFO)
+    
+    # File handler for training logs
+    file_handler = logging.FileHandler(
+        f"{log_dir}/training_{timestamp}.log"
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logger.addHandler(file_handler)
+    logger.addHandler(logging.StreamHandler())
+    return logger
+
+# Initialize global config and stats
+config = TutorConfig()
 
 class CompletionAgent:
     """Agent that completes partial solutions using a local model"""
@@ -218,6 +283,15 @@ async def _validate_step_identification(
     return successful_wrong == 0 and successful_fixed > 0
 
 def main():
+    # Setup logging
+    logger = setup_training_logger(config.model_type)
+    stats = ValidationStats()
+    
+    # Setup callback for logging
+    class LoggingCallback(TrainerCallback):
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
+    
     async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         """Combined reward function that checks structure and validates responses"""
         rewards = []
