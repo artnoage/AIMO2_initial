@@ -110,11 +110,10 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def combined_reward_func(completions: List[str], prompt: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
+    async def combined_reward_func(completions: List[str], prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> list[float]:
         rewards = []
-        print(len(prompt))
         # Process each example in parallel
-        for prom, prob, sol, ans, comp in zip(prompt, problem, model_solution, correct_answer, completions):
+        for prom, prob, sol, ans, comp in zip(prompts, problem, model_solution, correct_answer, completions):
             # First verify if model solution is correct
             model_answer = extract_answer_from_solution(sol)
             if model_answer is None:
@@ -145,7 +144,7 @@ def main():
             polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
             is_step_verdict = False
             reward = 0.0
-            
+            print(verdict)
             if verdict in polar_verdicts:
                 is_step_verdict = False
                 # For polar verdicts, substitution should be None
