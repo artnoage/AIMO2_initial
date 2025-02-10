@@ -98,9 +98,23 @@ def main():
     # Save filtered data
     save_json(filtered_entries, args.output_file)
     
+    # Count entries by category
+    category_counts = {
+        "correct_answers": len([e for e in filtered_entries 
+            if e['messages'][1].get('content', '').find('"The answer is correct"') != -1]),
+        "wrong_steps": len([e for e in filtered_entries 
+            if e['messages'][1].get('content', '').find('Step ') != -1]),
+        "wrong_approaches": len([e for e in filtered_entries 
+            if e['messages'][1].get('content', '').find('"The whole approach is wrong"') != -1])
+    }
+    
     # Print results
-    print(f"\nExtracted {len(filtered_entries)} entries total")
-    print(f"Results saved to: {args.output_file}")
+    print(f"\nExtracted entries by category:")
+    print(f"- Correct answers: {category_counts['correct_answers']}")
+    print(f"- Wrong steps: {category_counts['wrong_steps']}")
+    print(f"- Wrong approaches: {category_counts['wrong_approaches']}")
+    print(f"Total entries: {len(filtered_entries)}")
+    print(f"\nResults saved to: {args.output_file}")
 
 if __name__ == "__main__":
     main()
