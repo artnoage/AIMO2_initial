@@ -346,13 +346,17 @@ def main():
                 rewards.append(0.0)
                 continue
                 
-            # Check if verdict exists and is in valid categories
-            valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
+            # Check if verdict exists and is in polar categories (yes/no verdicts)
+            polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
             is_step_verdict = False
             reward = 0.0
             
-            if verdict in valid_verdicts:
+            if verdict in polar_verdicts:
                 is_step_verdict = False
+                # For polar verdicts, substitution must be None
+                if substitution is not None:
+                    rewards.append(0.0)
+                    continue
                 reward = config.structure_base_reward
             elif verdict.startswith("Step "):
                 # First validate step number format before accessing any steps
@@ -413,10 +417,7 @@ def main():
                     
                 reward += config.substitution_reward
             else:
-                # For other verdicts, substitution must be None
-                if substitution is not None:
-                    rewards.append(0.0)
-                    continue
+                # For polar verdicts we already checked substitution is None
                 reward += config.substitution_reward
                 
             # If we get here, format is valid (reward = 0.2) - proceed with validation
