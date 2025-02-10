@@ -41,19 +41,19 @@ async def _validate_completions(problem: str, partial_solution: str, correct_ans
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if numeric_answer is None:
-                self.logger.debug(f"Could not extract numeric answer: {debug_info}")
+                logger.debug(f"Could not extract numeric answer: {debug_info}")
                 return False
                 
             if correct_numeric is None:
-                self.logger.debug(f"Could not extract correct numeric answer from: {correct_answer}")
+                logger.debug(f"Could not extract correct numeric answer from: {correct_answer}")
                 return False
                 
             is_correct = abs(numeric_answer - correct_numeric) <= 1e-6
-            self.logger.debug(f"Completion result: {is_correct} (model: {numeric_answer}, correct: {correct_numeric})")
+            logger.debug(f"Completion result: {is_correct} (model: {numeric_answer}, correct: {correct_numeric})")
             return is_correct
             
         except Exception as e:
-            self.logger.debug(f"Exception in completion attempt: {str(e)}")
+            logger.debug(f"Exception in completion attempt: {str(e)}")
             return False
     
     # Run all completion attempts in parallel
