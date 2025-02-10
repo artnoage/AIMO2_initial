@@ -238,32 +238,42 @@ def main():
                 rewards.append(0.0)
                 continue
                 
-            # Check verdict format
+            # Check if verdict exists and is in valid categories
             valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
             is_step_verdict = False
+            reward = 0.0
+            
             if verdict in valid_verdicts:
                 is_step_verdict = False
-            else:
+                reward = 0.1  # Base reward for valid verdict format
+            elif verdict.startswith("Step "):
+                # Validate step number format
                 try:
-                    if not verdict.startswith("Step "):
-                        rewards.append(0.0)
-                        continue
                     step_num = int(verdict.split()[1])
+                    # Check step number validity
                     if step_num < 0:
                         rewards.append(0.0)
                         continue
+                        
                     # Check if step number is valid for the solution
                     solution_steps = split_into_steps(model_solution)
                     if step_num >= len(solution_steps):
                         rewards.append(0.0)
                         continue
+                        
+                    # For step verdicts, substitution must exist
+                    if substitution is None:
+                        rewards.append(0.0)
+                        continue
+                        
                     is_step_verdict = True
+                    reward = 0.1  # Base reward for valid verdict format
                 except (ValueError, IndexError):
                     rewards.append(0.0)
                     continue
-            
-            # Start with format reward
-            reward = 0.1  # Base reward for valid verdict format
+            else:
+                rewards.append(0.0)
+                continue
             
             # Add points for analysis if present
             if analysis is not None:
