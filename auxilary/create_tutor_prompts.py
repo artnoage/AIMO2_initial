@@ -67,20 +67,31 @@ def extract_numeric_answer(answer: str) -> Optional[float]:
         
     try:
         # Parse LaTeX to sympy-compatible format
-        latex_expr = latex2sympy(clean_answer)
-        # Convert to sympy expression and evaluate
-        expr = sympy.sympify(latex_expr)
-        # Handle both single values and lists/matrices
-        if hasattr(expr, 'evalf'):
-            result = float(expr.evalf())
-        elif isinstance(expr, list) or isinstance(expr, tuple) or (
-            hasattr(expr, 'is_Matrix') and expr.is_Matrix
-        ):
+        try:
+            latex_expr = latex2sympy(clean_answer)
+        except:
             return None
-        else:
-            result = float(expr)
-        return result
-    except (sympy.SympifyError, TypeError, ValueError) as e:
+            
+        # Convert to sympy expression and evaluate
+        try:
+            expr = sympy.sympify(latex_expr)
+        except:
+            return None
+            
+        # Handle both single values and lists/matrices
+        try:
+            if hasattr(expr, 'evalf'):
+                result = float(expr.evalf())
+            elif isinstance(expr, list) or isinstance(expr, tuple) or (
+                hasattr(expr, 'is_Matrix') and expr.is_Matrix
+            ):
+                return None
+            else:
+                result = float(expr)
+            return result
+        except:
+            return None
+    except:
         return None
 
 def is_solution_correct(solution: str, correct_answer: str) -> bool:
