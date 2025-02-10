@@ -361,13 +361,15 @@ class CompletionAgent:
         model: str = config.completion_model_name,
         temperature: float = 0.7,
         api_key: str = "EMPTY",
-        max_retries: int = 3
+        max_retries: int = 3,
+        logger: Optional[logging.Logger] = None
     ):
         self.port = port
         self.model = model
         self.temperature = temperature
         self.api_key = api_key
         self.max_retries = max_retries
+        self.logger = logger if logger else logging.getLogger('completion_agent')
         self.base_url = f"http://localhost:{port}/v1"
         
     async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None, timeout: float = 5.0) -> str:
