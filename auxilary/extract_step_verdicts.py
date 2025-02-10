@@ -1,5 +1,6 @@
 import json
 import argparse
+import random
 from typing import Dict, List
 import logging
 
@@ -22,9 +23,21 @@ def save_json(data: List[Dict], file_path: str):
     except Exception as e:
         logging.error(f"Error saving JSON file: {str(e)}")
 
-def extract_step_verdicts(data: List[Dict]) -> List[Dict]:
-    """Extract entries that have step verdicts"""
-    step_entries = []
+def extract_verdicts(data: List[Dict], correct_ratio: float = 0.25, 
+                    wrong_steps_ratio: float = 1.0, 
+                    wrong_approach_ratio: float = 1.0) -> List[Dict]:
+    """
+    Extract entries with different ratios for each verdict type
+    
+    Args:
+        data: List of data entries
+        correct_ratio: Ratio of correct answers to keep (0.0 to 1.0)
+        wrong_steps_ratio: Ratio of wrong step entries to keep (0.0 to 1.0)
+        wrong_approach_ratio: Ratio of wrong approach entries to keep (0.0 to 1.0)
+    """
+    correct_entries = []
+    wrong_steps_entries = []
+    wrong_approach_entries = []
     
     for entry in data:
         if 'messages' in entry and len(entry['messages']) >= 2:
@@ -36,16 +49,37 @@ def extract_step_verdicts(data: List[Dict]) -> List[Dict]:
             if verdict_match:
                 verdict = verdict_match.group(1).strip()
                 
-                # Check if verdict starts with "Step"
-                if verdict.startswith("Step "):
-                    step_entries.append(entry)
+                if verdict == "The answer is correct":
+                    correct_entries.append(entry)
+                elif verdict.startswith("Step "):
+                    wrong_steps_entries.append(entry)
+                elif verdict == "The whole approach is wrong":
+                    wrong_approach_entries.append(entry)
     
-    return step_entries
+    # Sample entries according to ratios
+    sampled_correct = random.sample(correct_entries, 
+                                  k=int(len(correct_entries) * correct_ratio))
+    sampled_wrong_steps = random.sample(wrong_steps_entries, 
+                                      k=int(len(wrong_steps_entries) * wrong_steps_ratio))
+    sampled_wrong_approach = random.sample(wrong_approach_entries, 
+                                         k=int(len(wrong_approach_entries) * wrong_approach_ratio))
+    
+    # Combine all sampled entries
+    result = sampled_correct + sampled_wrong_steps + sampled_wrong_approach
+    random.shuffle(result)  # Shuffle to mix different types
+    
+    return result
 
 def main():
-    parser = argparse.ArgumentParser(description='Extract entries with step verdicts from JSON data')
+    parser = argparse.ArgumentParser(description='Extract entries with different verdict ratios')
     parser.add_argument('input_file', help='Path to the input JSON file')
     parser.add_argument('output_file', help='Path to save the filtered JSON file')
+    parser.add_argument('--correct-ratio', type=float, default=0.25,
+                      help='Ratio of correct answers to keep (default: 0.25)')
+    parser.add_argument('--wrong-steps-ratio', type=float, default=1.0,
+                      help='Ratio of wrong step entries to keep (default: 1.0)')
+    parser.add_argument('--wrong-approach-ratio', type=float, default=1.0,
+                      help='Ratio of wrong approach entries to keep (default: 1.0)')
     args = parser.parse_args()
     
     # Load data
@@ -53,14 +87,19 @@ def main():
     if not data:
         return
     
-    # Extract step verdicts
-    step_entries = extract_step_verdicts(data)
+    # Extract verdicts with specified ratios
+    filtered_entries = extract_verdicts(
+        data,
+        correct_ratio=args.correct_ratio,
+        wrong_steps_ratio=args.wrong_steps_ratio,
+        wrong_approach_ratio=args.wrong_approach_ratio
+    )
     
     # Save filtered data
-    save_json(step_entries, args.output_file)
+    save_json(filtered_entries, args.output_file)
     
     # Print results
-    print(f"\nExtracted {len(step_entries)} entries with step verdicts")
+    print(f"\nExtracted {len(filtered_entries)} entries total")
     print(f"Results saved to: {args.output_file}")
 
 if __name__ == "__main__":
