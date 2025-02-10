@@ -424,6 +424,7 @@ def main():
                 is_step_verdict = False
                 # For polar verdicts, substitution should be None
                 reward = config.structure_base_reward
+                stats.reward_components['base_rewards'] += 1
                 if substitution is not None:
                     reward -= config.redundant_substitution_penalty  # Apply penalty for having substitution in polar verdict
             elif verdict.startswith("Step "):
@@ -452,6 +453,7 @@ def main():
                     
                 is_step_verdict = True
                 reward = config.structure_base_reward
+                stats.reward_components['base_rewards'] += 1
             else:
                 rewards.append(0.0)
                 continue
@@ -561,11 +563,10 @@ def main():
             except Exception:
                 pass  # Keep format reward on validation error
                 
+            # Update stats before appending reward
+            stats.update([reward], completion)
             rewards.append(reward)
         
-        # Update validation statistics with completion details
-        for completion, reward in zip(completions, rewards):
-            stats.update([reward], completion)
         return rewards
 
     # Load the model
