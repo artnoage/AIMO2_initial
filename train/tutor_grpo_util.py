@@ -177,7 +177,7 @@ class TutorConfig:
     # Model settings
     model_type: str = "tutor"
     model_name: str = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
-    dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250210_130123"
+    dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250210_171517"
     completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
     
     # API settings
@@ -193,8 +193,8 @@ class TutorConfig:
     full_reward: float = 5.0
     
     # Penalty settings
-    analysis_length_cost: float = 0.0001  # per character
-    substitution_length_cost: float = 0.0005  # per character
+    analysis_length_cost: float = 0.00005  # per character
+    substitution_length_cost: float = 0.0001  # per character
     redundant_substitution_penalty: float = 0.1  # penalty for substitution in polar verdict
     wrong_boxed_answer_penalty: float = 1.0  # penalty for wrong boxed answer in substitution
     
@@ -419,7 +419,6 @@ class CompletionAgent:
         
     async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Complete a partial solution"""
-        print("\nDEBUG: CompletionAgent.generate called")
         prompt = [
             HumanMessage(content=(
                 "Here is a mathematical problem:\n\n"
@@ -429,7 +428,5 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        print("\nDEBUG: Before _get_response")
         response = await self._get_response(prompt, max_tokens=2048)
-        print("\nDEBUG: After _get_response")
         return (prompt[0].content, response) if return_prompt else response
