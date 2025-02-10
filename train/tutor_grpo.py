@@ -30,6 +30,45 @@ if model_type not in dataset_name:
     print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
     print("!"*80 + "\n")
 
+def validate_analysis(resp: str) -> Tuple[bool, str]:
+    """Validate analysis section format and content"""
+    if not resp:
+        return False, "Empty analysis"
+    if len(resp.strip()) < 10:
+        return False, "Analysis too short"
+    return True, "Valid analysis"
+
+def validate_solution(solution: str) -> Tuple[bool, str]:
+    """Validate solution format and content"""
+    if not solution:
+        return False, "Empty solution"
+    if len(solution.strip()) < 5:
+        return False, "Solution too short"
+    return True, "Valid solution"
+
+def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
+    """Validate step verdict format"""
+    if not resp:
+        return False, "Empty verdict"
+        
+    valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
+    if resp in valid_verdicts:
+        return True, "Valid verdict"
+        
+    # Check step number format
+    if resp.startswith("Step "):
+        try:
+            step_num = int(resp.split()[1])
+            if step_num < 0:
+                return False, "Invalid step number"
+            if expected_step is not None and step_num != expected_step:
+                return False, "Wrong step number"
+            return True, "Valid step number"
+        except (ValueError, IndexError):
+            return False, "Invalid step number format"
+            
+    return False, "Invalid verdict format"
+
 def extract_sections(response: str) -> tuple[str, str, str]:
     """Extract the Analysis, Verdict and Substitution sections from the response"""
     analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
