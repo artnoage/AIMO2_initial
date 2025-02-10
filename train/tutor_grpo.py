@@ -15,45 +15,6 @@ if project_root not in sys.path:
 import re
 from typing import Tuple, Optional, List
 
-def validate_analysis(resp: str) -> Tuple[bool, str]:
-    """Validate analysis section format and content"""
-    if not resp:
-        return False, "Empty analysis"
-    if len(resp.strip()) < 10:
-        return False, "Analysis too short"
-    return True, "Valid analysis"
-
-def validate_solution(solution: str) -> Tuple[bool, str]:
-    """Validate solution format and content"""
-    if not solution:
-        return False, "Empty solution"
-    if len(solution.strip()) < 5:
-        return False, "Solution too short"
-    return True, "Valid solution"
-
-def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
-    """Validate step verdict format"""
-    if not resp:
-        return False, "Empty verdict"
-        
-    valid_verdicts = ["The answer is correct", "The whole approach is wrong"]
-    if resp in valid_verdicts:
-        return True, "Valid verdict"
-        
-    # Check step number format
-    if resp.startswith("Step "):
-        try:
-            step_num = int(resp.split()[1])
-            if step_num < 0:
-                return False, "Invalid step number"
-            if expected_step is not None and step_num != expected_step:
-                return False, "Wrong step number"
-            return True, "Valid step number"
-        except (ValueError, IndexError):
-            return False, "Invalid step number format"
-            
-    return False, "Invalid verdict format"
-
 model_type = "tutor"
 model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250206_212611"
 dataset_name = "Metaskepsis/tutor_prompts"
