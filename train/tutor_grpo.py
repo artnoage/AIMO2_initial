@@ -372,6 +372,9 @@ def main():
 
     # Wrap async reward function to make it synchronous
     def sync_reward_func(completions, **kwargs):
+        print("\nDEBUG: GRPO kwargs:", kwargs.keys())
+        print("DEBUG: kwargs types:", {k: type(v) for k, v in kwargs.items()})
+        print("DEBUG: kwargs lengths:", {k: len(v) if hasattr(v, '__len__') else 'no len' for k, v in kwargs.items()})
         return asyncio.run(combined_reward_func(completions, **kwargs))
 
     trainer = GRPOTrainer(
