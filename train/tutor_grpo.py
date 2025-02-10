@@ -160,16 +160,19 @@ def main():
                 try:
                     step_num = int(verdict.split()[1])
                 except (ValueError, IndexError):
+                    stats.section_stats['invalid_step_number'] += 1
                     rewards.append(0.0)
                     continue
                     
                 # Check step number is non-negative
                 if step_num < 0:
+                    stats.section_stats['invalid_step_number'] += 1
                     rewards.append(0.0)
                     continue
                     
                 # For step verdicts, substitution must exist
                 if substitution is None:
+                    stats.section_stats['step_verdict_without_substitution'] += 1
                     rewards.append(0.0)
                     continue
                     
@@ -206,6 +209,7 @@ def main():
                 if len(substitution_steps) > 1:
                     reward -= config.multiple_step_penalty
                     stats.reward_components['step_penalties'] += 1
+                    stats.section_stats['multiple_steps_in_substitution'] += 1
                 else:
                     reward += config.single_step_bonus
                     stats.reward_components['step_bonuses'] += 1
@@ -287,6 +291,7 @@ def main():
                     stats.full_reward_reasons['step_correction'] += 1
                     if improvement_bonus > 0:
                         stats.reward_components['improvement_bonuses'][str(improvement_bonus)] += 1
+                        stats.reward_components['improvement_bonuses']['total'] += 1
                 
             # Update stats before appending reward
             stats.update([reward], comp)

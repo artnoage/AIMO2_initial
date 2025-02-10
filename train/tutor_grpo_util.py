@@ -230,7 +230,8 @@ class ValidationStats:
             'improvement_bonuses': {
                 '0.1': 0,  # 10-40% completions
                 '0.2': 0,  # 40-70% completions
-                '0.3': 0   # >70% completions
+                '0.3': 0,  # >70% completions
+                'total': 0  # Total count of improvement bonuses
             }
         }
         self.full_reward_reasons = {
@@ -319,6 +320,7 @@ class ValidationStats:
             f"  10-40% completions (0.1): {self.reward_components['improvement_bonuses']['0.1']}\n"
             f"  40-70% completions (0.2): {self.reward_components['improvement_bonuses']['0.2']}\n"
             f"  >70% completions (0.3): {self.reward_components['improvement_bonuses']['0.3']}\n"
+            f"  Total improvements: {self.reward_components['improvement_bonuses']['total']}\n"
             f"\nFull Reward Reasons:\n"
             f"  Correct answer: {self.full_reward_reasons['correct_answer']}\n"
             f"  Wrong approach: {self.full_reward_reasons['wrong_approach']}\n"
