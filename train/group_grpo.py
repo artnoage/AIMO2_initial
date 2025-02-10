@@ -235,31 +235,31 @@ def main():
             similarity_matrix = similarity_checker.compute_similarity_matrix(group_completions)
             
             # Calculate rewards for each completion in group
-            base_reward = 1.0
-            diversity_bonus = 0.3
-            majority_bonus = 0.2
+            base_reward = torch.tensor(1.0, requires_grad=True)
+            diversity_bonus = torch.tensor(0.3, requires_grad=True)
+            majority_bonus = torch.tensor(0.2, requires_grad=True)
             
             for i, (is_correct, idx) in enumerate(zip(correctness_results, group['indices'])):
-                reward = 0.0
+                reward = torch.tensor(0.0, requires_grad=True)
                 
                 if is_correct:
-                    reward = base_reward
+                    reward = base_reward.clone()
                     
                     # Add diversity bonus for unique correct solutions
                     similarities = similarity_matrix[i]
                     similarities[i] = 0  # Remove self-similarity
-                    avg_similarity = similarities.mean().item()
+                    avg_similarity = similarities.mean()
                     
                     if avg_similarity < 0.7:  # Unique solution
-                        reward += diversity_bonus
+                        reward = reward + diversity_bonus
                     elif avg_similarity > 0.9:  # Very similar to others
-                        reward -= diversity_bonus/2
+                        reward = reward - diversity_bonus/2
                         
                     # Add majority bonus if agrees with majority
                     if correct_stats['correct'] > len(group_completions)/2:
-                        reward += majority_bonus
+                        reward = reward + majority_bonus
                 
-                all_rewards[idx] = reward
+                all_rewards[idx] = reward.item()
             
             # Update statistics
             stats.update(
