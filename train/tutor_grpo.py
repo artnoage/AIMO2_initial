@@ -120,44 +120,33 @@ def extract_sections(response: str) -> tuple[str, str, str]:
     return analysis, verdict, substitution
 
 async def _validate_completions(problem: str, partial_solution: str, correct_answer: str, num_attempts: int = COMPLETION_ATTEMPTS) -> Tuple[int, int]:
-    """Try completions until finding a successful one or reaching max attempts"""
-    # Initialize completion agent
+    """Try completions in parallel until finding a successful one"""
     completion_agent = CompletionAgent(port=COMPLETION_PORT)
     
-    successful = 0
-    total = 0
-    
-    for _ in range(num_attempts):
+    async def try_completion():
         try:
-            # Generate completion
             completion = await completion_agent.generate(problem, partial_solution)
             complete_solution = partial_solution + completion
             
-            # Extract and validate answer
             model_answer = extract_answer_from_solution(complete_solution)
             if model_answer is None:
-                total += 1
-                continue
+                return False
                 
             numeric_answer, _ = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if numeric_answer is None or correct_numeric is None:
-                total += 1
-                continue
+                return False
                 
-            # Compare answers
-            if abs(numeric_answer - correct_numeric) <= 1e-6:
-                successful = 1  # We only need one success
-                total += 1
-                break
-                
-            total += 1
+            return abs(numeric_answer - correct_numeric) <= 1e-6
             
-        except Exception as e:
-            total += 1
-            
-    return successful, total
+        except Exception:
+            return False
+    
+    # Run all completion attempts in parallel
+    results = await asyncio.gather(*[try_completion() for _ in range(num_attempts)])
+    successful = sum(1 for r in results if r)
+    return successful, len(results)
 
 async def _validate_whole_approach_is_wrong(problem: str, solution: str, correct_answer: str) -> bool:
     """Validate that the analysis section alone can lead to correct completions"""
@@ -186,28 +175,20 @@ async def _validate_step_identification(
     substitution: str,
     correct_answer: str
 ) -> bool:
-    """Validate step identification and correction"""
-    # Try completions from the wrong step - all should fail
+    """Validate step identification and correction in parallel"""
+    # Run both validations in parallel
     wrong_partial = "".join(steps[:step_num])
-    successful_wrong, total_wrong = await _validate_completions(
-        problem,
-        wrong_partial,
-        correct_answer,
-        COMPLETION_ATTEMPTS
-    )
-    if successful_wrong > 0:
-        return False
-        
-    # Try completions with correction - at least one should succeed
     corrected_partial = "".join(steps[:step_num-1]) + substitution
-    successful_fixed, total_fixed = await _validate_completions(
-        problem,
-        corrected_partial,
-        correct_answer,
-        COMPLETION_ATTEMPTS
+    
+    wrong_check, fixed_check = await asyncio.gather(
+        _validate_completions(problem, wrong_partial, correct_answer, COMPLETION_ATTEMPTS),
+        _validate_completions(problem, corrected_partial, correct_answer, COMPLETION_ATTEMPTS)
     )
     
-    return successful_fixed > 0
+    successful_wrong, _ = wrong_check
+    successful_fixed, _ = fixed_check
+    
+    return successful_wrong == 0 and successful_fixed > 0
 
 def main():
     async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
