@@ -30,6 +30,14 @@ dataset_name = "Metaskepsis/tutor_prompts"
 COMPLETION_PORT = 8001
 COMPLETION_ATTEMPTS = 10
 
+# Reward configuration
+STRUCTURE_BASE_REWARD = 0.1
+ANALYSIS_REWARD = 0.05
+SUBSTITUTION_REWARD = 0.05
+SINGLE_STEP_BONUS = 0.02
+MULTIPLE_STEP_PENALTY = 0.02
+FULL_REWARD = 2.0
+
 class CompletionAgent:
     """Agent that completes partial solutions using a local model"""
     
@@ -245,29 +253,33 @@ def main():
             
             if verdict in valid_verdicts:
                 is_step_verdict = False
-                reward = 0.1  # Base reward for valid verdict format
+                reward = STRUCTURE_BASE_REWARD
             elif verdict.startswith("Step "):
-                # Validate step number format
+                # First validate step number format before accessing any steps
                 try:
                     step_num = int(verdict.split()[1])
-                    # Check step number validity
-                    if step_num < 0:
-                        rewards.append(0.0)
-                        continue
-                        
-                    # Check if step number is valid for the solution
-                    solution_steps = split_into_steps(model_solution)
-                    if step_num >= len(solution_steps):
-                        rewards.append(0.0)
-                        continue
-                        
-                    # For step verdicts, substitution must exist
-                    if substitution is None:
-                        rewards.append(0.0)
-                        continue
-                        
-                    is_step_verdict = True
-                    reward = 0.1  # Base reward for valid verdict format
+                except (ValueError, IndexError):
+                    rewards.append(0.0)
+                    continue
+                    
+                # Check step number is non-negative
+                if step_num < 0:
+                    rewards.append(0.0)
+                    continue
+                    
+                # For step verdicts, substitution must exist
+                if substitution is None:
+                    rewards.append(0.0)
+                    continue
+                    
+                # Now check if step number is valid for the solution
+                solution_steps = split_into_steps(model_solution)
+                if step_num >= len(solution_steps):
+                    rewards.append(0.0)
+                    continue
+                    
+                is_step_verdict = True
+                reward = STRUCTURE_BASE_REWARD
                 except (ValueError, IndexError):
                     rewards.append(0.0)
                     continue
@@ -277,7 +289,7 @@ def main():
             
             # Add points for analysis if present
             if analysis is not None:
-                reward += 0.05
+                reward += ANALYSIS_REWARD
             
             # Check substitution based on verdict type
             if is_step_verdict:
@@ -289,9 +301,9 @@ def main():
                 # Check substitution doesn't contain multiple steps
                 substitution_steps = split_into_steps(substitution)
                 if len(substitution_steps) > 1:
-                    reward -= 0.02  # Penalty for multiple steps
+                    reward -= MULTIPLE_STEP_PENALTY
                 else:
-                    reward += 0.02  # Bonus for single step
+                    reward += SINGLE_STEP_BONUS
                 
                 # If substitution contains a boxed answer, verify it matches
                 boxed_answer = extract_answer_from_solution(substitution)
@@ -302,13 +314,13 @@ def main():
                             rewards.append(0.0)
                             continue
                     
-                reward += 0.05
+                reward += SUBSTITUTION_REWARD
             else:
                 # For other verdicts, substitution must be None
                 if substitution is not None:
                     rewards.append(0.0)
                     continue
-                reward += 0.05
+                reward += SUBSTITUTION_REWARD
                 
             # If we get here, format is valid (reward = 0.2) - proceed with validation
             
@@ -321,11 +333,11 @@ def main():
             # Additional validation based on verdict type
             try:
                 if verdict == "The answer is correct" and is_correct:
-                    reward = 2.0  # Full reward
+                    reward = FULL_REWARD
                     
                 elif verdict == "The whole approach is wrong" and not is_correct:
                     if await _validate_whole_approach_is_wrong(problem, model_solution, correct_answer):
-                        reward = 2.0  # Full reward
+                        reward = FULL_REWARD
                 
                 elif is_step_verdict and not is_correct:
                     # Split solution into proper steps
@@ -337,7 +349,7 @@ def main():
                         substitution,
                         correct_answer
                     ):
-                        reward = 2.0  # Full reward
+                        reward = FULL_REWARD
                 
             except Exception:
                 pass  # Keep format reward on validation error
