@@ -357,11 +357,11 @@ async def _validate_step_identification(
     improvement_bonus = 0.0
     if successful_wrong == 0:  # Only reward if original step had no successful completions
         success_rate = successful_fixed / total_fixed
-        if 0 < success_rate <= 0.3:
+        if 0.1 < success_rate <= 0.4:  # 10-40%
             improvement_bonus = 0.1
-        elif 0.3 < success_rate <= 0.7:
+        elif 0.4 < success_rate <= 0.7:  # 40-70%
             improvement_bonus = 0.2
-        elif success_rate > 0.7:
+        elif success_rate > 0.7:         # >70%
             improvement_bonus = 0.3
     
     is_valid = successful_wrong == 0 and successful_fixed > 0
