@@ -186,28 +186,28 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=False,  # Disable vLLM to avoid pickling issues
+        use_vllm = True, # use vLLM for fast inference!
         torch_empty_cache_steps=10,
-        learning_rate=3e-6,
-        adam_beta1=0.9,
-        adam_beta2=0.99,
-        weight_decay=0.1,
-        warmup_ratio=0.05,
-        lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
-        logging_steps=1,
-        bf16=is_bfloat16_supported(),
-        fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=3,
-        gradient_accumulation_steps=1,
-        num_generations=5,
-        max_prompt_length=3000,
-        max_completion_length=1096,
-        num_train_epochs=1,
-        save_steps=250,
-        max_grad_norm=0.1,
-        report_to="none",
-        output_dir=output_dir,
+        learning_rate = 3e-6,
+        adam_beta1 = 0.9,
+        adam_beta2 = 0.99,
+        weight_decay = 0.1,
+        warmup_ratio = 0.05,
+        lr_scheduler_type = "cosine",
+        optim = "paged_adamw_8bit",
+        logging_steps = 1,
+        bf16 = is_bfloat16_supported(),
+        fp16 = not is_bfloat16_supported(),
+        per_device_train_batch_size = 3,
+        gradient_accumulation_steps = 1, # Increase to 4 for smoother training
+        num_generations =5, # Decrease if out of memory
+        max_prompt_length = 1348,
+        max_completion_length = 5148,
+        num_train_epochs = 1, # Set to 1 for a full training run
+        save_steps = 250, 
+        max_grad_norm = 0.1,
+        report_to = "none", # Can use Weights & Biases
+        output_dir = output_dir,
     )
 
 
