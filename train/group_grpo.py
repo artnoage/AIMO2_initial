@@ -111,6 +111,7 @@ class SolutionSimilarityChecker:
         self.model = AutoModel.from_pretrained(model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
+        self.model.eval()  # Set model to evaluation mode
         torch.set_grad_enabled(False)  # Disable gradients globally for embeddings
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
@@ -235,15 +236,15 @@ def main():
             similarity_matrix = similarity_checker.compute_similarity_matrix(group_completions)
             
             # Calculate rewards for each completion in group
-            base_reward = torch.tensor(1.0, requires_grad=True)
-            diversity_bonus = torch.tensor(0.3, requires_grad=True)
-            majority_bonus = torch.tensor(0.2, requires_grad=True)
+            base_reward = 1.0
+            diversity_bonus = 0.3
+            majority_bonus = 0.2
             
             for i, (is_correct, idx) in enumerate(zip(correctness_results, group['indices'])):
-                reward = torch.tensor(0.0, requires_grad=True)
+                reward = 0.0
                 
                 if is_correct:
-                    reward = base_reward.clone()
+                    reward = base_reward
                     
                     # Add diversity bonus for unique correct solutions
                     similarities = similarity_matrix[i]
@@ -251,15 +252,15 @@ def main():
                     avg_similarity = similarities.mean()
                     
                     if avg_similarity < 0.7:  # Unique solution
-                        reward = reward + diversity_bonus
+                        reward += diversity_bonus
                     elif avg_similarity > 0.9:  # Very similar to others
-                        reward = reward - diversity_bonus/2
+                        reward -= diversity_bonus/2
                         
                     # Add majority bonus if agrees with majority
                     if correct_stats['correct'] > len(group_completions)/2:
-                        reward = reward + majority_bonus
+                        reward += majority_bonus
                 
-                all_rewards[idx] = reward.item()
+                all_rewards[idx] = reward
             
             # Update statistics
             stats.update(
