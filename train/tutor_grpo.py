@@ -110,33 +110,7 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    async def simple_reward_func(completions, **kwargs) -> list[float]:
-        """Simple reward function that checks for basic structure"""
-        async def check_completion(completion):
-            reward = 0.0
-            
-            # Basic structure check with simulated async work
-            if "Analysis" in completion:
-                await asyncio.sleep(0.1)  # Simulate async check
-                reward += 0.3
-                
-            if "Verdict" in completion:
-                await asyncio.sleep(0.1)  # Simulate async check
-                reward += 0.3
-                
-            if "Correction" in completion:
-                await asyncio.sleep(0.1)  # Simulate async check
-                reward += 0.4
-                
-            return reward
-
-        # Process all completions in parallel
-        rewards = await asyncio.gather(*[check_completion(completion) for completion in completions])
-        return list(rewards)
-
-    # Commented out main reward function for later use
-    """
-    def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
+    async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
         rewards = []
         
         # First verify if model solution is correct
@@ -311,8 +285,6 @@ def main():
             rewards.append(reward)
         
         return rewards
-    """
-
     # Load the model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=config.model_name,
@@ -397,7 +369,7 @@ def main():
 
     # Wrap async reward function to make it synchronous
     def sync_reward_func(completions, **kwargs):
-        return asyncio.run(simple_reward_func(completions, **kwargs))
+        return asyncio.run(combined_reward_func(completions, **kwargs))
 
     trainer = GRPOTrainer(
         model=model,
