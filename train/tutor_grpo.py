@@ -145,15 +145,25 @@ def main():
             # Extract sections
             analysis, verdict, substitution = extract_sections(completion)
             
-            # Validate each section
-            analysis_valid, _ = validate_analysis(analysis) if analysis else (False, "Missing analysis")
-            verdict_valid, _ = validate_step(verdict) if verdict else (False, "Missing verdict")
+            # First check if all sections exist (can be empty but not None)
+            if analysis is None or verdict is None or substitution is None:
+                rewards.append(0.0)
+                continue
+                
+            # Award 0.1 points for having all sections
+            reward = 0.1
+            
+            # Validate each section format
+            analysis_valid, _ = validate_analysis(analysis)
+            verdict_valid, _ = validate_step(verdict)
             substitution_valid = True  # Substitution can be empty
-            if substitution:
+            if substitution.strip():  # Only validate non-empty substitutions
                 substitution_valid, _ = validate_solution(substitution)
             
-            # Award points if all sections are valid
-            reward = 0.2 if (analysis_valid and verdict_valid and substitution_valid) else 0.0
+            # Award additional 0.1 points if all sections have valid format
+            if analysis_valid and verdict_valid and substitution_valid:
+                reward += 0.1
+                
             rewards.append(reward)
             
         return rewards
