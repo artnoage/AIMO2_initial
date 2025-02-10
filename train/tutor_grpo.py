@@ -365,7 +365,7 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
+        use_vllm=False,  # Disable vLLM to avoid pickling issues
         torch_empty_cache_steps=10,
         learning_rate=3e-6,
         adam_beta1=0.9,
