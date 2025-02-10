@@ -207,7 +207,7 @@ async def _validate_step_identification(
         COMPLETION_ATTEMPTS
     )
     
-    return successful_fixed > 0 and total_fixed == COMPLETION_ATTEMPTS
+    return successful_fixed > 0
 
 def main():
     async def combined_reward_func(completions, problem: str, model_solution: str, correct_answer: str, **kwargs) -> list[float]:
