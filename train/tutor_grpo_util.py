@@ -359,7 +359,7 @@ class CompletionAgent:
         self,
         port: int = 8001,
         model: str = config.completion_model_name,
-        temperature: float = 0,
+        temperature: float = 0.7,
         api_key: str = "EMPTY",
         max_retries: int = 3
     ):
