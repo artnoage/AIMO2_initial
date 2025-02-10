@@ -270,6 +270,14 @@ def main():
                 if substitution is None:
                     rewards.append(0.0)
                     continue
+                    
+                # Check substitution doesn't contain multiple steps
+                substitution_steps = split_into_steps(substitution)
+                if len(substitution_steps) > 1:
+                    reward -= 0.02  # Penalty for multiple steps
+                else:
+                    reward += 0.02  # Bonus for single step
+                    
                 reward += 0.05
             else:
                 # For other verdicts, substitution must be None
