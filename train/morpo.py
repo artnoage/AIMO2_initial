@@ -12,8 +12,8 @@ import re
 
 
 model_type = "merged"
-model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250205_090741"
-dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250206_200140"
+model_name= "/Home/stat/laschos/AIMO2_initial/models/merged/20250206_202224"
+dataset_name="/Home/stat/laschos/AIMO2_initial/local_datasets/merged/20250209_180614"
 
 
 # Check if model_type is in paths

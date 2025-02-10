@@ -17,7 +17,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917",
         max_seq_length=8192,
         load_in_4bit=False)
         
@@ -54,7 +54,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250208_151324")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250210_064012")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     shuffled_dataset2=dataset.shuffle(seed=42)
     dataset=concatenate_datasets([dataset, shuffled_dataset2])
@@ -70,7 +70,7 @@ def main():
         num_train_epochs=1,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=16,
-        learning_rate=4e-6,
+        learning_rate=3e-6,
         logging_steps=10,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,

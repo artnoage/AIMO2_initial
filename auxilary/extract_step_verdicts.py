@@ -77,7 +77,7 @@ def main():
     parser = argparse.ArgumentParser(description='Extract entries with different verdict ratios')
     parser.add_argument('input_file', help='Path to the input JSON file')
     parser.add_argument('output_file', help='Path to save the filtered JSON file')
-    parser.add_argument('--correct-ratio', type=float, default=0.25,
+    parser.add_argument('--correct-ratio', type=float, default=0.9,
                       help='Ratio of correct answers to keep (default: 0.25)')
     parser.add_argument('--wrong-steps-ratio', type=float, default=1.0,
                       help='Ratio of wrong step entries to keep (default: 1.0)')
