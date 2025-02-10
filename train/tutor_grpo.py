@@ -59,25 +59,49 @@ class ValidationStats:
             0.2: 0,  # Structure only correct
             2.0: 0   # Fully correct
         }
+        # Track section-level stats
+        self.section_stats = {
+            'missing_analysis': 0,
+            'missing_verdict': 0,
+            'missing_substitution': 0,
+            'invalid_step_number': 0
+        }
+        self.start_time = datetime.now()
     
-    def update(self, rewards: list[float]):
+    def update(self, rewards: list[float], completion: str = None):
         self.total_batches += 1
         for r in rewards:
             self.total_rewards += r
             self.reward_distribution[r] = self.reward_distribution.get(r, 0) + 1
+            
+        # Track section presence if completion provided
+        if completion:
+            analysis, verdict, substitution = extract_sections(completion)
+            if analysis is None:
+                self.section_stats['missing_analysis'] += 1
+            if verdict is None:
+                self.section_stats['missing_verdict'] += 1
+            if substitution is None:
+                self.section_stats['missing_substitution'] += 1
     
     def get_summary(self) -> str:
         total_samples = sum(self.reward_distribution.values())
         if total_samples == 0:
             return "No samples processed yet"
-        return (
+            
+        elapsed = datetime.now() - self.start_time
+        
+        basic_stats = (
+            f"Training time: {elapsed}\n"
             f"Processed {self.total_batches} batches, "
             f"Average reward: {self.total_rewards/total_samples:.3f}\n"
             f"Distribution: "
             f"Format fails: {self.reward_distribution[0.0]}, "
             f"Structure only: {self.reward_distribution[0.2]}, "
-            f"Fully correct: {self.reward_distribution[2.0]}"
+            f"Fully correct: {self.reward_distribution[2.0]}\n"
+            f"Section Stats: {', '.join(f'{k}: {v}' for k, v in self.section_stats.items())}"
         )
+        return basic_stats
 
 def setup_training_logger(model_type: str) -> logging.Logger:
     """Setup logging configuration for training"""
@@ -428,8 +452,9 @@ def main():
                 
             rewards.append(reward)
         
-        # Update validation statistics
-        stats.update(rewards)
+        # Update validation statistics with completion details
+        for completion, reward in zip(completions, rewards):
+            stats.update([reward], completion)
         return rewards
 
     # Load the model
