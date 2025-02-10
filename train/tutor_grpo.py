@@ -370,9 +370,9 @@ def main():
         logging_steps = 1,
         bf16 = is_bfloat16_supported(),
         fp16 = not is_bfloat16_supported(),
-        per_device_train_batch_size = 3,
-        gradient_accumulation_steps = 1, # Increase to 4 for smoother training
-        num_generations =8, # Decrease if out of memory
+        per_device_train_batch_size = 2,
+        gradient_accumulation_steps = 2, # Increase to 4 for smoother training
+        num_generations =6, # Decrease if out of memory
         max_prompt_length = 3000,
         max_completion_length = 1096,
         num_train_epochs = 1, # Set to 1 for a full training run
