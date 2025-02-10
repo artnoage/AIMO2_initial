@@ -280,9 +280,6 @@ def main():
                     
                 is_step_verdict = True
                 reward = STRUCTURE_BASE_REWARD
-                except (ValueError, IndexError):
-                    rewards.append(0.0)
-                    continue
             else:
                 rewards.append(0.0)
                 continue
