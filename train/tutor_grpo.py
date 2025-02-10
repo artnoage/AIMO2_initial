@@ -87,15 +87,6 @@ async def _validate_step_identification(
     logger.info(f"Proposed substitution:\n{substitution}")
     logger.info("-"*80)
     
-    # Adjust step number in substitution if needed
-    if substitution.strip().startswith("Step"):
-        try:
-            sub_num = int(re.search(r'Step\s*(\d+)', substitution).group(1))
-            if sub_num != step_num:
-                # Replace step number while preserving rest of content
-                substitution = re.sub(r'Step\s*\d+', f'Step {step_num}', substitution, 1)
-        except (AttributeError, ValueError):
-            pass
             
     # Run both validations in parallel
     wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
@@ -110,7 +101,7 @@ async def _validate_step_identification(
         _validate_completions(problem, wrong_partial, correct_answer, config.completion_attempts),
         _validate_completions(problem, corrected_partial, correct_answer, config.completion_attempts)
     )
-    
+    print("ganw",wrong_check,fixed_check)
     successful_wrong, total_wrong = wrong_check
     successful_fixed, total_fixed = fixed_check
     
