@@ -110,26 +110,29 @@ def main():
     #    def on_log(self, args, state, control, logs=None, **kwargs):
     #        logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
     
-    def simple_reward_func(completions, **kwargs) -> list[float]:
+    async def simple_reward_func(completions, **kwargs) -> list[float]:
         """Simple reward function that checks for basic structure"""
-        rewards = []
-        for completion in completions:
-            
+        async def check_completion(completion):
             reward = 0.0
             
-            # Basic structure check
+            # Basic structure check with simulated async work
             if "Analysis" in completion:
+                await asyncio.sleep(0.1)  # Simulate async check
                 reward += 0.3
                 
             if "Verdict" in completion:
+                await asyncio.sleep(0.1)  # Simulate async check
                 reward += 0.3
                 
             if "Correction" in completion:
+                await asyncio.sleep(0.1)  # Simulate async check
                 reward += 0.4
                 
-            rewards.append(reward)
-        
-        return rewards
+            return reward
+
+        # Process all completions in parallel
+        rewards = await asyncio.gather(*[check_completion(completion) for completion in completions])
+        return list(rewards)
 
     # Commented out main reward function for later use
     """
@@ -392,10 +395,14 @@ def main():
     )
 
 
+    # Wrap async reward function to make it synchronous
+    def sync_reward_func(completions, **kwargs):
+        return asyncio.run(simple_reward_func(completions, **kwargs))
+
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[simple_reward_func],
+        reward_funcs=[sync_reward_func],
         args=training_args,
         train_dataset=formatted_dataset
     )
