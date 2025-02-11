@@ -168,7 +168,7 @@ class SolutionSimilarityChecker:
             texts, 
             padding=True, 
             truncation=True, 
-            max_length=self.config.embedding_max_length,
+            max_length=512,
             return_tensors="pt"
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}

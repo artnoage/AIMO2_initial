@@ -25,7 +25,7 @@ def main():
     # Load the base model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=args.model_name,
-        max_seq_length=6496,
+        max_seq_length=8192,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",

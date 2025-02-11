@@ -31,4 +31,5 @@ unsloth_compiled_cache/
 tutor/
 baseline/
 simple_questions_output/
- markdown_output/
+markdown_output/
+wandb/

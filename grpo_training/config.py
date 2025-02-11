@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 @dataclass
 class GRPOConfig:
@@ -8,12 +7,7 @@ class GRPOConfig:
     # Model settings
     model_type: str
     completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
-    
-    # Model size settings
-    max_seq_length: int = 4096
-    max_lora_rank: int = 64
-    lora_alpha: int = 64
-    
+        
     # Embedding model settings
     embedding_model_name: str = "sentence-transformers/all-mpnet-base-v2"
     embedding_max_length: int = 512
