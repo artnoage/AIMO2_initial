@@ -400,7 +400,7 @@ class SolutionSimilarityChecker:
             param.data = param.data.to(self.device)
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
-        with torch.no_grad(), torch.cuda.amp.autocast(enabled=True):
+        with torch.no_grad(), torch.amp.autocast('cuda', enabled=True):
             inputs = self.tokenizer(
                 texts,
                 padding=True,

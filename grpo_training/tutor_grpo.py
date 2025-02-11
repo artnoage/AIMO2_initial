@@ -195,7 +195,8 @@ def main():
         max_completion_length=1096,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=0.1,
+        max_grad_norm=1.0,
+        gradient_checkpointing=True,
         report_to="wandb",
         output_dir=output_dir,
     )
