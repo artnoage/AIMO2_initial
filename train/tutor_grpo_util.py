@@ -282,6 +282,28 @@ class ValidationStats:
                 elif len(split_into_steps(substitution)) > 1:
                     self.section_stats['multiple_steps_in_substitution'] += 1
     
+    def save_statistics(self, output_dir: str):
+        """Save current statistics to a JSON file"""
+        import json
+        from pathlib import Path
+        
+        stats_dir = Path(output_dir) / "statistics"
+        stats_dir.mkdir(exist_ok=True)
+        
+        stats = {
+            'total_batches': self.total_batches,
+            'total_rewards': self.total_rewards,
+            'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
+            'section_stats': self.section_stats,
+            'reward_components': self.reward_components,
+            'full_reward_reasons': self.full_reward_reasons,
+            'training_duration': str(datetime.now() - self.start_time)
+        }
+        
+        stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(stats_file, 'w') as f:
+            json.dump(stats, f, indent=2)
+            
     def get_summary(self) -> str:
         total_samples = sum(self.reward_distribution.values())
         if total_samples == 0:

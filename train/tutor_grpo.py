@@ -156,8 +156,23 @@ def main():
     
     # Setup callback for logging
     class LoggingCallback(TrainerCallback):
+        def __init__(self, stats, output_dir, save_frequency=100):
+            self.stats = stats
+            self.output_dir = output_dir
+            self.save_frequency = save_frequency
+            self.step = 0
+            
         def on_log(self, args, state, control, logs=None, **kwargs):
-            logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
+            logger.info(f"\nValidation Statistics:\n{self.stats.get_summary()}")
+            self.step += 1
+            
+            # Save statistics periodically
+            if self.step % self.save_frequency == 0:
+                self.stats.save_statistics(self.output_dir)
+                
+        def on_train_end(self, args, state, control, **kwargs):
+            # Save final statistics
+            self.stats.save_statistics(self.output_dir)
     
 
     async def process_example(prom, prob, sol, ans, comp):
@@ -393,7 +408,7 @@ def main():
         reward_funcs=[sync_reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback()]
+        callbacks=[LoggingCallback(stats=stats, output_dir=output_dir, save_frequency=100)]
     )
 
     # Train the model
