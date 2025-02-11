@@ -495,8 +495,7 @@ class GroupReward(BaseReward):
             correct_numeric, _ = extract_numeric_answer(kwargs['answer'])
             
             if model_numeric is None or correct_numeric is None:
-                log_messages.append(f"[Completion {reward_index}] Could not extract numeric values - returning 0.0")
-                self.logger.info("\n".join(log_messages))
+                self.logger.debug("Could not extract numeric values - returning 0.0")
                 return 0.0
                 
             # Calculate base reward
