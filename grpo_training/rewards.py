@@ -469,6 +469,9 @@ class GroupReward(BaseReward):
             if len(completions) != len(prompts) or len(completions) != len(answers):
                 self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
                 return [0.0] * len(completions)
+            
+            # Initialize rewards list
+            rewards = [0.0] * len(completions)
                 
             # Calculate rewards for each completion-answer pair
             for idx, (completion, ans) in enumerate(zip(completions, answers)):
