@@ -363,64 +363,46 @@ class SolutionReward(BaseReward):
         super().__init__(config)
         
     def calculate_reward(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions
-        
-        Args:
-            completions: List of model completions to evaluate
-            **kwargs: Additional context including:
-                - answer: List of expected answer strings
-                - correct_answer: List of expected answer strings (alternative)
-                - problem: List of original problem texts
-                - solution: List of complete solution attempts
-                
-        Returns:
-            List[float]: List of calculated reward values
-            
-        The reward is calculated based on:
-        1. Correctness of the answer
-        2. Validity of the solution
-        3. Length penalties
-        """
+        """Calculate rewards for a batch of completions"""
         try:
+            # Extract all answers upfront
+            answers = kwargs.get('correct_answer') or kwargs.get('answer')
+            if isinstance(answers, str):
+                answers = [answers]
+            if not answers:
+                self.logger.warning("No answers provided")
+                return [0.0] * len(completions)
+                
+            # Ensure we have enough answers
+            if len(answers) < len(completions):
+                answers = answers * (len(completions) // len(answers) + 1)
+                answers = answers[:len(completions)]
+                
+            print(f"\nProcessing batch of {len(completions)} completions")
+            print(f"Number of answers: {len(answers)}")
+            
+            # Calculate rewards for each completion
             rewards = []
-            for i, completion in enumerate(completions):
+            for i, (completion, answer) in enumerate(zip(completions, answers)):
                 reward = 0.0
             
-            print("\n=== Starting reward calculation ===")
-            print(f"Completion (first 100 chars): {completion[:100]}...")
-            
-            # Extract and validate the answer
-            model_answer = extract_answer_from_solution(completion)
-            if model_answer is None:
-                self.logger.debug("No boxed answer found")
-                print("No boxed answer found - returning 0.0")
-                return 0.0
+                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
+                print(f"Completion (first 100 chars): {completion[:100]}...")
                 
-            # Convert to numeric values
-            model_numeric, debug_info = extract_numeric_answer(model_answer)
-            print(f"Model numeric value: {model_numeric}")
-            print(f"Debug info: {debug_info}")
-            
-            # Get answers from kwargs, handling list case
-            answers = kwargs.get('correct_answer') or kwargs.get('answer')
-            print(f"Raw answers: {answers}")
-            
-            # Handle list of answers - take corresponding answer for this completion
-            if isinstance(answers, list):
-                if not answers:
-                    self.logger.warning("Empty answers list")
-                    print("No answers found - returning 0.0")
-                    return 0.0
-                # Get index from group context if available, otherwise use 0
-                group_context = kwargs.get('group', {})
-                idx = group_context.get('index', 0)
-                if idx >= len(answers):
-                    self.logger.warning(f"Answer index {idx} out of range for answers list length {len(answers)}")
-                    print("Answer index out of range - returning 0.0")
-                    return 0.0
-                correct_answer = answers[idx]
-            else:
-                correct_answer = answers
+                # Extract and validate the answer
+                model_answer = extract_answer_from_solution(completion)
+                if model_answer is None:
+                    self.logger.debug("No boxed answer found")
+                    print("No boxed answer found - returning 0.0")
+                    rewards.append(0.0)
+                    continue
+                    
+                # Convert to numeric values
+                model_numeric, debug_info = extract_numeric_answer(model_answer)
+                print(f"Model numeric value: {model_numeric}")
+                print(f"Debug info: {debug_info}")
+                
+                correct_answer = answer  # Use pre-extracted answer
                 
             print(f"Selected correct_answer: {correct_answer}")
             if not correct_answer:
