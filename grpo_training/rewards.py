@@ -478,18 +478,16 @@ class GroupReward(BaseReward):
             # Get group context from kwargs
             group_completions = kwargs.get('group_completions', [])
             group_answers = kwargs.get('group_answers', [])
+            group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
-            reward_index = kwargs.get('reward_index', 0)
             
-            log_messages = []
-            log_messages.append(f"\n[Completion {reward_index}] Processing in group context")
-            log_messages.append(f"[Completion {reward_index}] Group size: {len(group_completions)}")
-            
+            if not all([group_completions, group_answers, group_indices]):
+                self.logger.warning("Missing required group context")
+                return 0.0
+                
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
-                log_messages.append(f"[Completion {reward_index}] No boxed answer found - returning 0.0")
-                self.logger.info("\n".join(log_messages))
                 return 0.0
                 
             # Convert to numeric values
@@ -515,32 +513,36 @@ class GroupReward(BaseReward):
                 if comp_answer is None:
                     all_results.append(False)
                     continue
+                    
                 comp_numeric, _ = extract_numeric_answer(comp_answer)
-                if comp_numeric is None:
+                ans_numeric, _ = extract_numeric_answer(ans)
+                if comp_numeric is None or ans_numeric is None:
                     all_results.append(False)
                     continue
-                all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
+                    
+                all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
             
-            # Majority bonus
-            correct_count = sum(all_results)
-            is_in_majority = (is_correct and correct_count > len(group_completions) / 2) or \
-                            (not is_correct and (len(group_completions) - correct_count) > len(group_completions) / 2)
-            majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
-            if is_in_majority:
-                reward += majority_bonus
+            # Majority bonus - only apply if group has more than one completion
+            if len(group_completions) > 1:
+                correct_count = sum(all_results)
+                is_in_majority = (is_correct and correct_count > len(group_completions) / 2) or \
+                                (not is_correct and (len(group_completions) - correct_count) > len(group_completions) / 2)
+                majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+                if is_in_majority:
+                    reward += majority_bonus
+                    
+                # Diversity bonus
+                similarities = similarity_matrix[group_idx]
+                similarities[group_idx] = 0  # Remove self-similarity
+                avg_similarity = similarities.mean().item()
                 
-            # Diversity bonus
-            similarities = similarity_matrix[group_idx]
-            similarities[group_idx] = 0  # Remove self-similarity
-            avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
-            
-            diversity_bonus = 0
-            if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
-                diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
-                reward += diversity_bonus
-            elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
-                diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
-                reward += diversity_bonus
+                diversity_bonus = 0
+                if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
+                    diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
+                    reward += diversity_bonus
+                elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
+                    diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
+                    reward += diversity_bonus
                 
             # Update group-specific statistics
             if is_correct:
