@@ -77,18 +77,12 @@ def main():
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check if path exists locally, then try HF, then exit
+    # Check if model exists locally
     model_path = "/Home/stat/laschos/AIMO2_initial/models/tutor2"
-    if os.path.exists(model_path):
-        model_name = model_path
-    else:
-        try:
-            from huggingface_hub import model_info
-            model_info("Metaskepsis/Skepsis_2")
-            model_name = "Metaskepsis/Skepsis_2"
-        except Exception as e:
-            logger.error(f"Model not found locally at {model_path} or in HuggingFace")
-            sys.exit(1)
+    if not os.path.exists(model_path):
+        logger.error(f"Model not found at {model_path}")
+        sys.exit(1)
+    model_name = model_path
             
     # Use dataset name from file
     dataset_name = locals().get('dataset_name', "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032")
@@ -154,8 +148,13 @@ def main():
         map_eos_token=True
     )
     
-    # Load and format dataset
-    dataset = load_from_disk(reward_config.dataset_name)
+    # Try loading dataset from local path first, then from HuggingFace
+    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
+    try:
+        if os.path.exists(dataset_path):
+            dataset = load_from_disk(dataset_path)
+        else:
+            dataset = load_dataset(reward_config.dataset_name)
     def formatting_func(example):
         formatted_example = {**example}
         formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
