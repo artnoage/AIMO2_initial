@@ -281,18 +281,50 @@ class BaseReward(ABC):
         return logger
         
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions
-        
-        Args:
-            completions: List of model completions to evaluate
-            **kwargs: Additional context needed for reward calculation
+        """Calculate rewards for a batch of completions"""
+        answers = kwargs.get('answer', [])
+        prompts = kwargs.get('prompt', [])
+        if not answers or not prompts:
+            self.logger.warning("Missing answers or prompts")
+            return [0.0] * len(completions)
+
+        self.logger.info(f"\n{'='*50}\nProcessing new batch of {len(completions)} completions")
+        self.logger.info(f"Number of answers: {len(answers)}")
+        self.logger.info(f"Number of prompts: {len(prompts)}")
+
+        # Group completions by prompt
+        prompt_groups = {}
+        for i, (comp, prompt) in enumerate(zip(completions, prompts)):
+            if prompt not in prompt_groups:
+                answer_idx = i // len(prompts[0])
+                self.logger.info(f"\nCreating new group for prompt {len(prompt_groups)+1}")
+                self.logger.info(f"Using answer index: {answer_idx}")
+                self.logger.info(f"Answer: {answers[answer_idx]}")
+                prompt_groups[prompt] = {
+                    'completions': [],
+                    'indices': [],
+                    'answer': answers[answer_idx]
+                }
+            prompt_groups[prompt]['completions'].append(comp)
+            prompt_groups[prompt]['indices'].append(i)
+
+        # Calculate rewards for each group
+        rewards = [0.0] * len(completions)
+        for group_idx, group in enumerate(prompt_groups.values()):
+            self.logger.info(f"\n{'='*30}\nProcessing group {group_idx+1}/{len(prompt_groups)}")
+            batch_completions = group['completions']
+            correct_answer = group['answer']
             
-        Returns:
-            List[float]: List of reward values for each completion
-        """
-        rewards = [self.calculate_reward(comp, **kwargs) for comp in completions]
-        self.stats.update(rewards, **kwargs)
-        return rewards
+            # Process each completion in the group
+            for i, comp_idx in enumerate(group['indices']):
+                self.logger.info(f"\nProcessing completion {i+1}/{len(batch_completions)} (global index {comp_idx})")
+                group_context = {
+                    'completions': batch_completions,
+                    'correct_answer': correct_answer,
+                    'index': i
+                }
+                reward = self.calculate_reward(batch_completions[i], group=group_context)
+                rewards[comp_idx] = reward
 
     async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
         """Async version of __call__
