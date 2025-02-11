@@ -168,17 +168,26 @@ def main():
             "then walk through the solution step-by-step using LaTeX notation. "
             "Don't forget to put the final answer in a box using \\boxed{}"
         )
-        return {
+        
+        # Print debug info
+        print(f"\nFormatting example:")
+        print(f"Available keys: {example.keys()}")
+        print(f"Answer value: {example.get('answer')}")
+        
+        formatted = {
             "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example['answer'],
-            "correct_answer": example['answer']  # Add correct_answer field for reward calculation
+            "answer": example.get('answer'),
+            "correct_answer": example.get('answer')
         }
+        
+        print(f"Formatted example: {formatted}")
+        return formatted
     
     # Format dataset and ensure answer field is present
     formatted_dataset = dataset['train'].map(
         formatting_func,
         desc="Applying chat template",
-        remove_columns=dataset['train'].column_names  # Remove original columns
+        remove_columns=None  # Keep original columns
     )
     
     # Verify first few entries
