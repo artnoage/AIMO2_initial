@@ -552,10 +552,9 @@ class GroupReward(BaseReward):
                     reward += majority_bonus
                     
                 # Diversity bonus
-                # Find position in prompt group
-                group_pos = prompt_indices.index(idx)
-                similarities = similarity_matrix[group_pos]
-                similarities[group_pos] = 0  # Remove self-similarity
+                # Use group_idx since we're already iterating through the group
+                similarities = similarity_matrix[group_idx]
+                similarities[group_idx] = 0  # Remove self-similarity
                 avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
                 
                 diversity_bonus = 0
