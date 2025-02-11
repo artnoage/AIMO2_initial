@@ -23,6 +23,29 @@ class RewardConfig:
     numeric_tolerance: float = 1e-6
     logging_dir: str = "logs"
     stats_dir: str = "statistics"
+    
+    # Common reward components
+    base_reward: float = 2.0
+    validation_reward: float = 0.2
+    length_penalty_factor: float = 0.0001
+    
+    # Group-specific settings
+    group_base_reward: float = 3.0
+    group_diversity_bonus: float = 0.3
+    group_majority_bonus: float = 0.2
+    group_similarity_threshold_low: float = 0.7
+    group_similarity_threshold_high: float = 0.9
+    
+    # Tutor-specific settings
+    tutor_structure_base_reward: float = 0.2
+    tutor_analysis_reward: float = 0.2
+    tutor_substitution_reward: float = 0.4
+    tutor_single_step_bonus: float = 0.2
+    tutor_multiple_step_penalty: float = 0.4
+    tutor_full_reward: float = 5.0
+    tutor_analysis_length_cost: float = 0.0001
+    tutor_substitution_length_cost: float = 0.0001
+    tutor_redundant_substitution_penalty: float = 0.1
 
 class RewardStats:
     """Base class for tracking reward statistics"""
@@ -177,13 +200,41 @@ class RewardStats:
             f"  Final step correct: {self.full_reward_reasons['final_step_correct']}"
         )
 
-class BaseReward:
+from abc import ABC, abstractmethod
+
+class BaseReward(ABC):
     """Base class for reward calculation"""
     
     def __init__(self, config: RewardConfig):
         self.config = config
         self.stats = RewardStats(config)
         self.logger = self._setup_logger()
+        
+    @abstractmethod
+    def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a single completion
+        
+        Args:
+            completion: The model completion to evaluate
+            **kwargs: Additional context needed for reward calculation
+            
+        Returns:
+            float: The calculated reward value
+        """
+        raise NotImplementedError
+        
+    @abstractmethod
+    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
+        """Async version of calculate_reward
+        
+        Args:
+            completion: The model completion to evaluate
+            **kwargs: Additional context needed for reward calculation
+            
+        Returns:
+            float: The calculated reward value
+        """
+        raise NotImplementedError
         
     def _setup_logger(self) -> logging.Logger:
         """Setup logging configuration"""
@@ -205,22 +256,30 @@ class BaseReward:
         logger.addHandler(logging.StreamHandler())
         return logger
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion"""
-        raise NotImplementedError("Subclasses must implement calculate_reward")
-        
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions"""
+        """Calculate rewards for a batch of completions
+        
+        Args:
+            completions: List of model completions to evaluate
+            **kwargs: Additional context needed for reward calculation
+            
+        Returns:
+            List[float]: List of reward values for each completion
+        """
         rewards = [self.calculate_reward(comp, **kwargs) for comp in completions]
         self.stats.update(rewards, **kwargs)
         return rewards
 
-    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
-        """Async version of calculate_reward"""
-        return self.calculate_reward(completion, **kwargs)
-        
     async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
-        """Async version of __call__"""
+        """Async version of __call__
+        
+        Args:
+            completions: List of model completions to evaluate
+            **kwargs: Additional context needed for reward calculation
+            
+        Returns:
+            List[float]: List of reward values for each completion
+        """
         rewards = await asyncio.gather(*[
             self.calculate_reward_async(comp, **kwargs) 
             for comp in completions
