@@ -426,6 +426,10 @@ class GroupReward(BaseReward):
             param.data = param.data.cpu()  # Move parameters to CPU
             
         
+    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
+        """Async version of calculate_reward"""
+        return self.calculate_reward(completion, **kwargs)
+        
     def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion within its group context"""
         group = kwargs.get('group', {})
