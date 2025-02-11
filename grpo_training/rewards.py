@@ -251,7 +251,6 @@ class BaseReward(ABC):
         self.logger = self._setup_logger()
         
     @abstractmethod
-    @abstractmethod
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion
         
