@@ -310,7 +310,7 @@ def main():
                 print(similarity_matrix)
                 
                 # Calculate rewards for each completion in group
-                base_reward = 1.0
+                base_reward = 3.0
                 diversity_bonus = 0.3
                 majority_bonus = 0.2
                 
