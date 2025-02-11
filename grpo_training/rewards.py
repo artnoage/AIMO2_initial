@@ -311,30 +311,28 @@ class BaseReward(ABC):
         # Create reward_index to track original order
         reward_index = list(range(len(completions)))
         
-        # Get prompts and answers from kwargs
-        prompts = kwargs.get('prompts', [])
-        answers = kwargs.get('answer', [])
+        # Get prompts and answer from kwargs
+        prompts = kwargs.get('prompts', [])  # prompts is pluralized by convention
+        answer = kwargs.get('answer') or kwargs.get('correct_answer', [])  # handle both answer fields
         
-        if len(completions) != len(prompts) or len(completions) != len(answers):
-            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
+        if len(completions) != len(prompts) or len(completions) != len(answer):
+            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answer={len(answer)}")
             return [0.0] * len(completions)
             
         self.logger.info(f"\n{'='*50}\nProcessing batch of {len(completions)} completions")
         
         # Group completions by prompt for similarity checking
         prompt_groups = {}
-        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answers, reward_index)):
+        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answer, reward_index)):
             if prompt not in prompt_groups:
                 prompt_groups[prompt] = {
                     'completions': [],
-                    'answers': [],
-                    'indices': [],
-                    'reward_indices': []
+                    'answer': [],
+                    'idx': []
                 }
             prompt_groups[prompt]['completions'].append(comp)
-            prompt_groups[prompt]['answers'].append(ans)
-            prompt_groups[prompt]['indices'].append(i)
-            prompt_groups[prompt]['reward_indices'].append(idx)
+            prompt_groups[prompt]['answer'].append(ans)
+            prompt_groups[prompt]['idx'].append(idx)
             
         # Calculate rewards for each completion
         rewards = [0.0] * len(completions)
