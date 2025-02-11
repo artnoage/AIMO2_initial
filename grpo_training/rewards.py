@@ -441,6 +441,9 @@ class SolutionReward(BaseReward):
                 self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
                 return 0.0
                 
+            # Initialize reward
+            reward = 0.0
+            
             # Check correctness
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             print(f"\nCorrectness check:")
@@ -449,7 +452,7 @@ class SolutionReward(BaseReward):
             print(f"Is correct: {is_correct}")
             
             if is_correct:
-                reward += self.config.base_reward
+                reward = self.config.base_reward
                 print(f"Added base reward: +{self.config.base_reward}")
                 
             # Add validation reward
