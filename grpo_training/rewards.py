@@ -554,106 +554,103 @@ class GroupReward(BaseReward):
         """Async version of calculate_reward"""
         return self.calculate_reward(completion, **kwargs)
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion within its group context"""
-        group = kwargs.get('group', {})
-        if not group:
-            self.logger.warning("No group context provided")
-            return 0.0
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
+        """Calculate rewards for a batch of completions"""
+        try:
+            print(f"\nProcessing batch of {len(completions)} completions")
             
-        # Extract group information
-        completions = group.get('completions', [])
-        correct_answer = group.get('correct_answer')
-        group_index = group.get('index', 0)
-        
-        if not completions or not correct_answer:
-            return 0.0
+            # Create reward_index to track original order
+            reward_index = list(range(len(completions)))
+            rewards = [0.0] * len(completions)
             
-        self.logger.info(f"Processing completion {group_index+1}/{len(completions)}")
-        self.logger.info(f"Correct answer: {correct_answer}")
-        
-        # Calculate correctness for all completions in group
-        results = []
-        for comp in completions:
-            try:
-                model_answer = extract_answer_from_solution(comp)
-                if model_answer is None:
-                    self.logger.info(f"\nCompletion {len(results)+1}:")
-                    self.logger.info("FAILED: No boxed answer found")
-                    self.logger.info(f"First 200 chars: {comp[:200]}")
-                    results.append(False)
-                    continue
+            # Get answers from kwargs
+            answers = kwargs.get('answer', [])
+            if not answers:
+                self.logger.warning("No answers provided")
+                return [0.0] * len(completions)
+            
+            # Calculate rewards for each completion-answer pair
+            for i, (completion, ans, idx) in enumerate(zip(completions, answers, reward_index)):
+            
+            print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
+            print(f"Completion (first 100 chars): {completion[:100]}...")
                 
-                model_numeric, model_debug = extract_numeric_answer(model_answer, debug=True)
-                correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
+            # Extract and validate the answer
+            model_answer = extract_answer_from_solution(completion)
+            if model_answer is None:
+                self.logger.debug("No boxed answer found")
+                print("No boxed answer found - returning 0.0")
+                rewards[idx] = 0.0
+                continue
+                    
+            # Convert to numeric values
+            model_numeric, debug_info = extract_numeric_answer(model_answer)
+            print(f"Model numeric value: {model_numeric}")
+            print(f"Debug info: {debug_info}")
                 
-                # Detailed debug prints
-                self.logger.info(f"\nCompletion {len(results)+1} numeric extraction:")
-                self.logger.info(f"Raw completion (first 200 chars): {comp[:200]}")
-                self.logger.info(f"Extracted boxed answer: {model_answer}")
-                self.logger.info(f"Model numeric: {model_numeric} ({model_debug})")
-                self.logger.info(f"Correct answer: {correct_answer}")
-                self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
+            correct_numeric, correct_debug = extract_numeric_answer(ans)
+            if model_numeric is None or correct_numeric is None:
+                print("Could not extract numeric values - returning 0.0")
+                rewards[idx] = 0.0
+                continue
+                # Calculate similarity matrix for group
+                similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
                 
-                if model_numeric is None or correct_numeric is None:
-                    self.logger.info(f"Could not extract numeric values for completion {len(results)+1}")
-                    results.append(False)
-                    continue
-                
+                # Calculate base reward
                 is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-                self.logger.info(f"Completion {len(results)+1} correct: {is_correct}")
-                results.append(is_correct)
+                reward = self.config.group_base_reward if is_correct else 0.0
                 
-            except Exception as e:
-                self.logger.error(f"Error processing completion {len(results)+1}: {str(e)}")
-                results.append(False)
+                # Calculate correctness for all completions
+                all_results = []
+                for comp in completions:
+                    comp_answer = extract_answer_from_solution(comp)
+                    if comp_answer is None:
+                        all_results.append(False)
+                        continue
+                    comp_numeric, _ = extract_numeric_answer(comp_answer)
+                    if comp_numeric is None:
+                        all_results.append(False)
+                        continue
+                    all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
                 
-        # Calculate similarity matrix for group
-        similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
-        
-        # Calculate reward components
-        is_correct = results[group_index]
-        reward = self.config.group_base_reward if is_correct else 0.0
-        
-        # Log correctness results
-        self.logger.info(f"Correctness results: {results}")
-        self.logger.info(f"Current completion correct: {is_correct}")
-        
-        # Majority bonus
-        correct_count = sum(results)
-        is_in_majority = (is_correct and correct_count > len(completions) / 2) or \
-                        (not is_correct and (len(completions) - correct_count) > len(completions) / 2)
-        majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
-        if is_in_majority:
-            reward += majority_bonus
+                # Majority bonus
+                correct_count = sum(all_results)
+                is_in_majority = (is_correct and correct_count > len(completions) / 2) or \
+                                (not is_correct and (len(completions) - correct_count) > len(completions) / 2)
+                majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+                if is_in_majority:
+                    reward += majority_bonus
+                    
+                # Diversity bonus
+                similarities = similarity_matrix[i]
+                similarities[i] = 0  # Remove self-similarity
+                avg_similarity = similarities.mean().item()
+                
+                diversity_bonus = 0
+                if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
+                    diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
+                    reward += diversity_bonus
+                elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
+                    diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
+                    reward += diversity_bonus
+                    
+                # Update group-specific statistics
+                self.stats.group_stats['correct_answers'] += 1 if is_correct else 0
+                self.stats.group_stats['incorrect_answers'] += 0 if is_correct else 1
+                self.stats.group_stats['majority_bonuses'] += 1 if is_in_majority else 0
+                self.stats.group_stats['diversity_bonuses'] += 1 if diversity_bonus > 0 else 0
+                self.stats.group_stats['unique_solutions'] += 1 if avg_similarity < self.config.group_similarity_threshold_low else 0
+                self.stats.group_stats['similar_solutions'] += 1 if avg_similarity > self.config.group_similarity_threshold_high else 0
+                self.stats.group_stats['total_similarity'] += avg_similarity
+                
+                rewards[idx] = reward
+                
+            self.stats.update(rewards, completions=completions)
+            return rewards
             
-        # Diversity bonus
-        similarities = similarity_matrix[group_index]
-        similarities[group_index] = 0  # Remove self-similarity
-        avg_similarity = similarities.mean().item()
-        
-        self.logger.info(f"Average similarity: {avg_similarity:.3f}")
-        
-        diversity_bonus = 0
-        if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
-            diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
-            reward += diversity_bonus
-        elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
-            diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
-            reward += diversity_bonus
-            
-        # Update group-specific statistics
-        self.stats.group_stats['correct_answers'] += 1 if is_correct else 0
-        self.stats.group_stats['incorrect_answers'] += 0 if is_correct else 1
-        self.stats.group_stats['majority_bonuses'] += 1 if is_in_majority else 0
-        self.stats.group_stats['diversity_bonuses'] += 1 if diversity_bonus > 0 else 0
-        self.stats.group_stats['unique_solutions'] += 1 if avg_similarity < self.config.group_similarity_threshold_low else 0
-        self.stats.group_stats['similar_solutions'] += 1 if avg_similarity > self.config.group_similarity_threshold_high else 0
-        self.stats.group_stats['total_similarity'] += avg_similarity
-        
-        self.logger.info(f"Final reward: {reward:.3f}")
-        
-        return reward
+        except Exception as e:
+            self.logger.error(f"Error calculating group rewards: {str(e)}")
+            return [0.0] * len(completions)
 
 class TutorReward(BaseReward):
     """Reward class for tutor response evaluation"""
