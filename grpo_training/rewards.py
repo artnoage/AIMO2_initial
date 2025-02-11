@@ -554,7 +554,7 @@ class GroupReward(BaseReward):
                 return [0.0] * len(completions)
                 
             # Calculate rewards for each completion-answer pair
-            for completion, ans, idx in zip(completions, answers, reward_index):
+            for completion, ans, idx in zip(completions, answer, reward_index):
                 print(f"\n=== Processing completion {idx+1}/{len(completions)} ===")
                 print(f"Completion (first 100 chars): {completion[:100]}...")
                 
