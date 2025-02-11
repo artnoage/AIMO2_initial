@@ -1,17 +1,20 @@
 import os
-import sys
 import wandb
 import logging
-from datetime import datetime
 from datasets import load_dataset, load_from_disk
-from transformers import TrainerCallback
+from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
+import sys
 from trl import GRPOConfig, GRPOTrainer
-# Add the project root to Python path
+from transformers import TrainerCallback
+
+# Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(project_root)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from config import GRPOConfig as RewardConfig
 from rewards import SolutionReward
 
