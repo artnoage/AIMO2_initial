@@ -342,19 +342,43 @@ class SolutionReward(BaseReward):
             if model_answer is None:
                 self.logger.debug("No boxed answer found")
                 return reward
+                
+            # Convert to numeric values
+            model_numeric, debug_info = extract_numeric_answer(model_answer)
+            correct_answer = kwargs.get('correct_answer')
+            if not correct_answer:
+                self.logger.warning("No correct answer provided")
+                return reward
+                
+            correct_numeric, _ = extract_numeric_answer(correct_answer)
             
-        # Convert to numeric values
-        model_numeric, debug_info = extract_numeric_answer(model_answer)
-        correct_answer = kwargs.get('correct_answer')
-        if not correct_answer:
-            self.logger.warning("No correct answer provided")
+            if model_numeric is None or correct_numeric is None:
+                self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
+                return reward
+                
+            # Check correctness
+            if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                reward += self.config.base_reward
+                
+            # Add validation reward
+            is_valid, _ = validate_solution(completion)
+            if is_valid:
+                reward += self.config.validation_reward
+                
+            # Apply length penalty
+            length_penalty = len(completion) * self.config.length_penalty_factor
+            reward -= length_penalty
+            
+            # Update statistics
+            self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + (1 if reward >= self.config.base_reward else 0)
+            self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + (1 if is_valid else 0)
+            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
             return reward
             
-        correct_numeric, _ = extract_numeric_answer(correct_answer)
-        
-        if model_numeric is None or correct_numeric is None:
-            self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
-            return reward
+        except Exception as e:
+            self.logger.error(f"Error calculating reward: {str(e)}")
+            return 0.0
             
         # Check correctness
         if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
