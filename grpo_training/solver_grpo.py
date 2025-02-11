@@ -94,8 +94,8 @@ def main():
         project="solver_grpo",
         name=f"solver_grpo_{timestamp}",
         config={
-            "model_type": model_type,
-            "dataset": dataset_name,
+            "model_type": reward_config.model_type,
+            "dataset": reward_config.dataset_name,
             "base_reward": 2.0,
             "validation_reward": 0.2,
             "length_penalty_factor": 0.0001
@@ -214,8 +214,8 @@ def main():
     # Save model
     try:
         models_dir = "models"
-        os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
-        model_output_dir = os.path.join(models_dir, model_type, timestamp)
+        os.makedirs(os.path.join(models_dir, reward_config.model_type), exist_ok=True)
+        model_output_dir = os.path.join(models_dir, reward_config.model_type, timestamp)
         model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
         logger.info(f"Merged model saved to {model_output_dir}")
     except Exception as e:

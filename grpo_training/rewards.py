@@ -16,7 +16,6 @@ from .config import GRPOConfig
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 from utils.agents import CompletionAgent
 
-from typing import Dict, List, Optional, Union, Any
 
 @dataclass 
 class RewardConfig:
@@ -442,7 +441,7 @@ class GroupReward(BaseReward):
         self.similarity_checker = SolutionSimilarityChecker(config)
         
         # Freeze embedding model parameters and move to CPU when not in use
-        for param in self.model.parameters():
+        for param in self.similarity_checker.model.parameters():
             param.requires_grad = False
             param.data = param.data.cpu()  # Move parameters to CPU
             
