@@ -178,7 +178,8 @@ def process_group_completions(completions: List[str], correct_answer: str) -> Tu
                 
             model_numeric, _ = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
-            
+            print(correct_answer)
+            print(model_numeric,correct_numeric)
             if model_numeric is None or correct_numeric is None:
                 results.append(False)
                 error_count += 1
@@ -227,8 +228,9 @@ def main():
             
         def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
             # Get correct answers from kwargs
-            correct_answers = kwargs.get('correct_answer', [''] * len(completions))
-            
+            correct_answers = kwargs.get('answer', [''] * len(completions))
+            print(correct_answer)
+            print("hey")
             # Group completions by prompt with indexed entries
             prompt_groups = {}
             for i, (comp, prom) in enumerate(zip(completions, prompts)):
@@ -246,12 +248,12 @@ def main():
                 
                 # Use the answer from kwargs since we're not getting it directly anymore
                 correct_answer = kwargs.get('correct_answer', [''])[0]
-                
+                print("correct_answer",correct_answer)
                 # Get correctness for each completion
                 correctness_results, correct_stats = process_group_completions(
                     group_completions, correct_answer
                 )
-                
+                print(correctness_results)
                 # Compute similarity matrix for group
                 similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
                 
