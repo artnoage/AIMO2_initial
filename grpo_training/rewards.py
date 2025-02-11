@@ -394,8 +394,10 @@ class SolutionReward(BaseReward):
             print(f"Total penalty: -{length_penalty}")
             
             # Update statistics
-            self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + (1 if reward >= self.config.base_reward else 0)
-            self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + (1 if is_valid else 0)
+            if reward >= self.config.base_reward:
+                self.stats.reward_components['base_rewards'] += 1
+            if is_valid:
+                self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
             
             print(f"\nFinal reward calculation:")
@@ -547,12 +549,21 @@ class GroupReward(BaseReward):
                     reward += diversity_bonus
                     
                 # Update group-specific statistics
-                self.stats.group_stats['correct_answers'] += 1 if is_correct else 0
-                self.stats.group_stats['incorrect_answers'] += 0 if is_correct else 1
-                self.stats.group_stats['majority_bonuses'] += 1 if is_in_majority else 0
-                self.stats.group_stats['diversity_bonuses'] += 1 if diversity_bonus > 0 else 0
-                self.stats.group_stats['unique_solutions'] += 1 if avg_similarity < self.config.group_similarity_threshold_low else 0
-                self.stats.group_stats['similar_solutions'] += 1 if avg_similarity > self.config.group_similarity_threshold_high else 0
+                if is_correct:
+                    self.stats.group_stats['correct_answers'] += 1
+                else:
+                    self.stats.group_stats['incorrect_answers'] += 1
+                    
+                if is_in_majority:
+                    self.stats.group_stats['majority_bonuses'] += 1
+                if diversity_bonus > 0:
+                    self.stats.group_stats['diversity_bonuses'] += 1
+                    
+                if avg_similarity < self.config.group_similarity_threshold_low:
+                    self.stats.group_stats['unique_solutions'] += 1
+                elif avg_similarity > self.config.group_similarity_threshold_high:
+                    self.stats.group_stats['similar_solutions'] += 1
+                    
                 self.stats.group_stats['total_similarity'] += avg_similarity
                 
                 rewards[idx] = reward
