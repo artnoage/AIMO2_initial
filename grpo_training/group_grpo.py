@@ -78,17 +78,17 @@ def main():
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check for model name in locals, then try HF, then exit
-    model_name = None
-    if 'model_name' in locals():
-        model_name = locals()['model_name']
+    # Check if path exists locally, then try HF, then exit
+    model_path = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    if os.path.exists(model_path):
+        model_name = model_path
     else:
         try:
             from huggingface_hub import model_info
             model_info("Metaskepsis/Skepsis_2")
             model_name = "Metaskepsis/Skepsis_2"
         except Exception as e:
-            logger.error("No model name provided and couldn't find default model in HuggingFace")
+            logger.error(f"Model not found locally at {model_path} or in HuggingFace")
             sys.exit(1)
             
     # Use dataset name from file
