@@ -382,6 +382,12 @@ def main():
                     group_stats=group_stats
                 )
             
+            # Print rewards grouped by 8
+            print("\nAll rewards (grouped by 8):")
+            for i in range(0, len(all_rewards), 8):
+                group = all_rewards[i:i+8]
+                print(f"Group {i//8}: {[round(r, 3) for r in group]}")
+            
             return all_rewards
     
     # Load and format the dataset
