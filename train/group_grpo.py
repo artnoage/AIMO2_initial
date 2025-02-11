@@ -270,7 +270,7 @@ def main():
         def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
             # Get correct answers from kwargs
             correct_answers = kwargs.get('correct_answer', [''] * len(completions))
-            print(len(correct_answers),correct_answers[0],correct_answers[-1])
+            logger.info(f"Processing {len(correct_answers)} answers, first: {correct_answers[0]}, last: {correct_answers[-1]}")
             # Group completions by prompt with indexed entries
             prompt_groups = {}
             for i, (comp, prom) in enumerate(zip(completions, prompts)):
@@ -292,22 +292,22 @@ def main():
                 correctness_results, correct_stats = process_group_completions(
                     group_completions, correct_answer
                 )
-                print(f"\nGroup Analysis:")
-                print(f"Correct answer: {correct_answer}")
-                print("Correctness results:", correctness_results)
-                print("Correct stats:", correct_stats)
+                logger.info(f"\nGroup Analysis:")
+                logger.info(f"Correct answer: {correct_answer}")
+                logger.info(f"Correctness results: {correctness_results}")
+                logger.info(f"Correct stats: {correct_stats}")
                 
-                # Print first few chars of each completion
+                # Log first few chars of each completion
                 for i, comp in enumerate(group_completions):
                     answer = extract_answer_from_solution(comp)
-                    print(f"\nCompletion {i} ({'correct' if correctness_results[i] else 'incorrect'}):")
-                    print(f"Found answer: {answer}")
-                    print(f"First 100 chars: {comp[:100]}...")
+                    logger.info(f"\nCompletion {i} ({'correct' if correctness_results[i] else 'incorrect'}):")
+                    logger.info(f"Found answer: {answer}")
+                    logger.info(f"First 100 chars: {comp[:100]}...")
                 
                 # Compute similarity matrix for group
                 similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
-                print("\nSimilarity matrix:")
-                print(similarity_matrix)
+                logger.info("\nSimilarity matrix:")
+                logger.info(f"{similarity_matrix}")
                 
                 # Calculate rewards for each completion in group
                 base_reward = 3.0
@@ -349,13 +349,13 @@ def main():
                     reward_components['total'] = reward
                     
                     all_rewards[idx] = reward
-                    print(f"\nReward calculation for completion {i}:")
-                    print(f"Is correct: {is_correct}")
-                    print(f"Is in majority: {is_in_majority}")
-                    print(f"Average similarity: {avg_similarity:.3f}")
-                    print("Reward components:")
+                    logger.info(f"\nReward calculation for completion {i}:")
+                    logger.info(f"Is correct: {is_correct}")
+                    logger.info(f"Is in majority: {is_in_majority}")
+                    logger.info(f"Average similarity: {avg_similarity:.3f}")
+                    logger.info("Reward components:")
                     for component, value in reward_components.items():
-                        print(f"  {component}: {value:.3f}")
+                        logger.info(f"  {component}: {value:.3f}")
                 
                 # Prepare detailed statistics
                 group_stats = {
