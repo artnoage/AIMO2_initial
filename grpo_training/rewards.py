@@ -224,7 +224,24 @@ class RewardStats:
 
 
 class BaseReward(ABC):
-    """Base class for reward calculation"""
+    """Base class for reward calculation
+    
+    All reward classes handle batches of completions with their corresponding metadata.
+    Input format:
+    - completions: List[str] - The model outputs to evaluate
+    - kwargs: Dict containing lists aligned with completions:
+        - prompts: List[str] - The prompts that generated each completion
+        - answer: List[str] - The expected answers (may also be 'correct_answer')
+        
+    The reward calculation process:
+    1. Add reward_index to track original completion order
+    2. Extract required lists from kwargs (prompts, answers)
+    3. Process completions in batches, maintaining order
+    4. Return rewards in same order as input completions
+    
+    Note: The dataset may provide 'answer' or 'correct_answer' - we handle both cases.
+          'prompts' is pluralized but other fields maintain dataset names.
+    """
     
     __name__ = "base_reward"
     
