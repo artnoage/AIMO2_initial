@@ -26,79 +26,57 @@ from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_
 @dataclass
 class GroupValidationStats:
     """Tracks validation statistics during training"""
-    def __init__(self):
+    def __init__(self, output_dir: str):
         self.total_batches = 0
-        self.total_rewards = 0
-        self.reward_distribution = {}
-        self.similarity_stats = {
-            'avg_similarity': 0.0,
-            'unique_solutions': 0,
-            'similar_solutions': 0
-        }
-        self.majority_stats = {
-            'majority_agreement': 0,
-            'split_decisions': 0,
-            'no_consensus': 0
-        }
-        self.correctness_stats = {
-            'correct_answers': 0,
-            'incorrect_answers': 0,
-            'parse_errors': 0
-        }
         self.start_time = datetime.now()
+        self.output_dir = output_dir
     
     def update(self, rewards: List[float], similarities: Optional[torch.Tensor] = None, 
                correct_counts: Optional[Dict] = None):
-        self.total_batches += 1
+        """Store statistics for current batch"""
+        batch_stats = {
+            'batch_id': self.total_batches,
+            'timestamp': datetime.now().isoformat(),
+            'rewards': rewards,
+            'reward_distribution': {},
+            'similarity_stats': {},
+            'correctness_stats': {}
+        }
+        
+        # Record reward distribution
         for r in rewards:
-            self.total_rewards += r
             r_rounded = round(r, 6)
-            self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+            batch_stats['reward_distribution'][r_rounded] = batch_stats['reward_distribution'].get(r_rounded, 0) + 1
             
+        # Record similarity stats if available
         if similarities is not None:
-            avg_sim = similarities.mean().item()
-            self.similarity_stats['avg_similarity'] = (
-                (self.similarity_stats['avg_similarity'] * (self.total_batches - 1) + avg_sim) 
-                / self.total_batches
-            )
-            unique = (similarities < 0.7).sum().item()
-            similar = (similarities > 0.9).sum().item()
-            self.similarity_stats['unique_solutions'] += unique
-            self.similarity_stats['similar_solutions'] += similar
+            batch_stats['similarity_stats'] = {
+                'avg_similarity': similarities.mean().item(),
+                'unique_solutions': (similarities < 0.7).sum().item(),
+                'similar_solutions': (similarities > 0.9).sum().item()
+            }
             
+        # Record correctness stats if available
         if correct_counts is not None:
-            if correct_counts['majority'] > correct_counts['minority']:
-                self.majority_stats['majority_agreement'] += 1
-            elif correct_counts['majority'] == correct_counts['minority']:
-                self.majority_stats['split_decisions'] += 1
-            else:
-                self.majority_stats['no_consensus'] += 1
-                
-            self.correctness_stats['correct_answers'] += correct_counts['correct']
-            self.correctness_stats['incorrect_answers'] += correct_counts['incorrect']
-            self.correctness_stats['parse_errors'] += correct_counts['errors']
+            batch_stats['correctness_stats'] = correct_counts.copy()
+            
+        # Save batch statistics immediately
+        self.save_batch_statistics(batch_stats)
+        self.total_batches += 1
     
-    def save_statistics(self, output_dir: str):
-        """Save current statistics to a JSON file"""
+    def save_batch_statistics(self, batch_stats: Dict):
+        """Save statistics for a single batch"""
         import json
         from pathlib import Path
         
-        stats_dir = Path(output_dir) / "statistics"
+        # Create stats directory if it doesn't exist
+        stats_dir = Path(self.output_dir) / "batch_statistics"
         stats_dir.mkdir(exist_ok=True)
         
-        stats = {
-            'total_batches': self.total_batches,
-            'total_rewards': self.total_rewards,
-            'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
-            'similarity_stats': self.similarity_stats,
-            'majority_stats': self.majority_stats,
-            'correctness_stats': self.correctness_stats,
-            'training_duration': str(datetime.now() - self.start_time)
-        }
-        
-        stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        # Save batch stats with batch ID in filename
+        stats_file = stats_dir / f"batch_{batch_stats['batch_id']:06d}.json"
         with open(stats_file, 'w') as f:
-            json.dump(stats, f, indent=2)
+            json.dump(batch_stats, f, indent=2)
 
     def get_summary(self) -> str:
         elapsed = datetime.now() - self.start_time
@@ -232,7 +210,7 @@ def process_group_completions(completions: List[str], correct_answer: str) -> Tu
 def main():
     # Initialize similarity checker and statistics
     similarity_checker = SolutionSimilarityChecker()
-    stats = GroupValidationStats()
+    stats = GroupValidationStats(output_dir)
     logger = setup_training_logger("group_grpo")
     
     # Setup callback for logging training statistics
