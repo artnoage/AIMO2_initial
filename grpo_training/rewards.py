@@ -480,60 +480,68 @@ class GroupReward(BaseReward):
             # Initialize rewards list
             rewards = [0.0] * len(completions)
                 
-            # Calculate rewards for each completion-answer pair
-            for idx, (completion, ans) in enumerate(zip(completions, answers)):
-                print(f"\n=== Processing completion {idx+1}/{len(completions)} ===")
-                print(f"Completion (first 100 chars): {completion[:100]}...")
+            # Group completions by prompt first
+            prompt_groups = {}
+            for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
+                if prompt not in prompt_groups:
+                    prompt_groups[prompt] = {
+                        'completions': [],
+                        'answers': [],
+                        'indices': []
+                    }
+                prompt_groups[prompt]['completions'].append(completion)
+                prompt_groups[prompt]['answers'].append(ans)
+                prompt_groups[prompt]['indices'].append(idx)
+
+            # Process each prompt group
+            for prompt, group in prompt_groups.items():
+                # Calculate similarity matrix for current group
+                group_completions = group['completions']
+                group_indices = group['indices']
+                group_answers = group['answers']
                 
-                # Calculate reward for this completion
-                reward = self.calculate_reward(completion, answer=ans)
-                rewards[idx] = reward
+                similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
                 
-                # Get current prompt group's completions
-                current_prompt = kwargs.get('prompts', [])[idx]
-                prompt_completions = []
-                prompt_indices = []
-                for j, (comp, prompt) in enumerate(zip(completions, kwargs.get('prompts', []))):
-                    if prompt == current_prompt:
-                        prompt_completions.append(comp)
-                        prompt_indices.append(j)
+                # Calculate rewards for each completion in group context
+                for group_idx, (completion, ans, idx) in enumerate(zip(group_completions, group_answers, group_indices)):
+                    log_messages = []
+                    log_messages.append(f"\n[Completion {idx}] Processing in group context")
+                    log_messages.append(f"[Completion {idx}] Group size: {len(group_completions)}")
                 
-                # Calculate similarity matrix for current prompt group
-                similarity_matrix = self.similarity_checker.compute_similarity_matrix(prompt_completions)
-                
-                # Extract and validate the answer
-                model_answer = extract_answer_from_solution(completion)
-                if model_answer is None:
-                    self.logger.debug("No boxed answer found")
-                    print("No boxed answer found - returning 0.0")
-                    rewards[idx] = 0.0
-                    continue
-                
-                # Convert to numeric values
-                model_numeric, debug_info = extract_numeric_answer(model_answer)
-                correct_numeric, _ = extract_numeric_answer(ans)
-                
-                if model_numeric is None or correct_numeric is None:
-                    print("Could not extract numeric values - returning 0.0")
-                    rewards[idx] = 0.0
-                    continue
-                
-                # Calculate base reward
-                is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-                reward = self.config.group_base_reward if is_correct else 0.0
-                
-                # Calculate correctness for prompt group completions
-                all_results = []
-                for comp in prompt_completions:
-                    comp_answer = extract_answer_from_solution(comp)
-                    if comp_answer is None:
-                        all_results.append(False)
+                    # Extract and validate the answer
+                    model_answer = extract_answer_from_solution(completion)
+                    if model_answer is None:
+                        log_messages.append(f"[Completion {idx}] No boxed answer found - returning 0.0")
+                        self.logger.info("\n".join(log_messages))
+                        rewards[idx] = 0.0
                         continue
-                    comp_numeric, _ = extract_numeric_answer(comp_answer)
-                    if comp_numeric is None:
-                        all_results.append(False)
+                    
+                    # Convert to numeric values
+                    model_numeric, debug_info = extract_numeric_answer(model_answer)
+                    correct_numeric, _ = extract_numeric_answer(ans)
+                    
+                    if model_numeric is None or correct_numeric is None:
+                        log_messages.append(f"[Completion {idx}] Could not extract numeric values - returning 0.0")
+                        self.logger.info("\n".join(log_messages))
+                        rewards[idx] = 0.0
                         continue
-                    all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
+                    
+                    # Calculate base reward
+                    is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+                    reward = self.config.group_base_reward if is_correct else 0.0
+                    
+                    # Calculate correctness for all completions in group
+                    all_results = []
+                    for comp in group_completions:
+                        comp_answer = extract_answer_from_solution(comp)
+                        if comp_answer is None:
+                            all_results.append(False)
+                            continue
+                        comp_numeric, _ = extract_numeric_answer(comp_answer)
+                        if comp_numeric is None:
+                            all_results.append(False)
+                            continue
+                        all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
                 
                 # Majority bonus
                 correct_count = sum(all_results)
