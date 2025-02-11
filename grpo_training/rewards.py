@@ -280,11 +280,11 @@ class SolutionReward(BaseReward):
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
-    def __init__(self, config: GRPOConfig, model_name: str = "sentence-transformers/all-mpnet-base-v2"):
+    def __init__(self, config: GRPOConfig):
         super().__init__(config)
         # Initialize embedding model for similarity checking
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model_name)
+        self.model = AutoModel.from_pretrained(config.embedding_model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.model.eval()

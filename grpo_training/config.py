@@ -16,6 +16,10 @@ class GRPOConfig:
     max_lora_rank: int = 64
     lora_alpha: int = 64
     
+    # Embedding model settings
+    embedding_model_name: str = "sentence-transformers/all-mpnet-base-v2"
+    embedding_max_length: int = 512
+    
     # API settings
     completion_port: int = 8004
     completion_attempts: int = 10
