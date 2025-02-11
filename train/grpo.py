@@ -1,4 +1,5 @@
 import os
+import wandb
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from unsloth import is_bfloat16_supported
@@ -6,6 +7,7 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
 import sys
 import os
 # Add the project root to Python path
@@ -149,8 +151,20 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
 
+    # Initialize wandb
+    wandb.init(
+        project="solution_grpo",
+        name=f"solution_grpo_{timestamp}",
+        config={
+            "model_type": model_type,
+            "dataset": dataset_name,
+            "base_reward": 2.0,
+            "validation_reward": 0.2,
+            "length_penalty_factor": 0.0001
+        }
+    )
 
-    # ORPO specific training arguments
+    # GRPO specific training arguments
     training_args = GRPOConfig(
     use_vllm = True, # use vLLM for fast inference!
     torch_empty_cache_steps=10,
@@ -172,11 +186,32 @@ def main():
     num_train_epochs = 1, # Set to 1 for a full training run
     save_steps = 250, 
     max_grad_norm = 0.1,
-    report_to = "none", # Can use Weights & Biases
+    report_to = "wandb", # Using Weights & Biases
     output_dir = output_dir,
 )
 
-    # Initialize ORPO trainer with multiple reward functions
+    # Setup callback for logging training statistics
+    class LoggingCallback(TrainerCallback):
+        def __init__(self, save_frequency=100):
+            self.save_frequency = save_frequency
+            self.step = 0
+            
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            self.step += 1
+            
+            # Log to wandb
+            if logs:
+                # Add reward function specific metrics
+                if 'rewards/0' in logs:  # Correctness reward
+                    wandb.log({'correctness_reward': logs['rewards/0']})
+                if 'rewards/1' in logs:  # Length penalty
+                    wandb.log({'length_penalty': logs['rewards/1']})
+                if 'rewards/2' in logs:  # Validation reward
+                    wandb.log({'validation_reward': logs['rewards/2']})
+                
+                wandb.log(logs)
+
+    # Initialize GRPO trainer with multiple reward functions
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
@@ -187,9 +222,15 @@ def main():
         ],
         args=training_args,
         train_dataset=formatted_dataset,
+        callbacks=[LoggingCallback(save_frequency=100)]
     )
     # Train the model
-    trainer.train()
+    try:
+        trainer.train()
+    except Exception as e:
+        print(f"Training failed: {str(e)}")
+        wandb.finish()
+        raise
 
     # Save both merged model and LoRA weights
     models_dir = "models"
@@ -203,6 +244,8 @@ def main():
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
     print(f"Merged model saved to {model_output_dir}")
     
+    # Close wandb run
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
