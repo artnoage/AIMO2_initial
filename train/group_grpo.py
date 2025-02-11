@@ -476,7 +476,7 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(stats=stats, output_dir=output_dir, save_frequency=100)]
+        callbacks=[LoggingCallback(stats=stats, output_dir=output_dir, save_frequency=2)]
     )
     
     # Train the model
