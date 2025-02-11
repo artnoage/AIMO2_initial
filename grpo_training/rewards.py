@@ -532,7 +532,7 @@ class GroupReward(BaseReward):
             group_answers = kwargs.get('group_answers', [])
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
-            
+            print(len(group_completions),group_idx)
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
