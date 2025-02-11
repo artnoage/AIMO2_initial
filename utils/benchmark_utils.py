@@ -223,7 +223,6 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     First tries to evaluate using sympy, then falls back to direct float conversion.
     Returns float if found, None otherwise.
     """
-    # Only split on = or \approx if there's a single term before it
     try:
         if not answer:
             return None, "No answer provided" if debug else (None, None)
@@ -256,22 +255,22 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
                 return False
         return True
 
-    # Handle = and \approx separately
-    if '=' in clean_answer:
-        eq_pos = clean_answer.rfind('=')
-        before_eq = clean_answer[:eq_pos].strip()
-        if has_single_term(before_eq):
-            clean_answer = clean_answer[eq_pos + 1:].strip()
-    
-    if '\\approx' in clean_answer:
-        approx_pos = clean_answer.rfind('\\approx')
-        before_approx = clean_answer[:approx_pos].strip()
-        if has_single_term(before_approx):
-            clean_answer = clean_answer[approx_pos + 8:].strip()
-                
-    if not clean_answer:
-        return None, "Empty answer after cleaning" if debug else (None, None)
-    try:
+        # Handle = and \approx separately
+        if '=' in clean_answer:
+            eq_pos = clean_answer.rfind('=')
+            before_eq = clean_answer[:eq_pos].strip()
+            if has_single_term(before_eq):
+                clean_answer = clean_answer[eq_pos + 1:].strip()
+        
+        if '\\approx' in clean_answer:
+            approx_pos = clean_answer.rfind('\\approx')
+            before_approx = clean_answer[:approx_pos].strip()
+            if has_single_term(before_approx):
+                clean_answer = clean_answer[approx_pos + 8:].strip()
+                    
+        if not clean_answer:
+            return None, "Empty answer after cleaning" if debug else (None, None)
+        
         with time_limit(10):  # 10 second timeout
             # Parse LaTeX to sympy-compatible format
             latex_expr = latex2sympy(clean_answer)
@@ -287,6 +286,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
             else:
                 result = float(expr)
             return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
+            
     except TimeoutException:
         return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
     except (sympy.SympifyError, TypeError, ValueError, AttributeError) as e:
