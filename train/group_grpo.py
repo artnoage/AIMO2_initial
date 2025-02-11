@@ -32,16 +32,16 @@ class GroupValidationStats:
         self.output_dir = output_dir
     
     def update(self, rewards: List[float], similarities: Optional[torch.Tensor] = None, 
-               correct_counts: Optional[Dict] = None, group_id: Optional[str] = None):
+               correct_counts: Optional[Dict] = None, group_stats: Optional[Dict] = None):
         """Store statistics for current batch"""
         batch_stats = {
             'batch_id': self.total_batches,
-            'group_id': group_id,  # Track which group these stats belong to
             'timestamp': datetime.now().isoformat(),
             'rewards': rewards,
             'reward_distribution': {},
             'similarity_stats': {},
-            'correctness_stats': {}
+            'correctness_stats': {},
+            'group_stats': group_stats  # Detailed statistics about the group
         }
         
         # Record reward distribution
@@ -318,48 +318,73 @@ def main():
                 for i, (is_correct, idx) in enumerate(zip(correctness_results, group_indices)):
                     reward = 0.0
                     
-                    # Base reward only if correct
+                    # Calculate majority agreement first
+                    is_in_majority = (is_correct and correct_stats['correct'] > len(group_completions) / 2) or \
+                                   (not is_correct and correct_stats['incorrect'] > len(group_completions) / 2)
+                    
+                    # Initialize reward components dictionary
+                    reward_components = {
+                        'base': 0.0,
+                        'majority_bonus': 0.0,
+                        'diversity_bonus': 0.0,
+                        'total': 0.0
+                    }
+                    
+                    # Base reward and majority bonus
                     if is_correct:
-                        reward = base_reward
-                        
-                        # Add diversity bonus for unique correct solutions
-                        similarities = similarity_matrix[i]
-                        similarities[i] = 0  # Remove self-similarity
-                        avg_similarity = similarities.mean().item()
-                        
-                        if avg_similarity < 0.7:  # Unique solution
-                            reward += diversity_bonus
-                        elif avg_similarity > 0.9:  # Very similar to others
-                            reward -= diversity_bonus / 2
-                            
-                        # Add majority bonus if agrees with majority
-                        if correct_stats['correct'] > len(group_completions) / 2:
-                            reward += majority_bonus
+                        reward_components['base'] = base_reward
+                        if is_in_majority:
+                            reward_components['majority_bonus'] = majority_bonus
                     else:
-                        # Small reward for incorrect answers that are unique
-                        similarities = similarity_matrix[i]
-                        similarities[i] = 0  # Remove self-similarity
-                        avg_similarity = similarities.mean().item()
-                        if avg_similarity < 0.7:  # Unique but wrong solution
-                            reward += diversity_bonus * 0.1  # 10% of normal diversity bonus
+                        if is_in_majority:
+                            reward_components['majority_bonus'] = majority_bonus * 0.1
+                    
+                    # Add diversity bonus
+                    similarities = similarity_matrix[i]
+                    similarities[i] = 0  # Remove self-similarity
+                    avg_similarity = similarities.mean().item()
+                    
+                    if avg_similarity < 0.7:  # Unique solution
+                        reward_components['diversity_bonus'] = diversity_bonus if is_correct else diversity_bonus * 0.1
+                    elif avg_similarity > 0.9:  # Very similar to others
+                        reward_components['diversity_bonus'] = -diversity_bonus / 2 if is_correct else -diversity_bonus * 0.05
+                    
+                    # Calculate total reward
+                    reward = sum(reward_components.values())
+                    reward_components['total'] = reward
                     
                     all_rewards[idx] = reward
                     print(f"\nReward calculation for completion {i}:")
                     print(f"Is correct: {is_correct}")
-                    print(f"Base reward: {base_reward if is_correct else 0}")
-                    if is_correct:
-                        print(f"Avg similarity: {avg_similarity:.3f}")
-                        print(f"Diversity bonus: {diversity_bonus if avg_similarity < 0.7 else (-diversity_bonus/2 if avg_similarity > 0.9 else 0)}")
-                        print(f"Majority bonus: {majority_bonus if correct_stats['correct'] > len(group_completions) / 2 else 0}")
-                    print(f"Final reward: {reward}")
+                    print(f"Is in majority: {is_in_majority}")
+                    print(f"Average similarity: {avg_similarity:.3f}")
+                    print("Reward components:")
+                    for component, value in reward_components.items():
+                        print(f"  {component}: {value:.3f}")
                 
-                # Update statistics with group identifier
-                group_id = hash(str(group['answer']) + str(group_completions[0][:100]))  # Create unique group ID
+                # Prepare detailed statistics
+                group_stats = {
+                    'group_id': str(hash(str(group['answer']) + str(group_completions[0][:100]))),
+                    'correct_answer': correct_answer,
+                    'completions': [{
+                        'index': idx,
+                        'is_correct': is_correct,
+                        'is_in_majority': (is_correct and correct_stats['correct'] > len(group_completions) / 2) or \
+                                        (not is_correct and correct_stats['incorrect'] > len(group_completions) / 2),
+                        'avg_similarity': float(similarity_matrix[i].mean().item()),
+                        'reward_components': reward_components,
+                        'answer': extract_answer_from_solution(comp)
+                    } for i, (comp, is_correct, idx) in enumerate(zip(group_completions, correctness_results, group_indices))],
+                    'correctness_stats': correct_stats,
+                    'similarity_matrix': similarity_matrix.tolist()
+                }
+                
+                # Update statistics
                 self.stats.update(
                     [all_rewards[idx] for entry in group['entries']], 
                     similarity_matrix,
                     correct_stats,
-                    group_id=str(group_id)
+                    group_stats=group_stats
                 )
             
             return all_rewards
