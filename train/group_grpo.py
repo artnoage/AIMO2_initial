@@ -78,6 +78,28 @@ class GroupValidationStats:
             self.correctness_stats['incorrect_answers'] += correct_counts['incorrect']
             self.correctness_stats['parse_errors'] += correct_counts['errors']
     
+    def save_statistics(self, output_dir: str):
+        """Save current statistics to a JSON file"""
+        import json
+        from pathlib import Path
+        
+        stats_dir = Path(output_dir) / "statistics"
+        stats_dir.mkdir(exist_ok=True)
+        
+        stats = {
+            'total_batches': self.total_batches,
+            'total_rewards': self.total_rewards,
+            'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
+            'similarity_stats': self.similarity_stats,
+            'majority_stats': self.majority_stats,
+            'correctness_stats': self.correctness_stats,
+            'training_duration': str(datetime.now() - self.start_time)
+        }
+        
+        stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(stats_file, 'w') as f:
+            json.dump(stats, f, indent=2)
+
     def get_summary(self) -> str:
         elapsed = datetime.now() - self.start_time
         total_samples = sum(self.reward_distribution.values())
@@ -217,8 +239,23 @@ def main():
     
     # Setup callback for logging training statistics
     class LoggingCallback(TrainerCallback):
+        def __init__(self, stats, output_dir, save_frequency=100):
+            self.stats = stats
+            self.output_dir = output_dir
+            self.save_frequency = save_frequency
+            self.step = 0
+            
         def on_log(self, args, state, control, logs=None, **kwargs):
-            logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
+            logger.info(f"\nValidation Statistics:\n{self.stats.get_summary()}")
+            self.step += 1
+            
+            # Save statistics periodically
+            if self.step % self.save_frequency == 0:
+                self.stats.save_statistics(self.output_dir)
+                
+        def on_train_end(self, args, state, control, **kwargs):
+            # Save final statistics
+            self.stats.save_statistics(self.output_dir)
     
     class RewardFunction:
         def __init__(self, similarity_checker, stats):
@@ -386,7 +423,7 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback()]
+        callbacks=[LoggingCallback(stats=stats, output_dir=output_dir, save_frequency=100)]
     )
     
     # Train the model
