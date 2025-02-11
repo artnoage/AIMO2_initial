@@ -460,16 +460,12 @@ class GroupReward(BaseReward):
     async def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Calculate rewards for a batch of completions"""
         try:
-            print(f"\nProcessing batch of {len(completions)} completions")
+            # Validate inputs
+            prompts = kwargs.get('prompts', [])
+            answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
             
-            # Create reward_index to track original order
-            reward_index = list(range(len(completions)))
-            rewards = [0.0] * len(completions)
-            
-            # Get answers from kwargs
-            answers = kwargs.get('answer', [])
-            if not answers:
-                self.logger.warning("No answers provided")
+            if len(completions) != len(prompts) or len(completions) != len(answers):
+                self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
                 return [0.0] * len(completions)
                 
             # Calculate rewards for each completion-answer pair
