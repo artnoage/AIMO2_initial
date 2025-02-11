@@ -51,12 +51,19 @@ class LoggingCallback(TrainerCallback):
         
         # Print statistics summary every step
         print(f"\nStep {self.step} Statistics:")
-        print(self.reward_func.stats.get_summary())
+        if hasattr(self.reward_func, 'stats'):
+            print("Reward function stats object exists")
+            print(f"Total batches: {self.reward_func.stats.total_batches}")
+            print(f"Reward components: {self.reward_func.stats.reward_components}")
+            print(f"Group stats: {self.reward_func.stats.group_stats}")
+            print(self.reward_func.stats.get_summary())
+        else:
+            print("WARNING: No stats object found in reward function")
         
         # Log to wandb
         if logs:
             # Add reward function specific metrics
-            if 'rewards/0' in logs:
+            if 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
                 # Calculate non-accumulative rewards for this round
                 current_rewards = {
                     'group_reward': logs['rewards/0'],
@@ -130,6 +137,11 @@ def main():
     
     # Initialize reward function with existing config and similarity checker
     reward_func = GroupReward(reward_config, similarity_checker)
+    print("\nInitialized GroupReward:")
+    print(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    if hasattr(reward_func, 'stats'):
+        print(f"Stats total_batches: {reward_func.stats.total_batches}")
+        print(f"Stats reward_components: {reward_func.stats.reward_components}")
     
     # Load model
     PatchFastRL("GRPO", FastLanguageModel) 
