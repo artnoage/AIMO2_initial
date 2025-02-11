@@ -284,7 +284,7 @@ def main():
                 
                 # Update statistics
                 self.stats.update(
-                    [all_rewards[i] for i in group['indices']], 
+                    [all_rewards[idx] for entry in group['entries']], 
                     similarity_matrix,
                     correct_stats
                 )
