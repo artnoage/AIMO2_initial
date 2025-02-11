@@ -266,8 +266,7 @@ def main():
         def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
             # Get correct answers from kwargs
             correct_answers = kwargs.get('answer', [''] * len(completions))
-            print(correct_answer)
-            print("hey")
+            
             # Group completions by prompt with indexed entries
             prompt_groups = {}
             for i, (comp, prom) in enumerate(zip(completions, prompts)):
@@ -283,9 +282,8 @@ def main():
                 group_completions = [entry['completion'] for entry in group['entries']]
                 group_indices = [entry['index'] for entry in group['entries']]
                 
-                # Use the answer from kwargs since we're not getting it directly anymore
-                correct_answer = kwargs.get('correct_answer', [''])[0]
-                print("correct_answer",correct_answer)
+                # Use the answer from the group since we already have it
+                correct_answer = group['answer']
                 # Get correctness for each completion
                 correctness_results, correct_stats = process_group_completions(
                     group_completions, correct_answer
