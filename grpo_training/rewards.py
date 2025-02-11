@@ -81,6 +81,8 @@ class RewardStats:
             'total_substitution_length_penalty': 0.0,
             'redundant_substitution_penalties': 0,
             'wrong_boxed_answer_penalties': 0,
+            'majority_bonuses': 0,
+            'diversity_bonuses': 0,
             'improvement_bonuses': {
                 '0.1': 0,  # 10-40% completions
                 '0.2': 0,  # 40-70% completions
@@ -91,8 +93,6 @@ class RewardStats:
         
         # Track group-specific stats
         self.group_stats = {
-            'majority_bonuses': 0,
-            'diversity_bonuses': 0,
             'unique_solutions': 0,
             'similar_solutions': 0,
             'correct_answers': 0,
@@ -325,6 +325,9 @@ class BaseReward(ABC):
                 }
                 reward = self.calculate_reward(batch_completions[i], group=group_context)
                 rewards[comp_idx] = reward
+
+        # Update statistics with the rewards
+        self.stats.update(rewards)
 
     async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
         """Async version of __call__
