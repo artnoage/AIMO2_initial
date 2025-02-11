@@ -7,9 +7,14 @@ class GRPOConfig:
     
     # Model settings
     model_type: str
-    model_name: str 
-    dataset_name: str
-    completion_model_name: Optional[str] = None
+    model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    dataset_name: str = "Metaskepsis/Numina_medium"
+    completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
+    
+    # Model size settings
+    max_seq_length: int = 4096
+    max_lora_rank: int = 64
+    lora_alpha: int = 64
     
     # API settings
     completion_port: int = 8004
