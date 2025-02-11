@@ -208,10 +208,16 @@ def process_group_completions(completions: List[str], correct_answer: str) -> Tu
 
 
 def main():
-    # Initialize similarity checker and statistics
+    # Initialize similarity checker
     similarity_checker = SolutionSimilarityChecker()
-    stats = GroupValidationStats(output_dir)
     logger = setup_training_logger("group_grpo")
+    
+    # Create a timestamped output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"train_results/group_grpo/{timestamp}"
+    
+    # Initialize statistics
+    stats = GroupValidationStats(output_dir)
     
     # Setup callback for logging training statistics
     class LoggingCallback(TrainerCallback):
@@ -357,10 +363,6 @@ def main():
         chat_template="mistral",
         map_eos_token=True
     )
-    
-    # Create a timestamped output directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/group_grpo/{timestamp}"
     
     # Training arguments
     training_args = GRPOConfig(
