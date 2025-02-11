@@ -372,11 +372,13 @@ class SolutionReward(BaseReward):
             print(f"\nProcessing batch of {len(completions)} completions")
             print(f"Number of answers: {len(answer)}")
             
+            # Create reward_index to track original order
+            reward_index = list(range(len(completions)))
+            rewards = [0.0] * len(completions)
+            
             # Calculate rewards for each completion-answer pair
-            rewards = []
-            for completion, ans in zip(completions, answer):
-                reward = 0.0
-                print(f"\n=== Processing completion {len(rewards)+1}/{len(completions)} ===")
+            for i, (completion, ans, idx) in enumerate(zip(completions, answer, reward_index)):
+                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
                 print(f"Completion (first 100 chars): {completion[:100]}...")
                 
                 # Extract and validate the answer
