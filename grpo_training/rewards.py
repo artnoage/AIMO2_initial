@@ -73,6 +73,7 @@ class RewardStats:
         # Track reward components
         self.reward_components = {
             'base_rewards': 0,
+            'validation_rewards': 0,
             'analysis_rewards': 0,
             'substitution_rewards': 0,
             'step_bonuses': 0,
@@ -200,6 +201,7 @@ class RewardStats:
             f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
             f"\nReward Components:\n"
             f"  Base rewards: {self.reward_components['base_rewards']}\n"
+            f"  Validation rewards: {self.reward_components.get('validation_rewards', 0)}\n"
             f"  Analysis rewards: {self.reward_components['analysis_rewards']}\n"
             f"  Substitution rewards: {self.reward_components['substitution_rewards']}\n"
             f"  Step bonuses: {self.reward_components['step_bonuses']}\n"
@@ -556,6 +558,14 @@ class GroupReward(BaseReward):
             if is_correct:
                 self.stats.reward_components['base_rewards'] += 1
             self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
+            
+            # Add validation reward
+            is_valid, validation_msg = validate_solution(completion)
+            self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
+            if is_valid:
+                reward += self.config.validation_reward
+                self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
+                self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
             
             # Calculate similarity matrix for group
             similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
