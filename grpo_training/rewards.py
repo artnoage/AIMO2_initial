@@ -418,6 +418,10 @@ class SolutionReward(BaseReward):
             self.logger.error(f"Error calculating reward: {str(e)}")
             return 0.0
             
+    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
+        """Async version of calculate_reward"""
+        return self.calculate_reward(completion, **kwargs)
+            
 
 class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
