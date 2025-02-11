@@ -81,26 +81,13 @@ class LoggingCallback(TrainerCallback):
                 self.logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
 
 def main():
-    # Configuration
-    model_type = "solver"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
-    dataset_name = "Metaskepsis/Numina_medium"
-    
-    # Check if model_type is in paths
-    if model_type not in model_name:
-        print("\n" + "!"*80)
-        print(f"WARNING: model_type '{model_type}' not found in model_name path!")
-        print("!"*80 + "\n")
-
-    if model_type not in dataset_name:
-        print("\n" + "!"*80)
-        print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
-        print("!"*80 + "\n")
+    # Initialize config
+    reward_config = RewardConfig(model_type="solver")
     
     # Setup
-    logger = setup_logging(model_type)
+    logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/{model_type}/{timestamp}"
+    output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     
     # Initialize wandb
     wandb.init(
@@ -116,17 +103,12 @@ def main():
     )
     
     # Initialize reward function
-    reward_config = RewardConfig(
-        model_type=model_type,
-        model_name=model_name,
-        dataset_name=dataset_name
-    )
     reward_func = SolutionReward(reward_config)
     
     # Load model
     PatchFastRL("GRPO", FastLanguageModel)
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
+        model_name=reward_config.model_name,
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
@@ -157,7 +139,7 @@ def main():
     )
     
     # Load and format dataset
-    dataset = load_dataset(dataset_name)
+    dataset = load_dataset(reward_config.dataset_name)
     def formatting_func(example):
         solver_prompt = (
             "Here is a mathematical problem:\n\n"
