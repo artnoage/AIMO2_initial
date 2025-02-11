@@ -118,7 +118,7 @@ def main():
     # Load model
     PatchFastRL("GRPO", FastLanguageModel)
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=reward_config.model_name,
+        model_name=model_name,  # Use the model_name variable defined at the start
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
