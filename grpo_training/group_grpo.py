@@ -191,7 +191,7 @@ def main():
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.05,
+        warmup_ratio=0.01,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
