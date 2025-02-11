@@ -169,10 +169,6 @@ def main():
             "Don't forget to put the final answer in a box using \\boxed{}"
         )
         
-        # Print debug info
-        print(f"\nFormatting example:")
-        print(f"Available keys: {example.keys()}")
-        print(f"Answer value: {example.get('answer')}")
         
         formatted = {
             "prompt": f"[INST]{solver_prompt}[/INST]",
@@ -180,7 +176,6 @@ def main():
             "correct_answer": example.get('answer')
         }
         
-        print(f"Formatted example: {formatted}")
         return formatted
     
     # Format dataset and ensure answer field is present
