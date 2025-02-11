@@ -398,8 +398,8 @@ class SolutionReward(BaseReward):
             log_messages.append(f"[Completion {completion_idx}] Total penalty: -{length_penalty}")
             
             # Update statistics
-            if reward >= self.config.base_reward:
-                self.stats.reward_components['base_rewards'] += 1
+            if is_correct:
+                self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
             if is_valid:
                 self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
@@ -893,12 +893,13 @@ class TutorReward(BaseReward):
                 return reward
                 
         # Update base statistics
-        self.stats.reward_components['base_rewards'] += 1
+        if reward >= self.config.tutor_structure_base_reward:
+            self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
         if substitution:
             length_penalty = len(substitution) * self.config.tutor_substitution_length_cost
             reward += self.config.tutor_substitution_reward - length_penalty
-            self.stats.reward_components['substitution_rewards'] += 1
-            self.stats.reward_components['total_substitution_length_penalty'] += length_penalty
+            self.stats.reward_components['substitution_rewards'] = self.stats.reward_components.get('substitution_rewards', 0) + 1
+            self.stats.reward_components['total_substitution_length_penalty'] = self.stats.reward_components.get('total_substitution_length_penalty', 0.0) + length_penalty
             
         return reward
         
