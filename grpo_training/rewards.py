@@ -435,24 +435,65 @@ class TutorReward(BaseReward):
         num_attempts: int = 10
     ) -> Tuple[int, int]:
         """Try completions in parallel until finding a successful one."""
+        def log_to_markdown(content: str):
+            with open("experiment.md", "a") as f:
+                f.write(content + "\n\n")
+
         async def try_completion():
+            markdown_logs = []
+            def add_to_log(content: str):
+                markdown_logs.append(content)
+
             try:
+                add_to_log("## Completion Attempt\n")
+                add_to_log("### Initial Partial Solution")
+                add_to_log("```")
+                add_to_log(partial_solution)
+                add_to_log("```\n")
+                
                 completion = await self.completion_agent.generate(problem, partial_solution)
+                add_to_log("### Generated Completion")
+                add_to_log("```")
+                add_to_log(completion)
+                add_to_log("```\n")
+                
                 complete_solution = partial_solution + completion
+                add_to_log("### Complete Solution")
+                add_to_log("```")
+                add_to_log(complete_solution)
+                add_to_log("```\n")
                 
                 model_answer = extract_answer_from_solution(complete_solution)
                 if model_answer is None:
+                    add_to_log("❌ No boxed answer found in completion")
+                    log_to_markdown("\n".join(markdown_logs))
                     return False
                     
-                numeric_answer, _ = extract_numeric_answer(model_answer)
+                numeric_answer, debug_info = extract_numeric_answer(model_answer, debug=True)
                 correct_numeric, _ = extract_numeric_answer(correct_answer)
                 
-                if numeric_answer is None or correct_numeric is None:
+                if numeric_answer is None:
+                    add_to_log(f"❌ Could not extract numeric answer: {debug_info}")
+                    log_to_markdown("\n".join(markdown_logs))
                     return False
                     
-                return abs(numeric_answer - correct_numeric) <= self.config.numeric_tolerance
+                if correct_numeric is None:
+                    add_to_log(f"❌ Could not extract correct numeric answer from: {correct_answer}")
+                    log_to_markdown("\n".join(markdown_logs))
+                    return False
+                    
+                is_correct = abs(numeric_answer - correct_numeric) <= self.config.numeric_tolerance
+                add_to_log(f"### Result")
+                add_to_log(f"- Model answer: {numeric_answer}")
+                add_to_log(f"- Correct answer: {correct_numeric}")
+                add_to_log(f"- Is correct: {'✅' if is_correct else '❌'}")
+                
+                log_to_markdown("\n".join(markdown_logs))
+                return is_correct
                 
             except Exception as e:   
+                add_to_log(f"❌ Exception occurred: {str(e)}")
+                log_to_markdown("\n".join(markdown_logs))
                 self.logger.warning(f"Completion attempt failed: {str(e)}")
                 return False
     
@@ -526,6 +567,22 @@ class TutorReward(BaseReward):
 
     async def calculate_reward_async(self, tutor_response: str, **kwargs) -> float:
         """Calculate reward for a tutor's evaluation of a solution"""
+        # First verify if model solution is correct
+        model_solution = kwargs.get('solution', '')
+        model_answer = extract_answer_from_solution(model_solution)
+        if model_answer is None:
+            self.logger.warning(f"No boxed answer found in model solution: {model_solution[:100]}...")
+            return 0.0
+
+        model_numeric, _ = extract_numeric_answer(model_answer)
+        correct_numeric, _ = extract_numeric_answer(kwargs.get('correct_answer', ''))
+        
+        if model_numeric is None or correct_numeric is None:
+            self.logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {kwargs.get('correct_answer', '')}")
+            return 0.0
+        
+        is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+
         # Extract sections from tutor's response
         analysis, verdict, substitution = self.extract_sections(tutor_response)
         
@@ -681,3 +738,13 @@ class TutorReward(BaseReward):
     def calculate_reward(self, completion: str, **kwargs) -> float:
         """Synchronous wrapper for async reward calculation"""
         return asyncio.run(self.calculate_reward_async(completion, **kwargs))
+
+    async def __call_async__(self, completions: List[str], prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> List[float]:
+        """Process a batch of examples in parallel"""
+        tasks = [
+            self.calculate_reward_async(comp, problem=prob, solution=sol, correct_answer=ans)
+            for comp, prob, sol, ans in zip(completions, problem, model_solution, correct_answer)
+        ]
+        rewards = await asyncio.gather(*tasks)
+        self.stats.update(rewards, completion=completions[0] if completions else None)
+        return rewards
