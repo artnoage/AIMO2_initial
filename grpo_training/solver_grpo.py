@@ -85,39 +85,27 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver"
-    model_path = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
-    
-    # Check if model exists locally or in HF
-    if os.path.exists(model_path):
-        model_name = model_path
-    else:
-        try:
-            from huggingface_hub import model_info
-            model_info(model_path)
-            model_name = model_path
-        except Exception as e:
-            logger.error(f"Model not found locally or in HuggingFace: {model_path}")
-            sys.exit(1)
-    
+     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
     
     # Setup
-    logger = setup_logging(reward_config.model_type)
+    logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
+    output_dir = f"train_results/{model_type}/{timestamp}"
     
     # Initialize wandb
     wandb.init(
         project="solver_grpo",
         name=f"solver_grpo_{timestamp}",
         config={
-            "model_type": reward_config.model_type,
-            "dataset": reward_config.dataset_name,
+            "model_type": model_type,
+            "dataset": dataset_name,
             "base_reward": 2.0,
             "validation_reward": 0.2,
             "length_penalty_factor": 0.0001
@@ -160,13 +148,11 @@ def main():
         map_eos_token=True
     )
     
-    # Try loading dataset from local path first, then from HuggingFace
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
     try:
-        if os.path.exists(dataset_path):
-            dataset = load_from_disk(dataset_path)
+        if os.path.exists(dataset_name):
+            dataset = load_from_disk(dataset_name)
         else:
-            dataset = load_dataset(reward_config.dataset_name)
+            dataset = load_dataset(dataset_name)
     except Exception as e:
         logger.error(f"Failed to load dataset: {str(e)}")
         sys.exit(1)
@@ -197,7 +183,7 @@ def main():
     print("Tokenized:", tokenized)
     print("Decoded:", tokenizer.decode(tokenized['input_ids']))
     
-    # Training arguments
+  # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
         torch_empty_cache_steps=10,
@@ -211,15 +197,14 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=3,
-        gradient_accumulation_steps=1,
-        num_generations=5,
-        max_prompt_length=1348,
-        max_completion_length=5148,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=2,
+        num_generations=8,
+        max_prompt_length=2048,
+        max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=1.0,
-        gradient_checkpointing=True,
+        max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
     )
