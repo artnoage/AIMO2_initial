@@ -308,10 +308,13 @@ class BaseReward(ABC):
         for i, (comp, ans) in enumerate(zip(completions, answers)):
             if ans not in completion_groups:
                 self.logger.info(f"\nCreating new group for answer: {ans}")
+                print(f"Processing answer: {ans}")
+                print(f"Answer type: {type(ans)}")
                 completion_groups[ans] = {
                     'completions': [],
                     'indices': [],
-                    'answer': ans
+                    'answer': ans,
+                    'correct_answer': ans  # Ensure both fields are present
                 }
             completion_groups[ans]['completions'].append(comp)
             completion_groups[ans]['indices'].append(i)

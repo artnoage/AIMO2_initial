@@ -174,10 +174,19 @@ def main():
             "correct_answer": example['answer']  # Add correct_answer field for reward calculation
         }
     
+    # Format dataset and ensure answer field is present
     formatted_dataset = dataset['train'].map(
         formatting_func,
-        desc="Applying chat template"
+        desc="Applying chat template",
+        remove_columns=dataset['train'].column_names  # Remove original columns
     )
+    
+    # Verify first few entries
+    for i in range(min(3, len(formatted_dataset))):
+        entry = formatted_dataset[i]
+        print(f"\nEntry {i} verification:")
+        print(f"Answer: {entry.get('answer')}")
+        print(f"Correct answer: {entry.get('correct_answer')}")
     
     # Print first entry tokenization
     first_entry = formatted_dataset[0]
