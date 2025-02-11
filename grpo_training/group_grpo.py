@@ -72,7 +72,7 @@ class LoggingCallback(TrainerCallback):
                 wandb.log(current_rewards)
             wandb.log(logs)
 
-def main():
+def main(model_path="/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"):
     # Configuration
     model_type = "group"
     # Setup logging first
