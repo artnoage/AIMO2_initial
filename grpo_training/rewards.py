@@ -362,31 +362,17 @@ class SolutionReward(BaseReward):
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         
-    def calculate_reward(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions"""
+    def __call__(self, completions: List[str], prompts: List[str], answer: List[str], **kwargs) -> List[float]:
+        """Process a batch of completions with their corresponding answers"""
         try:
-            # Extract all answers upfront
-            answers = kwargs.get('correct_answer') or kwargs.get('answer')
-            if isinstance(answers, str):
-                answers = [answers]
-            if not answers:
-                self.logger.warning("No answers provided")
-                return [0.0] * len(completions)
-                
-            # Ensure we have enough answers
-            if len(answers) < len(completions):
-                answers = answers * (len(completions) // len(answers) + 1)
-                answers = answers[:len(completions)]
-                
             print(f"\nProcessing batch of {len(completions)} completions")
-            print(f"Number of answers: {len(answers)}")
+            print(f"Number of answers: {len(answer)}")
             
-            # Calculate rewards for each completion
+            # Calculate rewards for each completion-answer pair
             rewards = []
-            for i, (completion, answer) in enumerate(zip(completions, answers)):
+            for completion, ans in zip(completions, answer):
                 reward = 0.0
-            
-                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
+                print(f"\n=== Processing completion {len(rewards)+1}/{len(completions)} ===")
                 print(f"Completion (first 100 chars): {completion[:100]}...")
                 
                 # Extract and validate the answer
