@@ -20,6 +20,7 @@ class GRPOConfig:
     numeric_tolerance: float = 1e-6
     logging_dir: str = "logs"
     stats_dir: str = "statistics"
+    validation_reward: float = 0.2
     
     # Basic solution rewards
     solution_base_reward: float = 2.0
