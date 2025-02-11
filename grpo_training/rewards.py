@@ -977,14 +977,14 @@ class TutorReward(BaseReward):
         rewards = [0.0] * len(completions)
         
         tasks = []
-        for i, comp in enumerate(completions):
+        for idx, comp in zip(reward_index, completions):
             # Unpack kwargs for each completion
             comp_kwargs = {
-                k: v[i] if isinstance(v, list) else v 
+                k: v[idx] if isinstance(v, list) else v 
                 for k, v in kwargs.items()
             }
             # Add reward_index first
-            comp_kwargs = {'reward_index': reward_index[i], **comp_kwargs}
+            comp_kwargs = {'reward_index': idx, **comp_kwargs}
             tasks.append(self.calculate_reward_async(comp, **comp_kwargs))
         results = await asyncio.gather(*tasks)
         
