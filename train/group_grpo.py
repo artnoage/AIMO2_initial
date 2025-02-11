@@ -314,9 +314,11 @@ def main():
                 diversity_bonus = 0.3
                 majority_bonus = 0.2
                 
+                # Calculate rewards for each completion
                 for i, (is_correct, idx) in enumerate(zip(correctness_results, group_indices)):
                     reward = 0.0
                     
+                    # Base reward only if correct
                     if is_correct:
                         reward = base_reward
                         
@@ -333,6 +335,13 @@ def main():
                         # Add majority bonus if agrees with majority
                         if correct_stats['correct'] > len(group_completions) / 2:
                             reward += majority_bonus
+                    else:
+                        # Small reward for incorrect answers that are unique
+                        similarities = similarity_matrix[i]
+                        similarities[i] = 0  # Remove self-similarity
+                        avg_similarity = similarities.mean().item()
+                        if avg_similarity < 0.7:  # Unique but wrong solution
+                            reward += diversity_bonus * 0.1  # 10% of normal diversity bonus
                     
                     all_rewards[idx] = reward
                     print(f"\nReward calculation for completion {i}:")
