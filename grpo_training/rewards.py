@@ -576,22 +576,23 @@ class GroupReward(BaseReward):
                     
                 # Extract and validate the answer
                 model_answer = extract_answer_from_solution(completion)
-            if model_answer is None:
-                self.logger.debug("No boxed answer found")
-                print("No boxed answer found - returning 0.0")
-                rewards[idx] = 0.0
-                continue
+                if model_answer is None:
+                    self.logger.debug("No boxed answer found")
+                    print("No boxed answer found - returning 0.0")
+                    rewards[idx] = 0.0
+                    continue
                     
-            # Convert to numeric values
-            model_numeric, debug_info = extract_numeric_answer(model_answer)
-            print(f"Model numeric value: {model_numeric}")
-            print(f"Debug info: {debug_info}")
+                # Convert to numeric values
+                model_numeric, debug_info = extract_numeric_answer(model_answer)
+                print(f"Model numeric value: {model_numeric}")
+                print(f"Debug info: {debug_info}")
                 
-            correct_numeric, correct_debug = extract_numeric_answer(ans)
-            if model_numeric is None or correct_numeric is None:
-                print("Could not extract numeric values - returning 0.0")
-                rewards[idx] = 0.0
-                continue
+                correct_numeric, correct_debug = extract_numeric_answer(ans)
+                if model_numeric is None or correct_numeric is None:
+                    print("Could not extract numeric values - returning 0.0")
+                    rewards[idx] = 0.0
+                    continue
+                
                 # Calculate similarity matrix for group
                 similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
                 
