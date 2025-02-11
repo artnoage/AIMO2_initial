@@ -293,14 +293,49 @@ class BaseReward(ABC):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             return [0.0] * len(completions)
             
+        # Group completions by prompt for group context
+        prompt_groups = {}
+        for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
+            if prompt not in prompt_groups:
+                prompt_groups[prompt] = {
+                    'completions': [],
+                    'answers': [],
+                    'indices': []
+                }
+            prompt_groups[prompt]['completions'].append(completion)
+            prompt_groups[prompt]['answers'].append(ans)
+            prompt_groups[prompt]['indices'].append(idx)
+            
         # Process completions in parallel using event loop
         async def process_batch():
             tasks = []
-            for comp, prompt, ans in zip(completions, prompts, answers):
-                task_kwargs = {'prompt': prompt, 'answer': ans}
-                task_kwargs.update(kwargs)
-                task = self.calculate_reward(comp, **task_kwargs)
-                tasks.append(task)
+            rewards = [0.0] * len(completions)
+            
+            for prompt, group in prompt_groups.items():
+                # Add group context to kwargs
+                group_kwargs = {
+                    'group_completions': group['completions'],
+                    'group_answers': group['answers'],
+                    'group_indices': group['indices']
+                }
+                
+                # Process each completion in group
+                for group_idx, (completion, ans, idx) in enumerate(zip(
+                    group['completions'], 
+                    group['answers'], 
+                    group['indices']
+                )):
+                    task_kwargs = {
+                        'prompt': prompt,
+                        'answer': ans,
+                        'group_idx': group_idx,
+                        'reward_index': idx
+                    }
+                    task_kwargs.update(kwargs)
+                    task_kwargs.update(group_kwargs)
+                    task = self.calculate_reward(completion, **task_kwargs)
+                    tasks.append(task)
+                    
             return await asyncio.gather(*tasks)
             
         # Run async code in event loop
@@ -476,131 +511,99 @@ class GroupReward(BaseReward):
         super().__init__(config)
         self.similarity_checker = similarity_checker
         
-    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions"""
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a single completion with group context"""
         try:
-            # Validate inputs
-            prompts = kwargs.get('prompts', [])
-            answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
+            # Get group context from kwargs
+            group_completions = kwargs.get('group_completions', [])
+            group_answers = kwargs.get('group_answers', [])
+            group_idx = kwargs.get('group_idx', 0)
+            reward_index = kwargs.get('reward_index', 0)
             
-            if len(completions) != len(prompts) or len(completions) != len(answers):
-                self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
-                return [0.0] * len(completions)
+            log_messages = []
+            log_messages.append(f"\n[Completion {reward_index}] Processing in group context")
+            log_messages.append(f"[Completion {reward_index}] Group size: {len(group_completions)}")
             
-            # Initialize rewards list
-            rewards = [0.0] * len(completions)
+            # Extract and validate the answer
+            model_answer = extract_answer_from_solution(completion)
+            if model_answer is None:
+                log_messages.append(f"[Completion {reward_index}] No boxed answer found - returning 0.0")
+                self.logger.info("\n".join(log_messages))
+                return 0.0
                 
-            # Group completions by prompt first
-            prompt_groups = {}
-            for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
-                if prompt not in prompt_groups:
-                    prompt_groups[prompt] = {
-                        'completions': [],
-                        'answers': [],
-                        'indices': []
-                    }
-                prompt_groups[prompt]['completions'].append(completion)
-                prompt_groups[prompt]['answers'].append(ans)
-                prompt_groups[prompt]['indices'].append(idx)
-
-            # Process each prompt group
-            for prompt, group in prompt_groups.items():
-                # Calculate similarity matrix for current group
-                group_completions = group['completions']
-                group_indices = group['indices']
-                group_answers = group['answers']
+            # Convert to numeric values
+            model_numeric, debug_info = extract_numeric_answer(model_answer)
+            correct_numeric, _ = extract_numeric_answer(kwargs['answer'])
+            
+            if model_numeric is None or correct_numeric is None:
+                log_messages.append(f"[Completion {reward_index}] Could not extract numeric values - returning 0.0")
+                self.logger.info("\n".join(log_messages))
+                return 0.0
                 
-                similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
+            # Calculate base reward
+            is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+            reward = self.config.group_base_reward if is_correct else 0.0
+            
+            # Calculate similarity matrix for group
+            similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
+            
+            # Calculate correctness for all completions in group
+            all_results = []
+            for comp, ans in zip(group_completions, group_answers):
+                comp_answer = extract_answer_from_solution(comp)
+                if comp_answer is None:
+                    all_results.append(False)
+                    continue
+                comp_numeric, _ = extract_numeric_answer(comp_answer)
+                if comp_numeric is None:
+                    all_results.append(False)
+                    continue
+                all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
+            
+            # Majority bonus
+            correct_count = sum(all_results)
+            is_in_majority = (is_correct and correct_count > len(group_completions) / 2) or \
+                            (not is_correct and (len(group_completions) - correct_count) > len(group_completions) / 2)
+            majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+            if is_in_majority:
+                reward += majority_bonus
                 
-                # Calculate rewards for each completion in group context
-                for group_idx, (completion, ans, idx) in enumerate(zip(group_completions, group_answers, group_indices)):
-                    log_messages = []
-                    log_messages.append(f"\n[Completion {idx}] Processing in group context")
-                    log_messages.append(f"[Completion {idx}] Group size: {len(group_completions)}")
+            # Diversity bonus
+            similarities = similarity_matrix[group_idx]
+            similarities[group_idx] = 0  # Remove self-similarity
+            avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
+            
+            diversity_bonus = 0
+            if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
+                diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
+                reward += diversity_bonus
+            elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
+                diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
+                reward += diversity_bonus
                 
-                    # Extract and validate the answer
-                    model_answer = extract_answer_from_solution(completion)
-                    if model_answer is None:
-                        log_messages.append(f"[Completion {idx}] No boxed answer found - returning 0.0")
-                        self.logger.info("\n".join(log_messages))
-                        rewards[idx] = 0.0
-                        continue
-                    
-                    # Convert to numeric values
-                    model_numeric, debug_info = extract_numeric_answer(model_answer)
-                    correct_numeric, _ = extract_numeric_answer(ans)
-                    
-                    if model_numeric is None or correct_numeric is None:
-                        log_messages.append(f"[Completion {idx}] Could not extract numeric values - returning 0.0")
-                        self.logger.info("\n".join(log_messages))
-                        rewards[idx] = 0.0
-                        continue
-                    
-                    # Calculate base reward and add to rewards list
-                    is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-                    rewards[idx] = self.config.group_base_reward if is_correct else 0.0
-                    
-                    # Calculate correctness for all completions in group
-                    all_results = []
-                    for comp in group_completions:
-                        comp_answer = extract_answer_from_solution(comp)
-                        if comp_answer is None:
-                            all_results.append(False)
-                            continue
-                        comp_numeric, _ = extract_numeric_answer(comp_answer)
-                        if comp_numeric is None:
-                            all_results.append(False)
-                            continue
-                        all_results.append(abs(comp_numeric - correct_numeric) <= self.config.numeric_tolerance)
+            # Update group-specific statistics
+            if is_correct:
+                self.stats.group_stats['correct_answers'] += 1
+            else:
+                self.stats.group_stats['incorrect_answers'] += 1
                 
-                # Majority bonus
-                correct_count = sum(all_results)
-                is_in_majority = (is_correct and correct_count > len(completions) / 2) or \
-                                (not is_correct and (len(completions) - correct_count) > len(completions) / 2)
-                majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
-                if is_in_majority:
-                    reward += majority_bonus
-                    
-                # Diversity bonus
-                # Use group_idx since we're already iterating through the group
-                similarities = similarity_matrix[group_idx]
-                similarities[group_idx] = 0  # Remove self-similarity
-                avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
+            if is_in_majority:
+                self.stats.group_stats['majority_bonuses'] += 1
+            if diversity_bonus > 0:
+                self.stats.group_stats['diversity_bonuses'] += 1
                 
-                diversity_bonus = 0
-                if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
-                    diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
-                    reward += diversity_bonus
-                elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
-                    diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
-                    reward += diversity_bonus
-                    
-                # Update group-specific statistics
-                if is_correct:
-                    self.stats.group_stats['correct_answers'] += 1
-                else:
-                    self.stats.group_stats['incorrect_answers'] += 1
-                    
-                if is_in_majority:
-                    self.stats.group_stats['majority_bonuses'] += 1
-                if diversity_bonus > 0:
-                    self.stats.group_stats['diversity_bonuses'] += 1
-                    
-                if avg_similarity < self.config.group_similarity_threshold_low:
-                    self.stats.group_stats['unique_solutions'] += 1
-                elif avg_similarity > self.config.group_similarity_threshold_high:
-                    self.stats.group_stats['similar_solutions'] += 1
-                    
-                self.stats.group_stats['total_similarity'] += avg_similarity
+            if avg_similarity < self.config.group_similarity_threshold_low:
+                self.stats.group_stats['unique_solutions'] += 1
+            elif avg_similarity > self.config.group_similarity_threshold_high:
+                self.stats.group_stats['similar_solutions'] += 1
                 
-                rewards[idx] = reward
-                
-            self.stats.update(rewards, completions=completions)
-            return rewards
+            self.stats.group_stats['total_similarity'] += avg_similarity
+            
+            return reward
             
         except Exception as e:
-            self.logger.error(f"Error calculating group rewards: {str(e)}")
-            return [0.0] * len(completions)
+            self.logger.error(f"Error calculating group reward: {str(e)}")
+            return 0.0
 
 class TutorReward(BaseReward):
     """Reward class for tutor response evaluation"""
