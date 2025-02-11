@@ -79,7 +79,7 @@ def main():
     logger = setup_logging(model_type)
     
     # Check if path exists locally, then try HF, then exit
-    model_path = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    model_path = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
     if os.path.exists(model_path):
         model_name = model_path
     else:
