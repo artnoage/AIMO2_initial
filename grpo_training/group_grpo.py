@@ -49,6 +49,10 @@ class LoggingCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
+        # Print statistics summary every step
+        print(f"\nStep {self.step} Statistics:")
+        print(self.reward_func.stats.get_summary())
+        
         # Log to wandb
         if logs:
             # Add reward function specific metrics
@@ -71,7 +75,12 @@ class LoggingCallback(TrainerCallback):
                 self._last_unique_solutions = self.reward_func.stats.group_stats.get('unique_solutions', 0)
                 self._last_similar_solutions = self.reward_func.stats.group_stats.get('similar_solutions', 0)
                 
+                # Log current rewards and print them
                 wandb.log(current_rewards)
+                print("\nCurrent Rewards:")
+                for k, v in current_rewards.items():
+                    print(f"{k}: {v}")
+                    
             wandb.log(logs)
 
 def main():
@@ -210,9 +219,20 @@ def main():
             'index': 0  # Will be updated for each completion
         }
         rewards = []
+        
+        # Process each completion and collect rewards
         for i in range(len(completions)):
             group['index'] = i
-            rewards.append(reward_func.calculate_reward(completions[i], group=group))
+            reward = reward_func.calculate_reward(completions[i], group=group)
+            rewards.append(reward)
+            
+            # Update statistics after each completion
+            reward_func.stats.update(
+                rewards=[reward],
+                completion=completions[i],
+                similarity=group.get('similarity', None)
+            )
+            
         return rewards
 
     trainer = GRPOTrainer(
