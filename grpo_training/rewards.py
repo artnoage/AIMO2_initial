@@ -380,6 +380,12 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
+        # Initialize completion agent for validation
+        self.completion_agent = CompletionAgent(
+            port=config.completion_port,
+            model=config.completion_model_name,
+            logger=self.logger
+        )
         
     def extract_sections(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract Analysis, Verdict and Substitution sections"""
@@ -409,13 +415,22 @@ class TutorReward(BaseReward):
                 
         return steps
         
-    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
-        """Async version of reward calculation"""
-        # Extract sections
-        analysis, verdict, substitution = self.extract_sections(completion)
+    async def calculate_reward_async(self, tutor_response: str, **kwargs) -> float:
+        """Calculate reward for a tutor's evaluation of a solution"""
+        # Extract sections from tutor's response
+        analysis, verdict, substitution = self.extract_sections(tutor_response)
         
         if verdict is None:
-            self.logger.debug(f"Missing verdict section in completion: {completion[:100]}...")
+            self.logger.debug(f"Missing verdict section in tutor response: {tutor_response[:100]}...")
+            return 0.0
+            
+        # Get problem and student solution from kwargs
+        problem = kwargs.get('problem')
+        student_solution = kwargs.get('solution')
+        correct_answer = kwargs.get('correct_answer')
+        
+        if not all([problem, student_solution, correct_answer]):
+            self.logger.warning("Missing required context (problem, solution, or correct_answer)")
             return 0.0
             
         polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
@@ -426,15 +441,19 @@ class TutorReward(BaseReward):
             reward = self.config.tutor_structure_base_reward
             if substitution:
                 reward -= self.config.tutor_redundant_substitution_penalty
+                self.stats.reward_components['redundant_substitution_penalties'] += 1
         elif verdict.startswith("Step "):
             try:
                 step_num = int(verdict.split()[1])
                 if step_num < 0:
+                    self.stats.section_stats['invalid_step_number'] += 1
                     return 0.0
             except (ValueError, IndexError):
+                self.stats.section_stats['invalid_step_number'] += 1
                 return 0.0
                 
             if not substitution:
+                self.stats.section_stats['step_verdict_without_substitution'] += 1
                 return 0.0
                 
             reward = self.config.tutor_structure_base_reward
@@ -445,43 +464,108 @@ class TutorReward(BaseReward):
         if analysis:
             length_penalty = len(analysis) * self.config.tutor_analysis_length_cost
             reward += self.config.tutor_analysis_reward - length_penalty
+            self.stats.reward_components['analysis_rewards'] += 1
+            self.stats.reward_components['total_analysis_length_penalty'] += length_penalty
             
-        # Process step verdict
-        if verdict.startswith("Step "):
+        # Verify tutor's verdict using completion agent
+        if verdict == "The answer is correct":
+            # Check if student solution is actually correct
+            student_answer = extract_answer_from_solution(student_solution)
+            if student_answer:
+                student_numeric, _ = extract_numeric_answer(student_answer)
+                correct_numeric, _ = extract_numeric_answer(correct_answer)
+                if student_numeric is not None and correct_numeric is not None:
+                    if abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                        reward = self.config.tutor_full_reward
+                        self.stats.full_reward_reasons['correct_answer'] += 1
+                    else:
+                        # Tutor incorrectly said answer was correct
+                        return 0.0
+                        
+        elif verdict == "The whole approach is wrong":
+            if not analysis:
+                return reward
+                
+            # Verify by trying to complete solution from analysis
+            try:
+                completion = await self.completion_agent.generate(problem, analysis)
+                completion_answer = extract_answer_from_solution(completion)
+                if completion_answer:
+                    completion_numeric, _ = extract_numeric_answer(completion_answer)
+                    correct_numeric, _ = extract_numeric_answer(correct_answer)
+                    if completion_numeric is not None and correct_numeric is not None:
+                        if abs(completion_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                            # Tutor incorrectly said approach was wrong
+                            return 0.0
+                        else:
+                            # Tutor correctly identified wrong approach
+                            reward = self.config.tutor_full_reward
+                            self.stats.full_reward_reasons['wrong_approach'] += 1
+            except Exception as e:
+                self.logger.warning(f"Error during completion validation: {str(e)}")
+                return reward
+                
+        elif verdict.startswith("Step "):
+            solution_steps = self.split_into_steps(student_solution)
+            if step_num >= len(solution_steps):
+                return reward
+                
+            # Check if substitution has multiple steps
             substitution_steps = self.split_into_steps(substitution)
             if len(substitution_steps) > 1:
                 reward -= self.config.tutor_multiple_step_penalty
+                self.stats.reward_components['step_penalties'] += 1
             else:
                 reward += self.config.tutor_single_step_bonus
+                self.stats.reward_components['step_bonuses'] += 1
                 
-            # Check substitution answer
-            boxed_answer = extract_answer_from_solution(substitution)
-            if boxed_answer:
-                numeric_value, _ = extract_numeric_answer(boxed_answer)
-                correct_answer = kwargs.get('correct_answer')
-                if correct_answer:
+            # Try completing from original solution up to wrong step
+            partial_solution = "".join(solution_steps[:step_num])
+            try:
+                # Try completing with tutor's substitution
+                completion_with_sub = await self.completion_agent.generate(
+                    problem, 
+                    partial_solution + substitution
+                )
+                
+                # Try completing with original step
+                completion_original = await self.completion_agent.generate(
+                    problem,
+                    partial_solution + solution_steps[step_num]
+                )
+                
+                # Extract and compare answers
+                sub_answer = extract_answer_from_solution(completion_with_sub)
+                orig_answer = extract_answer_from_solution(completion_original)
+                
+                if sub_answer and orig_answer:
+                    sub_numeric, _ = extract_numeric_answer(sub_answer)
+                    orig_numeric, _ = extract_numeric_answer(orig_answer)
                     correct_numeric, _ = extract_numeric_answer(correct_answer)
-                    if numeric_value is not None and correct_numeric is not None:
-                        if abs(numeric_value - correct_numeric) <= self.config.numeric_tolerance:
-                            solution = kwargs.get('solution', '')
-                            solution_steps = self.split_into_steps(solution)
-                            if step_num == len(solution_steps) - 1:
-                                return self.config.tutor_full_reward
-                        else:
-                            reward -= self.config.tutor_wrong_boxed_answer_penalty
+                    
+                    if all(x is not None for x in [sub_numeric, orig_numeric, correct_numeric]):
+                        sub_correct = abs(sub_numeric - correct_numeric) <= self.config.numeric_tolerance
+                        orig_correct = abs(orig_numeric - correct_numeric) <= self.config.numeric_tolerance
+                        
+                        if sub_correct and not orig_correct:
+                            # Tutor's substitution leads to correct answer while original doesn't
+                            reward = self.config.tutor_full_reward
+                            self.stats.full_reward_reasons['step_correction'] += 1
+                        elif orig_correct:
+                            # Original step was actually correct
+                            return 0.0
                             
+            except Exception as e:
+                self.logger.warning(f"Error during step validation: {str(e)}")
+                return reward
+                
+        # Update base statistics
+        self.stats.reward_components['base_rewards'] += 1
+        if substitution:
             length_penalty = len(substitution) * self.config.tutor_substitution_length_cost
             reward += self.config.tutor_substitution_reward - length_penalty
-        else:
-            reward += self.config.tutor_substitution_reward
-            
-        # Update statistics
-        self.stats.reward_components = getattr(self.stats, 'reward_components', {})
-        self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
-        if analysis:
-            self.stats.reward_components['analysis_rewards'] = self.stats.reward_components.get('analysis_rewards', 0) + 1
-        if substitution:
-            self.stats.reward_components['substitution_rewards'] = self.stats.reward_components.get('substitution_rewards', 0) + 1
+            self.stats.reward_components['substitution_rewards'] += 1
+            self.stats.reward_components['total_substitution_length_penalty'] += length_penalty
             
         return reward
         
