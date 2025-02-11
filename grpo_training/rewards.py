@@ -436,34 +436,23 @@ class GroupReward(BaseReward):
         """Async version of calculate_reward"""
         return self.calculate_reward(completion, **kwargs)
         
-    def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions"""
-        answers = kwargs.get('answer', [])
-        prompts = kwargs.get('prompt', [])
-        if not answers or not prompts:
-            return [0.0] * len(completions)
-
-        # Group completions by prompt
-        prompt_groups = {}
-        for i, (comp, prompt) in enumerate(zip(completions, prompts)):
-            if prompt not in prompt_groups:
-                prompt_groups[prompt] = {
-                    'completions': [],
-                    'indices': [],
-                    'answer': answers[i // len(prompts[0])]  # Get corresponding answer
-                }
-            prompt_groups[prompt]['completions'].append(comp)
-            prompt_groups[prompt]['indices'].append(i)
-
-        # Calculate rewards for each group
-        rewards = [0.0] * len(completions)
-        for group in prompt_groups.values():
-            batch_completions = group['completions']
-            correct_answer = group['answer']
+    def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a single completion within its group context"""
+        group = kwargs.get('group', {})
+        if not group:
+            self.logger.warning("No group context provided")
+            return 0.0
             
-            # Process each completion in the group
-            for i, comp_idx in enumerate(group['indices']):
-                group_index = i
+        # Extract group information
+        completions = group.get('completions', [])
+        correct_answer = group.get('correct_answer')
+        group_index = group.get('index', 0)
+        
+        if not completions or not correct_answer:
+            return 0.0
+            
+        self.logger.info(f"Processing completion {group_index+1}/{len(completions)}")
+        self.logger.info(f"Correct answer: {correct_answer}")
         
             if not batch_completions or not correct_answer:
                 rewards.append(0.0)
@@ -472,7 +461,7 @@ class GroupReward(BaseReward):
             self.logger.info(f"Processing completion {group_index+1}/12")
             self.logger.info(f"Correct answer: {correct_answer}")
             
-        # Calculate correctness for all completions
+        # Calculate correctness for all completions in group
         results = []
         for comp in completions:
             try:
@@ -504,8 +493,8 @@ class GroupReward(BaseReward):
             except Exception as e:
                 self.logger.error(f"Error processing completion {len(results)+1}: {str(e)}")
                 results.append(False)
-            
-        # Calculate similarity matrix
+                
+        # Calculate similarity matrix for group
         similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
         
         # Calculate reward components
