@@ -391,9 +391,9 @@ class SolutionReward(BaseReward):
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
-            correct_answer = kwargs.get('correct_answer')
+            correct_answer = kwargs.get('correct_answer') or kwargs.get('answer')
             if not correct_answer:
-                self.logger.warning("No correct answer provided")
+                self.logger.warning("No correct answer or answer provided")
                 return reward
                 
             correct_numeric, _ = extract_numeric_answer(correct_answer)

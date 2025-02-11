@@ -170,7 +170,8 @@ def main():
         )
         return {
             "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example['answer']
+            "answer": example['answer'],
+            "correct_answer": example['answer']  # Add correct_answer field for reward calculation
         }
     
     formatted_dataset = dataset['train'].map(
