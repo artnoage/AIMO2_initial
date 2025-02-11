@@ -309,7 +309,6 @@ class BaseReward(ABC):
         # Process completions in parallel using event loop
         async def process_batch():
             tasks = []
-            rewards = [0.0] * len(completions)
             
             for prompt, group in prompt_groups.items():
                 # Add group context to kwargs
