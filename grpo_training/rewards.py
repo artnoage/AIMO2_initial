@@ -581,18 +581,6 @@ class TutorReward(BaseReward):
                     
                 is_correct = abs(numeric_answer - correct_numeric) <= self.config.numeric_tolerance
                 
-                # Log completion attempt to wandb
-                wandb.log({
-                    'completion_attempt': {
-                        'partial_solution': partial_solution,
-                        'completion': completion,
-                        'model_answer': model_answer,
-                        'numeric_answer': numeric_answer,
-                        'correct_answer': correct_answer,
-                        'is_correct': is_correct
-                    }
-                })
-                
                 return is_correct
                 
             except Exception as e:   
