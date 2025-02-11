@@ -481,8 +481,10 @@ class GroupReward(BaseReward):
             group_idx = kwargs.get('group_idx', 0)
             
             if not all([group_completions, group_answers, group_indices]):
-                self.logger.warning("Missing required group context")
+                self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
+
+            self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
                 
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
@@ -500,6 +502,7 @@ class GroupReward(BaseReward):
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             reward = self.config.group_base_reward if is_correct else 0.0
+            self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
             
             # Calculate similarity matrix for group
             similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
@@ -526,21 +529,28 @@ class GroupReward(BaseReward):
                 is_in_majority = (is_correct and correct_count > len(group_completions) / 2) or \
                                 (not is_correct and (len(group_completions) - correct_count) > len(group_completions) / 2)
                 majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+                
+                self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, In majority: {is_in_majority}")
                 if is_in_majority:
                     reward += majority_bonus
+                    self.logger.info(f"Applied majority bonus: +{majority_bonus:.3f}")
                     
                 # Diversity bonus
                 similarities = similarity_matrix[group_idx]
                 similarities[group_idx] = 0  # Remove self-similarity
                 avg_similarity = similarities.mean().item()
                 
+                self.logger.info(f"Similarity calculation - Average similarity: {avg_similarity:.3f}")
+                
                 diversity_bonus = 0
                 if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
                     diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
                     reward += diversity_bonus
+                    self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
                 elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
                     diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
                     reward += diversity_bonus
+                    self.logger.info(f"Applied similarity penalty: {diversity_bonus:.3f}")
                 
             # Update group-specific statistics
             if is_correct:
