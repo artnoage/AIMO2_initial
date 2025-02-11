@@ -1,18 +1,18 @@
 import re
-import os
 import json
-import wandb
 import asyncio
-import aiohttp
 import torch
 import logging
 import torch.nn.functional as F
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Tuple, Any, Union
+import os, sys
+from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
-from .config import GRPOConfig
+from config import GRPOConfig
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 from utils.agents import CompletionAgent
 
@@ -379,26 +379,6 @@ class SolutionReward(BaseReward):
             self.logger.error(f"Error calculating reward: {str(e)}")
             return 0.0
             
-        # Check correctness
-        if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
-            reward += self.config.solution_base_reward
-            
-        # Add validation reward
-        is_valid, _ = validate_solution(completion)
-        if is_valid:
-            reward += self.config.solution_validation_reward
-            
-        # Apply length penalty
-        length_penalty = len(completion) * self.config.solution_length_penalty_factor
-        reward -= length_penalty
-        
-        # Update statistics
-        self.stats.reward_components = getattr(self.stats, 'reward_components', {})
-        self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + (1 if reward >= self.config.solution_base_reward else 0)
-        self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + (1 if is_valid else 0)
-        self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-        
-        return reward
 
 class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
