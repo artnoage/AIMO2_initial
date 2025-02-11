@@ -439,21 +439,31 @@ class GroupReward(BaseReward):
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Calculate rewards for a batch of completions"""
         answers = kwargs.get('answer', [])
-        if not answers:
+        prompts = kwargs.get('prompt', [])
+        if not answers or not prompts:
             return [0.0] * len(completions)
 
-        rewards = []
-        for i, completion in enumerate(completions):
-            batch_idx = i // 12  # Using fixed batch size of 12
-            if batch_idx >= len(answers):
-                rewards.append(0.0)
-                continue
+        # Group completions by prompt
+        prompt_groups = {}
+        for i, (comp, prompt) in enumerate(zip(completions, prompts)):
+            if prompt not in prompt_groups:
+                prompt_groups[prompt] = {
+                    'completions': [],
+                    'indices': [],
+                    'answer': answers[i // len(prompts[0])]  # Get corresponding answer
+                }
+            prompt_groups[prompt]['completions'].append(comp)
+            prompt_groups[prompt]['indices'].append(i)
 
-            # Get batch info
-            batch_start = batch_idx * 12
-            batch_completions = completions[batch_start:batch_start + 12]
-            correct_answer = answers[batch_idx]
-            group_index = i % 12
+        # Calculate rewards for each group
+        rewards = [0.0] * len(completions)
+        for group in prompt_groups.values():
+            batch_completions = group['completions']
+            correct_answer = group['answer']
+            
+            # Process each completion in the group
+            for i, comp_idx in enumerate(group['indices']):
+                group_index = i
         
             if not batch_completions or not correct_answer:
                 rewards.append(0.0)
