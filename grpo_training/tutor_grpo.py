@@ -1,0 +1,212 @@
+import os
+import sys
+import wandb
+import logging
+from pathlib import Path
+from datetime import datetime
+from datasets import load_dataset, load_from_disk
+from transformers import TrainerCallback
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
+from unsloth.chat_templates import get_chat_template
+from trl import GRPOConfig, GRPOTrainer
+
+# Add project root to path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from utils.agents import CompletionAgent
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
+from .config import GRPOConfig as RewardConfig
+from .rewards import TutorReward
+
+def setup_logging(model_type: str) -> logging.Logger:
+    """Setup logging configuration"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = f"logs/{model_type}"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    logger = logging.getLogger('tutor_grpo')
+    logger.setLevel(logging.INFO)
+    
+    file_handler = logging.FileHandler(
+        f"{log_dir}/training_{timestamp}.log"
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logger.addHandler(file_handler)
+    logger.addHandler(logging.StreamHandler())
+    return logger
+
+class LoggingCallback(TrainerCallback):
+    """Callback for logging training metrics"""
+    def __init__(self, reward_func, save_frequency=100):
+        self.reward_func = reward_func
+        self.save_frequency = save_frequency
+        self.step = 0
+        
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        self.step += 1
+        
+        # Log to wandb
+        if logs:
+            # Add reward function specific metrics
+            if 'rewards/0' in logs:
+                wandb.log({
+                    'tutor_reward': logs['rewards/0'],
+                    'total_rewards': self.reward_func.stats.total_rewards,
+                    'avg_reward': self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches),
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0),
+                    'analysis_rewards': self.reward_func.stats.reward_components.get('analysis_rewards', 0),
+                    'substitution_rewards': self.reward_func.stats.reward_components.get('substitution_rewards', 0),
+                    'step_bonuses': self.reward_func.stats.reward_components.get('step_bonuses', 0),
+                    'step_penalties': self.reward_func.stats.reward_components.get('step_penalties', 0)
+                })
+            wandb.log(logs)
+
+def main():
+    # Configuration
+    model_type = "tutor"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor2"
+    dataset_name = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
+    completion_model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
+    
+    # Setup
+    logger = setup_logging(model_type)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"train_results/{model_type}/{timestamp}"
+    
+    # Initialize wandb
+    wandb.init(
+        project="tutor_grpo",
+        name=f"tutor_grpo_{timestamp}",
+        config={
+            "model_type": model_type,
+            "dataset": dataset_name,
+            "completion_model": completion_model_name,
+            "structure_base_reward": 0.2,
+            "analysis_reward": 0.2,
+            "substitution_reward": 0.4,
+            "single_step_bonus": 0.2,
+            "multiple_step_penalty": 0.4,
+            "full_reward": 5.0
+        }
+    )
+    
+    # Initialize reward function
+    reward_config = RewardConfig(
+        model_type=model_type,
+        model_name=model_name,
+        dataset_name=dataset_name,
+        completion_model_name=completion_model_name
+    )
+    reward_func = TutorReward(reward_config)
+    
+    # Load model
+    PatchFastRL("GRPO", FastLanguageModel)
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=model_name,
+        max_seq_length=4096,
+        fast_inference=True,
+        load_in_4bit=False,
+        use_gradient_checkpointing="unsloth",
+        max_lora_rank=64
+    )
+    
+    # Configure LoRA
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=64,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=64,
+        lora_dropout=0,
+        bias="none",
+        use_gradient_checkpointing="unsloth",
+        random_state=3407,
+        use_rslora=False,
+        loftq_config=None
+    )
+    
+    # Setup chat template
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="mistral",
+        map_eos_token=True
+    )
+    
+    # Load and format dataset
+    dataset = load_from_disk(dataset_name)
+    def formatting_func(example):
+        formatted_example = {**example}
+        formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
+        return formatted_example
+    
+    formatted_dataset = dataset.map(
+        formatting_func,
+        desc="Applying chat template"
+    )
+    
+    # Training arguments
+    training_args = GRPOConfig(
+        use_vllm=True,
+        torch_empty_cache_steps=10,
+        learning_rate=3e-6,
+        adam_beta1=0.9,
+        adam_beta2=0.99,
+        weight_decay=0.1,
+        warmup_ratio=0.05,
+        lr_scheduler_type="cosine",
+        optim="paged_adamw_8bit",
+        logging_steps=1,
+        bf16=is_bfloat16_supported(),
+        fp16=not is_bfloat16_supported(),
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=2,
+        num_generations=6,
+        max_prompt_length=3000,
+        max_completion_length=1096,
+        num_train_epochs=1,
+        save_steps=250,
+        max_grad_norm=0.1,
+        report_to="wandb",
+        output_dir=output_dir,
+    )
+    
+    # Initialize trainer
+    trainer = GRPOTrainer(
+        model=model,
+        processing_class=tokenizer,
+        reward_funcs=[reward_func],
+        args=training_args,
+        train_dataset=formatted_dataset,
+        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=100)]
+    )
+    
+    # Train
+    try:
+        trainer.train()
+        logger.info("Training completed successfully")
+    except Exception as e:
+        logger.error(f"Training failed: {str(e)}")
+        wandb.finish()
+        raise
+        
+    # Save model
+    try:
+        models_dir = "models"
+        os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
+        model_output_dir = os.path.join(models_dir, model_type, timestamp)
+        model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+        logger.info(f"Merged model saved to {model_output_dir}")
+    except Exception as e:
+        logger.error(f"Failed to save model: {str(e)}")
+        raise
+    finally:
+        wandb.finish()
+
+if __name__ == "__main__":
+    main()
