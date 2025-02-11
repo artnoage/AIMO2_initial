@@ -387,20 +387,20 @@ class SolutionReward(BaseReward):
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
                 self.logger.debug("No boxed answer found")
-                return reward
+                return 0.0
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
             correct_answer = kwargs.get('correct_answer') or kwargs.get('answer')
             if not correct_answer:
                 self.logger.warning("No correct answer or answer provided")
-                return reward
+                return 0.0
                 
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
-                return reward
+                return 0.0
                 
             # Check correctness
             if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
