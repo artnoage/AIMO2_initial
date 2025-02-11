@@ -212,25 +212,37 @@ def main():
     
     # Initialize trainer with group context
     def group_reward_wrapper(completions, **kwargs):
-        # Create group context for each batch
-        group = {
-            'completions': completions,
-            'correct_answer': kwargs.get('answer', None),
-            'index': 0  # Will be updated for each completion
-        }
+        # Get answers list from kwargs
+        answers = kwargs.get('answer', [])
+        if not answers or len(answers) != len(completions):
+            logger.error(f"Invalid answers list. Got {len(answers) if answers else 0} answers for {len(completions)} completions")
+            return [0.0] * len(completions)
+            
+        # Process each batch of completions with its corresponding answer
         rewards = []
-        
-        # Process each completion and collect rewards
-        for i in range(len(completions)):
-            group['index'] = i
-            reward = reward_func.calculate_reward(completions[i], group=group)
-            rewards.append(reward)
+        for batch_start in range(0, len(completions), training_args.num_generations):
+            batch_end = batch_start + training_args.num_generations
+            batch_completions = completions[batch_start:batch_end]
+            batch_answer = answers[batch_start]  # Use same answer for whole batch
             
-            # Update statistics after each completion
-            reward_func.stats.update(
-                rewards=[reward]
-            )
+            # Create group context for this batch
+            group = {
+                'completions': batch_completions,
+                'correct_answer': batch_answer,
+                'index': 0  # Will be updated for each completion
+            }
             
+            # Process each completion in batch
+            for i in range(len(batch_completions)):
+                group['index'] = i
+                reward = reward_func.calculate_reward(batch_completions[i], group=group)
+                rewards.append(reward)
+                
+                # Update statistics after each completion
+                reward_func.stats.update(
+                    rewards=[reward]
+                )
+                
         return rewards
 
     trainer = GRPOTrainer(
