@@ -362,18 +362,19 @@ class SolutionReward(BaseReward):
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion
+    def calculate_reward(self, completions: List[str], **kwargs) -> List[float]:
+        """Calculate rewards for a batch of completions
         
         Args:
-            completion: The model completion to evaluate
+            completions: List of model completions to evaluate
             **kwargs: Additional context including:
-                - correct_answer: Expected answer string
-                - problem: Original problem text
-                - solution: Complete solution attempt
+                - answer: List of expected answer strings
+                - correct_answer: List of expected answer strings (alternative)
+                - problem: List of original problem texts
+                - solution: List of complete solution attempts
                 
         Returns:
-            float: Calculated reward value
+            List[float]: List of calculated reward values
             
         The reward is calculated based on:
         1. Correctness of the answer
@@ -381,7 +382,9 @@ class SolutionReward(BaseReward):
         3. Length penalties
         """
         try:
-            reward = 0.0
+            rewards = []
+            for i, completion in enumerate(completions):
+                reward = 0.0
             
             print("\n=== Starting reward calculation ===")
             print(f"Completion (first 100 chars): {completion[:100]}...")
