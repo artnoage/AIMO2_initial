@@ -200,8 +200,6 @@ def process_group_completions(completions: List[str], correct_answer: str) -> Tu
                 
             model_numeric, _ = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
-            print(correct_answer)
-            print(model_numeric,correct_numeric)
             if model_numeric is None or correct_numeric is None:
                 results.append(False)
                 error_count += 1
@@ -265,8 +263,8 @@ def main():
             
         def __call__(self, completions: List[str], prompts: List[str], **kwargs) -> List[float]:
             # Get correct answers from kwargs
-            correct_answers = kwargs.get('answer', [''] * len(completions))
-            
+            correct_answers = kwargs.get('correct_answer', [''] * len(completions))
+            print(len(correct_answers),correct_answers[0],correct_answers[-1])
             # Group completions by prompt with indexed entries
             prompt_groups = {}
             for i, (comp, prom) in enumerate(zip(completions, prompts)):
@@ -288,7 +286,6 @@ def main():
                 correctness_results, correct_stats = process_group_completions(
                     group_completions, correct_answer
                 )
-                print(correctness_results)
                 # Compute similarity matrix for group
                 similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
                 
@@ -332,7 +329,7 @@ def main():
     dataset = load_dataset("Metaskepsis/Numina_medium")
     
     def formatting_func(example):
-        required_fields = ['prompt', 'answer']
+        required_fields = ['prompt', 'correct_answer']
         filtered_example = {k: example[k] for k in required_fields if k in example}
         
         solver_prompt = (
@@ -343,7 +340,7 @@ def main():
             "Don't forget to put the final answer in a box using \\boxed{}"
         )
         filtered_example["prompt"] = f"[INST]{solver_prompt}[/INST]"
-        filtered_example['answer'] = example['answer']
+        filtered_example['correct_answer'] = example['answer']
         return filtered_example
     
     formatted_dataset = dataset['train'].map(
@@ -401,9 +398,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=3,
-        gradient_accumulation_steps=1,
-        num_generations=6,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=2,
+        num_generations=8,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
