@@ -398,8 +398,28 @@ class SolutionReward(BaseReward):
             print(f"Model numeric value: {model_numeric}")
             print(f"Debug info: {debug_info}")
             
-            correct_answer = kwargs.get('correct_answer') or kwargs.get('answer')
-            print(f"Raw correct_answer: {correct_answer}")
+            # Get answers from kwargs, handling list case
+            answers = kwargs.get('correct_answer') or kwargs.get('answer')
+            print(f"Raw answers: {answers}")
+            
+            # Handle list of answers - take corresponding answer for this completion
+            if isinstance(answers, list):
+                if not answers:
+                    self.logger.warning("Empty answers list")
+                    print("No answers found - returning 0.0")
+                    return 0.0
+                # Get index from group context if available, otherwise use 0
+                group_context = kwargs.get('group', {})
+                idx = group_context.get('index', 0)
+                if idx >= len(answers):
+                    self.logger.warning(f"Answer index {idx} out of range for answers list length {len(answers)}")
+                    print("Answer index out of range - returning 0.0")
+                    return 0.0
+                correct_answer = answers[idx]
+            else:
+                correct_answer = answers
+                
+            print(f"Selected correct_answer: {correct_answer}")
             if not correct_answer:
                 self.logger.warning("No correct answer or answer provided")
                 print("No correct answer found - returning 0.0")
