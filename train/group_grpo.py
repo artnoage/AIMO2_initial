@@ -229,19 +229,21 @@ def main():
             # Get correct answers from kwargs
             correct_answers = kwargs.get('correct_answer', [''] * len(completions))
             
-            # Group completions by prompt
+            # Group completions by prompt with indexed entries
             prompt_groups = {}
             for i, (comp, prom) in enumerate(zip(completions, prompts)):
                 if prom not in prompt_groups:
-                    prompt_groups[prom] = {'completions': [], 'indices': [], 'answer': correct_answers[i]}
-                prompt_groups[prom]['completions'].append(comp)
-                prompt_groups[prom]['indices'].append(i)
+                    prompt_groups[prom] = {'entries': [], 'answer': correct_answers[i]}
+                prompt_groups[prom]['entries'].append({'completion': comp, 'index': i})
             
             # Process each group separately
             all_rewards = [0.0] * len(completions)
             
             for group in prompt_groups.values():
-                group_completions = group['completions'] 
+                # Extract completions while preserving indices
+                group_completions = [entry['completion'] for entry in group['entries']]
+                group_indices = [entry['index'] for entry in group['entries']]
+                
                 # Use the answer from kwargs since we're not getting it directly anymore
                 correct_answer = kwargs.get('correct_answer', [''])[0]
                 
@@ -258,7 +260,7 @@ def main():
                 diversity_bonus = 0.3
                 majority_bonus = 0.2
                 
-                for i, (is_correct, idx) in enumerate(zip(correctness_results, group['indices'])):
+                for i, (is_correct, idx) in enumerate(zip(correctness_results, group_indices)):
                     reward = 0.0
                     
                     if is_correct:
