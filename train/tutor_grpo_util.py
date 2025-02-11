@@ -185,7 +185,7 @@ class TutorConfig:
     # Model settings
     model_type: str = "tutor"
     model_name: str = "/Home/stat/laschos/AIMO2_initial/models/tutor2"
-    dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_083238"
+    dataset_name: str = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
     
     # API settings
