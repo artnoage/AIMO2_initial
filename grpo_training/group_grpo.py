@@ -175,8 +175,7 @@ def main():
         chat_template="mistral",
         map_eos_token=True
     )
-    
-        
+
     def formatting_func(example):
         solver_prompt = (
             "Here is a mathematical problem:\n\n"
@@ -185,14 +184,21 @@ def main():
             "then walk through the solution step-by-step using LaTeX notation. "
             "Don't forget to put the final answer in a box using \\boxed{}"
         )
-        return {
+        
+        
+        formatted = {
             "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example['answer']
+            "answer": example.get('answer'),
+            "correct_answer": example.get('answer')
         }
+        
+        return formatted
     
+    # Format dataset and ensure answer field is present
     formatted_dataset = dataset['train'].map(
         formatting_func,
-        desc="Applying chat template"
+        desc="Applying chat template",
+        remove_columns=None  # Keep original columns
     )
     
     # Training arguments
