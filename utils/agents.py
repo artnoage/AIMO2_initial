@@ -6,8 +6,15 @@ from utils.benchmark_utils import get_model_response
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     
-    def __init__(self, model):
+    def __init__(self, port: int = 8001, model: str = None, temperature: float = 0.7, 
+                 api_key: str = "EMPTY", max_retries: int = 3, logger: Optional[logging.Logger] = None):
+        self.port = port
         self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+        self.max_retries = max_retries
+        self.logger = logger if logger else logging.getLogger('completion_agent')
+        self.base_url = f"http://localhost:{port}/v1"
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate analysis for a given problem"""
@@ -64,8 +71,43 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
-        return (prompt[0].content, response) if return_prompt else response
+        
+        # Convert prompt to messages format
+        messages = [{"role": "user", "content": prompt[0].content}]
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature
+        }
+
+        retry_count = 0
+        while retry_count < self.max_retries:
+            try:
+                timeout_client = aiohttp.ClientTimeout(total=180.0)
+                async with aiohttp.ClientSession(timeout=timeout_client) as session:
+                    async with session.post(
+                        f"{self.base_url}/chat/completions",
+                        json=payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.api_key}"
+                        }
+                    ) as response:
+                        if response.status != 200:
+                            raise ValueError(f"Error from API: {await response.text()}")
+                        
+                        result = await response.json()
+                        completion = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        return (prompt[0].content, completion) if return_prompt else completion
+                        
+            except Exception as e:
+                retry_count += 1
+                if retry_count == self.max_retries:
+                    raise
+                # Exponential backoff
+                await asyncio.sleep(0.1 * (2 ** retry_count))
+                
+        raise Exception(f"Failed after {self.max_retries} retries")
 
 
 class MissingStepAgent:
