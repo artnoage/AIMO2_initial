@@ -98,7 +98,9 @@ class RewardStats:
             'similar_solutions': 0,
             'correct_answers': 0,
             'incorrect_answers': 0,
-            'total_similarity': 0.0
+            'total_similarity': 0.0,
+            'majority_bonuses': 0,
+            'diversity_bonuses': 0
         }
         
         # Track full reward reasons
@@ -624,9 +626,9 @@ class GroupReward(BaseReward):
                 self.stats.group_stats['incorrect_answers'] += 1
                 
             if is_in_majority:
-                self.stats.group_stats['majority_bonuses'] += 1
+                self.stats.group_stats['majority_bonuses'] = self.stats.group_stats.get('majority_bonuses', 0) + 1
             if diversity_bonus > 0:
-                self.stats.group_stats['diversity_bonuses'] += 1
+                self.stats.group_stats['diversity_bonuses'] = self.stats.group_stats.get('diversity_bonuses', 0) + 1
                 
             if avg_similarity < self.config.group_similarity_threshold_low:
                 self.stats.group_stats['unique_solutions'] += 1
