@@ -71,9 +71,12 @@ class LoggingCallback(TrainerCallback):
                 wandb.log(current_rewards)
             wandb.log(logs)
 
-def main(model_path="/Home/stat/laschos/AIMO2_initial/models/tutor2"):
+def main():
     # Configuration
     model_type = "tutor"
+    model_path = "/Home/stat/laschos/AIMO2_initial/models/tutor2"
+    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
+    
     # Setup logging first
     logger = setup_logging(model_type)
     

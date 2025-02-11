@@ -82,9 +82,12 @@ class LoggingCallback(TrainerCallback):
                 self.logger.info(f"Validation rewards given: {self.reward_func.stats.reward_components.get('validation_rewards', 0)}")
                 self.logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
 
-def main(model_path="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"):
+def main():
     # Configuration
     model_type = "solver"
+    model_path = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
+    
     # Setup logging first
     logger = setup_logging(model_type)
     

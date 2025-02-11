@@ -72,9 +72,12 @@ class LoggingCallback(TrainerCallback):
                 wandb.log(current_rewards)
             wandb.log(logs)
 
-def main(model_path="/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"):
+def main():
     # Configuration
     model_type = "group"
+    model_path = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
+    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
+    
     # Setup logging first
     logger = setup_logging(model_type)
     
