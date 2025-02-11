@@ -251,21 +251,9 @@ class BaseReward(ABC):
         self.logger = self._setup_logger()
         
     @abstractmethod
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion
-        
-        Args:
-            completion: The model completion to evaluate
-            **kwargs: Additional context needed for reward calculation
-            
-        Returns:
-            float: The calculated reward value
-        """
-        raise NotImplementedError
-        
     @abstractmethod
-    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
-        """Async version of calculate_reward
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a single completion
         
         Args:
             completion: The model completion to evaluate
@@ -296,27 +284,7 @@ class BaseReward(ABC):
         logger.addHandler(logging.StreamHandler())
         return logger
         
-    def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions"""
-        # Validate inputs
-        prompts = kwargs.get('prompts', [])
-        answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
-        
-        if len(completions) != len(prompts) or len(completions) != len(answers):
-            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
-            return [0.0] * len(completions)
-            
-        # Process each completion
-        rewards = []
-        for comp, prompt, ans in zip(completions, prompts, answers):
-            reward = self.calculate_reward(comp, prompt=prompt, answer=ans, **kwargs)
-            rewards.append(reward)
-            
-        # Update statistics
-        self.stats.update(rewards, completions=completions)
-        return rewards
-
-    async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
+    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Async version for batch processing"""
         # Validate inputs
         prompts = kwargs.get('prompts', [])
@@ -344,7 +312,7 @@ class SolutionReward(BaseReward):
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion"""
         try:
             print(f"\nProcessing completion: {completion[:100]}...")
@@ -439,10 +407,6 @@ class SolutionReward(BaseReward):
         except Exception as e:
             self.logger.error(f"Error calculating reward: {str(e)}")
             return 0.0
-            
-    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
-        """Async version of calculate_reward"""
-        return self.calculate_reward(completion, **kwargs)
             
 
 class SolutionSimilarityChecker:
@@ -925,11 +889,7 @@ class TutorReward(BaseReward):
             
         return reward
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Synchronous wrapper for async reward calculation"""
-        return asyncio.run(self.calculate_reward_async(completion, **kwargs))
-
-    async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
+    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Process a batch of examples in parallel"""
         # Create reward_index to track original order
         reward_index = list(range(len(completions)))
