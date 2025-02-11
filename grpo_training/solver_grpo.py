@@ -73,12 +73,12 @@ class LoggingCallback(TrainerCallback):
             
             # Log detailed statistics periodically
             if self.step % self.save_frequency == 0:
-                logger.info(f"\nDetailed Statistics at step {self.step}:")
-                logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
-                logger.info(f"Average reward: {self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches):.4f}")
-                logger.info(f"Base rewards given: {self.reward_func.stats.reward_components.get('base_rewards', 0)}")
-                logger.info(f"Validation rewards given: {self.reward_func.stats.reward_components.get('validation_rewards', 0)}")
-                logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
+                self.logger.info(f"\nDetailed Statistics at step {self.step}:")
+                self.logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
+                self.logger.info(f"Average reward: {self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches):.4f}")
+                self.logger.info(f"Base rewards given: {self.reward_func.stats.reward_components.get('base_rewards', 0)}")
+                self.logger.info(f"Validation rewards given: {self.reward_func.stats.reward_components.get('validation_rewards', 0)}")
+                self.logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
 
 def main():
     # Configuration
