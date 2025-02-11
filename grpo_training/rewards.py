@@ -457,19 +457,35 @@ class GroupReward(BaseReward):
         # Calculate correctness for all completions
         results = []
         for comp in completions:
-            model_answer = extract_answer_from_solution(comp)
-            if model_answer is None:
-                results.append(False)
-                continue
+            try:
+                self.logger.info(f"\nProcessing completion for correctness:")
+                self.logger.info(f"Raw completion: {comp[:200]}...")
                 
-            model_numeric, _ = extract_numeric_answer(model_answer)
-            correct_numeric, _ = extract_numeric_answer(correct_answer)
-            
-            if model_numeric is None or correct_numeric is None:
-                results.append(False)
-                continue
+                model_answer = extract_answer_from_solution(comp)
+                self.logger.info(f"Extracted answer: {model_answer}")
+                if model_answer is None:
+                    self.logger.info("No boxed answer found")
+                    results.append(False)
+                    continue
                 
-            results.append(abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance)
+                model_numeric, model_debug = extract_numeric_answer(model_answer, debug=True)
+                correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
+                
+                self.logger.info(f"Model numeric: {model_numeric} ({model_debug})")
+                self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
+                
+                if model_numeric is None or correct_numeric is None:
+                    self.logger.info("Could not extract numeric values")
+                    results.append(False)
+                    continue
+                
+                is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+                self.logger.info(f"Is correct: {is_correct}")
+                results.append(is_correct)
+                
+            except Exception as e:
+                self.logger.error(f"Error processing completion: {str(e)}")
+                results.append(False)
             
         # Calculate similarity matrix
         similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
