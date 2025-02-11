@@ -387,44 +387,27 @@ class SolutionReward(BaseReward):
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         
-    def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Process a batch of completions with their corresponding answers"""
+    def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a single completion"""
         try:
-            print(f"\nProcessing batch of {len(completions)} completions")
+            print(f"\nProcessing completion: {completion[:100]}...")
             
-            # Create reward_index to track original order
-            reward_index = list(range(len(completions)))
-            rewards = [0.0] * len(completions)
+            # Extract and validate the answer
+            model_answer = extract_answer_from_solution(completion)
+            if model_answer is None:
+                self.logger.debug("No boxed answer found")
+                print("No boxed answer found - returning 0.0")
+                return 0.0
+                
+            # Convert to numeric values
+            model_numeric, debug_info = extract_numeric_answer(model_answer)
+            print(f"Model numeric value: {model_numeric}")
+            print(f"Debug info: {debug_info}")
             
-            # Get answers from kwargs
-            answers = kwargs.get('answer', [])
-            if not answers:
-                self.logger.warning("No answers provided")
-                return [0.0] * len(completions)
-                
-            # Calculate rewards for each completion-answer pair
-            for i, (completion, ans, idx) in enumerate(zip(completions, answers, reward_index)):
-                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
-                print(f"Completion (first 100 chars): {completion[:100]}...")
-                
-                # Extract and validate the answer
-                model_answer = extract_answer_from_solution(completion)
-                if model_answer is None:
-                    self.logger.debug("No boxed answer found")
-                    print("No boxed answer found - returning 0.0")
-                    rewards.append(0.0)
-                    continue
-                    
-                # Convert to numeric values
-                model_numeric, debug_info = extract_numeric_answer(model_answer)
-                print(f"Model numeric value: {model_numeric}")
-                print(f"Debug info: {debug_info}")
-                
-                correct_answer = ans  # Use answer from current iteration
-                
-            print(f"Selected correct_answer: {correct_answer}")
+            # Get correct answer from kwargs
+            correct_answer = kwargs.get('answer')
             if not correct_answer:
-                self.logger.warning("No correct answer or answer provided")
+                self.logger.warning("No correct answer provided")
                 print("No correct answer found - returning 0.0")
                 return 0.0
             
@@ -445,26 +428,12 @@ class SolutionReward(BaseReward):
             correct_answer = str(correct_answer)
             print(f"Final correct answer string: {correct_answer}")
             
-            self.logger.info(f"Processing answer extraction:")
-            self.logger.info(f"Model answer: {model_answer}")
-            self.logger.info(f"Correct answer: {correct_answer}")
-            
             correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
             print(f"Extracted correct numeric: {correct_numeric}")
             print(f"Correct debug info: {correct_debug}")
             
-            self.logger.info(f"Model numeric: {model_numeric} ({debug_info})")
-            self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
-            
-            if model_numeric is None:
-                print("Model numeric is None - returning 0.0")
-                return 0.0
-            if correct_numeric is None:
-                print("Correct numeric is None - returning 0.0") 
-                return 0.0
-            
             if model_numeric is None or correct_numeric is None:
-                self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
+                print("Could not extract numeric values - returning 0.0")
                 return 0.0
                 
             # Initialize reward
