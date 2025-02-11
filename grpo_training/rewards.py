@@ -591,16 +591,25 @@ class GroupReward(BaseReward):
                     rewards[idx] = 0.0
                     continue
                 
-                # Calculate similarity matrix for group
-                similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
+                # Get current prompt group's completions
+                current_prompt = kwargs.get('prompts', [])[i]
+                prompt_completions = []
+                prompt_indices = []
+                for j, (comp, prompt) in enumerate(zip(completions, kwargs.get('prompts', []))):
+                    if prompt == current_prompt:
+                        prompt_completions.append(comp)
+                        prompt_indices.append(j)
+                
+                # Calculate similarity matrix for current prompt group
+                similarity_matrix = self.similarity_checker.compute_similarity_matrix(prompt_completions)
                 
                 # Calculate base reward
                 is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
                 reward = self.config.group_base_reward if is_correct else 0.0
                 
-                # Calculate correctness for all completions
+                # Calculate correctness for prompt group completions
                 all_results = []
-                for comp in completions:
+                for comp in prompt_completions:
                     comp_answer = extract_answer_from_solution(comp)
                     if comp_answer is None:
                         all_results.append(False)
@@ -620,9 +629,11 @@ class GroupReward(BaseReward):
                     reward += majority_bonus
                     
                 # Diversity bonus
-                similarities = similarity_matrix[i]
-                similarities[i] = 0  # Remove self-similarity
-                avg_similarity = similarities.mean().item()
+                # Find position in prompt group
+                group_pos = prompt_indices.index(i)
+                similarities = similarity_matrix[group_pos]
+                similarities[group_pos] = 0  # Remove self-similarity
+                avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
                 
                 diversity_bonus = 0
                 if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
