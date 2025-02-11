@@ -13,11 +13,15 @@ import sys
 import logging
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
+
+# Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
 from typing import List, Dict, Any, Optional, Tuple
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
+
 
 @dataclass
 class GroupValidationStats:
@@ -44,7 +48,7 @@ class GroupValidationStats:
         self.start_time = datetime.now()
     
     def update(self, rewards: List[float], similarities: Optional[torch.Tensor] = None, 
-              correct_counts: Optional[Dict] = None):
+               correct_counts: Optional[Dict] = None):
         self.total_batches += 1
         for r in rewards:
             self.total_rewards += r
@@ -105,6 +109,7 @@ class GroupValidationStats:
             f"  Parse errors: {self.correctness_stats['parse_errors']}"
         )
 
+
 class SolutionSimilarityChecker:
     def __init__(self, model_name="sentence-transformers/all-mpnet-base-v2"):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -112,14 +117,17 @@ class SolutionSimilarityChecker:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.model.eval()  # Set model to evaluation mode
-        torch.set_grad_enabled(False)  # Disable gradients globally for embeddings
+
+        # Freeze the embedding model's parameters to ensure they do not track gradients.
+        for param in self.model.parameters():
+            param.requires_grad = False
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         inputs = self.tokenizer(
             texts, 
             padding=True, 
             truncation=True, 
-            max_length=512,  # Add explicit max length
+            max_length=512,  # Explicit max length
             return_tensors="pt"
         )
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
@@ -131,6 +139,7 @@ class SolutionSimilarityChecker:
         with torch.no_grad():
             embeddings = self.get_embeddings(solutions)
             return torch.mm(embeddings, embeddings.t()).detach()
+
 
 def setup_training_logger(model_type: str) -> logging.Logger:
     """Setup logging configuration for training"""
@@ -151,6 +160,7 @@ def setup_training_logger(model_type: str) -> logging.Logger:
     logger.addHandler(file_handler)
     logger.addHandler(logging.StreamHandler())
     return logger
+
 
 def process_group_completions(completions: List[str], correct_answer: str) -> Tuple[List[bool], Dict]:
     """Process a group of completions and return correctness and statistics"""
@@ -197,13 +207,14 @@ def process_group_completions(completions: List[str], correct_answer: str) -> Tu
     
     return results, stats
 
+
 def main():
-    # Initialize similarity checker
+    # Initialize similarity checker and statistics
     similarity_checker = SolutionSimilarityChecker()
     stats = GroupValidationStats()
     logger = setup_training_logger("group_grpo")
     
-    # Setup callback for logging
+    # Setup callback for logging training statistics
     class LoggingCallback(TrainerCallback):
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{stats.get_summary()}")
@@ -261,10 +272,10 @@ def main():
                         if avg_similarity < 0.7:  # Unique solution
                             reward += diversity_bonus
                         elif avg_similarity > 0.9:  # Very similar to others
-                            reward -= diversity_bonus/2
+                            reward -= diversity_bonus / 2
                             
                         # Add majority bonus if agrees with majority
-                        if correct_stats['correct'] > len(group_completions)/2:
+                        if correct_stats['correct'] > len(group_completions) / 2:
                             reward += majority_bonus
                     
                     all_rewards[idx] = reward
@@ -278,7 +289,7 @@ def main():
             
             return all_rewards
     
-    # Load and format dataset
+    # Load and format the dataset
     dataset = load_dataset("Metaskepsis/Numina_medium")
     
     def formatting_func(example):
@@ -301,7 +312,7 @@ def main():
         desc="Applying chat template"
     )
     
-    # Load the model
+    # Load the model and tokenizer using FastLanguageModel
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611",
         max_seq_length=4096,
@@ -316,7 +327,7 @@ def main():
         model,
         r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj"],
+                        "gate_proj", "up_proj", "down_proj"],
         lora_alpha=64,
         lora_dropout=0,
         bias="none",
@@ -326,14 +337,14 @@ def main():
         loftq_config=None
     )
     
-    # Setup chat template
+    # Setup chat template for the tokenizer
     tokenizer = get_chat_template(
         tokenizer,
         chat_template="mistral",
         map_eos_token=True
     )
     
-    # Create timestamped output directory
+    # Create a timestamped output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/group_grpo/{timestamp}"
     
@@ -363,7 +374,7 @@ def main():
         output_dir=output_dir,
     )
     
-    # Initialize trainer with reward function class
+    # Initialize trainer with the reward function
     reward_func = RewardFunction(similarity_checker, stats)
     trainer = GRPOTrainer(
         model=model,
@@ -377,12 +388,13 @@ def main():
     # Train the model
     trainer.train()
     
-    # Save model
+    # Save the merged model
     models_dir = "models"
     os.makedirs(os.path.join(models_dir, "group_grpo"), exist_ok=True)
     model_output_dir = os.path.join(models_dir, "group_grpo", timestamp)
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
     logger.info(f"Merged model saved to {model_output_dir}")
 
+    
 if __name__ == "__main__":
     main()
