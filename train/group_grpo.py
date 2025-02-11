@@ -292,8 +292,22 @@ def main():
                 correctness_results, correct_stats = process_group_completions(
                     group_completions, correct_answer
                 )
+                print(f"\nGroup Analysis:")
+                print(f"Correct answer: {correct_answer}")
+                print("Correctness results:", correctness_results)
+                print("Correct stats:", correct_stats)
+                
+                # Print first few chars of each completion
+                for i, comp in enumerate(group_completions):
+                    answer = extract_answer_from_solution(comp)
+                    print(f"\nCompletion {i} ({'correct' if correctness_results[i] else 'incorrect'}):")
+                    print(f"Found answer: {answer}")
+                    print(f"First 100 chars: {comp[:100]}...")
+                
                 # Compute similarity matrix for group
                 similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
+                print("\nSimilarity matrix:")
+                print(similarity_matrix)
                 
                 # Calculate rewards for each completion in group
                 base_reward = 1.0
@@ -321,6 +335,14 @@ def main():
                             reward += majority_bonus
                     
                     all_rewards[idx] = reward
+                    print(f"\nReward calculation for completion {i}:")
+                    print(f"Is correct: {is_correct}")
+                    print(f"Base reward: {base_reward if is_correct else 0}")
+                    if is_correct:
+                        print(f"Avg similarity: {avg_similarity:.3f}")
+                        print(f"Diversity bonus: {diversity_bonus if avg_similarity < 0.7 else (-diversity_bonus/2 if avg_similarity > 0.9 else 0)}")
+                        print(f"Majority bonus: {majority_bonus if correct_stats['correct'] > len(group_completions) / 2 else 0}")
+                    print(f"Final reward: {reward}")
                 
                 # Update statistics with group identifier
                 group_id = hash(str(group['answer']) + str(group_completions[0][:100]))  # Create unique group ID
