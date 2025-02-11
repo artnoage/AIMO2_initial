@@ -905,27 +905,3 @@ class TutorReward(BaseReward):
             
         return reward
         
-    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Process a batch of examples in parallel"""
-        # Create reward_index to track original order
-        reward_index = list(range(len(completions)))
-        rewards = [0.0] * len(completions)
-        
-        tasks = []
-        for idx, comp in zip(reward_index, completions):
-            # Unpack kwargs for each completion
-            comp_kwargs = {
-                k: v[idx] if isinstance(v, list) else v 
-                for k, v in kwargs.items()
-            }
-            # Add reward_index first
-            comp_kwargs = {'reward_index': idx, **comp_kwargs}
-            tasks.append(self.calculate_reward(comp, **comp_kwargs))
-        results = await asyncio.gather(*tasks)
-        
-        # Place rewards in correct order using reward_index
-        for reward, idx in zip(results, reward_index):
-            rewards[idx] = reward
-            
-        self.stats.update(rewards, completions=completions)
-        return rewards
