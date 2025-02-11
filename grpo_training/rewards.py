@@ -388,16 +388,22 @@ class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
     def __init__(self, config: GRPOConfig):
         self.config = config
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
+        # Load tokenizer and model
         self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model_name)
         self.model = AutoModel.from_pretrained(config.embedding_model_name)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
+        
+        # Move model to device and set eval mode
+        self.model = self.model.to(self.device)
         self.model.eval()
         
-        # Freeze embedding model parameters and ensure they're on the correct device
-        for param in self.model.parameters():
-            param.requires_grad = False
-            param.data = param.data.to(self.device)
+        # Ensure all parameters are frozen and on correct device
+        with torch.no_grad():
+            for param in self.model.parameters():
+                param.requires_grad_(False)  # Use requires_grad_ method
+                if param.device != self.device:
+                    param.data = param.data.to(self.device)
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         with torch.no_grad(), torch.amp.autocast('cuda', enabled=True):
@@ -422,15 +428,9 @@ class GroupReward(BaseReward):
     
     __name__ = "group_reward"
     
-    def __init__(self, config: GRPOConfig):
+    def __init__(self, config: GRPOConfig, similarity_checker: SolutionSimilarityChecker):
         super().__init__(config)
-        # Initialize similarity checker
-        self.similarity_checker = SolutionSimilarityChecker(config)
-        
-        # Freeze embedding model parameters
-        for param in self.similarity_checker.model.parameters():
-            param.requires_grad = False
-            
+        self.similarity_checker = similarity_checker
         
     async def calculate_reward_async(self, completion: str, **kwargs) -> float:
         """Async version of calculate_reward"""

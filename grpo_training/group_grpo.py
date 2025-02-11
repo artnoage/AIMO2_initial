@@ -116,11 +116,14 @@ def main():
         }
     )
     
-    # Initialize reward function with existing config
-    reward_func = GroupReward(reward_config)
+    # Initialize similarity checker first
+    similarity_checker = SolutionSimilarityChecker(reward_config)
+    
+    # Initialize reward function with existing config and similarity checker
+    reward_func = GroupReward(reward_config, similarity_checker)
     
     # Load model
-    PatchFastRL("GRPO", FastLanguageModel)
+    PatchFastRL("GRPO", FastLanguageModel) 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name= model_name,
         max_seq_length=4096,
