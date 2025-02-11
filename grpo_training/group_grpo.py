@@ -75,7 +75,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    model_name = model_name if 'model_name' in locals() else "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
     dataset_name = "Metaskepsis/Numina_medium"
     
     # Initialize config
