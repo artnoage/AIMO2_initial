@@ -15,7 +15,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 from utils.agents import CompletionAgent
-
+from abc import ABC, abstractmethod
 
 @dataclass 
 class RewardConfig:
@@ -222,7 +222,6 @@ class RewardStats:
             f"  Final step correct: {self.full_reward_reasons['final_step_correct']}"
         )
 
-from abc import ABC, abstractmethod
 
 class BaseReward(ABC):
     """Base class for reward calculation"""
@@ -283,18 +282,15 @@ class BaseReward(ABC):
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Calculate rewards for a batch of completions"""
         answers = kwargs.get('answer', [])
-        prompts = kwargs.get('prompt', [])
-        
+        print(answers)
+        correct_answers=kwargs.get('answer', [])
+        prompts = kwargs.get('prompts', [])
+        print(correct_answers)
         # Handle single answer/prompt case
         if isinstance(answers, str):
             answers = [answers]
         if isinstance(prompts, str):
             prompts = [prompts]
-            
-        # Ensure we have enough answers
-        if len(answers) < len(completions):
-            answers = answers * (len(completions) // len(answers) + 1)
-            answers = answers[:len(completions)]
             
         if not answers:
             self.logger.warning("No answers provided")
