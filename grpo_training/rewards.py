@@ -284,34 +284,42 @@ class BaseReward(ABC):
         """Calculate rewards for a batch of completions"""
         answers = kwargs.get('answer', [])
         prompts = kwargs.get('prompt', [])
-        if not answers or not prompts:
-            self.logger.warning("Missing answers or prompts")
+        
+        # Handle single answer/prompt case
+        if isinstance(answers, str):
+            answers = [answers]
+        if isinstance(prompts, str):
+            prompts = [prompts]
+            
+        # Ensure we have enough answers
+        if len(answers) < len(completions):
+            answers = answers * (len(completions) // len(answers) + 1)
+            answers = answers[:len(completions)]
+            
+        if not answers:
+            self.logger.warning("No answers provided")
             return [0.0] * len(completions)
-
+            
         self.logger.info(f"\n{'='*50}\nProcessing new batch of {len(completions)} completions")
         self.logger.info(f"Number of answers: {len(answers)}")
-        self.logger.info(f"Number of prompts: {len(prompts)}")
-
-        # Group completions by prompt
-        prompt_groups = {}
-        for i, (comp, prompt) in enumerate(zip(completions, prompts)):
-            if prompt not in prompt_groups:
-                answer_idx = i // len(prompts[0])
-                self.logger.info(f"\nCreating new group for prompt {len(prompt_groups)+1}")
-                self.logger.info(f"Using answer index: {answer_idx}")
-                self.logger.info(f"Answer: {answers[answer_idx]}")
-                prompt_groups[prompt] = {
+        
+        # Group completions by answer
+        completion_groups = {}
+        for i, (comp, ans) in enumerate(zip(completions, answers)):
+            if ans not in completion_groups:
+                self.logger.info(f"\nCreating new group for answer: {ans}")
+                completion_groups[ans] = {
                     'completions': [],
                     'indices': [],
-                    'answer': answers[answer_idx]
+                    'answer': ans
                 }
-            prompt_groups[prompt]['completions'].append(comp)
-            prompt_groups[prompt]['indices'].append(i)
+            completion_groups[ans]['completions'].append(comp)
+            completion_groups[ans]['indices'].append(i)
 
         # Calculate rewards for each group
         rewards = [0.0] * len(completions)
-        for group_idx, group in enumerate(prompt_groups.values()):
-            self.logger.info(f"\n{'='*30}\nProcessing group {group_idx+1}/{len(prompt_groups)}")
+        for group_idx, group in enumerate(completion_groups.values()):
+            self.logger.info(f"\n{'='*30}\nProcessing group {group_idx+1}/{len(completion_groups)}")
             batch_completions = group['completions']
             correct_answer = group['answer']
             
