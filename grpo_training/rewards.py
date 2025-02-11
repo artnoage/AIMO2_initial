@@ -420,12 +420,33 @@ class SolutionReward(BaseReward):
             reward -= length_penalty
             self.logger.info(f"Applied length penalty: -{length_penalty:.3f} (length: {len(completion)})")
             
-            # Update statistics
+            # Update detailed statistics
             if is_correct:
                 self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
+                self.stats.group_stats['correct_answers'] = self.stats.group_stats.get('correct_answers', 0) + 1
+            else:
+                self.stats.group_stats['incorrect_answers'] = self.stats.group_stats.get('incorrect_answers', 0) + 1
+                
             if is_valid:
                 self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
+                self.stats.group_stats['valid_solutions'] = self.stats.group_stats.get('valid_solutions', 0) + 1
+            else:
+                self.stats.group_stats['invalid_solutions'] = self.stats.group_stats.get('invalid_solutions', 0) + 1
+                
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
+            self.stats.group_stats['total_solutions'] = self.stats.group_stats.get('total_solutions', 0) + 1
+            
+            # Print statistics summary every 100 batches
+            if self.stats.total_batches % 100 == 0:
+                self.logger.info("\nSolution Statistics:")
+                self.logger.info(f"Total solutions: {self.stats.group_stats.get('total_solutions', 0)}")
+                self.logger.info(f"Correct answers: {self.stats.group_stats.get('correct_answers', 0)}")
+                self.logger.info(f"Incorrect answers: {self.stats.group_stats.get('incorrect_answers', 0)}")
+                self.logger.info(f"Valid solutions: {self.stats.group_stats.get('valid_solutions', 0)}")
+                self.logger.info(f"Invalid solutions: {self.stats.group_stats.get('invalid_solutions', 0)}")
+                self.logger.info(f"Average length: {self.stats.group_stats.get('total_length', 0) / max(1, self.stats.group_stats.get('total_solutions', 1)):.1f}")
+                self.logger.info(f"Total length penalty: {self.stats.reward_components.get('total_length_penalty', 0.0):.3f}")
             
             return reward
             
