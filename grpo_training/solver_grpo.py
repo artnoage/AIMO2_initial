@@ -115,7 +115,10 @@ def main():
         }
     )
     
-    # Initialize reward function
+    # Initialize reward function with default reward values
+    reward_config.base_reward = 2.0
+    reward_config.validation_reward = 0.2
+    reward_config.length_penalty_factor = 0.0001
     reward_func = SolutionReward(reward_config)
     
     # Load model
