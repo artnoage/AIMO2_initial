@@ -983,5 +983,5 @@ class TutorReward(BaseReward):
         for reward, idx in zip(results, reward_index):
             rewards[idx] = reward
             
-        self.stats.update(rewards, completion=completions[0] if completions else None)
+        self.stats.update(rewards, completions=completions)
         return rewards
