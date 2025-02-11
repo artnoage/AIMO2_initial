@@ -298,7 +298,9 @@ class BaseReward(ABC):
         async def process_batch():
             tasks = []
             for comp, prompt, ans in zip(completions, prompts, answers):
-                task = self.calculate_reward(comp, prompt=prompt, answer=ans, **kwargs)
+                task_kwargs = {'prompt': prompt, 'answer': ans}
+                task_kwargs.update(kwargs)
+                task = self.calculate_reward(comp, **task_kwargs)
                 tasks.append(task)
             return await asyncio.gather(*tasks)
             
