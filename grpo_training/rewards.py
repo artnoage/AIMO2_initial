@@ -553,6 +553,8 @@ class GroupReward(BaseReward):
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             reward = self.config.group_base_reward if is_correct else 0.0
+            if is_correct:
+                self.stats.reward_components['base_rewards'] += 1
             self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
             
             # Calculate similarity matrix for group
@@ -584,6 +586,7 @@ class GroupReward(BaseReward):
                 self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, In majority: {is_in_majority}")
                 if is_in_majority:
                     reward += majority_bonus
+                    self.stats.reward_components['majority_bonuses'] = self.stats.reward_components.get('majority_bonuses', 0) + 1
                     self.logger.info(f"Applied majority bonus: +{majority_bonus:.3f}")
                     
                 # Diversity bonus
@@ -597,6 +600,7 @@ class GroupReward(BaseReward):
                 if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
                     diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
                     reward += diversity_bonus
+                    self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + 1
                     self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
                 elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
                     diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
