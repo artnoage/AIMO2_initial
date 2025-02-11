@@ -962,11 +962,11 @@ class TutorReward(BaseReward):
         """Synchronous wrapper for async reward calculation"""
         return asyncio.run(self.calculate_reward_async(completion, **kwargs))
 
-    async def __call_async__(self, completions: List[str], prompts: List[str], problem: List[str], model_solution: List[str], correct_answer: List[str], **kwargs) -> List[float]:
+    async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
         """Process a batch of examples in parallel"""
         tasks = [
-            self.calculate_reward_async(comp, problem=prob, solution=sol, correct_answer=ans)
-            for comp, prob, sol, ans in zip(completions, problem, model_solution, correct_answer)
+            self.calculate_reward_async(comp, **kwargs)
+            for comp in completions
         ]
         rewards = await asyncio.gather(*tasks)
         self.stats.update(rewards, completion=completions[0] if completions else None)
