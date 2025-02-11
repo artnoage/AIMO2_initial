@@ -289,8 +289,11 @@ class BaseReward(ABC):
             **kwargs: Additional context
             
         Returns:
-            List[float]: Calculated rewards for each completion
+            List[float]: Calculated rewards for each completion, in same order as input completions
         """
+        # Create reward_index to track original order
+        reward_index = list(range(len(completions)))
+        
         if len(completions) != len(prompts) or len(completions) != len(answer):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answer)}")
             return [0.0] * len(completions)
@@ -299,16 +302,18 @@ class BaseReward(ABC):
         
         # Group completions by prompt for similarity checking
         prompt_groups = {}
-        for i, (comp, prompt, ans) in enumerate(zip(completions, prompts, answer)):
+        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answer, reward_index)):
             if prompt not in prompt_groups:
                 prompt_groups[prompt] = {
                     'completions': [],
                     'answers': [],
-                    'indices': []
+                    'indices': [],
+                    'reward_indices': []
                 }
             prompt_groups[prompt]['completions'].append(comp)
             prompt_groups[prompt]['answers'].append(ans)
             prompt_groups[prompt]['indices'].append(i)
+            prompt_groups[prompt]['reward_indices'].append(idx)
             
         # Calculate rewards for each completion
         rewards = [0.0] * len(completions)
@@ -317,14 +322,20 @@ class BaseReward(ABC):
             group_answers = group['answers']
             
             # Calculate rewards for this group
-            for i, (comp, ans, idx) in enumerate(zip(group_completions, group_answers, group['indices'])):
-                self.logger.info(f"\nProcessing completion {i+1}/{len(group_completions)} (global index {idx})")
+            for i, (comp, ans, idx, reward_idx) in enumerate(zip(
+                group_completions, 
+                group_answers, 
+                group['indices'],
+                group['reward_indices']
+            )):
+                self.logger.info(f"\nProcessing completion {i+1}/{len(group_completions)} (global index {idx}, reward index {reward_idx})")
                 group_context = {
                     'group_completions': group_completions,
                     'group_answers': group_answers,
-                    'group_index': i
+                    'group_index': i,
+                    'reward_index': reward_idx
                 }
-                rewards[idx] = self.calculate_reward(comp, answer=ans, **group_context)
+                rewards[reward_idx] = self.calculate_reward(comp, answer=ans, **group_context)
                 
         # Update statistics
         self.stats.update(rewards)
