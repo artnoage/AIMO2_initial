@@ -227,6 +227,8 @@ from abc import ABC, abstractmethod
 class BaseReward(ABC):
     """Base class for reward calculation"""
     
+    __name__ = "base_reward"
+    
     def __init__(self, config: RewardConfig):
         self.config = config
         self.stats = RewardStats(config)
@@ -311,6 +313,8 @@ class BaseReward(ABC):
 
 class SolutionReward(BaseReward):
     """Reward class for basic solution evaluation"""
+    
+    __name__ = "solution_reward"
     
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
@@ -415,6 +419,8 @@ class SolutionSimilarityChecker:
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
+    __name__ = "group_reward"
+    
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         # Initialize similarity checker
@@ -496,6 +502,8 @@ class GroupReward(BaseReward):
 
 class TutorReward(BaseReward):
     """Reward class for tutor response evaluation"""
+    
+    __name__ = "tutor_reward"
     
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
