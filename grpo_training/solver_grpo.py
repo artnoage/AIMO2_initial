@@ -57,14 +57,20 @@ class LoggingCallback(TrainerCallback):
                     group = rewards[i:i+8]
                     print(f"Group {i//8}: {[round(r, 3) for r in group]}")
                 
-                wandb.log({
+                # Calculate non-accumulative rewards for this round
+                current_rewards = {
                     'correctness_reward': logs['rewards/0'],
-                    'total_rewards': self.reward_func.stats.total_rewards,
-                    'avg_reward': self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches),
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0),
-                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0),
-                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
-                })
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                }
+                
+                # Store current values for next round
+                self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+                self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
+                self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
+                
+                wandb.log(current_rewards)
             wandb.log(logs)
             
             # Log detailed statistics periodically

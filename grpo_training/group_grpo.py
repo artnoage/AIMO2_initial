@@ -51,17 +51,25 @@ class LoggingCallback(TrainerCallback):
         if logs:
             # Add reward function specific metrics
             if 'rewards/0' in logs:
-                wandb.log({
+                # Calculate non-accumulative rewards for this round
+                current_rewards = {
                     'group_reward': logs['rewards/0'],
-                    'total_rewards': self.reward_func.stats.total_rewards,
-                    'avg_reward': self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches),
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0),
-                    'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0),
-                    'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0),
-                    'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0),
-                    'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0),
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0) - getattr(self, '_last_majority_bonuses', 0),
+                    'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0) - getattr(self, '_last_diversity_bonuses', 0),
+                    'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
+                    'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
                     'avg_similarity': self.reward_func.stats.group_stats.get('total_similarity', 0.0) / max(1, self.reward_func.stats.total_batches)
-                })
+                }
+                
+                # Store current values for next round
+                self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+                self._last_majority_bonuses = self.reward_func.stats.reward_components.get('majority_bonuses', 0)
+                self._last_diversity_bonuses = self.reward_func.stats.reward_components.get('diversity_bonuses', 0)
+                self._last_unique_solutions = self.reward_func.stats.group_stats.get('unique_solutions', 0)
+                self._last_similar_solutions = self.reward_func.stats.group_stats.get('similar_solutions', 0)
+                
+                wandb.log(current_rewards)
             wandb.log(logs)
 
 def main():

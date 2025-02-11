@@ -51,16 +51,24 @@ class LoggingCallback(TrainerCallback):
         if logs:
             # Add reward function specific metrics
             if 'rewards/0' in logs:
-                wandb.log({
+                # Calculate non-accumulative rewards for this round
+                current_rewards = {
                     'tutor_reward': logs['rewards/0'],
-                    'total_rewards': self.reward_func.stats.total_rewards,
-                    'avg_reward': self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches),
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0),
-                    'analysis_rewards': self.reward_func.stats.reward_components.get('analysis_rewards', 0),
-                    'substitution_rewards': self.reward_func.stats.reward_components.get('substitution_rewards', 0),
-                    'step_bonuses': self.reward_func.stats.reward_components.get('step_bonuses', 0),
-                    'step_penalties': self.reward_func.stats.reward_components.get('step_penalties', 0)
-                })
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'analysis_rewards': self.reward_func.stats.reward_components.get('analysis_rewards', 0) - getattr(self, '_last_analysis_rewards', 0),
+                    'substitution_rewards': self.reward_func.stats.reward_components.get('substitution_rewards', 0) - getattr(self, '_last_substitution_rewards', 0),
+                    'step_bonuses': self.reward_func.stats.reward_components.get('step_bonuses', 0) - getattr(self, '_last_step_bonuses', 0),
+                    'step_penalties': self.reward_func.stats.reward_components.get('step_penalties', 0) - getattr(self, '_last_step_penalties', 0)
+                }
+                
+                # Store current values for next round
+                self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+                self._last_analysis_rewards = self.reward_func.stats.reward_components.get('analysis_rewards', 0)
+                self._last_substitution_rewards = self.reward_func.stats.reward_components.get('substitution_rewards', 0)
+                self._last_step_bonuses = self.reward_func.stats.reward_components.get('step_bonuses', 0)
+                self._last_step_penalties = self.reward_func.stats.reward_components.get('step_penalties', 0)
+                
+                wandb.log(current_rewards)
             wandb.log(logs)
 
 def main():
