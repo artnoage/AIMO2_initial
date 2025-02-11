@@ -294,15 +294,19 @@ class BaseReward(ABC):
         # Create reward_index to track original order
         reward_index = list(range(len(completions)))
         
-        if len(completions) != len(prompts) or len(completions) != len(answer):
-            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answer)}")
+        # Get prompts and answers from kwargs
+        prompts = kwargs.get('prompts', [])
+        answers = kwargs.get('answer', [])
+        
+        if len(completions) != len(prompts) or len(completions) != len(answers):
+            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             return [0.0] * len(completions)
             
         self.logger.info(f"\n{'='*50}\nProcessing batch of {len(completions)} completions")
         
         # Group completions by prompt for similarity checking
         prompt_groups = {}
-        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answer, reward_index)):
+        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answers, reward_index)):
             if prompt not in prompt_groups:
                 prompt_groups[prompt] = {
                     'completions': [],
@@ -375,8 +379,14 @@ class SolutionReward(BaseReward):
             reward_index = list(range(len(completions)))
             rewards = [0.0] * len(completions)
             
+            # Get answers from kwargs
+            answers = kwargs.get('answer', [])
+            if not answers:
+                self.logger.warning("No answers provided")
+                return [0.0] * len(completions)
+                
             # Calculate rewards for each completion-answer pair
-            for i, (completion, ans, idx) in enumerate(zip(completions, answer, reward_index)):
+            for i, (completion, ans, idx) in enumerate(zip(completions, answers, reward_index)):
                 print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
                 print(f"Completion (first 100 chars): {completion[:100]}...")
                 
@@ -393,7 +403,7 @@ class SolutionReward(BaseReward):
                 print(f"Model numeric value: {model_numeric}")
                 print(f"Debug info: {debug_info}")
                 
-                correct_answer = answer  # Use pre-extracted answer
+                correct_answer = ans  # Use answer from current iteration
                 
             print(f"Selected correct_answer: {correct_answer}")
             if not correct_answer:
