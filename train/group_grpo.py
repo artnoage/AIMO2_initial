@@ -252,14 +252,11 @@ def main():
         def on_log(self, args, state, control, logs=None, **kwargs):
             logger.info(f"\nValidation Statistics:\n{self.stats.get_summary()}")
             self.step += 1
-            
-            # Save statistics periodically
-            if self.step % self.save_frequency == 0:
-                self.stats.save_statistics(self.output_dir)
+            # No need for periodic saves since batch_statistics are saved immediately
                 
         def on_train_end(self, args, state, control, **kwargs):
-            # Save final statistics
-            self.stats.save_statistics(self.output_dir)
+            # No need for final save since batch_statistics are saved immediately
+            pass
     
     class RewardFunction:
         def __init__(self, similarity_checker, stats):
