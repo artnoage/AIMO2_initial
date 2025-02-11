@@ -32,10 +32,11 @@ class GroupValidationStats:
         self.output_dir = output_dir
     
     def update(self, rewards: List[float], similarities: Optional[torch.Tensor] = None, 
-               correct_counts: Optional[Dict] = None):
+               correct_counts: Optional[Dict] = None, group_id: Optional[str] = None):
         """Store statistics for current batch"""
         batch_stats = {
             'batch_id': self.total_batches,
+            'group_id': group_id,  # Track which group these stats belong to
             'timestamp': datetime.now().isoformat(),
             'rewards': rewards,
             'reward_distribution': {},
@@ -79,34 +80,55 @@ class GroupValidationStats:
             json.dump(batch_stats, f, indent=2)
 
     def get_summary(self) -> str:
-        elapsed = datetime.now() - self.start_time
-        total_samples = sum(self.reward_distribution.values())
-        if total_samples == 0:
-            return "No samples processed yet"
+        """Get a summary of recent batches"""
+        from pathlib import Path
+        import json
+        
+        # Load last few batch files
+        stats_dir = Path(self.output_dir) / "batch_statistics"
+        if not stats_dir.exists():
+            return "No statistics available yet"
             
-        sorted_rewards = sorted(self.reward_distribution.items())
-        reward_dist_str = "\n".join(
-            f"  {reward:.6f}: {count} samples" 
-            for reward, count in sorted_rewards
-        )
+        # Get last 5 batch files
+        batch_files = sorted(stats_dir.glob("batch_*.json"))[-5:]
+        if not batch_files:
+            return "No batch files found"
+            
+        # Aggregate recent statistics
+        recent_stats = {
+            'rewards': [],
+            'groups': set(),
+            'correct_count': 0,
+            'total_count': 0,
+            'unique_solutions': 0,
+            'similar_solutions': 0
+        }
+        
+        for file in batch_files:
+            with open(file) as f:
+                stats = json.load(f)
+                recent_stats['rewards'].extend(stats['rewards'])
+                if stats.get('group_id'):
+                    recent_stats['groups'].add(stats['group_id'])
+                if stats.get('correctness_stats'):
+                    recent_stats['correct_count'] += stats['correctness_stats'].get('correct', 0)
+                    recent_stats['total_count'] += sum(stats['correctness_stats'].values())
+                if stats.get('similarity_stats'):
+                    recent_stats['unique_solutions'] += stats['similarity_stats'].get('unique_solutions', 0)
+                    recent_stats['similar_solutions'] += stats['similarity_stats'].get('similar_solutions', 0)
+        
+        avg_reward = sum(recent_stats['rewards']) / len(recent_stats['rewards']) if recent_stats['rewards'] else 0
+        accuracy = (recent_stats['correct_count'] / recent_stats['total_count'] * 100) if recent_stats['total_count'] else 0
         
         return (
-            f"Training time: {elapsed}\n"
-            f"Processed {self.total_batches} batches\n"
-            f"Average reward: {self.total_rewards/total_samples:.6f}\n"
-            f"\nReward Distribution:\n{reward_dist_str}\n"
-            f"\nSimilarity Statistics:\n"
-            f"  Average similarity: {self.similarity_stats['avg_similarity']:.4f}\n"
-            f"  Unique solutions: {self.similarity_stats['unique_solutions']}\n"
-            f"  Similar solutions: {self.similarity_stats['similar_solutions']}\n"
-            f"\nMajority Statistics:\n"
-            f"  Majority agreement: {self.majority_stats['majority_agreement']}\n"
-            f"  Split decisions: {self.majority_stats['split_decisions']}\n"
-            f"  No consensus: {self.majority_stats['no_consensus']}\n"
-            f"\nCorrectness Statistics:\n"
-            f"  Correct answers: {self.correctness_stats['correct_answers']}\n"
-            f"  Incorrect answers: {self.correctness_stats['incorrect_answers']}\n"
-            f"  Parse errors: {self.correctness_stats['parse_errors']}"
+            f"Recent Statistics (last 5 batches):\n"
+            f"Training time: {datetime.now() - self.start_time}\n"
+            f"Total batches: {self.total_batches}\n"
+            f"Unique groups: {len(recent_stats['groups'])}\n"
+            f"Average reward: {avg_reward:.4f}\n"
+            f"Accuracy: {accuracy:.1f}%\n"
+            f"Unique solutions: {recent_stats['unique_solutions']}\n"
+            f"Similar solutions: {recent_stats['similar_solutions']}\n"
         )
 
 
@@ -300,11 +322,13 @@ def main():
                     
                     all_rewards[idx] = reward
                 
-                # Update statistics
+                # Update statistics with group identifier
+                group_id = hash(str(group['answer']) + str(group_completions[0][:100]))  # Create unique group ID
                 self.stats.update(
                     [all_rewards[idx] for entry in group['entries']], 
                     similarity_matrix,
-                    correct_stats
+                    correct_stats,
+                    group_id=str(group_id)
                 )
             
             return all_rewards
