@@ -53,6 +53,13 @@ class LoggingCallback(TrainerCallback):
         if logs:
             # Add reward function specific metrics
             if 'rewards/0' in logs:
+                # Print rewards grouped by 8 for better visualization
+                rewards = logs['rewards/0']
+                print("\nAll rewards (grouped by 8):")
+                for i in range(0, len(rewards), 8):
+                    group = rewards[i:i+8]
+                    print(f"Group {i//8}: {[round(r, 3) for r in group]}")
+                
                 wandb.log({
                     'correctness_reward': logs['rewards/0'],
                     'total_rewards': self.reward_func.stats.total_rewards,
@@ -62,12 +69,32 @@ class LoggingCallback(TrainerCallback):
                     'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
                 })
             wandb.log(logs)
+            
+            # Log detailed statistics periodically
+            if self.step % self.save_frequency == 0:
+                logger.info(f"\nDetailed Statistics at step {self.step}:")
+                logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
+                logger.info(f"Average reward: {self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches):.4f}")
+                logger.info(f"Base rewards given: {self.reward_func.stats.reward_components.get('base_rewards', 0)}")
+                logger.info(f"Validation rewards given: {self.reward_func.stats.reward_components.get('validation_rewards', 0)}")
+                logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
 
 def main():
     # Configuration
     model_type = "solver"
     model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
     dataset_name = "Metaskepsis/Numina_medium"
+    
+    # Check if model_type is in paths
+    if model_type not in model_name:
+        print("\n" + "!"*80)
+        print(f"WARNING: model_type '{model_type}' not found in model_name path!")
+        print("!"*80 + "\n")
+
+    if model_type not in dataset_name:
+        print("\n" + "!"*80)
+        print(f"WARNING: model_type '{model_type}' not found in dataset_name path!")
+        print("!"*80 + "\n")
     
     # Setup
     logger = setup_logging(model_type)
@@ -147,6 +174,14 @@ def main():
         formatting_func,
         desc="Applying chat template"
     )
+    
+    # Print first entry tokenization
+    first_entry = formatted_dataset[0]
+    print("\nFirst entry tokenization:")
+    print("Original:", first_entry['prompt'])
+    tokenized = tokenizer(first_entry['prompt'])
+    print("Tokenized:", tokenized)
+    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
     
     # Training arguments
     training_args = GRPOConfig(
