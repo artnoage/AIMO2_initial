@@ -12,6 +12,7 @@ from typing import List, Dict, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
 from .config import GRPOConfig
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
+from utils.agents import CompletionAgent
 
 @dataclass 
 class RewardConfig:
