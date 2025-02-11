@@ -324,7 +324,8 @@ class BaseReward(ABC):
         for group_idx, group in enumerate(completion_groups.values()):
             self.logger.info(f"\n{'='*30}\nProcessing group {group_idx+1}/{len(completion_groups)}")
             batch_completions = group['completions']
-            correct_answer = group['answer']
+            correct_answer = group.get('correct_answer') or group.get('answer')
+            print(f"Group correct_answer: {correct_answer}")
             
             # Process each completion in the group
             for i, comp_idx in enumerate(group['indices']):
