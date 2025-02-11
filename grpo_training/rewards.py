@@ -383,30 +383,62 @@ class SolutionReward(BaseReward):
         try:
             reward = 0.0
             
+            print("\n=== Starting reward calculation ===")
+            print(f"Completion (first 100 chars): {completion[:100]}...")
+            
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
                 self.logger.debug("No boxed answer found")
+                print("No boxed answer found - returning 0.0")
                 return 0.0
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
+            print(f"Model numeric value: {model_numeric}")
+            print(f"Debug info: {debug_info}")
+            
             correct_answer = kwargs.get('correct_answer') or kwargs.get('answer')
+            print(f"Raw correct_answer: {correct_answer}")
             if not correct_answer:
                 self.logger.warning("No correct answer or answer provided")
+                print("No correct answer found - returning 0.0")
                 return 0.0
             
-            # Ensure correct_answer is a string, not a list
+            # Handle different input formats
+            print(f"Correct answer type: {type(correct_answer)}")
             if isinstance(correct_answer, (list, tuple)):
+                if not correct_answer:  # Empty list/tuple
+                    self.logger.warning("Empty correct answer list")
+                    print("Empty correct answer list - returning 0.0")
+                    return 0.0
                 correct_answer = correct_answer[0]
-                
+                print(f"Using first element from list: {correct_answer}")
+            elif isinstance(correct_answer, dict):
+                correct_answer = str(correct_answer.get('answer', ''))
+                print(f"Extracted answer from dict: {correct_answer}")
+            
+            # Convert to string if needed
+            correct_answer = str(correct_answer)
+            print(f"Final correct answer string: {correct_answer}")
+            
             self.logger.info(f"Processing answer extraction:")
             self.logger.info(f"Model answer: {model_answer}")
             self.logger.info(f"Correct answer: {correct_answer}")
             
             correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
+            print(f"Extracted correct numeric: {correct_numeric}")
+            print(f"Correct debug info: {correct_debug}")
+            
             self.logger.info(f"Model numeric: {model_numeric} ({debug_info})")
             self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
+            
+            if model_numeric is None:
+                print("Model numeric is None - returning 0.0")
+                return 0.0
+            if correct_numeric is None:
+                print("Correct numeric is None - returning 0.0") 
+                return 0.0
             
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
