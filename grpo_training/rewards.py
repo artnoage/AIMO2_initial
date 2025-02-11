@@ -715,7 +715,7 @@ class TutorReward(BaseReward):
         is_valid = successful_wrong == 0 and successful_fixed > 0
         return is_valid, improvement_bonus
 
-    async def calculate_reward_async(self, tutor_response: str, **kwargs) -> float:
+    async def calculate_reward(self, tutor_response: str, **kwargs) -> float:
         """Calculate reward for a tutor's evaluation of a solution"""
         # First verify if model solution is correct
         model_solution = kwargs.get('solution', '')
@@ -900,7 +900,7 @@ class TutorReward(BaseReward):
             }
             # Add reward_index first
             comp_kwargs = {'reward_index': idx, **comp_kwargs}
-            tasks.append(self.calculate_reward_async(comp, **comp_kwargs))
+            tasks.append(self.calculate_reward(comp, **comp_kwargs))
         results = await asyncio.gather(*tasks)
         
         # Place rewards in correct order using reward_index
