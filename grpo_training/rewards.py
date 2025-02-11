@@ -554,28 +554,15 @@ class GroupReward(BaseReward):
             if not answers:
                 self.logger.warning("No answers provided")
                 return [0.0] * len(completions)
-            
+                
             # Calculate rewards for each completion-answer pair
             for i, (completion, ans, idx) in enumerate(zip(completions, answers, reward_index)):
-                    
-                # Extract and validate the answer
-                model_answer = extract_answer_from_solution(completion)
-                if model_answer is None:
-                    self.logger.debug("No boxed answer found")
-                    print("No boxed answer found - returning 0.0")
-                    rewards[idx] = 0.0
-                    continue
-                    
-                # Convert to numeric values
-                model_numeric, debug_info = extract_numeric_answer(model_answer)
-                print(f"Model numeric value: {model_numeric}")
-                print(f"Debug info: {debug_info}")
+                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
+                print(f"Completion (first 100 chars): {completion[:100]}...")
                 
-                correct_numeric, correct_debug = extract_numeric_answer(ans)
-                if model_numeric is None or correct_numeric is None:
-                    print("Could not extract numeric values - returning 0.0")
-                    rewards[idx] = 0.0
-                    continue
+                # Calculate reward for this completion
+                reward = self.calculate_reward(completion, answer=ans)
+                rewards[idx] = reward
                 
                 # Get current prompt group's completions
                 current_prompt = kwargs.get('prompts', [])[i]
