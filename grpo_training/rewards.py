@@ -395,8 +395,18 @@ class SolutionReward(BaseReward):
             if not correct_answer:
                 self.logger.warning("No correct answer or answer provided")
                 return 0.0
+            
+            # Ensure correct_answer is a string, not a list
+            if isinstance(correct_answer, (list, tuple)):
+                correct_answer = correct_answer[0]
                 
-            correct_numeric, _ = extract_numeric_answer(correct_answer)
+            self.logger.info(f"Processing answer extraction:")
+            self.logger.info(f"Model answer: {model_answer}")
+            self.logger.info(f"Correct answer: {correct_answer}")
+            
+            correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
+            self.logger.info(f"Model numeric: {model_numeric} ({debug_info})")
+            self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
             
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug(f"Could not extract numeric values - Model: {model_answer}, Correct: {correct_answer}")
