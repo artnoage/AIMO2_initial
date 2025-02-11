@@ -78,15 +78,17 @@ def main():
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check if model exists locally
-    model_path = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
-    if not os.path.exists(model_path):
-        logger.error(f"Model not found at {model_path}")
-        sys.exit(1)
-    model_name = model_path
-            
-    # Use dataset name from file
-    dataset_name = locals().get('dataset_name', "Metaskepsis/Numina_medium")
+    # Check if model exists locally or in HF
+    if os.path.exists(model_path):
+        model_name = model_path
+    else:
+        try:
+            from huggingface_hub import model_info
+            model_info(model_path)
+            model_name = model_path
+        except Exception as e:
+            logger.error(f"Model not found locally or in HuggingFace: {model_path}")
+            sys.exit(1)
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
