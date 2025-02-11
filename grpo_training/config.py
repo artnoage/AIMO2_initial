@@ -7,8 +7,6 @@ class GRPOConfig:
     
     # Model settings
     model_type: str
-    model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
-    dataset_name: str = "Metaskepsis/Numina_medium"
     completion_model_name: str = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
     
     # Model size settings

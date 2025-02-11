@@ -67,8 +67,13 @@ class LoggingCallback(TrainerCallback):
             wandb.log(logs)
 
 def main():
+    # Configuration
+    model_type = "group"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    dataset_name = "Metaskepsis/Numina_medium"
+    
     # Initialize config
-    reward_config = RewardConfig(model_type="group")
+    reward_config = RewardConfig(model_type=model_type)
     
     # Setup
     logger = setup_logging(reward_config.model_type)

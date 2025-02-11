@@ -81,8 +81,13 @@ class LoggingCallback(TrainerCallback):
                 self.logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
 
 def main():
+    # Configuration
+    model_type = "solver"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
+    dataset_name = "Metaskepsis/Numina_medium"
+    
     # Initialize config
-    reward_config = RewardConfig(model_type="solver")
+    reward_config = RewardConfig(model_type=model_type)
     
     # Setup
     logger = setup_logging(reward_config.model_type)
