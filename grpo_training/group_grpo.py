@@ -197,11 +197,24 @@ def main():
         output_dir=output_dir,
     )
     
-    # Initialize trainer
+    # Initialize trainer with group context
+    def group_reward_wrapper(completions, **kwargs):
+        # Create group context for each batch
+        group = {
+            'completions': completions,
+            'correct_answer': kwargs.get('answer', None),
+            'index': 0  # Will be updated for each completion
+        }
+        rewards = []
+        for i in range(len(completions)):
+            group['index'] = i
+            rewards.append(reward_func.calculate_reward(completions[i], group=group))
+        return rewards
+
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[reward_func],
+        reward_funcs=[group_reward_wrapper],
         args=training_args,
         train_dataset=formatted_dataset,
         callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=100)]
