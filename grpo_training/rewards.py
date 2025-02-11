@@ -342,12 +342,20 @@ class BaseReward(ABC):
             return await asyncio.gather(*tasks)
             
         # Run async code in event loop
+        # Get or create event loop for async processing
         try:
             loop = asyncio.get_event_loop()
+            self.logger.debug("Using existing event loop")
         except RuntimeError:
+            self.logger.debug("No event loop found - creating new one")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        rewards = loop.run_until_complete(process_batch())
+            
+        try:
+            rewards = loop.run_until_complete(process_batch())
+        except Exception as e:
+            self.logger.error(f"Error during batch processing: {str(e)}")
+            rewards = [0.0] * len(completions)
         
         self.stats.update(rewards, completions=completions)
         return rewards
