@@ -355,7 +355,7 @@ class BaseReward(ABC):
         # Calculate batch statistics
         batch_stats = {
             'total': len(completions),
-            'correct': sum(1 for r in rewards if r >= self.config.base_reward),
+            'correct': sum(1 for r in rewards if r >= (self.config.group_base_reward if hasattr(self.config, 'group_base_reward') else self.config.solution_base_reward)),
             'valid': sum(1 for c in completions if validate_solution(c)[0]),
             'avg_length': sum(len(c) for c in completions) / len(completions),
             'avg_reward': sum(rewards) / len(rewards)
@@ -376,7 +376,7 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     
-    def __init__(self, config: GRPOConfig):
+    def __init__(self, config: RewardConfig):
         super().__init__(config)
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
