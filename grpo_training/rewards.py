@@ -571,8 +571,6 @@ class GroupReward(BaseReward):
             
             # Calculate rewards for each completion-answer pair
             for i, (completion, ans, idx) in enumerate(zip(completions, answers, reward_index)):
-                print(f"\n=== Processing completion {i+1}/{len(completions)} ===")
-                print(f"Completion (first 100 chars): {completion[:100]}...")
                     
                 # Extract and validate the answer
                 model_answer = extract_answer_from_solution(completion)
