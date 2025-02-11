@@ -210,35 +210,10 @@ def main():
         output_dir=output_dir,
     )
     
-    # Initialize trainer with group context
-    def group_reward_wrapper(completions, **kwargs):
-        answers = kwargs.get('answer', [])
-        if not answers:
-            return [0.0] * len(completions)
-            
-        rewards = []
-        for i, completion in enumerate(completions):
-            batch_idx = i // training_args.num_generations
-            if batch_idx >= len(answers):
-                rewards.append(0.0)
-                continue
-                
-            batch_start = batch_idx * training_args.num_generations
-            group = {
-                'completions': completions[batch_start:batch_start + training_args.num_generations],
-                'correct_answer': answers[batch_idx],
-                'index': i % training_args.num_generations
-            }
-            reward = reward_func.calculate_reward(completion, group=group)
-            rewards.append(reward)
-            reward_func.stats.update(rewards=[reward])
-                
-        return rewards
-
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[group_reward_wrapper],
+        reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
         callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=100)]

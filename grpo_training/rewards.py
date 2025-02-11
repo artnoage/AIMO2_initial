@@ -436,23 +436,31 @@ class GroupReward(BaseReward):
         """Async version of calculate_reward"""
         return self.calculate_reward(completion, **kwargs)
         
-    def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion within its group context"""
-        group = kwargs.get('group', {})
-        if not group:
-            self.logger.warning("No group context provided")
-            return 0.0
-            
-        # Extract group information
-        completions = group.get('completions', [])
-        correct_answer = group.get('correct_answer')
-        group_index = group.get('index', 0)
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
+        """Calculate rewards for a batch of completions"""
+        answers = kwargs.get('answer', [])
+        if not answers:
+            return [0.0] * len(completions)
+
+        rewards = []
+        for i, completion in enumerate(completions):
+            batch_idx = i // 12  # Using fixed batch size of 12
+            if batch_idx >= len(answers):
+                rewards.append(0.0)
+                continue
+
+            # Get batch info
+            batch_start = batch_idx * 12
+            batch_completions = completions[batch_start:batch_start + 12]
+            correct_answer = answers[batch_idx]
+            group_index = i % 12
         
-        if not completions or not correct_answer:
-            return 0.0
-            
-        self.logger.info(f"Processing completion {group_index+1}/{len(completions)}")
-        self.logger.info(f"Correct answer: {correct_answer}")
+            if not batch_completions or not correct_answer:
+                rewards.append(0.0)
+                continue
+
+            self.logger.info(f"Processing completion {group_index+1}/12")
+            self.logger.info(f"Correct answer: {correct_answer}")
             
         # Calculate correctness for all completions
         results = []
