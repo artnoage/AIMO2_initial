@@ -30,6 +30,55 @@ class RewardStats:
         self.reward_distribution = {}
         self.start_time = datetime.now()
         
+        # Track section-level stats
+        self.section_stats = {
+            'missing_analysis': 0,
+            'missing_verdict': 0,
+            'missing_substitution': 0,
+            'invalid_step_number': 0,
+            'polar_verdict_with_substitution': 0,
+            'step_verdict_without_substitution': 0,
+            'multiple_steps_in_substitution': 0
+        }
+        
+        # Track reward components
+        self.reward_components = {
+            'base_rewards': 0,
+            'analysis_rewards': 0,
+            'substitution_rewards': 0,
+            'step_bonuses': 0,
+            'step_penalties': 0,
+            'total_analysis_length_penalty': 0.0,
+            'total_substitution_length_penalty': 0.0,
+            'redundant_substitution_penalties': 0,
+            'wrong_boxed_answer_penalties': 0,
+            'improvement_bonuses': {
+                '0.1': 0,  # 10-40% completions
+                '0.2': 0,  # 40-70% completions
+                '0.3': 0,  # >70% completions
+                'total': 0  # Total count of improvement bonuses
+            }
+        }
+        
+        # Track group-specific stats
+        self.group_stats = {
+            'majority_bonuses': 0,
+            'diversity_bonuses': 0,
+            'unique_solutions': 0,
+            'similar_solutions': 0,
+            'correct_answers': 0,
+            'incorrect_answers': 0,
+            'total_similarity': 0.0
+        }
+        
+        # Track full reward reasons
+        self.full_reward_reasons = {
+            'correct_answer': 0,
+            'wrong_approach': 0,
+            'step_correction': 0,
+            'final_step_correct': 0
+        }
+        
     def update(self, rewards: List[float], **kwargs):
         """Update statistics with new rewards"""
         self.total_batches += 1
@@ -37,6 +86,25 @@ class RewardStats:
             self.total_rewards += r
             r_rounded = round(r, 6)
             self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+            
+        # Update section stats if provided
+        completion = kwargs.get('completion')
+        if completion:
+            if 'analysis' not in completion.lower():
+                self.section_stats['missing_analysis'] += 1
+            if 'verdict' not in completion.lower():
+                self.section_stats['missing_verdict'] += 1
+            if 'substitution' not in completion.lower():
+                self.section_stats['missing_substitution'] += 1
+                
+        # Update group stats if provided
+        similarity = kwargs.get('similarity')
+        if similarity is not None:
+            self.group_stats['total_similarity'] += float(similarity)
+            if similarity < 0.7:
+                self.group_stats['unique_solutions'] += 1
+            elif similarity > 0.9:
+                self.group_stats['similar_solutions'] += 1
             
     def save_statistics(self, output_dir: str):
         """Save current statistics to JSON"""
@@ -63,11 +131,47 @@ class RewardStats:
         elapsed = datetime.now() - self.start_time
         avg_reward = self.total_rewards / total_samples if total_samples > 0 else 0
         
+        # Sort rewards for better readability
+        sorted_rewards = sorted(self.reward_distribution.items())
+        reward_dist_str = "\n".join(
+            f"  {reward:.6f}: {count} samples" 
+            for reward, count in sorted_rewards
+        )
+        
         return (
             f"Training time: {elapsed}\n"
             f"Processed {self.total_batches} batches\n"
             f"Average reward: {avg_reward:.6f}\n"
-            f"Total samples: {total_samples}"
+            f"Total samples: {total_samples}\n"
+            f"\nReward Distribution:\n{reward_dist_str}\n"
+            f"\nSection Issues:\n"
+            f"  Missing analysis: {self.section_stats['missing_analysis']}\n"
+            f"  Missing verdict: {self.section_stats['missing_verdict']}\n"
+            f"  Step verdict without substitution: {self.section_stats['step_verdict_without_substitution']}\n"
+            f"  Polar verdict with substitution: {self.section_stats['polar_verdict_with_substitution']}\n"
+            f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
+            f"\nReward Components:\n"
+            f"  Base rewards: {self.reward_components['base_rewards']}\n"
+            f"  Analysis rewards: {self.reward_components['analysis_rewards']}\n"
+            f"  Substitution rewards: {self.reward_components['substitution_rewards']}\n"
+            f"  Step bonuses: {self.reward_components['step_bonuses']}\n"
+            f"  Step penalties: {self.reward_components['step_penalties']}\n"
+            f"\nPenalties:\n"
+            f"  Analysis length: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
+            f"  Substitution length: {self.reward_components['total_substitution_length_penalty']:.6f}\n"
+            f"  Wrong boxed answers: {self.reward_components['wrong_boxed_answer_penalties']}\n"
+            f"  Redundant substitutions: {self.reward_components['redundant_substitution_penalties']}\n"
+            f"\nGroup Statistics:\n"
+            f"  Majority bonuses: {self.group_stats['majority_bonuses']}\n"
+            f"  Diversity bonuses: {self.group_stats['diversity_bonuses']}\n"
+            f"  Unique solutions: {self.group_stats['unique_solutions']}\n"
+            f"  Similar solutions: {self.group_stats['similar_solutions']}\n"
+            f"  Average similarity: {self.group_stats['total_similarity']/total_samples if total_samples else 0:.3f}\n"
+            f"\nFull Reward Reasons:\n"
+            f"  Correct answer: {self.full_reward_reasons['correct_answer']}\n"
+            f"  Wrong approach: {self.full_reward_reasons['wrong_approach']}\n"
+            f"  Step correction: {self.full_reward_reasons['step_correction']}\n"
+            f"  Final step correct: {self.full_reward_reasons['final_step_correct']}"
         )
 
 class BaseReward:
