@@ -349,7 +349,26 @@ class BaseReward(ABC):
             self.logger.error(f"Error during batch processing: {str(e)}")
             rewards = [0.0] * len(completions)
         
+        # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
+        
+        # Calculate batch statistics
+        batch_stats = {
+            'total': len(completions),
+            'correct': sum(1 for r in rewards if r >= self.config.base_reward),
+            'valid': sum(1 for c in completions if validate_solution(c)[0]),
+            'avg_length': sum(len(c) for c in completions) / len(completions),
+            'avg_reward': sum(rewards) / len(rewards)
+        }
+        
+        # Print batch summary
+        self.logger.info("\nBatch Statistics:")
+        self.logger.info(f"Total completions: {batch_stats['total']}")
+        self.logger.info(f"Correct answers: {batch_stats['correct']} ({batch_stats['correct']/batch_stats['total']*100:.1f}%)")
+        self.logger.info(f"Valid solutions: {batch_stats['valid']} ({batch_stats['valid']/batch_stats['total']*100:.1f}%)")
+        self.logger.info(f"Average length: {batch_stats['avg_length']:.1f}")
+        self.logger.info(f"Average reward: {batch_stats['avg_reward']:.3f}\n")
+        
         return rewards
 
 class SolutionReward(BaseReward):
