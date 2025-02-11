@@ -16,6 +16,8 @@ from .config import GRPOConfig
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 from utils.agents import CompletionAgent
 
+from typing import Dict, List, Optional, Union, Any
+
 @dataclass 
 class RewardConfig:
     """Base configuration for reward calculation"""
@@ -23,6 +25,8 @@ class RewardConfig:
     numeric_tolerance: float = 1e-6
     logging_dir: str = "logs"
     stats_dir: str = "statistics"
+    max_retries: int = 3
+    timeout: int = 300
     
     # Common reward components
     base_reward: float = 2.0
@@ -132,21 +136,40 @@ class RewardStats:
             elif similarity > 0.9:
                 self.group_stats['similar_solutions'] += 1
             
-    def save_statistics(self, output_dir: str):
-        """Save current statistics to JSON"""
-        stats_dir = Path(output_dir) / self.config.stats_dir
-        stats_dir.mkdir(exist_ok=True)
+    def save_statistics(self, output_dir: str) -> None:
+        """Save current statistics to JSON
         
-        stats = {
-            'total_batches': self.total_batches,
-            'total_rewards': self.total_rewards,
-            'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
-            'training_duration': str(datetime.now() - self.start_time)
-        }
-        
-        stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(stats_file, 'w') as f:
-            json.dump(stats, f, indent=2)
+        Args:
+            output_dir: Directory to save statistics files
+            
+        The statistics are saved with timestamps and include:
+        - Total number of batches processed
+        - Total rewards accumulated
+        - Distribution of rewards
+        - Training duration
+        - Component-specific statistics
+        """
+        try:
+            stats_dir = Path(output_dir) / self.config.stats_dir
+            stats_dir.mkdir(exist_ok=True)
+            
+            stats = {
+                'total_batches': self.total_batches,
+                'total_rewards': self.total_rewards,
+                'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
+                'training_duration': str(datetime.now() - self.start_time),
+                'section_stats': self.section_stats,
+                'reward_components': self.reward_components,
+                'group_stats': self.group_stats,
+                'full_reward_reasons': self.full_reward_reasons
+            }
+            
+            stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(stats_file, 'w') as f:
+                json.dump(stats, f, indent=2)
+                
+        except Exception as e:
+            logging.error(f"Failed to save statistics: {str(e)}")
             
     def get_summary(self) -> str:
         """Get a human-readable summary of statistics"""
@@ -294,14 +317,31 @@ class SolutionReward(BaseReward):
         super().__init__(config)
         
     def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a single completion"""
-        reward = 0.0
+        """Calculate reward for a single completion
         
-        # Extract and validate the answer
-        model_answer = extract_answer_from_solution(completion)
-        if model_answer is None:
-            self.logger.debug("No boxed answer found")
-            return reward
+        Args:
+            completion: The model completion to evaluate
+            **kwargs: Additional context including:
+                - correct_answer: Expected answer string
+                - problem: Original problem text
+                - solution: Complete solution attempt
+                
+        Returns:
+            float: Calculated reward value
+            
+        The reward is calculated based on:
+        1. Correctness of the answer
+        2. Validity of the solution
+        3. Length penalties
+        """
+        try:
+            reward = 0.0
+            
+            # Extract and validate the answer
+            model_answer = extract_answer_from_solution(completion)
+            if model_answer is None:
+                self.logger.debug("No boxed answer found")
+                return reward
             
         # Convert to numeric values
         model_numeric, debug_info = extract_numeric_answer(model_answer)
