@@ -267,9 +267,29 @@ def main():
             self.step = 0
             
         def on_log(self, args, state, control, logs=None, **kwargs):
+            # Log to local file
             logger.info(f"\nValidation Statistics:\n{self.stats.get_summary()}")
             self.step += 1
-            # No need for periodic saves since batch_statistics are saved immediately
+            
+            # Log to wandb
+            if logs:
+                wandb.log(logs)
+                
+            # Also log our custom statistics to wandb
+            stats_dir = Path(self.output_dir) / "statistics"
+            stats_file = stats_dir / "training_stats.json"
+            if stats_file.exists():
+                with open(stats_file) as f:
+                    all_stats = json.load(f)
+                    if all_stats['batches']:
+                        last_batch = all_stats['batches'][-1]
+                        wandb.log({
+                            "avg_reward": sum(last_batch['rewards']) / len(last_batch['rewards']),
+                            "correct_answers": last_batch['correctness_stats'].get('correct', 0),
+                            "incorrect_answers": last_batch['correctness_stats'].get('incorrect', 0),
+                            "unique_solutions": last_batch['similarity_stats'].get('unique_solutions', 0),
+                            "similar_solutions": last_batch['similarity_stats'].get('similar_solutions', 0)
+                        })
                 
         def on_train_end(self, args, state, control, **kwargs):
             # No need for final save since batch_statistics are saved immediately
@@ -481,8 +501,23 @@ def main():
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
-        report_to="none",
+        report_to="wandb",
         output_dir=output_dir,
+    )
+    
+    # Initialize wandb
+    import wandb
+    wandb.init(
+        project="group_grpo",
+        name=f"group_grpo_{timestamp}",
+        config={
+            "learning_rate": training_args.learning_rate,
+            "batch_size": training_args.per_device_train_batch_size,
+            "num_generations": training_args.num_generations,
+            "base_reward": 3.0,
+            "diversity_bonus": 0.3,
+            "majority_bonus": 0.2
+        }
     )
     
     # Initialize trainer with the reward function
@@ -505,6 +540,9 @@ def main():
     model_output_dir = os.path.join(models_dir, "group_grpo", timestamp)
     model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
     logger.info(f"Merged model saved to {model_output_dir}")
+    
+    # Close wandb run
+    wandb.finish()
 
     
 if __name__ == "__main__":
