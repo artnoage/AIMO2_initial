@@ -214,34 +214,37 @@ def main():
     def group_reward_wrapper(completions, **kwargs):
         # Get answers list from kwargs
         answers = kwargs.get('answer', [])
-        if not answers or len(answers) != len(completions):
-            logger.error(f"Invalid answers list. Got {len(answers) if answers else 0} answers for {len(completions)} completions")
+        if not answers:
+            logger.error("No answers provided")
             return [0.0] * len(completions)
             
-        # Process each batch of completions with its corresponding answer
+        # Process each completion with its corresponding answer
         rewards = []
-        for batch_start in range(0, len(completions), training_args.num_generations):
+        for i, completion in enumerate(completions):
+            # Get the answer for this batch
+            batch_idx = i // training_args.num_generations
+            if batch_idx >= len(answers):
+                logger.error(f"No answer for batch {batch_idx}")
+                rewards.append(0.0)
+                continue
+                
+            # Create group context for current batch
+            batch_start = (i // training_args.num_generations) * training_args.num_generations
             batch_end = batch_start + training_args.num_generations
             batch_completions = completions[batch_start:batch_end]
-            batch_answer = answers[batch_start]  # Use same answer for whole batch
             
-            # Create group context for this batch
             group = {
                 'completions': batch_completions,
-                'correct_answer': batch_answer,
-                'index': 0  # Will be updated for each completion
+                'correct_answer': answers[batch_idx],
+                'index': i % training_args.num_generations
             }
             
-            # Process each completion in batch
-            for i in range(len(batch_completions)):
-                group['index'] = i
-                reward = reward_func.calculate_reward(batch_completions[i], group=group)
-                rewards.append(reward)
-                
-                # Update statistics after each completion
-                reward_func.stats.update(
-                    rewards=[reward]
-                )
+            # Calculate reward
+            reward = reward_func.calculate_reward(completion, group=group)
+            rewards.append(reward)
+            
+            # Update statistics
+            reward_func.stats.update(rewards=[reward])
                 
         return rewards
 

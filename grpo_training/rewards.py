@@ -458,33 +458,33 @@ class GroupReward(BaseReward):
         results = []
         for comp in completions:
             try:
-                self.logger.info(f"\nProcessing completion for correctness:")
-                self.logger.info(f"Raw completion: {comp[:200]}...")
-                
                 model_answer = extract_answer_from_solution(comp)
-                self.logger.info(f"Extracted answer: {model_answer}")
                 if model_answer is None:
-                    self.logger.info("No boxed answer found")
+                    self.logger.info(f"No boxed answer found in completion {len(results)+1}")
                     results.append(False)
                     continue
                 
-                model_numeric, model_debug = extract_numeric_answer(model_answer, debug=True)
-                correct_numeric, correct_debug = extract_numeric_answer(correct_answer, debug=True)
+                model_numeric, _ = extract_numeric_answer(model_answer)
+                correct_numeric, _ = extract_numeric_answer(correct_answer)
                 
-                self.logger.info(f"Model numeric: {model_numeric} ({model_debug})")
-                self.logger.info(f"Correct numeric: {correct_numeric} ({correct_debug})")
+                # Debug prints
+                self.logger.info(f"\nCompletion {len(results)+1} numeric values:")
+                self.logger.info(f"Model answer: {model_answer}")
+                self.logger.info(f"Model numeric: {model_numeric}")
+                self.logger.info(f"Correct answer: {correct_answer}")
+                self.logger.info(f"Correct numeric: {correct_numeric}")
                 
                 if model_numeric is None or correct_numeric is None:
-                    self.logger.info("Could not extract numeric values")
+                    self.logger.info(f"Could not extract numeric values for completion {len(results)+1}")
                     results.append(False)
                     continue
                 
                 is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-                self.logger.info(f"Is correct: {is_correct}")
+                self.logger.info(f"Completion {len(results)+1} correct: {is_correct}")
                 results.append(is_correct)
                 
             except Exception as e:
-                self.logger.error(f"Error processing completion: {str(e)}")
+                self.logger.error(f"Error processing completion {len(results)+1}: {str(e)}")
                 results.append(False)
             
         # Calculate similarity matrix
