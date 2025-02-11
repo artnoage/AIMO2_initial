@@ -537,9 +537,9 @@ class GroupReward(BaseReward):
                         rewards[idx] = 0.0
                         continue
                     
-                    # Calculate base reward
+                    # Calculate base reward and add to rewards list
                     is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-                    reward = self.config.group_base_reward if is_correct else 0.0
+                    rewards[idx] = self.config.group_base_reward if is_correct else 0.0
                     
                     # Calculate correctness for all completions in group
                     all_results = []
