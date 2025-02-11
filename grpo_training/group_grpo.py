@@ -228,9 +228,7 @@ def main():
             
             # Update statistics after each completion
             reward_func.stats.update(
-                rewards=[reward],
-                completion=completions[i],
-                similarity=group.get('similarity', None)
+                rewards=[reward]
             )
             
         return rewards

@@ -451,6 +451,9 @@ class GroupReward(BaseReward):
         if not completions or not correct_answer:
             return 0.0
             
+        self.logger.info(f"Processing completion {group_index+1}/{len(completions)}")
+        self.logger.info(f"Correct answer: {correct_answer}")
+            
         # Calculate correctness for all completions
         results = []
         for comp in completions:
@@ -475,28 +478,43 @@ class GroupReward(BaseReward):
         is_correct = results[group_index]
         reward = self.config.group_base_reward if is_correct else 0.0
         
+        # Log correctness results
+        self.logger.info(f"Correctness results: {results}")
+        self.logger.info(f"Current completion correct: {is_correct}")
+        
         # Majority bonus
         correct_count = sum(results)
         is_in_majority = (is_correct and correct_count > len(completions) / 2) or \
                         (not is_correct and (len(completions) - correct_count) > len(completions) / 2)
+        majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
         if is_in_majority:
-            reward += self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+            reward += majority_bonus
             
         # Diversity bonus
         similarities = similarity_matrix[group_index]
         similarities[group_index] = 0  # Remove self-similarity
         avg_similarity = similarities.mean().item()
         
+        self.logger.info(f"Average similarity: {avg_similarity:.3f}")
+        
+        diversity_bonus = 0
         if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
-            reward += self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
+            diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
+            reward += diversity_bonus
         elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
-            reward -= self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05
+            diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
+            reward += diversity_bonus
             
-        # Update statistics
-        self.stats.reward_components = getattr(self.stats, 'reward_components', {})
-        self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + (1 if is_correct else 0)
-        self.stats.reward_components['majority_bonuses'] = self.stats.reward_components.get('majority_bonuses', 0) + (1 if is_in_majority else 0)
-        self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + (1 if avg_similarity < self.config.group_similarity_threshold_low else 0)
+        # Update group-specific statistics
+        self.stats.group_stats['correct_answers'] += 1 if is_correct else 0
+        self.stats.group_stats['incorrect_answers'] += 0 if is_correct else 1
+        self.stats.group_stats['majority_bonuses'] += 1 if is_in_majority else 0
+        self.stats.group_stats['diversity_bonuses'] += 1 if diversity_bonus > 0 else 0
+        self.stats.group_stats['unique_solutions'] += 1 if avg_similarity < self.config.group_similarity_threshold_low else 0
+        self.stats.group_stats['similar_solutions'] += 1 if avg_similarity > self.config.group_similarity_threshold_high else 0
+        self.stats.group_stats['total_similarity'] += avg_similarity
+        
+        self.logger.info(f"Final reward: {reward:.3f}")
         
         return reward
 
