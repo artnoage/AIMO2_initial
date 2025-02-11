@@ -324,20 +324,15 @@ def main():
                     
                     # Initialize reward components dictionary
                     reward_components = {
-                        'base': 0.0,
+                        'base': base_reward if is_correct else 0.0,  # Base reward for correct answers
                         'majority_bonus': 0.0,
                         'diversity_bonus': 0.0,
                         'total': 0.0
                     }
                     
-                    # Base reward and majority bonus
-                    if is_correct:
-                        reward_components['base'] = base_reward
-                        if is_in_majority:
-                            reward_components['majority_bonus'] = majority_bonus
-                    else:
-                        if is_in_majority:
-                            reward_components['majority_bonus'] = majority_bonus * 0.1
+                    # Add majority bonus
+                    if is_in_majority:
+                        reward_components['majority_bonus'] = majority_bonus if is_correct else majority_bonus * 0.1
                     
                     # Add diversity bonus
                     similarities = similarity_matrix[i]
