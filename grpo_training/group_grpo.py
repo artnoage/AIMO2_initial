@@ -11,10 +11,9 @@ from unsloth import FastLanguageModel, PatchFastRL
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
 
-# Add project root to path
+# Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+sys.path.append(project_root)
 
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 from .config import GRPOConfig as RewardConfig
