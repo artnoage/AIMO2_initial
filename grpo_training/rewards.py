@@ -366,11 +366,10 @@ class SolutionReward(BaseReward):
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
         
-    def __call__(self, completions: List[str], prompts: List[str], answer: List[str], **kwargs) -> List[float]:
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Process a batch of completions with their corresponding answers"""
         try:
             print(f"\nProcessing batch of {len(completions)} completions")
-            print(f"Number of answers: {len(answer)}")
             
             # Create reward_index to track original order
             reward_index = list(range(len(completions)))
@@ -974,13 +973,14 @@ class TutorReward(BaseReward):
         rewards = [0.0] * len(completions)
         
         tasks = []
-        for i, (comp, idx) in enumerate(zip(completions, reward_index)):
+        for i, comp in enumerate(completions):
             # Unpack kwargs for each completion
             comp_kwargs = {
                 k: v[i] if isinstance(v, list) else v 
                 for k, v in kwargs.items()
             }
-            comp_kwargs['reward_index'] = idx
+            # Add reward_index first
+            comp_kwargs = {'reward_index': reward_index[i], **comp_kwargs}
             tasks.append(self.calculate_reward_async(comp, **comp_kwargs))
         results = await asyncio.gather(*tasks)
         
