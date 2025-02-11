@@ -289,13 +289,14 @@ class GroupReward(BaseReward):
         self.model.to(self.device)
         self.model.eval()
         
-        # Freeze embedding model parameters
+        # Freeze embedding model parameters and move to CPU when not in use
         for param in self.model.parameters():
             param.requires_grad = False
+            param.data = param.data.cpu()  # Move parameters to CPU
             
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         """Get embeddings for a list of texts"""
-        with torch.no_grad():
+        with torch.no_grad(), torch.cuda.amp.autocast(enabled=True):
             inputs = self.tokenizer(
                 texts,
                 padding=True,
@@ -304,9 +305,16 @@ class GroupReward(BaseReward):
                 return_tensors="pt"
             )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            
+            # Move model to device temporarily for inference
+            self.model.to(self.device)
             outputs = self.model(**inputs)
             embeddings = outputs.last_hidden_state.mean(dim=1)
-            return F.normalize(embeddings, p=2, dim=1)
+            normalized = F.normalize(embeddings, p=2, dim=1)
+            
+            # Move model back to CPU to free GPU memory
+            self.model.cpu()
+            return normalized.detach()  # Ensure we detach from computation graph
             
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
         """Compute pairwise similarities between solutions"""
