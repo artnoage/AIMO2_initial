@@ -85,9 +85,13 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver"
+    # Setup logging first
+    logger = setup_logging(model_type)
+    
     # Check for model name in locals, then try HF, then exit
+    model_name = None
     if 'model_name' in locals():
-        model_name = model_name
+        model_name = locals()['model_name']
     else:
         try:
             from huggingface_hub import model_info
@@ -98,7 +102,7 @@ def main():
             sys.exit(1)
             
     # Use dataset name from file
-    dataset_name = dataset_name if 'dataset_name' in locals() else "Metaskepsis/Numina_medium"
+    dataset_name = locals().get('dataset_name', "Metaskepsis/Numina_medium")
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
