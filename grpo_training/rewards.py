@@ -366,6 +366,7 @@ class SolutionReward(BaseReward):
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
+                self.logger.debug("No boxed answer found in completion")
                 return 0.0
                 
             # Convert to numeric values
@@ -374,21 +375,26 @@ class SolutionReward(BaseReward):
             # Get correct answer from kwargs
             correct_answer = kwargs.get('answer')
             if not correct_answer:
+                self.logger.warning("No correct answer provided in kwargs")
                 return 0.0
             
             # Handle different input formats
             if isinstance(correct_answer, (list, tuple)):
                 if not correct_answer:
+                    self.logger.warning("Empty correct answer list")
                     return 0.0
                 correct_answer = correct_answer[0]
+                self.logger.debug(f"Using first element from list: {correct_answer}")
             elif isinstance(correct_answer, dict):
                 correct_answer = str(correct_answer.get('answer', ''))
+                self.logger.debug(f"Extracted answer from dict: {correct_answer}")
             
             # Convert to string if needed
             correct_answer = str(correct_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             
             if model_numeric is None or correct_numeric is None:
+                self.logger.debug(f"Could not extract numeric values - Model: {model_numeric}, Correct: {correct_numeric}")
                 return 0.0
                 
             # Initialize reward
@@ -396,18 +402,23 @@ class SolutionReward(BaseReward):
             
             # Check correctness
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+            self.logger.info(f"Correctness check - Model: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
             
             if is_correct:
                 reward = self.config.base_reward
+                self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
                 
             # Add validation reward
-            is_valid, _ = validate_solution(completion)
+            is_valid, validation_msg = validate_solution(completion)
+            self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
             if is_valid:
                 reward += self.config.validation_reward
+                self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
                 
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
             reward -= length_penalty
+            self.logger.info(f"Applied length penalty: -{length_penalty:.3f} (length: {len(completion)})")
             
             # Update statistics
             if is_correct:
