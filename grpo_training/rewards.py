@@ -297,84 +297,43 @@ class BaseReward(ABC):
         return logger
         
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Calculate rewards for a batch of completions
+        """Calculate rewards for a batch of completions"""
+        # Validate inputs
+        prompts = kwargs.get('prompts', [])
+        answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
         
-        Args:
-            completions: List of model completions to evaluate
-            **kwargs: Additional context including:
-                - prompts: List of prompts that generated the completions
-                - answer: List of expected answers
-            
-        Returns:
-            List[float]: Calculated rewards for each completion, in same order as input completions
-        """
-        # Create reward_index to track original order
-        reward_index = list(range(len(completions)))
-        
-        # Get prompts and answer from kwargs
-        prompts = kwargs.get('prompts', [])  # prompts is pluralized by convention
-        answer = kwargs.get('answer') or kwargs.get('correct_answer', [])  # handle both answer fields
-        
-        if len(completions) != len(prompts) or len(completions) != len(answer):
-            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answer={len(answer)}")
+        if len(completions) != len(prompts) or len(completions) != len(answers):
+            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             return [0.0] * len(completions)
             
-        self.logger.info(f"\n{'='*50}\nProcessing batch of {len(completions)} completions")
-        
-        # Group completions by prompt for similarity checking
-        prompt_groups = {}
-        for i, (comp, prompt, ans, idx) in enumerate(zip(completions, prompts, answer, reward_index)):
-            if prompt not in prompt_groups:
-                prompt_groups[prompt] = {
-                    'completions': [],
-                    'answer': [],
-                    'idx': []
-                }
-            prompt_groups[prompt]['completions'].append(comp)
-            prompt_groups[prompt]['answer'].append(ans)
-            prompt_groups[prompt]['idx'].append(idx)
+        # Process each completion
+        rewards = []
+        for comp, prompt, ans in zip(completions, prompts, answers):
+            reward = self.calculate_reward(comp, prompt=prompt, answer=ans, **kwargs)
+            rewards.append(reward)
             
-        # Calculate rewards for each completion
-        rewards = [0.0] * len(completions)
-        for group in prompt_groups.values():
-            group_completions = group['completions']
-            group_answers = group['answers']
-            
-            # Calculate rewards for this group
-            for i, (comp, ans, idx, reward_idx) in enumerate(zip(
-                group_completions, 
-                group_answers, 
-                group['indices'],
-                group['reward_indices']
-            )):
-                self.logger.info(f"\nProcessing completion {i+1}/{len(group_completions)} (global index {idx}, reward index {reward_idx})")
-                group_context = {
-                    'group_completions': group_completions,
-                    'group_answers': group_answers,
-                    'group_index': i,
-                    'reward_index': reward_idx
-                }
-                rewards[reward_idx] = self.calculate_reward(comp, answer=ans, **group_context)
-                
         # Update statistics
-        self.stats.update(rewards)
+        self.stats.update(rewards, completions=completions)
         return rewards
 
     async def __call_async__(self, completions: List[str], **kwargs) -> List[float]:
-        """Async version of __call__
+        """Async version for batch processing"""
+        # Validate inputs
+        prompts = kwargs.get('prompts', [])
+        answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
         
-        Args:
-            completions: List of model completions to evaluate
-            **kwargs: Additional context needed for reward calculation
+        if len(completions) != len(prompts) or len(completions) != len(answers):
+            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
+            return [0.0] * len(completions)
             
-        Returns:
-            List[float]: List of reward values for each completion
-        """
-        rewards = await asyncio.gather(*[
-            self.calculate_reward_async(comp, **kwargs) 
-            for comp in completions
-        ])
-        self.stats.update(rewards, **kwargs)
+        # Process completions in parallel
+        tasks = []
+        for comp, prompt, ans in zip(completions, prompts, answers):
+            task = self.calculate_reward_async(comp, prompt=prompt, answer=ans, **kwargs)
+            tasks.append(task)
+            
+        rewards = await asyncio.gather(*tasks)
+        self.stats.update(rewards, completions=completions)
         return rewards
 
 class SolutionReward(BaseReward):
