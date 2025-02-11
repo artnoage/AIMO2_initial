@@ -394,9 +394,10 @@ class SolutionSimilarityChecker:
         self.model.to(self.device)
         self.model.eval()
         
-        # Freeze embedding model parameters
+        # Freeze embedding model parameters and ensure they're on the correct device
         for param in self.model.parameters():
             param.requires_grad = False
+            param.data = param.data.to(self.device)
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
         with torch.no_grad(), torch.cuda.amp.autocast(enabled=True):
@@ -426,10 +427,9 @@ class GroupReward(BaseReward):
         # Initialize similarity checker
         self.similarity_checker = SolutionSimilarityChecker(config)
         
-        # Freeze embedding model parameters and move to CPU when not in use
+        # Freeze embedding model parameters
         for param in self.similarity_checker.model.parameters():
             param.requires_grad = False
-            param.data = param.data.cpu()  # Move parameters to CPU
             
         
     async def calculate_reward_async(self, completion: str, **kwargs) -> float:
