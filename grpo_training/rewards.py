@@ -279,14 +279,14 @@ class BaseReward(ABC):
         logger.addHandler(logging.StreamHandler())
         return logger
         
-    def __call__(self, completions: List[str], prompts: List[str], answer: List[str], **kwargs) -> List[float]:
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Calculate rewards for a batch of completions
         
         Args:
             completions: List of model completions to evaluate
-            prompts: List of prompts that generated the completions
-            answer: List of expected answers
-            **kwargs: Additional context
+            **kwargs: Additional context including:
+                - prompts: List of prompts that generated the completions
+                - answer: List of expected answers
             
         Returns:
             List[float]: Calculated rewards for each completion, in same order as input completions
