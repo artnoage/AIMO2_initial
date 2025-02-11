@@ -3,13 +3,11 @@ import re
 import logging
 import asyncio
 import sympy
-import aiohttp
-import asyncio
 import signal 
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Optional, Tuple, Union
-from langchain_core.messages import HumanMessage
+from utils.agents import CompletionAgent
 from latex2sympy2 import latex2sympy
 from contextlib import contextmanager
 
@@ -377,82 +375,3 @@ def setup_training_logger(model_type: str) -> logging.Logger:
 # Initialize global config
 config = TutorConfig()
 
-class CompletionAgent:
-    """Agent that completes partial solutions using a local model"""
-    
-    def __init__(
-        self,
-        port: int = 8001,
-        model: str = config.completion_model_name,
-        temperature: float = 0.7,
-        api_key: str = "EMPTY",
-        max_retries: int = 3,
-        logger: Optional[logging.Logger] = None
-    ):
-        self.port = port
-        self.model = model
-        self.temperature = temperature
-        self.api_key = api_key
-        self.max_retries = max_retries
-        self.logger = logger if logger else logging.getLogger('completion_agent')
-        self.base_url = f"http://localhost:{port}/v1"
-        
-    async def _get_response(self, prompt: Any, max_tokens: Optional[int] = None, timeout: float = 180.0) -> str:
-        """Get response from model with retry logic and timeout"""
-        # Convert prompt to messages format
-        if hasattr(prompt, 'content'):  # LangChain message object
-            messages = [{"role": "user", "content": prompt.content}]
-        elif isinstance(prompt, list):  # List of messages
-            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
-        else:  # String or other
-            messages = [{"role": "user", "content": str(prompt)}]
-            
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature
-        }
-        if max_tokens:
-            payload["max_tokens"] = max_tokens
-
-        retry_count = 0
-        while retry_count < self.max_retries:
-            try:
-                timeout_client = aiohttp.ClientTimeout(total=timeout)
-                async with aiohttp.ClientSession(timeout=timeout_client) as session:
-                    async with session.post(
-                        f"{self.base_url}/chat/completions",
-                        json=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {self.api_key}"
-                        }
-                    ) as response:
-                        if response.status != 200:
-                            raise ValueError(f"Error from API: {await response.text()}")
-                        
-                        result = await response.json()
-                        return result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        
-            except Exception as e:
-                retry_count += 1
-                if retry_count == self.max_retries:
-                    raise
-                # Exponential backoff
-                await asyncio.sleep(0.1 * (2 ** retry_count))
-                
-        raise Exception(f"Failed after {self.max_retries} retries")
-        
-    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Complete a partial solution"""
-        prompt = [
-            HumanMessage(content=(
-                "Here is a mathematical problem:\n\n"
-                f"{problem}\n\n"
-                "We've started solving it and got this far:\n\n"
-                f"{partial_solution}\n\n"
-                "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
-            ))
-        ]
-        response = await self._get_response(prompt, max_tokens=2048)
-        return (prompt[0].content, response) if return_prompt else response
