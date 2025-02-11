@@ -277,17 +277,45 @@ class SolutionReward(BaseReward):
         
         return reward
 
-class GroupReward(BaseReward):
-    """Reward class for group-based solution evaluation"""
-    
+class SolutionSimilarityChecker:
+    """Handles embedding and similarity computation for solutions"""
     def __init__(self, config: GRPOConfig):
-        super().__init__(config)
-        # Initialize embedding model for similarity checking
+        self.config = config
         self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model_name)
         self.model = AutoModel.from_pretrained(config.embedding_model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         self.model.eval()
+        
+        # Freeze embedding model parameters
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+    def get_embeddings(self, texts: List[str]) -> torch.Tensor:
+        with torch.no_grad(), torch.cuda.amp.autocast(enabled=True):
+            inputs = self.tokenizer(
+                texts,
+                padding=True,
+                truncation=True,
+                max_length=self.config.embedding_max_length,
+                return_tensors="pt"
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            outputs = self.model(**inputs)
+            embeddings = outputs.last_hidden_state.mean(dim=1)
+            return F.normalize(embeddings, p=2, dim=1)
+
+    def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
+        embeddings = self.get_embeddings(solutions)
+        return torch.mm(embeddings, embeddings.t())
+
+class GroupReward(BaseReward):
+    """Reward class for group-based solution evaluation"""
+    
+    def __init__(self, config: GRPOConfig):
+        super().__init__(config)
+        # Initialize similarity checker
+        self.similarity_checker = SolutionSimilarityChecker(config)
         
         # Freeze embedding model parameters and move to CPU when not in use
         for param in self.model.parameters():
@@ -354,7 +382,7 @@ class GroupReward(BaseReward):
             results.append(abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance)
             
         # Calculate similarity matrix
-        similarity_matrix = self.compute_similarity_matrix(completions)
+        similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
         
         # Calculate reward components
         is_correct = results[group_index]
