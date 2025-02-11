@@ -554,7 +554,7 @@ class GroupReward(BaseReward):
                 return [0.0] * len(completions)
                 
             # Calculate rewards for each completion-answer pair
-            for completion, ans, idx in zip(completions, answer, reward_index):
+            for idx, (completion, ans) in enumerate(zip(completions, answer)):
                 print(f"\n=== Processing completion {idx+1}/{len(completions)} ===")
                 print(f"Completion (first 100 chars): {completion[:100]}...")
                 
@@ -563,7 +563,7 @@ class GroupReward(BaseReward):
                 rewards[idx] = reward
                 
                 # Get current prompt group's completions
-                current_prompt = kwargs.get('prompts', [])[i]
+                current_prompt = kwargs.get('prompts', [])[idx]
                 prompt_completions = []
                 prompt_indices = []
                 for j, (comp, prompt) in enumerate(zip(completions, kwargs.get('prompts', []))):
@@ -618,7 +618,7 @@ class GroupReward(BaseReward):
                     
                 # Diversity bonus
                 # Find position in prompt group
-                group_pos = prompt_indices.index(i)
+                group_pos = prompt_indices.index(idx)
                 similarities = similarity_matrix[group_pos]
                 similarities[group_pos] = 0  # Remove self-similarity
                 avg_similarity = similarities.mean().item() if len(similarities) > 1 else 0
