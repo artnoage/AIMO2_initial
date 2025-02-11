@@ -2,7 +2,6 @@ import os
 import sys
 import wandb
 import logging
-from pathlib import Path
 from datetime import datetime
 from datasets import load_dataset, load_from_disk
 from transformers import TrainerCallback
@@ -15,10 +14,8 @@ from trl import GRPOConfig, GRPOTrainer
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-from utils.agents import CompletionAgent
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
-from .config import GRPOConfig as RewardConfig
-from .rewards import TutorReward
+from config import GRPOConfig as RewardConfig
+from rewards import TutorReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""

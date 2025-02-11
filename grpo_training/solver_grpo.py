@@ -2,22 +2,18 @@ import os
 import sys
 import wandb
 import logging
-from pathlib import Path
 from datetime import datetime
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from transformers import TrainerCallback
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
-
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
-from .config import GRPOConfig as RewardConfig
-from .rewards import SolutionReward
+from config import GRPOConfig as RewardConfig
+from rewards import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
