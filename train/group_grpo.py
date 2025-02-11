@@ -66,33 +66,52 @@ class GroupValidationStats:
         self.total_batches += 1
     
     def save_batch_statistics(self, batch_stats: Dict):
-        """Save statistics for a single batch"""
+        """Update the running statistics file with new batch stats"""
         import json
         from pathlib import Path
         
         # Create stats directory if it doesn't exist
-        stats_dir = Path(self.output_dir) / "batch_statistics"
+        stats_dir = Path(self.output_dir) / "statistics"
         stats_dir.mkdir(exist_ok=True)
+        stats_file = stats_dir / "training_stats.json"
         
-        # Save batch stats with batch ID in filename
-        stats_file = stats_dir / f"batch_{batch_stats['batch_id']:06d}.json"
+        # Load existing stats or create new
+        if stats_file.exists():
+            with open(stats_file) as f:
+                all_stats = json.load(f)
+        else:
+            all_stats = {
+                'batches': [],
+                'start_time': self.start_time.isoformat(),
+                'last_update': None
+            }
+        
+        # Add new batch stats
+        all_stats['batches'].append(batch_stats)
+        all_stats['last_update'] = datetime.now().isoformat()
+        
+        # Save updated stats
         with open(stats_file, 'w') as f:
-            json.dump(batch_stats, f, indent=2)
+            json.dump(all_stats, f, indent=2)
 
     def get_summary(self) -> str:
         """Get a summary of recent batches"""
         from pathlib import Path
         import json
         
-        # Load last few batch files
-        stats_dir = Path(self.output_dir) / "batch_statistics"
-        if not stats_dir.exists():
+        # Load stats file
+        stats_dir = Path(self.output_dir) / "statistics"
+        stats_file = stats_dir / "training_stats.json"
+        if not stats_file.exists():
             return "No statistics available yet"
             
-        # Get last 5 batch files
-        batch_files = sorted(stats_dir.glob("batch_*.json"))[-5:]
-        if not batch_files:
-            return "No batch files found"
+        with open(stats_file) as f:
+            all_stats = json.load(f)
+            
+        # Get last 5 batches
+        last_batches = all_stats['batches'][-5:]
+        if not last_batches:
+            return "No batches found"
             
         # Aggregate recent statistics
         recent_stats = {
@@ -104,18 +123,16 @@ class GroupValidationStats:
             'similar_solutions': 0
         }
         
-        for file in batch_files:
-            with open(file) as f:
-                stats = json.load(f)
-                recent_stats['rewards'].extend(stats['rewards'])
-                if stats.get('group_id'):
-                    recent_stats['groups'].add(stats['group_id'])
-                if stats.get('correctness_stats'):
-                    recent_stats['correct_count'] += stats['correctness_stats'].get('correct', 0)
-                    recent_stats['total_count'] += sum(stats['correctness_stats'].values())
-                if stats.get('similarity_stats'):
-                    recent_stats['unique_solutions'] += stats['similarity_stats'].get('unique_solutions', 0)
-                    recent_stats['similar_solutions'] += stats['similarity_stats'].get('similar_solutions', 0)
+        for batch in last_batches:
+            recent_stats['rewards'].extend(batch['rewards'])
+            if batch.get('group_stats', {}).get('group_id'):
+                recent_stats['groups'].add(batch['group_stats']['group_id'])
+            if batch.get('correctness_stats'):
+                recent_stats['correct_count'] += batch['correctness_stats'].get('correct', 0)
+                recent_stats['total_count'] += sum(batch['correctness_stats'].values())
+            if batch.get('similarity_stats'):
+                recent_stats['unique_solutions'] += batch['similarity_stats'].get('unique_solutions', 0)
+                recent_stats['similar_solutions'] += batch['similarity_stats'].get('similar_solutions', 0)
         
         avg_reward = sum(recent_stats['rewards']) / len(recent_stats['rewards']) if recent_stats['rewards'] else 0
         accuracy = (recent_stats['correct_count'] / recent_stats['total_count'] * 100) if recent_stats['total_count'] else 0
