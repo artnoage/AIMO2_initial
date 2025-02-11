@@ -315,19 +315,21 @@ class SolutionReward(BaseReward):
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion"""
         try:
-            print(f"\nProcessing completion: {completion[:100]}...")
+            log_messages = []
+            log_messages.append(f"Processing completion: {completion[:100]}...")
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
                 self.logger.debug("No boxed answer found")
-                print("No boxed answer found - returning 0.0")
+                log_messages.append("No boxed answer found - returning 0.0")
+                self.logger.info("\n".join(log_messages))
                 return 0.0
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
-            print(f"Model numeric value: {model_numeric}")
-            print(f"Debug info: {debug_info}")
+            log_messages.append(f"Model numeric value: {model_numeric}")
+            log_messages.append(f"Debug info: {debug_info}")
             
             # Get correct answer from kwargs
             correct_answer = kwargs.get('answer')
@@ -337,17 +339,18 @@ class SolutionReward(BaseReward):
                 return 0.0
             
             # Handle different input formats
-            print(f"Correct answer type: {type(correct_answer)}")
+            log_messages.append(f"Correct answer type: {type(correct_answer)}")
             if isinstance(correct_answer, (list, tuple)):
                 if not correct_answer:  # Empty list/tuple
                     self.logger.warning("Empty correct answer list")
-                    print("Empty correct answer list - returning 0.0")
+                    log_messages.append("Empty correct answer list - returning 0.0")
+                    self.logger.info("\n".join(log_messages))
                     return 0.0
                 correct_answer = correct_answer[0]
-                print(f"Using first element from list: {correct_answer}")
+                log_messages.append(f"Using first element from list: {correct_answer}")
             elif isinstance(correct_answer, dict):
                 correct_answer = str(correct_answer.get('answer', ''))
-                print(f"Extracted answer from dict: {correct_answer}")
+                log_messages.append(f"Extracted answer from dict: {correct_answer}")
             
             # Convert to string if needed
             correct_answer = str(correct_answer)
@@ -366,20 +369,20 @@ class SolutionReward(BaseReward):
             
             # Check correctness
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-            print(f"\nCorrectness check:")
-            print(f"Difference: {abs(model_numeric - correct_numeric)}")
-            print(f"Tolerance: {self.config.numeric_tolerance}")
-            print(f"Is correct: {is_correct}")
+            log_messages.append("\nCorrectness check:")
+            log_messages.append(f"Difference: {abs(model_numeric - correct_numeric)}")
+            log_messages.append(f"Tolerance: {self.config.numeric_tolerance}")
+            log_messages.append(f"Is correct: {is_correct}")
             
             if is_correct:
                 reward = self.config.base_reward
-                print(f"Added base reward: +{self.config.base_reward}")
+                log_messages.append(f"Added base reward: +{self.config.base_reward}")
                 
             # Add validation reward
             is_valid, validation_msg = validate_solution(completion)
-            print(f"\nValidation check:")
-            print(f"Is valid: {is_valid}")
-            print(f"Validation message: {validation_msg}")
+            log_messages.append("\nValidation check:")
+            log_messages.append(f"Is valid: {is_valid}")
+            log_messages.append(f"Validation message: {validation_msg}")
             
             if is_valid:
                 reward += self.config.validation_reward
@@ -388,10 +391,10 @@ class SolutionReward(BaseReward):
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
             reward -= length_penalty
-            print(f"\nLength penalty:")
-            print(f"Completion length: {len(completion)}")
-            print(f"Penalty factor: {self.config.length_penalty_factor}")
-            print(f"Total penalty: -{length_penalty}")
+            log_messages.append("\nLength penalty:")
+            log_messages.append(f"Completion length: {len(completion)}")
+            log_messages.append(f"Penalty factor: {self.config.length_penalty_factor}")
+            log_messages.append(f"Total penalty: -{length_penalty}")
             
             # Update statistics
             if reward >= self.config.base_reward:
@@ -400,9 +403,12 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
             
-            print(f"\nFinal reward calculation:")
-            print(f"Total reward: {reward}")
-            print("=== End reward calculation ===\n")
+            log_messages.append("\nFinal reward calculation:")
+            log_messages.append(f"Total reward: {reward}")
+            log_messages.append("=== End reward calculation ===\n")
+            
+            # Log all messages at once
+            self.logger.info("\n".join(log_messages))
             
             return reward
             
