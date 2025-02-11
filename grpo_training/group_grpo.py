@@ -1,21 +1,23 @@
 import os
-import sys
 import wandb
 import logging
-from datetime import datetime
 from datasets import load_dataset, load_from_disk
-from transformers import TrainerCallback
+from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
+import sys
 from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
 
-# Add the project root to Python path
+# Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(project_root)
-
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from config import GRPOConfig as RewardConfig
 from rewards import GroupReward
+
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -75,24 +77,22 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group"
-    model_path = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
+    dataset_path = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
     
     # Check if model exists locally or in HF
-    if os.path.exists(model_path):
-        model_name = model_path
-    else:
-        try:
-            from huggingface_hub import model_info
-            model_info(model_path)
-            model_name = model_path
-        except Exception as e:
-            logger.error(f"Model not found locally or in HuggingFace: {model_path}")
-            sys.exit(1)
-    
+    try:
+        if os.path.exists(dataset_path):
+            dataset = load_from_disk(dataset_path)
+        else:
+            dataset = load_dataset(dataset_path)
+    except Exception as e:
+        logger.error(f"Failed to load dataset: {str(e)}")
+        sys.exit(1)
+
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
     
@@ -107,7 +107,7 @@ def main():
         name=f"group_grpo_{timestamp}",
         config={
             "model_type": reward_config.model_type,
-            "dataset": reward_config.dataset_name,
+            "dataset": dataset_path,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
             "majority_bonus": 0.2,
@@ -122,7 +122,7 @@ def main():
     # Load model
     PatchFastRL("GRPO", FastLanguageModel)
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=reward_config.model_name,
+        model_name= model_name,
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
@@ -152,16 +152,6 @@ def main():
         map_eos_token=True
     )
     
-    # Try loading dataset from local path first, then from HuggingFace
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/numina_medium"
-    try:
-        if os.path.exists(dataset_path):
-            dataset = load_from_disk(dataset_path)
-        else:
-            dataset = load_dataset(reward_config.dataset_name)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {str(e)}")
-        sys.exit(1)
         
     def formatting_func(example):
         solver_prompt = (
