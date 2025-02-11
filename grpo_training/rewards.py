@@ -311,31 +311,23 @@ class BaseReward(ABC):
             tasks = []
             
             for prompt, group in prompt_groups.items():
-                # Add group context to kwargs
-                group_kwargs = {
-                    'group_completions': group['completions'],
-                    'group_answers': group['answers'],
-                    'group_indices': group['indices']
-                }
-                
                 # Process each completion in group
                 for group_idx, (completion, ans, idx) in enumerate(zip(
                     group['completions'], 
                     group['answers'], 
                     group['indices']
                 )):
-                    # Create kwargs with all group context
+                    # Create kwargs with group context and original kwargs
                     task_kwargs = {
+                        **kwargs,  # Base kwargs first
                         'prompt': prompt,
                         'answer': ans,
                         'group_idx': group_idx,
                         'reward_index': idx,
                         'group_completions': group['completions'],
-                        'group_answers': group['answers'],
+                        'group_answers': group['answers'], 
                         'group_indices': group['indices']
                     }
-                    # Update with any additional kwargs
-                    task_kwargs.update(kwargs)
                     task = self.calculate_reward(completion, **task_kwargs)
                     tasks.append(task)
                     
