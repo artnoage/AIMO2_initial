@@ -457,11 +457,7 @@ class GroupReward(BaseReward):
         super().__init__(config)
         self.similarity_checker = similarity_checker
         
-    async def calculate_reward_async(self, completion: str, **kwargs) -> float:
-        """Async version of calculate_reward"""
-        return self.calculate_reward(completion, **kwargs)
-        
-    def __call__(self, completions: List[str], **kwargs) -> List[float]:
+    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Calculate rewards for a batch of completions"""
         try:
             print(f"\nProcessing batch of {len(completions)} completions")
