@@ -427,6 +427,103 @@ class TutorReward(BaseReward):
                 
         return steps
         
+    async def _validate_completions(
+        self,
+        problem: str,
+        partial_solution: str,
+        correct_answer: str,
+        num_attempts: int = 10
+    ) -> Tuple[int, int]:
+        """Try completions in parallel until finding a successful one."""
+        async def try_completion():
+            try:
+                completion = await self.completion_agent.generate(problem, partial_solution)
+                complete_solution = partial_solution + completion
+                
+                model_answer = extract_answer_from_solution(complete_solution)
+                if model_answer is None:
+                    return False
+                    
+                numeric_answer, _ = extract_numeric_answer(model_answer)
+                correct_numeric, _ = extract_numeric_answer(correct_answer)
+                
+                if numeric_answer is None or correct_numeric is None:
+                    return False
+                    
+                return abs(numeric_answer - correct_numeric) <= self.config.numeric_tolerance
+                
+            except Exception as e:   
+                self.logger.warning(f"Completion attempt failed: {str(e)}")
+                return False
+    
+        # Run all completion attempts in parallel
+        results = await asyncio.gather(*[try_completion() for _ in range(num_attempts)])
+        successful = sum(1 for r in results if r)
+        return successful, len(results)
+
+    async def _validate_whole_approach_is_wrong(
+        self,
+        problem: str,
+        solution: str,
+        correct_answer: str
+    ) -> bool:
+        """Validate that the analysis section alone can lead to correct completions"""
+        # Split solution into steps and get the analysis part
+        steps = self.split_into_steps(solution)
+        if not steps:
+            return False
+            
+        # First part before steps is the analysis
+        analysis = steps[0]
+        
+        # Try completions starting with just the analysis
+        successful, total = await self._validate_completions(
+            problem,
+            analysis,
+            correct_answer,
+            self.config.completion_attempts
+        )
+        
+        return successful == 0 and total == self.config.completion_attempts
+
+    async def _validate_step_identification(
+        self,
+        problem: str,
+        steps: List[str],
+        step_num: int,
+        substitution: str,
+        correct_answer: str,
+        original_step: str
+    ) -> Tuple[bool, float]:
+        """Validate step identification and correction in parallel.
+        Returns (is_valid, improvement_bonus)"""
+        
+        # Run both validations in parallel
+        wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
+        corrected_partial = "".join(steps[:step_num]) + substitution  # Replace wrong step
+        
+        wrong_check, fixed_check = await asyncio.gather(
+            self._validate_completions(problem, wrong_partial, correct_answer, self.config.completion_attempts),
+            self._validate_completions(problem, corrected_partial, correct_answer, self.config.completion_attempts)
+        )
+
+        successful_wrong, total_wrong = wrong_check
+        successful_fixed, total_fixed = fixed_check
+
+        # Calculate improvement bonus based on relative success rate
+        improvement_bonus = 0.0
+        if successful_wrong == 0:  # Only reward if original step had no successful completions
+            success_rate = successful_fixed / total_fixed
+            if 0.1 < success_rate <= 0.4:  # 10-40%
+                improvement_bonus = 0.1
+            elif 0.4 < success_rate <= 0.7:  # 40-70%
+                improvement_bonus = 0.2
+            elif success_rate > 0.7:         # >70%
+                improvement_bonus = 0.3
+        
+        is_valid = successful_wrong == 0 and successful_fixed > 0
+        return is_valid, improvement_bonus
+
     async def calculate_reward_async(self, tutor_response: str, **kwargs) -> float:
         """Calculate reward for a tutor's evaluation of a solution"""
         # Extract sections from tutor's response
