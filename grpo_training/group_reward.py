@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from typing import List, Dict, Optional, Tuple
 from transformers import AutoTokenizer, AutoModel
 from .reward_base import BaseReward, RewardConfig
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer
 
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
