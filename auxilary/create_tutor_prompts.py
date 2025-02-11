@@ -5,6 +5,7 @@ import sympy
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from latex2sympy2 import latex2sympy
+from transformers import AutoTokenizer
 
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON data from file"""
@@ -114,15 +115,33 @@ def is_solution_correct(solution: str, correct_answer: str) -> bool:
     # Compare with small tolerance for floating point
     return abs(solution_value - correct_value) <= 1e-6
 
-def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
+def create_tutor_prompts(data: List[Dict], max_tokens: int = 4000) -> Tuple[List[Dict], Dict]:
     """
     Process benchmark entries to create tutor prompts.
     Keeps all tags except model_solutions, creates a new prompt field.
     Filters out 90% of correct solutions to balance the dataset.
+    Limits entries to those with prompts under max_tokens.
+    Returns tuple of (processed_entries, statistics_dict).
     """
     processed = []
+    stats = {
+        'total_entries': 0,
+        'skipped_no_numeric_answer': 0,
+        'skipped_no_solutions': 0,
+        'skipped_correct_solution': 0,
+        'skipped_token_limit': 0,
+        'processed': 0
+    }
+    
+    # Initialize tokenizer
+    try:
+        tokenizer = AutoTokenizer.from_pretrained("Metaskepsis/Skepsis_2")
+    except:
+        print("Warning: Failed to load Skepsis_2 tokenizer. Falling back to GPT2 tokenizer.")
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
     
     for entry in data:
+        stats['total_entries'] += 1
         if 'data_type' not in entry or entry['data_type'] != 'training':
             continue
             
@@ -131,6 +150,7 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
             
         # Skip if we can't extract a numeric answer from the correct answer
         if extract_numeric_answer(entry['correct_answer']) is None:
+            stats['skipped_no_numeric_answer'] += 1
             continue
             
         # Create new entry without model_solutions and model_answers, and change data_type
@@ -140,6 +160,7 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
         # Randomly select one solution if multiple exist
         solutions = entry['model_solutions']
         if not solutions:
+            stats['skipped_no_solutions'] += 1
             continue
             
         # Check each solution and filter based on correctness
@@ -157,6 +178,7 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
             if incorrect_solutions:
                 selected_solution = random.choice(incorrect_solutions)
             else:
+                stats['skipped_correct_solution'] += 1
                 continue  # Skip if no incorrect solutions available
         else:
             # Use any solution (correct or incorrect)
@@ -188,9 +210,16 @@ def create_tutor_prompts(data: List[Dict]) -> List[Dict]:
             "<Substitution>"
         )
         
+        # Check token count
+        prompt_tokens = len(tokenizer.encode(new_entry['prompt']))
+        if prompt_tokens > max_tokens:
+            stats['skipped_token_limit'] += 1
+            continue
+            
         processed.append(new_entry)
+        stats['processed'] += 1
         
-    return processed
+    return processed, stats
 
 def main():
     import argparse
@@ -203,11 +232,20 @@ def main():
     data = load_json(args.input_file)
     
     # Process entries
-    processed = create_tutor_prompts(data)
+    processed, stats = create_tutor_prompts(data)
     
     # Save results
     save_json(processed, args.output_file)
-    print(f"Processed {len(processed)} entries")
+    
+    # Print statistics
+    print("\nProcessing Statistics:")
+    print(f"Total entries examined: {stats['total_entries']}")
+    print(f"Entries skipped due to:")
+    print(f"  - No numeric answer: {stats['skipped_no_numeric_answer']}")
+    print(f"  - No solutions: {stats['skipped_no_solutions']}")
+    print(f"  - Correct solution filtered: {stats['skipped_correct_solution']}")
+    print(f"  - Token limit exceeded: {stats['skipped_token_limit']}")
+    print(f"Final processed entries: {stats['processed']}")
 
 if __name__ == "__main__":
     main()
