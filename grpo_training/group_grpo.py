@@ -80,8 +80,8 @@ def main():
         project="group_grpo",
         name=f"group_grpo_{timestamp}",
         config={
-            "model_type": model_type,
-            "dataset": dataset_name,
+            "model_type": reward_config.model_type,
+            "dataset": reward_config.dataset_name,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
             "majority_bonus": 0.2,
@@ -90,18 +90,13 @@ def main():
         }
     )
     
-    # Initialize reward function
-    reward_config = RewardConfig(
-        model_type=model_type,
-        model_name=model_name,
-        dataset_name=dataset_name
-    )
+    # Initialize reward function with existing config
     reward_func = GroupReward(reward_config)
     
     # Load model
     PatchFastRL("GRPO", FastLanguageModel)
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
+        model_name=reward_config.model_name,
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
@@ -132,7 +127,7 @@ def main():
     )
     
     # Load and format dataset
-    dataset = load_dataset(dataset_name)
+    dataset = load_dataset(reward_config.dataset_name)
     def formatting_func(example):
         solver_prompt = (
             "Here is a mathematical problem:\n\n"
@@ -199,8 +194,8 @@ def main():
     # Save model
     try:
         models_dir = "models"
-        os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
-        model_output_dir = os.path.join(models_dir, model_type, timestamp)
+        os.makedirs(os.path.join(models_dir, reward_config.model_type), exist_ok=True)
+        model_output_dir = os.path.join(models_dir, reward_config.model_type, timestamp)
         model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
         logger.info(f"Merged model saved to {model_output_dir}")
     except Exception as e:
