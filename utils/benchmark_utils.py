@@ -211,23 +211,27 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     First tries to evaluate using sympy, then falls back to direct float conversion.
     Returns float if found, None otherwise.
     """
-    if not answer:
-        return None, "No answer provided" if debug else (None, None)
-        
-    # Check for logical operators that indicate multiple answers
-    if "\\text{or}" in answer or "\\text{and}" in answer:
-        return None, "Answer contains 'or'/'and' operators" if debug else (None, None)
-        
-    # Clean the answer string
-    clean_answer = answer.strip()
-    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
-    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    clean_answer = clean_answer.replace('\\pm', '')
-    clean_answer = clean_answer.replace('\\ ', '')
-    clean_answer = clean_answer.replace('\\,', '')
-    clean_answer = clean_answer.replace('\\%', '')
-    clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
-    clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
+    try:
+        if not answer:
+            return None, "No answer provided" if debug else (None, None)
+            
+        if not isinstance(answer, str):
+            return None, f"Answer is not a string: {type(answer)}" if debug else (None, None)
+            
+        # Check for logical operators that indicate multiple answers
+        if "\\text{or}" in answer or "\\text{and}" in answer:
+            return None, "Answer contains 'or'/'and' operators" if debug else (None, None)
+            
+        # Clean the answer string
+        clean_answer = answer.strip()
+        clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
+        clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
+        clean_answer = clean_answer.replace('\\pm', '')
+        clean_answer = clean_answer.replace('\\ ', '')
+        clean_answer = clean_answer.replace('\\,', '')
+        clean_answer = clean_answer.replace('\\%', '')
+        clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
+        clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
     
     # Only split on = or \approx if there's a single term before it
     def has_single_term(text: str) -> bool:
@@ -275,8 +279,10 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
             return (result, f"Sympy success: {clean_answer} -> {latex_expr} -> {expr} -> {result}") if debug else (result, None)
     except TimeoutException:
         return (None, f"Timeout error: Processing took more than 10 seconds for input: {clean_answer}") if debug else (None, None)
-    except (sympy.SympifyError, TypeError, ValueError) as e:
-        return (None, f"Sympy error: {str(e)} on input: {clean_answer}") if debug else (None, None) 
+    except (sympy.SympifyError, TypeError, ValueError, AttributeError) as e:
+        return (None, f"Error processing answer: {str(e)} on input: {clean_answer}") if debug else (None, None)
+    except Exception as e:
+        return (None, f"Unexpected error: {str(e)} on input: {clean_answer}") if debug else (None, None)
 
 
 def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[float], tolerance: float) -> bool:
