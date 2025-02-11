@@ -284,8 +284,8 @@ class BaseReward(ABC):
         logger.addHandler(logging.StreamHandler())
         return logger
         
-    async def __call__(self, completions: List[str], **kwargs) -> List[float]:
-        """Async version for batch processing"""
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
+        """Synchronous batch processing that runs async code in event loop"""
         # Validate inputs
         prompts = kwargs.get('prompts', [])
         answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
@@ -294,13 +294,22 @@ class BaseReward(ABC):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             return [0.0] * len(completions)
             
-        # Process completions in parallel
-        tasks = []
-        for comp, prompt, ans in zip(completions, prompts, answers):
-            task = self.calculate_reward_async(comp, prompt=prompt, answer=ans, **kwargs)
-            tasks.append(task)
+        # Process completions in parallel using event loop
+        async def process_batch():
+            tasks = []
+            for comp, prompt, ans in zip(completions, prompts, answers):
+                task = self.calculate_reward(comp, prompt=prompt, answer=ans, **kwargs)
+                tasks.append(task)
+            return await asyncio.gather(*tasks)
             
-        rewards = await asyncio.gather(*tasks)
+        # Run async code in event loop
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        rewards = loop.run_until_complete(process_batch())
+        
         self.stats.update(rewards, completions=completions)
         return rewards
 
