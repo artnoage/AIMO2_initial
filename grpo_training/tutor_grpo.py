@@ -74,8 +74,20 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = model_name if 'model_name' in locals() else "/Home/stat/laschos/AIMO2_initial/models/tutor2"
-    dataset_name = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
+    # Check for model name in locals, then try HF, then exit
+    if 'model_name' in locals():
+        model_name = model_name
+    else:
+        try:
+            from huggingface_hub import model_info
+            model_info("Metaskepsis/Skepsis_2")
+            model_name = "Metaskepsis/Skepsis_2"
+        except Exception as e:
+            logger.error("No model name provided and couldn't find default model in HuggingFace")
+            sys.exit(1)
+            
+    # Use dataset name from file
+    dataset_name = dataset_name if 'dataset_name' in locals() else "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
