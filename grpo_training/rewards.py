@@ -454,13 +454,6 @@ class GroupReward(BaseReward):
         self.logger.info(f"Processing completion {group_index+1}/{len(completions)}")
         self.logger.info(f"Correct answer: {correct_answer}")
         
-            if not batch_completions or not correct_answer:
-                rewards.append(0.0)
-                continue
-
-            self.logger.info(f"Processing completion {group_index+1}/12")
-            self.logger.info(f"Correct answer: {correct_answer}")
-            
         # Calculate correctness for all completions in group
         results = []
         for comp in completions:
