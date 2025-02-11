@@ -155,6 +155,10 @@ def main():
             dataset = load_from_disk(dataset_path)
         else:
             dataset = load_dataset(reward_config.dataset_name)
+    except Exception as e:
+        logger.error(f"Failed to load dataset: {str(e)}")
+        sys.exit(1)
+        
     def formatting_func(example):
         formatted_example = {**example}
         formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
