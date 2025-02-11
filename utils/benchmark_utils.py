@@ -211,6 +211,7 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
     First tries to evaluate using sympy, then falls back to direct float conversion.
     Returns float if found, None otherwise.
     """
+    # Only split on = or \approx if there's a single term before it
     try:
         if not answer:
             return None, "No answer provided" if debug else (None, None)
@@ -232,8 +233,6 @@ def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[f
         clean_answer = clean_answer.replace('\\%', '')
         clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
         clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
-    
-    # Only split on = or \approx if there's a single term before it
     def has_single_term(text: str) -> bool:
         """Check if text has only a single term (no operators outside brackets)"""
         bracket_level = 0
