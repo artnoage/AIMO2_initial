@@ -413,22 +413,42 @@ class SolutionReward(BaseReward):
                 return 0.0
                 
             # Check correctness
-            if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
+            is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+            print(f"\nCorrectness check:")
+            print(f"Difference: {abs(model_numeric - correct_numeric)}")
+            print(f"Tolerance: {self.config.numeric_tolerance}")
+            print(f"Is correct: {is_correct}")
+            
+            if is_correct:
                 reward += self.config.base_reward
+                print(f"Added base reward: +{self.config.base_reward}")
                 
             # Add validation reward
-            is_valid, _ = validate_solution(completion)
+            is_valid, validation_msg = validate_solution(completion)
+            print(f"\nValidation check:")
+            print(f"Is valid: {is_valid}")
+            print(f"Validation message: {validation_msg}")
+            
             if is_valid:
                 reward += self.config.validation_reward
+                print(f"Added validation reward: +{self.config.validation_reward}")
                 
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
             reward -= length_penalty
+            print(f"\nLength penalty:")
+            print(f"Completion length: {len(completion)}")
+            print(f"Penalty factor: {self.config.length_penalty_factor}")
+            print(f"Total penalty: -{length_penalty}")
             
             # Update statistics
             self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + (1 if reward >= self.config.base_reward else 0)
             self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + (1 if is_valid else 0)
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            print(f"\nFinal reward calculation:")
+            print(f"Total reward: {reward}")
+            print("=== End reward calculation ===\n")
             
             return reward
             
