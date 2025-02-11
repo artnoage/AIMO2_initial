@@ -325,14 +325,18 @@ class BaseReward(ABC):
                     group['answers'], 
                     group['indices']
                 )):
+                    # Create kwargs with all group context
                     task_kwargs = {
                         'prompt': prompt,
                         'answer': ans,
                         'group_idx': group_idx,
-                        'reward_index': idx
+                        'reward_index': idx,
+                        'group_completions': group['completions'],
+                        'group_answers': group['answers'],
+                        'group_indices': group['indices']
                     }
+                    # Update with any additional kwargs
                     task_kwargs.update(kwargs)
-                    task_kwargs.update(group_kwargs)
                     task = self.calculate_reward(completion, **task_kwargs)
                     tasks.append(task)
                     
