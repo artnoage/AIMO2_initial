@@ -524,22 +524,30 @@ class SolutionSimilarityChecker:
                     param.data = param.data.to(self.device)
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
-        with torch.no_grad(), torch.amp.autocast('cuda', enabled=True):
-            inputs = self.tokenizer(
-                texts,
-                padding=True,
-                truncation=True,
-                max_length=self.config.embedding_max_length,
-                return_tensors="pt"
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            outputs = self.model(**inputs)
-            embeddings = outputs.last_hidden_state.mean(dim=1)
-            return F.normalize(embeddings, p=2, dim=1)
+        with torch.no_grad():  # Ensure no gradients are tracked
+            with torch.amp.autocast('cuda', enabled=True):
+                inputs = self.tokenizer(
+                    texts,
+                    padding=True,
+                    truncation=True,
+                    max_length=self.config.embedding_max_length,
+                    return_tensors="pt"
+                )
+                # Move inputs to device and ensure they don't track gradients
+                inputs = {k: v.to(self.device).detach() for k, v in inputs.items()}
+                
+                outputs = self.model(**inputs)
+                # Detach embeddings from computation graph
+                embeddings = outputs.last_hidden_state.mean(dim=1).detach()
+                # Normalize and ensure no gradients
+                normalized = F.normalize(embeddings, p=2, dim=1)
+                return normalized.detach()
 
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
-        embeddings = self.get_embeddings(solutions)
-        return torch.mm(embeddings, embeddings.t())
+        with torch.no_grad():  # Ensure no gradients are tracked
+            embeddings = self.get_embeddings(solutions)
+            similarity_matrix = torch.mm(embeddings, embeddings.t())
+            return similarity_matrix.detach()  # Ensure result is detached
 
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
