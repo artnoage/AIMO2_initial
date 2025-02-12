@@ -330,10 +330,9 @@ class BaseReward(ABC):
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
         
-        # Print reward-specific statistics summary
-        if self.stats.total_batches % 10 == 0:  # Print every 10 batches
-            self.logger.info("\nReward Statistics Summary:")
-            self.logger.info(self.stats.get_summary())
+        # Print reward-specific statistics summary every batch
+        self.logger.info("\nReward Statistics Summary:")
+        self.logger.info(self.stats.get_summary())
         
         return rewards
 
