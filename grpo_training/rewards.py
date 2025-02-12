@@ -351,6 +351,8 @@ class GroupReward(BaseReward):
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
             print(len(group_completions),group_idx)
+            print(len(group_answers))
+            print(group_indices)
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
@@ -365,7 +367,7 @@ class GroupReward(BaseReward):
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(kwargs['answer'])
-            
+            print(model_numeric)
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")
                 return 0.0
@@ -373,6 +375,7 @@ class GroupReward(BaseReward):
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             reward = self.config.group_base_reward if is_correct else 0.0
+            print("hey",reward)
             if is_correct:
                 self.stats.reward_components['base_rewards'] += 1
             self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
@@ -490,7 +493,7 @@ class GroupReward(BaseReward):
             length_penalty = len(completion) * self.config.length_penalty_factor
             self.stats.group_stats['total_length_penalty'] = self.stats.group_stats.get('total_length_penalty', 0.0) + length_penalty
             self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
-            
+            print("mathafack",reward)
             return reward
             
         except Exception as e:

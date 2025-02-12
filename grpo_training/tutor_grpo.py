@@ -164,7 +164,7 @@ def main():
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=10,
+        torch_empty_cache_steps=50,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
