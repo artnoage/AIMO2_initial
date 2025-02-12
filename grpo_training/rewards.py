@@ -653,7 +653,7 @@ class TutorReward(BaseReward):
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(
             model=config.completion_model_name,
-            temperature=0.0,
+            temperature=0.7,
             port=config.completion_port
         )
         
