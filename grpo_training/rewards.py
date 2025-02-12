@@ -1043,40 +1043,57 @@ class TutorReward(BaseReward):
             # Try completing from original solution up to wrong step
             partial_solution = "".join(solution_steps[:step_num])
             try:
-                # Try completing with tutor's substitution
-                completion_with_sub = await self.completion_agent.generate(
-                    problem, 
-                    partial_solution + substitution
+                # Try multiple completions for both original and substituted steps
+                wrong_partial = partial_solution + solution_steps[step_num]
+                corrected_partial = partial_solution + substitution
+                
+                wrong_check, fixed_check = await asyncio.gather(
+                    self._validate_completions(
+                        problem, 
+                        wrong_partial, 
+                        correct_answer,
+                        self.config.completion_attempts
+                    ),
+                    self._validate_completions(
+                        problem,
+                        corrected_partial,
+                        correct_answer,
+                        self.config.completion_attempts
+                    )
                 )
                 
-                # Try completing with original step
-                completion_original = await self.completion_agent.generate(
-                    problem,
-                    partial_solution + solution_steps[step_num]
-                )
+                successful_wrong, total_wrong = wrong_check
+                successful_fixed, total_fixed = fixed_check
                 
-                # Extract and compare answers
-                sub_answer = extract_answer_from_solution(completion_with_sub)
-                orig_answer = extract_answer_from_solution(completion_original)
+                self.logger.info(f"Completion results - Original: {successful_wrong}/{total_wrong}, Fixed: {successful_fixed}/{total_fixed}")
                 
-                if sub_answer and orig_answer:
-                    sub_numeric, _ = extract_numeric_answer(sub_answer)
-                    orig_numeric, _ = extract_numeric_answer(orig_answer)
-                    correct_numeric, _ = extract_numeric_answer(correct_answer)
+                if successful_wrong == 0 and successful_fixed > 0:
+                    # Calculate improvement bonus based on success rate
+                    success_rate = successful_fixed / total_fixed
+                    improvement_bonus = 0.0
                     
-                    if all(x is not None for x in [sub_numeric, orig_numeric, correct_numeric]):
-                        sub_correct = abs(sub_numeric - correct_numeric) <= self.config.numeric_tolerance
-                        orig_correct = abs(orig_numeric - correct_numeric) <= self.config.numeric_tolerance
+                    if 0.1 < success_rate <= 0.4:  # 10-40%
+                        improvement_bonus = 0.1
+                    elif 0.4 < success_rate <= 0.7:  # 40-70%
+                        improvement_bonus = 0.2
+                    elif success_rate > 0.7:  # >70%
+                        improvement_bonus = 0.3
                         
-                        if sub_correct and not orig_correct:
-                            # Tutor's substitution leads to correct answer while original doesn't
-                            reward = self.config.tutor_full_reward
-                            self.stats.full_reward_reasons['step_correction'] += 1
-                            self.logger.info("Step correction successful - updating full reward reason count")
-                        elif orig_correct:
-                            # Original step was actually correct
-                            self.logger.warning("Original step was actually correct - returning 0 reward")
-                            return 0.0
+                    reward = self.config.tutor_full_reward + improvement_bonus
+                    self.stats.full_reward_reasons['step_correction'] += 1
+                    self.logger.info(f"Step correction successful - Success rate: {success_rate:.2%}, Bonus: {improvement_bonus}")
+                    
+                    # Track improvement bonus
+                    if improvement_bonus > 0:
+                        bonus_key = str(improvement_bonus)
+                        self.stats.reward_components['improvement_bonuses'][bonus_key] = \
+                            self.stats.reward_components['improvement_bonuses'].get(bonus_key, 0) + 1
+                        self.stats.reward_components['improvement_bonuses']['total'] += 1
+                        
+                elif successful_wrong > 0:
+                    # Original step was actually correct
+                    self.logger.warning("Original step was actually correct - returning 0 reward")
+                    return 0.0
                             
             except Exception as e:
                 self.logger.warning(f"Error during step validation: {str(e)}")
