@@ -48,6 +48,10 @@ class RewardConfig:
     completion_temp: float = 0.7
     completion_attempts: int = 10
     
+    # Embedding model settings
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
+    embedding_max_length: int = 512
+    
     # Common reward components
     base_reward: float = 2.0
     validation_reward: float = 0.2
@@ -506,9 +510,8 @@ class SolutionSimilarityChecker:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Load tokenizer and model
-        model_name = "sentence-transformers/all-mpnet-base-v2"  # Default embedding model
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model)
+        self.model = AutoModel.from_pretrained(config.embedding_model)
         
         # Move model to device and set eval mode
         self.model = self.model.to(self.device)
@@ -672,14 +675,8 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
-        # Project reward config to minimal config for get_model
-        minimal_config = MinimalConfig(
-            auxiliary=config.model_type,
-            auxiliary_port=config.completion_port,
-            auxiliary_temp=config.completion_temp
-        )
         # Create auxiliary model with temperature
-        auxiliary = get_model(minimal_config, role="auxiliary")
+        auxiliary = get_model(config, role="auxiliary")
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(auxiliary)
         
