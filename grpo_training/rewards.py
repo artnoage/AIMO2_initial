@@ -13,6 +13,9 @@ from transformers import AutoTokenizer, AutoModel
 from config import GRPOConfig
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+from utils.benchmark_utils import get_model, extract_answer_from_solution, extract_numeric_answer, validate_solution
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
