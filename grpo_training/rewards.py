@@ -97,7 +97,18 @@ class RewardStats:
             'incorrect_answers': 0,
             'total_similarity': 0.0,
             'majority_bonuses': 0,
-            'diversity_bonuses': 0
+            'diversity_bonuses': 0,
+            # Voting statistics
+            'total_votes': 0,
+            'majority_votes': 0,
+            'minority_votes': 0,
+            'unanimous_correct': 0,
+            'unanimous_incorrect': 0,
+            'split_votes': 0,
+            'majority_size_dist': {},  # Distribution of majority sizes
+            'vote_margins': [],  # List of vote margins (majority - minority)
+            'average_majority_size': 0.0,
+            'average_vote_margin': 0.0
         }
         
         # Track full reward reasons
@@ -600,15 +611,48 @@ class GroupReward(BaseReward):
             # Majority bonus - only apply if group has more than one completion
             if len(group_completions) > 1:
                 correct_count = sum(all_results)
-                is_in_majority = (is_correct and correct_count > len(group_completions) / 2) or \
-                                (not is_correct and (len(group_completions) - correct_count) > len(group_completions) / 2)
+                incorrect_count = len(group_completions) - correct_count
+                majority_size = max(correct_count, incorrect_count)
+                minority_size = min(correct_count, incorrect_count)
+                vote_margin = majority_size - minority_size
+                
+                # Update voting statistics
+                self.stats.group_stats['total_votes'] += 1
+                if majority_size == len(group_completions):
+                    if correct_count > incorrect_count:
+                        self.stats.group_stats['unanimous_correct'] += 1
+                    else:
+                        self.stats.group_stats['unanimous_incorrect'] += 1
+                else:
+                    self.stats.group_stats['split_votes'] += 1
+                
+                # Track majority size distribution
+                self.stats.group_stats['majority_size_dist'][majority_size] = \
+                    self.stats.group_stats['majority_size_dist'].get(majority_size, 0) + 1
+                
+                # Update vote margins
+                self.stats.group_stats['vote_margins'].append(vote_margin)
+                total_votes = self.stats.group_stats['total_votes']
+                self.stats.group_stats['average_majority_size'] = \
+                    (majority_size + (total_votes - 1) * self.stats.group_stats['average_majority_size']) / total_votes
+                self.stats.group_stats['average_vote_margin'] = \
+                    (vote_margin + (total_votes - 1) * self.stats.group_stats['average_vote_margin']) / total_votes
+                
+                # Determine if current completion is in majority
+                is_in_majority = (is_correct and correct_count > incorrect_count) or \
+                                (not is_correct and incorrect_count > correct_count)
                 majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
                 
-                self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, In majority: {is_in_majority}")
+                self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, "
+                               f"In majority: {is_in_majority}, Margin: {vote_margin}")
+                
                 if is_in_majority:
                     reward += majority_bonus
                     self.stats.reward_components['majority_bonuses'] = self.stats.reward_components.get('majority_bonuses', 0) + 1
+                    self.stats.group_stats['majority_votes'] += 1
                     self.logger.info(f"Applied majority bonus: +{majority_bonus:.3f}")
+                else:
+                    self.stats.group_stats['minority_votes'] += 1
                     
                 # Diversity bonus
                 similarities = similarity_matrix[group_idx]
