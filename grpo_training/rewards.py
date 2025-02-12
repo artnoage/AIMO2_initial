@@ -661,8 +661,14 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
+        # Create partial config for get_model that matches benchmark config format
+        partial_config = type('PartialConfig', (), {
+            'auxiliary': 'LOCAL_2',
+            'auxiliary_port': config.completion_port,
+            'auxiliary_temp': config.completion_temp
+        })
         # Create auxiliary model with temperature
-        auxiliary = get_model(config, role="auxiliary")
+        auxiliary = get_model(partial_config, role="auxiliary")
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(auxiliary)
         
