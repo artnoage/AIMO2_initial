@@ -184,6 +184,8 @@ def main():
         remove_columns=None  # Keep original columns
     )
     formatted_dataset = formatted_dataset.shuffle(seed=42)
+    # Take first 3000 entries
+    formatted_dataset = formatted_dataset.select(range(3000))
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
