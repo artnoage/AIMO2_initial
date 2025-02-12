@@ -98,7 +98,12 @@ class RewardStats:
             'majority_size_dist': {},  # Distribution of majority sizes
             'vote_margins': [],  # List of vote margins (majority - minority)
             'average_majority_size': 0.0,
-            'average_vote_margin': 0.0
+            'average_vote_margin': 0.0,
+            # Length and content penalties
+            'total_length_penalty': 0.0,
+            'total_length': 0,
+            'total_analysis_length_penalty': 0.0,
+            'total_substitution_length_penalty': 0.0
         }
         
         # Track full reward reasons
