@@ -391,7 +391,7 @@ class BaseReward(ABC):
         
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
-        self.logger.info(self.stats.get_summary())
+        self.logger.info(self.stats.get_summary(getattr(self, 'relevant_stats', None)))
         
         return rewards
 
@@ -399,6 +399,11 @@ class SolutionReward(BaseReward):
     """Reward class for basic solution evaluation"""
     
     __name__ = "solution_reward"
+    relevant_stats = {
+        'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty'],
+        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions', 'total_length'],
+        'validation_stats': ['completion_attempts', 'successful_completions', 'failed_completions']
+    }
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
@@ -541,6 +546,16 @@ class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
     __name__ = "group_reward"
+    relevant_stats = {
+        'reward_components': ['base_rewards', 'majority_bonuses', 'diversity_bonuses'],
+        'group_stats': [
+            'correct_answers', 'incorrect_answers', 'unique_solutions', 'similar_solutions',
+            'total_similarity', 'majority_votes', 'minority_votes', 'unanimous_correct',
+            'unanimous_incorrect', 'split_votes', 'majority_size_dist', 'vote_margins',
+            'average_majority_size', 'average_vote_margin', 'total_length_penalty',
+            'total_length', 'total_analysis_length_penalty', 'total_substitution_length_penalty'
+        ]
+    }
     
     def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker):
         super().__init__(config)
@@ -705,6 +720,23 @@ class TutorReward(BaseReward):
     """Reward class for tutor response evaluation"""
     
     __name__ = "tutor_reward"
+    relevant_stats = {
+        'section_stats': [
+            'missing_analysis', 'missing_verdict', 'missing_substitution',
+            'invalid_step_number', 'polar_verdict_with_substitution',
+            'step_verdict_without_substitution', 'multiple_steps_in_substitution',
+            'polar_verdict_count', 'step_verdict_count', 'invalid_verdict_format'
+        ],
+        'validation_stats': ['completion_attempts', 'successful_completions', 'failed_completions'],
+        'step_stats': ['step_identifications', 'valid_step_corrections', 'invalid_step_corrections', 'step_completion_rate'],
+        'analysis_stats': ['analysis_with_steps', 'analysis_without_steps', 'average_analysis_length'],
+        'reward_components': [
+            'base_rewards', 'analysis_rewards', 'substitution_rewards', 'step_bonuses',
+            'step_penalties', 'total_analysis_length_penalty', 'total_substitution_length_penalty',
+            'redundant_substitution_penalties', 'wrong_boxed_answer_penalties'
+        ],
+        'full_reward_reasons': ['correct_answer', 'wrong_approach', 'step_correction', 'final_step_correct']
+    }
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)

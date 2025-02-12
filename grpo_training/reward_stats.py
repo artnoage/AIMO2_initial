@@ -176,8 +176,12 @@ class RewardStats:
         except Exception as e:
             logging.error(f"Failed to save statistics: {str(e)}")
             
-    def get_summary(self) -> str:
-        """Get a human-readable summary of statistics"""
+    def get_summary(self, relevant_stats=None) -> str:
+        """Get a human-readable summary of statistics
+        
+        Args:
+            relevant_stats: Dictionary mapping stat categories to lists of relevant stat names
+        """
         total_samples = sum(self.reward_distribution.values())
         if total_samples == 0:
             return "No samples processed yet"
@@ -192,58 +196,64 @@ class RewardStats:
             for reward, count in sorted_rewards
         )
         
-        return (
-            f"Training time: {elapsed}\n"
-            f"Processed {self.total_batches} batches\n"
-            f"Average reward: {avg_reward:.6f}\n"
-            f"Total samples: {total_samples}\n"
-            f"\nReward Distribution:\n{reward_dist_str}\n"
-            f"\nVerdict Statistics:\n"
-            f"  Polar verdicts: {self.section_stats['polar_verdict_count']}\n"
-            f"  Step verdicts: {self.section_stats['step_verdict_count']}\n"
-            f"  Invalid formats: {self.section_stats['invalid_verdict_format']}\n"
-            f"\nSection Issues:\n"
-            f"  Missing analysis: {self.section_stats['missing_analysis']}\n"
-            f"  Missing verdict: {self.section_stats['missing_verdict']}\n"
-            f"  Step verdict without substitution: {self.section_stats['step_verdict_without_substitution']}\n"
-            f"  Polar verdict with substitution: {self.section_stats['polar_verdict_with_substitution']}\n"
-            f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
-            f"\nCompletion Validation:\n"
-            f"  Total attempts: {self.validation_stats['completion_attempts']}\n"
-            f"  Successful: {self.validation_stats['successful_completions']}\n"
-            f"  Failed: {self.validation_stats['failed_completions']}\n"
-            f"  Timeouts: {self.validation_stats['completion_timeouts']}\n"
-            f"  Errors: {self.validation_stats['completion_errors']}\n"
-            f"\nStep Validation:\n"
-            f"  Total identifications: {self.step_stats['step_identifications']}\n"
-            f"  Valid corrections: {self.step_stats['valid_step_corrections']}\n"
-            f"  Invalid corrections: {self.step_stats['invalid_step_corrections']}\n"
-            f"  Completion rate: {self.step_stats['step_completion_rate']:.2%}\n"
-            f"\nAnalysis Quality:\n"
-            f"  With steps: {self.analysis_stats['analysis_with_steps']}\n"
-            f"  Without steps: {self.analysis_stats['analysis_without_steps']}\n"
-            f"  Average length: {self.analysis_stats['average_analysis_length']:.1f}\n"
-            f"\nReward Components:\n"
-            f"  Base rewards: {self.reward_components['base_rewards']}\n"
-            f"  Validation rewards: {self.reward_components.get('validation_rewards', 0)}\n"
-            f"  Analysis rewards: {self.reward_components['analysis_rewards']}\n"
-            f"  Substitution rewards: {self.reward_components['substitution_rewards']}\n"
-            f"  Step bonuses: {self.reward_components['step_bonuses']}\n"
-            f"  Step penalties: {self.reward_components['step_penalties']}\n"
-            f"\nPenalties:\n"
-            f"  Analysis length: {self.reward_components['total_analysis_length_penalty']:.6f}\n"
-            f"  Substitution length: {self.reward_components['total_substitution_length_penalty']:.6f}\n"
-            f"  Wrong boxed answers: {self.reward_components['wrong_boxed_answer_penalties']}\n"
-            f"  Redundant substitutions: {self.reward_components['redundant_substitution_penalties']}\n"
-            f"\nGroup Statistics:\n"
-            f"  Majority bonuses: {self.reward_components.get('majority_bonuses', 0)}\n"
-            f"  Diversity bonuses: {self.reward_components.get('diversity_bonuses', 0)}\n"
-            f"  Unique solutions: {self.group_stats.get('unique_solutions', 0)}\n"
-            f"  Similar solutions: {self.group_stats.get('similar_solutions', 0)}\n"
-            f"  Average similarity: {self.group_stats.get('total_similarity', 0)/total_samples if total_samples else 0:.3f}\n"
-            f"\nFull Reward Reasons:\n"
-            f"  Correct answer: {self.full_reward_reasons['correct_answer']}\n"
-            f"  Wrong approach: {self.full_reward_reasons['wrong_approach']}\n"
-            f"  Step correction: {self.full_reward_reasons['step_correction']}\n"
-            f"  Final step correct: {self.full_reward_reasons['final_step_correct']}"
-        )
+        # Always show basic stats
+        summary = [
+            f"Training time: {elapsed}",
+            f"Processed {self.total_batches} batches",
+            f"Average reward: {avg_reward:.6f}",
+            f"Total samples: {total_samples}",
+            f"\nReward Distribution:\n{reward_dist_str}"
+        ]
+        
+        if not relevant_stats:
+            # If no relevant stats specified, show everything
+            relevant_stats = {
+                'section_stats': list(self.section_stats.keys()),
+                'validation_stats': list(self.validation_stats.keys()),
+                'step_stats': list(self.step_stats.keys()),
+                'analysis_stats': list(self.analysis_stats.keys()),
+                'reward_components': list(self.reward_components.keys()),
+                'group_stats': list(self.group_stats.keys()),
+                'full_reward_reasons': list(self.full_reward_reasons.keys())
+            }
+        
+        # Build sections based on relevant stats
+        for category, stat_names in relevant_stats.items():
+            if not stat_names:
+                continue
+                
+            stats_dict = getattr(self, category)
+            if not stats_dict:
+                continue
+                
+            # Add section header
+            section_name = category.replace('_', ' ').title()
+            summary.append(f"\n{section_name}:")
+            
+            # Add relevant stats
+            for stat_name in stat_names:
+                if stat_name not in stats_dict:
+                    continue
+                    
+                value = stats_dict[stat_name]
+                # Format special cases
+                if isinstance(value, float):
+                    if 'penalty' in stat_name or 'reward' in stat_name:
+                        formatted_value = f"{value:.6f}"
+                    else:
+                        formatted_value = f"{value:.3f}"
+                elif isinstance(value, dict):
+                    formatted_value = str(value)
+                elif isinstance(value, list):
+                    if value:
+                        formatted_value = f"avg: {sum(value)/len(value):.3f}, count: {len(value)}"
+                    else:
+                        formatted_value = "empty"
+                else:
+                    formatted_value = str(value)
+                
+                # Format stat name for display
+                display_name = stat_name.replace('_', ' ').title()
+                summary.append(f"  {display_name}: {formatted_value}")
+        
+        return "\n".join(summary)
