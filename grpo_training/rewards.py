@@ -11,6 +11,20 @@ import os, sys
 from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
 from config import GRPOConfig
+from dataclasses import dataclass
+from enum import Enum
+
+class ModelOption(Enum):
+    LOCAL = "local_model"
+    LOCAL_2 = "local_model_2"
+
+@dataclass
+class MinimalConfig:
+    """Minimal configuration needed for get_model function"""
+    auxiliary: str = "LOCAL_2"
+    auxiliary_port: int = 6000
+    auxiliary_temp: float = 0.7
+
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.benchmark_utils import get_model, extract_answer_from_solution, extract_numeric_answer, validate_solution
@@ -653,8 +667,14 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
+        # Create minimal config for get_model
+        minimal_config = MinimalConfig(
+            auxiliary="LOCAL_2",
+            auxiliary_port=6000,
+            auxiliary_temp=0.7
+        )
         # Create auxiliary model with temperature
-        auxiliary = get_model(config, role="auxiliary")
+        auxiliary = get_model(minimal_config, role="auxiliary")
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(auxiliary)
         
