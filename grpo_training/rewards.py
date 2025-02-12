@@ -43,6 +43,11 @@ class RewardConfig:
     max_retries: int = 3
     timeout: int = 300
     
+    # Completion agent settings
+    completion_port: int = 8004
+    completion_temp: float = 0.7
+    completion_attempts: int = 10
+    
     # Common reward components
     base_reward: float = 2.0
     validation_reward: float = 0.2
@@ -496,13 +501,14 @@ class SolutionReward(BaseReward):
 
 class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
-    def __init__(self, config: GRPOConfig):
+    def __init__(self, config: RewardConfig):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model_name)
-        self.model = AutoModel.from_pretrained(config.embedding_model_name)
+        model_name = "sentence-transformers/all-mpnet-base-v2"  # Default embedding model
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
         
         # Move model to device and set eval mode
         self.model = self.model.to(self.device)
@@ -538,7 +544,7 @@ class GroupReward(BaseReward):
     
     __name__ = "group_reward"
     
-    def __init__(self, config: GRPOConfig, similarity_checker: SolutionSimilarityChecker):
+    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker):
         super().__init__(config)
         self.similarity_checker = similarity_checker
         
@@ -664,10 +670,14 @@ class TutorReward(BaseReward):
     
     __name__ = "tutor_reward"
     
-    def __init__(self, config: GRPOConfig):
+    def __init__(self, config: RewardConfig):
         super().__init__(config)
-        # Create minimal config for get_model
-        minimal_config = MinimalConfig()
+        # Project reward config to minimal config for get_model
+        minimal_config = MinimalConfig(
+            auxiliary=config.model_type,
+            auxiliary_port=config.completion_port,
+            auxiliary_temp=config.completion_temp
+        )
         # Create auxiliary model with temperature
         auxiliary = get_model(minimal_config, role="auxiliary")
         # Initialize completion agent for validation
