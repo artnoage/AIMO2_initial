@@ -114,6 +114,14 @@ class RewardStats:
             'final_step_correct': 0
         }
         
+        # Track accuracy statistics
+        self.accuracy_stats = {
+            'total_predictions': 0,
+            'correct_predictions': 0,
+            'step_predictions': 0,
+            'correct_step_predictions': 0
+        }
+        
     def update(self, rewards: List[float], **kwargs):
         """Update statistics with new rewards"""
         self.total_batches += 1

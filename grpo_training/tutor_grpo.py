@@ -63,6 +63,16 @@ class LoggingCallback(TrainerCallback):
                     'step_penalties': self.reward_func.stats.reward_components.get('step_penalties', 0) - getattr(self, '_last_step_penalties', 0)
                 }
                 
+                # Add accuracy metrics
+                total_predictions = self.reward_func.stats.accuracy_stats['total_predictions']
+                step_predictions = self.reward_func.stats.accuracy_stats['step_predictions']
+                
+                accuracy_metrics = {
+                    'overall_accuracy': self.reward_func.stats.accuracy_stats['correct_predictions'] / max(1, total_predictions),
+                    'conditional_step_accuracy': self.reward_func.stats.accuracy_stats['correct_step_predictions'] / max(1, step_predictions)
+                }
+                current_rewards.update(accuracy_metrics)
+                
                 # Store current values for next round
                 self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
                 self._last_analysis_rewards = self.reward_func.stats.reward_components.get('analysis_rewards', 0)

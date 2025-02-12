@@ -764,12 +764,17 @@ class TutorReward(BaseReward):
             self.stats.reward_components['total_analysis_length_penalty'] += length_penalty
             
         # Verify tutor's verdict using completion agent
+        # Track prediction accuracy
+        self.stats.accuracy_stats['total_predictions'] += 1
+            
         if verdict == "The answer is correct":
             # Check if student solution is actually correct
             if student_numeric is not None and correct_numeric is not None:
-                if abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                is_actually_correct = abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance
+                if is_actually_correct:
                     reward = self.config.tutor_full_reward
                     self.stats.full_reward_reasons['correct_answer'] += 1
+                    self.stats.accuracy_stats['correct_predictions'] += 1
                 else:
                     # Tutor incorrectly said answer was correct
                     return 0.0
@@ -798,6 +803,9 @@ class TutorReward(BaseReward):
                 return reward
                 
         elif verdict.startswith("Step "):
+            # Track step prediction
+            self.stats.accuracy_stats['step_predictions'] += 1
+            
             solution_steps = self.split_into_steps(student_solution)
             if step_num >= len(solution_steps):
                 return reward
