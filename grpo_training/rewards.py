@@ -1,12 +1,9 @@
 import re
-import json
 import asyncio
 import torch
 import logging
 import torch.nn.functional as F
-from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass
 import os, sys
 from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
@@ -17,8 +14,9 @@ from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
 from utils.benchmark_config import BenchmarkConfig
+from .reward_stats import RewardStats
 
-class RewardStats:
+class BaseReward(ABC):
     """Base class for tracking reward statistics"""
     def __init__(self, config: RewardConfig):
         self.config = config
