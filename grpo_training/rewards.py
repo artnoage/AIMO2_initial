@@ -35,7 +35,36 @@ class RewardStats:
             'invalid_step_number': 0,
             'polar_verdict_with_substitution': 0,
             'step_verdict_without_substitution': 0,
-            'multiple_steps_in_substitution': 0
+            'multiple_steps_in_substitution': 0,
+            'polar_verdict_count': 0,
+            'step_verdict_count': 0,
+            'invalid_verdict_format': 0
+        }
+
+        # Track completion validation stats
+        self.validation_stats = {
+            'completion_attempts': 0,
+            'successful_completions': 0,
+            'failed_completions': 0,
+            'completion_timeouts': 0,
+            'completion_errors': 0
+        }
+
+        # Track step validation stats
+        self.step_stats = {
+            'step_identifications': 0,
+            'valid_step_corrections': 0,
+            'invalid_step_corrections': 0,
+            'step_completion_rate': 0.0
+        }
+
+        # Track analysis quality metrics
+        self.analysis_stats = {
+            'analysis_length_distribution': {},
+            'analysis_with_steps': 0,
+            'analysis_without_steps': 0,
+            'average_analysis_length': 0.0,
+            'total_analysis_length': 0
         }
         
         # Track reward components
