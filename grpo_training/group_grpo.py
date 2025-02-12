@@ -201,16 +201,19 @@ def main():
         desc="Applying chat template",
         remove_columns=None  # Keep original columns
     )
-    
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    # Take first 3000 entries
+    formatted_dataset = formatted_dataset.select(range(3000))
+    # Verify first few entries
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=50,
+        torch_empty_cache_steps=10,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.02,
+        warmup_ratio=0.05,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
@@ -223,8 +226,7 @@ def main():
         max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=0.5,
-        gradient_checkpointing=True,
+        max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
     )

@@ -427,7 +427,7 @@ def main():
             return all_rewards
     
     # Load and format the dataset
-    dataset = load_dataset("Metaskepsis/Numina_medium")
+    dataset = load_dataset("Metaskepsis/Numina_very_hard")
     
     def formatting_func(example):
         required_fields = ['prompt', 'correct_answer']
@@ -448,10 +448,12 @@ def main():
         formatting_func,
         desc="Applying chat template"
     )
-    
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    # Take first 3000 entries
+    formatted_dataset = formatted_dataset.select(range(3000))
     # Load the model and tokenizer using FastLanguageModel
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917",
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,

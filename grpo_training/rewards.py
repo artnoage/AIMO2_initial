@@ -200,17 +200,6 @@ class SolutionReward(BaseReward):
                 self.logger.warning("No correct answer provided in kwargs")
                 return 0.0
             
-            # Handle different input formats
-            if isinstance(correct_answer, (list, tuple)):
-                if not correct_answer:
-                    self.logger.warning("Empty correct answer list")
-                    return 0.0
-                correct_answer = correct_answer[0]
-                self.logger.debug(f"Using first element from list: {correct_answer}")
-            elif isinstance(correct_answer, dict):
-                correct_answer = str(correct_answer.get('answer', ''))
-                self.logger.debug(f"Extracted answer from dict: {correct_answer}")
-            
             # Convert to string if needed
             correct_answer = str(correct_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
@@ -259,19 +248,7 @@ class SolutionReward(BaseReward):
             self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
             self.stats.group_stats['total_solutions'] = self.stats.group_stats.get('total_solutions', 0) + 1
             
-            # Print statistics summary every 100 batches
-            if self.stats.total_batches % 100 == 0:
-                self.logger.info("\nSolution Statistics:")
-                self.logger.info(f"Total solutions: {self.stats.group_stats.get('total_solutions', 0)}")
-                self.logger.info(f"Correct answers: {self.stats.group_stats.get('correct_answers', 0)}")
-                self.logger.info(f"Incorrect answers: {self.stats.group_stats.get('incorrect_answers', 0)}")
-                self.logger.info(f"Valid solutions: {self.stats.group_stats.get('valid_solutions', 0)}")
-                self.logger.info(f"Invalid solutions: {self.stats.group_stats.get('invalid_solutions', 0)}")
-                self.logger.info(f"Average length: {self.stats.group_stats.get('total_length', 0) / max(1, self.stats.group_stats.get('total_solutions', 1)):.1f}")
-                self.logger.info(f"Total length penalty: {self.stats.reward_components.get('total_length_penalty', 0.0):.3f}")
-            
-            return reward
-            
+            return reward 
         except Exception as e:
             self.logger.error(f"Error calculating reward: {str(e)}")
             return 0.0
@@ -350,9 +327,7 @@ class GroupReward(BaseReward):
             group_answers = kwargs.get('group_answers', [])
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
-            print(len(group_completions),group_idx)
-            print(len(group_answers))
-            print(group_indices)
+            correct_answer = kwargs.get('answer')
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
@@ -366,7 +341,7 @@ class GroupReward(BaseReward):
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
-            correct_numeric, _ = extract_numeric_answer(kwargs['answer'])
+            correct_numeric, _ = extract_numeric_answer(str(correct_answer))
             print(model_numeric)
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")

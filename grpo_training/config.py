@@ -25,7 +25,7 @@ class RewardConfig:
     length_penalty_factor: float = 0.0001
     
     # Group-specific settings
-    group_base_reward: float = 3.0
+    group_base_reward: float = 3
     group_diversity_bonus: float = 0.3
     group_majority_bonus: float = 0.2
     group_similarity_threshold_low: float = 0.7
