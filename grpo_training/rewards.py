@@ -282,6 +282,10 @@ class BaseReward(ABC):
         async def process_batch():
             tasks = []
             
+            # Extract problems and solutions from kwargs if present
+            problems = kwargs.get('problems', [''] * len(prompts))
+            solutions = kwargs.get('solutions', [''] * len(prompts))
+            
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
                 for group_idx, (completion, ans, idx) in enumerate(zip(
@@ -293,6 +297,8 @@ class BaseReward(ABC):
                     task_kwargs = {
                         **kwargs,  # Base kwargs first
                         'prompt': prompt,
+                        'problem': problems[idx],  # Map to original index
+                        'solution': solutions[idx], # Map to original index
                         'answer': ans,
                         'group_idx': group_idx,
                         'reward_index': idx,
