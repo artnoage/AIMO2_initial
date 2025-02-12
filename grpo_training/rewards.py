@@ -917,11 +917,45 @@ class TutorReward(BaseReward):
         # Update base statistics
         if reward >= self.config.tutor_structure_base_reward:
             self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
+            
+        # Track section-level stats
+        if not analysis:
+            self.stats.section_stats['missing_analysis'] += 1
+        if not verdict:
+            self.stats.section_stats['missing_verdict'] += 1
+        if not substitution and verdict.startswith("Step "):
+            self.stats.section_stats['missing_substitution'] += 1
+            
+        # Track substitution stats
         if substitution:
             length_penalty = len(substitution) * self.config.tutor_substitution_length_cost
             reward += self.config.tutor_substitution_reward - length_penalty
             self.stats.reward_components['substitution_rewards'] = self.stats.reward_components.get('substitution_rewards', 0) + 1
             self.stats.reward_components['total_substitution_length_penalty'] = self.stats.reward_components.get('total_substitution_length_penalty', 0.0) + length_penalty
             
+            if verdict in polar_verdicts:
+                self.stats.section_stats['polar_verdict_with_substitution'] += 1
+                
+            substitution_steps = self.split_into_steps(substitution)
+            if len(substitution_steps) > 1:
+                self.stats.section_stats['multiple_steps_in_substitution'] += 1
+                
+        # Track improvement bonuses if applicable
+        if verdict.startswith("Step ") and reward == self.config.tutor_full_reward:
+            bonus_level = None
+            if reward > self.config.tutor_full_reward:
+                bonus = reward - self.config.tutor_full_reward
+                if abs(bonus - 0.1) < 1e-6:
+                    bonus_level = '0.1'
+                elif abs(bonus - 0.2) < 1e-6:
+                    bonus_level = '0.2'
+                elif abs(bonus - 0.3) < 1e-6:
+                    bonus_level = '0.3'
+                    
+            if bonus_level:
+                self.stats.reward_components['improvement_bonuses'][bonus_level] = \
+                    self.stats.reward_components['improvement_bonuses'].get(bonus_level, 0) + 1
+                self.stats.reward_components['improvement_bonuses']['total'] += 1
+                
         return reward
         
