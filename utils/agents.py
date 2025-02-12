@@ -74,43 +74,8 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        
-        # Convert prompt to messages format
-        messages = [{"role": "user", "content": prompt[0].content}]
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature
-        }
-
-        retry_count = 0
-        while retry_count < self.max_retries:
-            try:
-                timeout_client = aiohttp.ClientTimeout(total=180.0)
-                async with aiohttp.ClientSession(timeout=timeout_client) as session:
-                    async with session.post(
-                        f"{self.base_url}/chat/completions",
-                        json=payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {self.api_key}"
-                        }
-                    ) as response:
-                        if response.status != 200:
-                            raise ValueError(f"Error from API: {await response.text()}")
-                        
-                        result = await response.json()
-                        completion = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        return (prompt[0].content, completion) if return_prompt else completion
-                        
-            except Exception as e:
-                retry_count += 1
-                if retry_count == self.max_retries:
-                    raise
-                # Exponential backoff
-                await asyncio.sleep(0.1 * (2 ** retry_count))
-                
-        raise Exception(f"Failed after {self.max_retries} retries")
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        return (prompt[0].content, response) if return_prompt else response
 
 
 class MissingStepAgent:

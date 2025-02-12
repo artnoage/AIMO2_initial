@@ -695,19 +695,6 @@ class GroupReward(BaseReward):
             self.stats.group_stats['total_length_penalty'] = self.stats.group_stats.get('total_length_penalty', 0.0) + length_penalty
             self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
             
-            # Track analysis and substitution penalties
-            if 'analysis' in completion.lower():
-                analysis_length = len(re.search(r'analysis(.*?)(?:step|$)', completion.lower(), re.DOTALL).group(1))
-                analysis_penalty = analysis_length * self.config.analysis_length_penalty
-                self.stats.group_stats['total_analysis_length_penalty'] = \
-                    self.stats.group_stats.get('total_analysis_length_penalty', 0.0) + analysis_penalty
-                    
-            if 'substitution' in completion.lower():
-                substitution_length = len(re.search(r'substitution(.*?)(?:step|$)', completion.lower(), re.DOTALL).group(1))
-                substitution_penalty = substitution_length * self.config.substitution_length_penalty
-                self.stats.group_stats['total_substitution_length_penalty'] = \
-                    self.stats.group_stats.get('total_substitution_length_penalty', 0.0) + substitution_penalty
-            
             return reward
             
         except Exception as e:
