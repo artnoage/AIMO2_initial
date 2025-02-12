@@ -243,7 +243,15 @@ class RewardStats:
                     else:
                         formatted_value = f"{value:.3f}"
                 elif isinstance(value, dict):
-                    formatted_value = str(value)
+                    if stat_name == 'improvement_bonuses':
+                        # Special formatting for improvement bonuses
+                        bonus_counts = []
+                        for bonus, count in value.items():
+                            if bonus != 'total':
+                                bonus_counts.append(f"+{bonus} bonus: {count}x")
+                        formatted_value = f"Total: {value.get('total', 0)}\n    " + "\n    ".join(bonus_counts)
+                    else:
+                        formatted_value = str(value)
                 elif isinstance(value, list):
                     if value:
                         formatted_value = f"avg: {sum(value)/len(value):.3f}, count: {len(value)}"
