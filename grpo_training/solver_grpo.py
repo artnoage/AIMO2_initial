@@ -16,7 +16,7 @@ from transformers import TrainerCallback
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-from config import GRPOConfig as RewardConfig
+from config import RewardConfig
 from rewards import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -116,10 +116,6 @@ def main():
         }
     )
     
-    # Initialize reward function with default reward values
-    reward_config.base_reward = 2.0
-    reward_config.validation_reward = 0.2
-    reward_config.length_penalty_factor = 0.0001
     reward_func = SolutionReward(reward_config)
     
     # Load model

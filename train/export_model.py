@@ -20,17 +20,14 @@ def main():
     args = parser.parse_args()
 
     # Extract model type from path
-    model_type = "light" if "light" in args.model_name else "dark"
+    model_type = "tutor" 
 
     # Load the base model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=args.model_name,
         max_seq_length=8192,
-        fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
-    )
+        use_gradient_checkpointing="unsloth")
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(

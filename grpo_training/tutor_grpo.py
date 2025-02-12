@@ -9,13 +9,13 @@ from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 from unsloth.chat_templates import get_chat_template
 from trl import GRPOConfig, GRPOTrainer
+from config import RewardConfig
+from rewards import TutorReward
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-from config import GRPOConfig as RewardConfig
-from rewards import TutorReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -74,23 +74,20 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_path = "/Home/stat/laschos/AIMO2_initial/models/tutor2"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor3"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check if model exists locally or in HF
-    if os.path.exists(model_path):
-        model_name = model_path
-    else:
-        try:
-            from huggingface_hub import model_info
-            model_info(model_path)
-            model_name = model_path
-        except Exception as e:
-            logger.error(f"Model not found locally or in HuggingFace: {model_path}")
-            sys.exit(1)
+    try:
+        if os.path.exists(dataset_path):
+            dataset = load_from_disk(dataset_path)
+        else:
+            dataset = load_dataset(dataset_path)
+    except Exception as e:
+        logger.error(f"Failed to load dataset: {str(e)}")
+        sys.exit(1)
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -105,9 +102,8 @@ def main():
         project="tutor_grpo",
         name=f"tutor_grpo_{timestamp}",
         config={
-            "model_type": reward_config.model_type,
-            "dataset": reward_config.dataset_name,
-            "completion_model": reward_config.completion_model_name,
+            "model_type": model_type,
+            "dataset": dataset_path,
             "structure_base_reward": 0.2,
             "analysis_reward": 0.2,
             "substitution_reward": 0.4,
@@ -123,7 +119,7 @@ def main():
     # Load model
     PatchFastRL("GRPO", FastLanguageModel)
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=reward_config.model_name,
+        model_name=model_name,
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
@@ -153,16 +149,6 @@ def main():
         map_eos_token=True
     )
     
-    # Try loading dataset from local path first, then from HuggingFace
-    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
-    try:
-        if os.path.exists(dataset_path):
-            dataset = load_from_disk(dataset_path)
-        else:
-            dataset = load_dataset(reward_config.dataset_name)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {str(e)}")
-        sys.exit(1)
         
     def formatting_func(example):
         formatted_example = {**example}
@@ -190,7 +176,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=2,
         gradient_accumulation_steps=2,
-        num_generations=6,
+        num_generations=9,
         max_prompt_length=3000,
         max_completion_length=1096,
         num_train_epochs=1,
