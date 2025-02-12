@@ -74,7 +74,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor3"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
@@ -176,7 +176,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=2,
         gradient_accumulation_steps=2,
-        num_generations=9,
+        num_generations=8,
         max_prompt_length=3000,
         max_completion_length=1096,
         num_train_epochs=1,

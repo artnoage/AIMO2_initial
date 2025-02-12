@@ -217,7 +217,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=2,
         gradient_accumulation_steps=2,
-        num_generations=9,
+        num_generations=8,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
