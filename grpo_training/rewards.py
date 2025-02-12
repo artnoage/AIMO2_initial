@@ -652,7 +652,9 @@ class TutorReward(BaseReward):
         super().__init__(config)
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(
-            model=config.completion_model_name
+            model=config.completion_model_name,
+            temperature=0.0,
+            port=config.completion_port
         )
         
     def extract_sections(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
