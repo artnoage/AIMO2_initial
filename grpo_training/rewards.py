@@ -163,12 +163,31 @@ class RewardStats:
             f"Average reward: {avg_reward:.6f}\n"
             f"Total samples: {total_samples}\n"
             f"\nReward Distribution:\n{reward_dist_str}\n"
+            f"\nVerdict Statistics:\n"
+            f"  Polar verdicts: {self.section_stats['polar_verdict_count']}\n"
+            f"  Step verdicts: {self.section_stats['step_verdict_count']}\n"
+            f"  Invalid formats: {self.section_stats['invalid_verdict_format']}\n"
             f"\nSection Issues:\n"
             f"  Missing analysis: {self.section_stats['missing_analysis']}\n"
             f"  Missing verdict: {self.section_stats['missing_verdict']}\n"
             f"  Step verdict without substitution: {self.section_stats['step_verdict_without_substitution']}\n"
             f"  Polar verdict with substitution: {self.section_stats['polar_verdict_with_substitution']}\n"
             f"  Multiple steps in substitution: {self.section_stats['multiple_steps_in_substitution']}\n"
+            f"\nCompletion Validation:\n"
+            f"  Total attempts: {self.validation_stats['completion_attempts']}\n"
+            f"  Successful: {self.validation_stats['successful_completions']}\n"
+            f"  Failed: {self.validation_stats['failed_completions']}\n"
+            f"  Timeouts: {self.validation_stats['completion_timeouts']}\n"
+            f"  Errors: {self.validation_stats['completion_errors']}\n"
+            f"\nStep Validation:\n"
+            f"  Total identifications: {self.step_stats['step_identifications']}\n"
+            f"  Valid corrections: {self.step_stats['valid_step_corrections']}\n"
+            f"  Invalid corrections: {self.step_stats['invalid_step_corrections']}\n"
+            f"  Completion rate: {self.step_stats['step_completion_rate']:.2%}\n"
+            f"\nAnalysis Quality:\n"
+            f"  With steps: {self.analysis_stats['analysis_with_steps']}\n"
+            f"  Without steps: {self.analysis_stats['analysis_without_steps']}\n"
+            f"  Average length: {self.analysis_stats['average_analysis_length']:.1f}\n"
             f"\nReward Components:\n"
             f"  Base rewards: {self.reward_components['base_rewards']}\n"
             f"  Validation rewards: {self.reward_components.get('validation_rewards', 0)}\n"
@@ -686,10 +705,26 @@ class TutorReward(BaseReward):
                 self.logger.warning(f"Completion attempt failed: {str(e)}")
                 return False
     
-        # Run all completion attempts in parallel
-        results = await asyncio.gather(*[try_completion() for _ in range(num_attempts)])
-        successful = sum(1 for r in results if r)
-        return successful, len(results)
+        # Track completion attempts
+        self.stats.validation_stats['completion_attempts'] += num_attempts
+        
+        try:
+            # Run all completion attempts in parallel
+            results = await asyncio.gather(*[try_completion() for _ in range(num_attempts)])
+            successful = sum(1 for r in results if r)
+            
+            # Update completion stats
+            self.stats.validation_stats['successful_completions'] += successful
+            self.stats.validation_stats['failed_completions'] += (len(results) - successful)
+            
+            return successful, len(results)
+            
+        except asyncio.TimeoutError:
+            self.stats.validation_stats['completion_timeouts'] += 1
+            return 0, num_attempts
+        except Exception as e:
+            self.stats.validation_stats['completion_errors'] += 1
+            return 0, num_attempts
 
     async def _validate_whole_approach_is_wrong(
         self,
@@ -777,7 +812,26 @@ class TutorReward(BaseReward):
         
         if verdict is None:
             self.logger.debug(f"Missing verdict section in tutor response: {tutor_response[:100]}...")
+            self.stats.section_stats['invalid_verdict_format'] += 1
             return 0.0
+
+        # Track analysis stats
+        if analysis:
+            length = len(analysis)
+            self.stats.analysis_stats['total_analysis_length'] += length
+            self.stats.analysis_stats['analysis_length_distribution'][length] = \
+                self.stats.analysis_stats['analysis_length_distribution'].get(length, 0) + 1
+            
+            # Update average length
+            total_analyses = sum(self.stats.analysis_stats['analysis_length_distribution'].values())
+            self.stats.analysis_stats['average_analysis_length'] = \
+                self.stats.analysis_stats['total_analysis_length'] / total_analyses
+
+            # Check if analysis contains step references
+            if any(f"step {i}" in analysis.lower() for i in range(1, 10)):
+                self.stats.analysis_stats['analysis_with_steps'] += 1
+            else:
+                self.stats.analysis_stats['analysis_without_steps'] += 1
             
         # Get problem and student solution from kwargs
         problem = kwargs.get('problem')
@@ -865,14 +919,26 @@ class TutorReward(BaseReward):
             if step_num >= len(solution_steps):
                 return reward
                 
+            # Track step validation
+            self.stats.step_stats['step_identifications'] += 1
+        
             # Check if substitution has multiple steps
             substitution_steps = self.split_into_steps(substitution)
             if len(substitution_steps) > 1:
                 reward -= self.config.tutor_multiple_step_penalty
                 self.stats.reward_components['step_penalties'] += 1
+                self.stats.step_stats['invalid_step_corrections'] += 1
             else:
                 reward += self.config.tutor_single_step_bonus
                 self.stats.reward_components['step_bonuses'] += 1
+                self.stats.step_stats['valid_step_corrections'] += 1
+            
+            # Update completion rate
+            total_corrections = self.stats.step_stats['valid_step_corrections'] + \
+                              self.stats.step_stats['invalid_step_corrections']
+            if total_corrections > 0:
+                self.stats.step_stats['step_completion_rate'] = \
+                    self.stats.step_stats['valid_step_corrections'] / total_corrections
                 
             # Try completing from original solution up to wrong step
             partial_solution = "".join(solution_steps[:step_num])
