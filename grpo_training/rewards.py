@@ -330,22 +330,10 @@ class BaseReward(ABC):
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
         
-        # Calculate batch statistics
-        batch_stats = {
-            'total': len(completions),
-            'correct': sum(1 for r in rewards if r >= (self.config.group_base_reward if hasattr(self.config, 'group_base_reward') else self.config.solution_base_reward)),
-            'valid': sum(1 for c in completions if validate_solution(c)[0]),
-            'avg_length': sum(len(c) for c in completions) / len(completions),
-            'avg_reward': sum(rewards) / len(rewards)
-        }
-        
-        # Print batch summary
-        self.logger.info("\nBatch Statistics:")
-        self.logger.info(f"Total completions: {batch_stats['total']}")
-        self.logger.info(f"Correct answers: {batch_stats['correct']} ({batch_stats['correct']/batch_stats['total']*100:.1f}%)")
-        self.logger.info(f"Valid solutions: {batch_stats['valid']} ({batch_stats['valid']/batch_stats['total']*100:.1f}%)")
-        self.logger.info(f"Average length: {batch_stats['avg_length']:.1f}")
-        self.logger.info(f"Average reward: {batch_stats['avg_reward']:.3f}\n")
+        # Print reward-specific statistics summary
+        if self.stats.total_batches % 10 == 0:  # Print every 10 batches
+            self.logger.info("\nReward Statistics Summary:")
+            self.logger.info(self.stats.get_summary())
         
         return rewards
 
