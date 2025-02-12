@@ -16,6 +16,7 @@ from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
+from utils.benchmark_config import BenchmarkConfig
 
 class RewardStats:
     """Base class for tracking reward statistics"""
@@ -617,14 +618,13 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
-        # Create partial config for get_model that matches benchmark config format
-        partial_config = type('PartialConfig', (), {
-            'auxiliary': 'LOCAL_2',
-            'auxiliary_port': config.completion_port,
-            'auxiliary_temp': config.completion_temp
-        })
+        # Load benchmark config and override with reward config values
+        benchmark_config = BenchmarkConfig.from_args('Benchmark config for reward calculation')
+        benchmark_config.auxiliary_port = config.completion_port
+        benchmark_config.auxiliary_temp = config.completion_temp
+        
         # Create auxiliary model with temperature
-        auxiliary = get_model(partial_config, role="auxiliary")
+        auxiliary = get_model(benchmark_config, role="auxiliary")
         # Initialize completion agent for validation
         self.completion_agent = CompletionAgent(auxiliary)
         
