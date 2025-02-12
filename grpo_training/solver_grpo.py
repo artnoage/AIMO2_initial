@@ -89,8 +89,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250206_212611"
-    dataset_name = "Metaskepsis/Numina_medium"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
+    dataset_name = "Metaskepsis/Numina_very_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -183,7 +183,7 @@ def main():
         desc="Applying chat template",
         remove_columns=None  # Keep original columns
     )
-    
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
