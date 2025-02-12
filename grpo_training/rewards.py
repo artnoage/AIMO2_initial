@@ -401,8 +401,7 @@ class SolutionReward(BaseReward):
     __name__ = "solution_reward"
     relevant_stats = {
         'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty'],
-        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions', 'total_length'],
-        'validation_stats': ['completion_attempts', 'successful_completions', 'failed_completions']
+        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions', 'total_length']
     }
     
     def __init__(self, config: RewardConfig):
@@ -552,8 +551,7 @@ class GroupReward(BaseReward):
             'correct_answers', 'incorrect_answers', 'unique_solutions', 'similar_solutions',
             'total_similarity', 'majority_votes', 'minority_votes', 'unanimous_correct',
             'unanimous_incorrect', 'split_votes', 'majority_size_dist', 'vote_margins',
-            'average_majority_size', 'average_vote_margin', 'total_length_penalty',
-            'total_length', 'total_analysis_length_penalty', 'total_substitution_length_penalty'
+            'average_majority_size', 'average_vote_margin'
         ]
     }
     
