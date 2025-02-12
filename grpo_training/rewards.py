@@ -1020,6 +1020,7 @@ class TutorReward(BaseReward):
                 
             # Track step validation
             self.stats.step_stats['step_identifications'] += 1
+            self.logger.info(f"Validating step {step_num} correction")
         
             # Check if substitution has multiple steps
             substitution_steps = self.split_into_steps(substitution)
@@ -1071,8 +1072,10 @@ class TutorReward(BaseReward):
                             # Tutor's substitution leads to correct answer while original doesn't
                             reward = self.config.tutor_full_reward
                             self.stats.full_reward_reasons['step_correction'] += 1
+                            self.logger.info("Step correction successful - updating full reward reason count")
                         elif orig_correct:
                             # Original step was actually correct
+                            self.logger.warning("Original step was actually correct - returning 0 reward")
                             return 0.0
                             
             except Exception as e:
