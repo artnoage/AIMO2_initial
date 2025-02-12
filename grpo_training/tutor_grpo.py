@@ -1,21 +1,23 @@
 import os
-import sys
 import wandb
 import logging
-from datetime import datetime
+from typing import List
 from datasets import load_dataset, load_from_disk
-from transformers import TrainerCallback
+from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
 from unsloth.chat_templates import get_chat_template
+import sys
 from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
+
+# Ensure the project root is in sys.path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import TutorReward
-
-# Add the project root to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(project_root)
-
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -74,7 +76,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
@@ -116,10 +118,9 @@ def main():
     # Initialize reward function with existing config
     reward_func = TutorReward(reward_config)
     
-    # Load model
-    PatchFastRL("GRPO", FastLanguageModel)
+
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
+        model_name=model_name,  # Use the model_name variable defined at the start
         max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
