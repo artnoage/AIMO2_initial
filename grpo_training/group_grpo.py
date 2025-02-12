@@ -204,15 +204,15 @@ def main():
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=10,
+        torch_empty_cache_steps=50,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.01,
+        warmup_ratio=0.02,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
-        logging_steps=10,
+        logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=2,
@@ -222,7 +222,7 @@ def main():
         max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=0.1,
+        max_grad_norm=0.5,
         gradient_checkpointing=True,
         report_to="wandb",
         output_dir=output_dir,
@@ -234,7 +234,7 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=100)]
+        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=1)]
     )
     
     # Train
