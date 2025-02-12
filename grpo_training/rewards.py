@@ -318,6 +318,12 @@ class SolutionSimilarityChecker:
                 normalized = F.normalize(embeddings, p=2, dim=1)
                 return normalized.detach()
 
+    def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
+        """Compute pairwise similarities between solutions"""
+        with torch.no_grad():
+            embeddings = self.get_embeddings(solutions)
+            return torch.mm(embeddings, embeddings.t()).detach()
+
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
