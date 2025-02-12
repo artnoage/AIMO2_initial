@@ -342,8 +342,8 @@ class BaseReward(ABC):
             tasks = []
             
             # Extract problems and solutions from kwargs if present
-            problems = kwargs.get('problems', [''] * len(prompts))
-            solutions = kwargs.get('solutions', [''] * len(prompts))
+            problems = kwargs.get('problem', [''] * len(prompts))
+            solutions = kwargs.get('model_solution', [''] * len(prompts))
             
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
