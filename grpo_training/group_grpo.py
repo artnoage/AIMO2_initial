@@ -73,7 +73,7 @@ class LoggingCallback(TrainerCallback):
                     'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
                     'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
                     'avg_similarity': self.reward_func.stats.group_stats.get('total_similarity', 0.0) / max(1, self.reward_func.stats.total_batches),
-                    'similarity_matrix': self.reward_func.similarity_checker.compute_similarity_matrix(completions).tolist() if hasattr(self.reward_func, 'similarity_checker') else None
+                    'similarity_matrix': self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist() if hasattr(self.reward_func, 'similarity_checker') else None
                 }
                 
                 # Store current values for next round
