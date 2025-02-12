@@ -821,20 +821,21 @@ class TutorReward(BaseReward):
     async def calculate_reward(self, tutor_response: str, **kwargs) -> float:
         """Calculate reward for a tutor's evaluation of a solution"""
         # First verify if model solution is correct
-        model_solution = kwargs.get('solution', '')
-        model_answer = extract_answer_from_solution(model_solution)
-        if model_answer is None:
-            self.logger.warning(f"No boxed answer found in model solution: {model_solution[:100]}...")
+        problem = kwargs.get('problem')
+        student_solution = kwargs.get('solution')
+        print(student_solution)
+        correct_answer = kwargs.get('answer')
+        student_answer = extract_answer_from_solution(student_solution)
+        if student_answer is None:
+            self.logger.warning(f"No boxed answer found in model solution: {student_solution[:100]}...")
             return 0.0
 
-        model_numeric, _ = extract_numeric_answer(model_answer)
-        correct_numeric, _ = extract_numeric_answer(kwargs.get('correct_answer', ''))
+        student_numeric, _ = extract_numeric_answer(student_answer)
+        correct_numeric, _ = extract_numeric_answer(str(correct_answer))
         
-        if model_numeric is None or correct_numeric is None:
-            self.logger.warning(f"Could not extract numeric values - Model: {model_answer}, Correct: {kwargs.get('correct_answer', '')}")
+        if student_numeric is None or correct_numeric is None:
+            self.logger.warning(f"Could not extract numeric values - Model: {student_answer}, Correct: {kwargs.get('correct_answer', '')}")
             return 0.0
-        
-        is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
 
         # Extract sections from tutor's response
         analysis, verdict, substitution = self.extract_sections(tutor_response)
@@ -861,11 +862,6 @@ class TutorReward(BaseReward):
                 self.stats.analysis_stats['analysis_with_steps'] += 1
             else:
                 self.stats.analysis_stats['analysis_without_steps'] += 1
-            
-        # Get problem and student solution from kwargs
-        problem = kwargs.get('problem')
-        student_solution = kwargs.get('solution')
-        correct_answer = kwargs.get('correct_answer')
         
         if not all([problem, student_solution, correct_answer]):
             self.logger.warning("Missing required context (problem, solution, or correct_answer)")
@@ -908,17 +904,13 @@ class TutorReward(BaseReward):
         # Verify tutor's verdict using completion agent
         if verdict == "The answer is correct":
             # Check if student solution is actually correct
-            student_answer = extract_answer_from_solution(student_solution)
-            if student_answer:
-                student_numeric, _ = extract_numeric_answer(student_answer)
-                correct_numeric, _ = extract_numeric_answer(correct_answer)
-                if student_numeric is not None and correct_numeric is not None:
-                    if abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance:
-                        reward = self.config.tutor_full_reward
-                        self.stats.full_reward_reasons['correct_answer'] += 1
-                    else:
-                        # Tutor incorrectly said answer was correct
-                        return 0.0
+            if student_numeric is not None and correct_numeric is not None:
+                if abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                    reward = self.config.tutor_full_reward
+                    self.stats.full_reward_reasons['correct_answer'] += 1
+                else:
+                    # Tutor incorrectly said answer was correct
+                    return 0.0
                         
         elif verdict == "The whole approach is wrong":
             if not analysis:
