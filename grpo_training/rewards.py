@@ -19,21 +19,7 @@ from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 
 
-class ModelOption(Enum):
-    LOCAL = "local_model"
-    LOCAL_2 = "local_model_2"
-
 @dataclass
-class MinimalConfig:
-    """Minimal configuration needed for get_model function"""
-    auxiliary: str = "LOCAL_2"
-    auxiliary_port: int = 8004
-    auxiliary_temp: float = 0.7
-
-
-
-
-@dataclass 
 class RewardConfig:
     """Base configuration for reward calculation"""
     model_type: str
