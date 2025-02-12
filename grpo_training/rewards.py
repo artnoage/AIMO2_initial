@@ -650,11 +650,10 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: GRPOConfig):
         super().__init__(config)
+        # Create auxiliary model with temperature
+        auxiliary = get_model(config, role="auxiliary")
         # Initialize completion agent for validation
-        self.completion_agent = CompletionAgent(
-            model=config.completion_model_name,
-            port=config.completion_port
-        )
+        self.completion_agent = CompletionAgent(auxiliary)
         
     def extract_sections(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract Analysis, Verdict and Substitution sections"""
