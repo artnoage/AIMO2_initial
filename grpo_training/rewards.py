@@ -16,7 +16,7 @@ from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
 from utils.benchmark_config import BenchmarkConfig
-from .reward_stats import RewardStats
+from reward_stats import RewardStats
 
 class BaseReward(ABC):
     """Base class for tracking reward statistics"""
@@ -867,16 +867,15 @@ class TutorReward(BaseReward):
         # First verify if model solution is correct
         problem = kwargs.get('problem')
         student_solution = kwargs.get('solution')
-        print(student_solution)
         correct_answer = kwargs.get('answer')
         student_answer = extract_answer_from_solution(student_solution)
+        print("student_answer",student_answer)
         if student_answer is None:
             self.logger.warning(f"No boxed answer found in model solution: {student_solution[:100]}...")
             return 0.0
-
         student_numeric, _ = extract_numeric_answer(student_answer)
         correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-        
+        print("student_numeric",student_numeric,"aha",correct_numeric)
         if student_numeric is None or correct_numeric is None:
             self.logger.warning(f"Could not extract numeric values - Model: {student_answer}, Correct: {kwargs.get('correct_answer', '')}")
             return 0.0

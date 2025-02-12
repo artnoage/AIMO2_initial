@@ -2,8 +2,11 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List
+import os
+import sys
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 
 class RewardStats:
     """Base class for tracking reward statistics"""
