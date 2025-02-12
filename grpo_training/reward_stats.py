@@ -189,13 +189,37 @@ class RewardStats:
         elapsed = datetime.now() - self.start_time
         avg_reward = self.total_rewards / total_samples if total_samples > 0 else 0
         
-        # Sort rewards for better readability
-        sorted_rewards = sorted(self.reward_distribution.items())
-        reward_dist_str = "\n".join(
-            f"  {reward:.6f}: {count} samples" 
-            for reward, count in sorted_rewards
-        )
-        
+        # Dynamic binning for rewards
+        rewards = sorted(self.reward_distribution.keys())
+        if rewards:
+            min_reward = min(rewards)
+            max_reward = max(rewards)
+            # Create 10 bins or less if we have fewer unique rewards
+            num_bins = min(10, len(rewards))
+            if num_bins > 1:
+                bin_size = (max_reward - min_reward) / num_bins
+                bins = {}
+                for reward, count in self.reward_distribution.items():
+                    if bin_size == 0:  # Handle case where all rewards are the same
+                        bin_idx = 0
+                    else:
+                        bin_idx = min(int((reward - min_reward) / bin_size), num_bins - 1)
+                    bin_start = min_reward + bin_idx * bin_size
+                    bin_end = min_reward + (bin_idx + 1) * bin_size
+                    bin_key = f"{bin_start:.3f} to {bin_end:.3f}"
+                    bins[bin_key] = bins.get(bin_key, 0) + count
+                
+                # Format reward distribution with bins
+                reward_dist_str = "\n".join(
+                    f"  {bin_range}: {count} samples ({count/total_samples*100:.1f}%)" 
+                    for bin_range, count in sorted(bins.items())
+                )
+            else:
+                # If only one unique reward, show it directly
+                reward_dist_str = f"  {rewards[0]:.6f}: {total_samples} samples (100%)"
+        else:
+            reward_dist_str = "No rewards recorded"
+
         # Always show basic stats
         summary = [
             f"Training time: {elapsed}",
