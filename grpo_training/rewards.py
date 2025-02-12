@@ -503,51 +503,34 @@ class SolutionReward(BaseReward):
             
 
 class SolutionSimilarityChecker:
-    """Handles embedding and similarity computation for solutions"""
-    def __init__(self, config: RewardConfig):
-        self.config = config
+    def __init__(self, model_name="sentence-transformers/all-mpnet-base-v2"):
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model)
-        self.model = AutoModel.from_pretrained(config.embedding_model)
-        
-        # Move model to device and set eval mode
-        self.model = self.model.to(self.device)
-        self.model.eval()
-        
-        # Ensure all parameters are frozen and on correct device
-        with torch.no_grad():
-            for param in self.model.parameters():
-                param.requires_grad_(False)  # Use requires_grad_ method
-                if param.device != self.device:
-                    param.data = param.data.to(self.device)
+        self.model.to(self.device)
+        self.model.eval()  # Set model to evaluation mode
+
+        # Freeze the embedding model's parameters to ensure they do not track gradients.
+        for param in self.model.parameters():
+            param.requires_grad = False
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
-        with torch.no_grad():  # Ensure no gradients are tracked
-            with torch.amp.autocast('cuda', enabled=True):
-                inputs = self.tokenizer(
-                    texts,
-                    padding=True,
-                    truncation=True,
-                    max_length=self.config.embedding_max_length,
-                    return_tensors="pt"
-                )
-                # Move inputs to device and ensure they don't track gradients
-                inputs = {k: v.to(self.device).detach() for k, v in inputs.items()}
-                
-                outputs = self.model(**inputs)
-                # Detach embeddings from computation graph
-                embeddings = outputs.last_hidden_state.mean(dim=1).detach()
-                # Normalize and ensure no gradients
-                normalized = F.normalize(embeddings, p=2, dim=1)
-                return normalized.detach()
+        inputs = self.tokenizer(
+            texts, 
+            padding=True, 
+            truncation=True, 
+            max_length=512,
+            return_tensors="pt"
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        outputs = self.model(**inputs)
+        embeddings = outputs.last_hidden_state.mean(dim=1)
+        return F.normalize(embeddings, p=2, dim=1)
 
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
-        with torch.no_grad():  # Ensure no gradients are tracked
+        with torch.no_grad():
             embeddings = self.get_embeddings(solutions)
-            similarity_matrix = torch.mm(embeddings, embeddings.t())
-            return similarity_matrix.detach()  # Ensure result is detached
+            return torch.mm(embeddings, embeddings.t()).detach()
 
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
