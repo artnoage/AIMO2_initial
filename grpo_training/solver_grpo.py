@@ -89,8 +89,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
-    dataset_name = "Metaskepsis/Numina_very_hard"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/skepsis"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -125,16 +125,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
+        max_lora_rank=128
     )
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -215,9 +215,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=2,
-        num_generations=8,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=3,
+        num_generations=10,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
