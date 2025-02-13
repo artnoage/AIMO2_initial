@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution, get_model
+from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution, validate_solution2, get_model
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
