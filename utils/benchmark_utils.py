@@ -413,6 +413,26 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         
     if "[…]" in solution.lower():   
         return False, "Skips steps"
+
+def validate_solution2(solution: str) -> Tuple[bool, str]:
+    """Validate a solution with thinking section and steps"""
+    # Check for thinking section
+    thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
+    if not thinking_parts:
+        return False, "Missing thinking section"
+    
+    # Check thinking section content
+    thinking = thinking_parts[0].strip()
+    if len(thinking.split()) < 20:
+        return False, "Thinking section too short"
+        
+    # Check for steps after thinking
+    after_thinking = solution.split('</thinking>')[-1].strip()
+    if not after_thinking:
+        return False, "No solution steps after thinking section"
+        
+    if "[…]" in solution.lower():   
+        return False, "Skips steps"
         
     # Check for links/URLs
     if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):

@@ -163,9 +163,9 @@ def main():
         solver_prompt = (
             "Here is a mathematical problem:\n\n"
             f"{example['problem']}\n\n"
-            "Could you help me solve this from start to finish? First, let's analyze the problem, "
-            "then walk through the solution step-by-step using LaTeX notation. "
-            "Don't forget to put the final answer in a box using \\boxed{}"
+            "First, put your thoughts and analysis between <thinking> tags. "
+            "Then provide a step-by-step solution using LaTeX notation. "
+            "Make sure to explain your reasoning clearly and put the final answer in a box using \\boxed{}"
         )
         
         

@@ -356,7 +356,7 @@ class GroupReward(BaseReward):
             self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
             
             # Add validation reward
-            is_valid, validation_msg = validate_solution(completion)
+            is_valid, validation_msg = validate_solution2(completion)
             self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
             if is_valid:
                 reward += self.config.validation_reward
