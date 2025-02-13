@@ -175,8 +175,8 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty'],
-        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions', 'total_length']
+        'reward_components': ['base_rewards', 'validation_rewards'],
+        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions']
     }
     
     def __init__(self, config: RewardConfig):
@@ -226,11 +226,6 @@ class SolutionReward(BaseReward):
                 reward += self.config.validation_reward
                 self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
                 
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.logger.info(f"Applied length penalty: -{length_penalty:.3f} (length: {len(completion)})")
-            
             # Update detailed statistics
             if is_correct:
                 self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
