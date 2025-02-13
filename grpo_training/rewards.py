@@ -676,16 +676,15 @@ class TutorReward(BaseReward):
                         
         elif verdict == "The whole approach is wrong":                
             # Verify by trying to complete solution from analysis
-            #try:
-            anal=solution_steps[0]
-            wrong_check= await asyncio.gather(self._validate_completions(
+            try:
+                anal = solution_steps[0]
+                successful, total = await self._validate_completions(
                     problem, 
                     anal, 
                     correct_answer,
-                    self.config.completion_attempts))
-            print(wrong_check)
-            A, B = wrong_check
-            if A!=0:
+                    self.config.completion_attempts)
+                
+                if successful != 0:
                     return reward
             else:
                 # Tutor correctly identified wrong approach
