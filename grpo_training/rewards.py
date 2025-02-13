@@ -480,7 +480,7 @@ class TutorReward(BaseReward):
         'analysis_stats': ['analysis_with_steps', 'analysis_without_steps', 'average_analysis_length'],
         'reward_components': [
             'base_rewards', 'analysis_rewards', 'substitution_rewards', 'step_bonuses',
-            'step_penalties', 'total_analysis_length_penalty', 'total_substitution_length_penalty',
+            'step_penalties', 'total_substitution_length_penalty',
             'redundant_substitution_penalties', 'wrong_boxed_answer_penalties'
         ],
         'full_reward_reasons': ['correct_answer', 'wrong_approach', 'step_correction', 'final_step_correct']
@@ -584,68 +584,7 @@ class TutorReward(BaseReward):
             self.stats.validation_stats['completion_errors'] += 1
             return 0, num_attempts
 
-    async def _validate_whole_approach_is_wrong(
-        self,
-        problem: str,
-        solution: str,
-        correct_answer: str
-    ) -> bool:
-        """Validate that the analysis section alone can lead to correct completions"""
-        # Split solution into steps and get the analysis part
-        steps = self.split_into_steps(solution)
-        if not steps:
-            return False
-            
-        # First part before steps is the analysis
-        analysis = steps[0]
-        
-        # Try completions starting with just the analysis
-        successful, total = await self._validate_completions(
-            problem,
-            analysis,
-            correct_answer,
-            self.config.completion_attempts
-        )
-        
-        return successful == 0 and total == self.config.completion_attempts
 
-    async def _validate_step_identification(
-        self,
-        problem: str,
-        steps: List[str],
-        step_num: int,
-        substitution: str,
-        correct_answer: str,
-        original_step: str
-    ) -> Tuple[bool, float]:
-        """Validate step identification and correction in parallel.
-        Returns (is_valid, improvement_bonus)"""
-        
-        # Run both validations in parallel
-        wrong_partial = "".join(steps[:step_num+1])  # Include the wrong step
-        corrected_partial = "".join(steps[:step_num]) + substitution  # Replace wrong step
-        
-        wrong_check, fixed_check = await asyncio.gather(
-            self._validate_completions(problem, wrong_partial, correct_answer, self.config.completion_attempts),
-            self._validate_completions(problem, corrected_partial, correct_answer, self.config.completion_attempts)
-        )
-
-        successful_wrong, total_wrong = wrong_check
-        successful_fixed, total_fixed = fixed_check
-
-        # Calculate improvement bonus based on relative success rate
-        improvement_bonus = 0.0
-        if successful_wrong == 0:  # Only reward if original step had no successful completions
-            success_rate = successful_fixed / total_fixed
-            if 0.1 < success_rate <= 0.4:  # 10-40%
-                improvement_bonus = 0.1
-            elif 0.4 < success_rate <= 0.7:  # 40-70%
-                improvement_bonus = 0.2
-            elif success_rate > 0.7:         # >70%
-                improvement_bonus = 0.3
-        
-        is_valid = successful_wrong == 0 and successful_fixed > 0
-        return is_valid, improvement_bonus
 
     async def calculate_reward(self, tutor_response: str, **kwargs) -> float:
         """Calculate reward for a tutor's evaluation of a solution"""
@@ -662,10 +601,9 @@ class TutorReward(BaseReward):
         if student_numeric is None or correct_numeric is None:
             self.logger.warning(f"Could not extract numeric values - Model: {student_answer}, Correct: {kwargs.get('correct_answer', '')}")
             return 0.0
-
+        solution_steps = self.split_into_steps(student_solution)
         # Extract sections from tutor's response
         analysis, verdict, substitution = self.extract_sections(tutor_response)
-        
         if verdict is None:
             self.logger.debug(f"Missing verdict section in tutor response: {tutor_response[:100]}...")
             self.stats.section_stats['invalid_verdict_format'] += 1
@@ -688,10 +626,6 @@ class TutorReward(BaseReward):
                 self.stats.analysis_stats['analysis_with_steps'] += 1
             else:
                 self.stats.analysis_stats['analysis_without_steps'] += 1
-        
-        if not all([problem, student_solution, correct_answer]):
-            self.logger.warning("Missing required context (problem, solution, or correct_answer)")
-            return 0.0
             
         polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
         reward = 0.0
@@ -719,13 +653,10 @@ class TutorReward(BaseReward):
             reward = self.config.tutor_structure_base_reward
         else:
             return 0.0
-            
         # Analysis reward
         if analysis:
-            length_penalty = len(analysis) * self.config.tutor_analysis_length_cost
-            reward += self.config.tutor_analysis_reward - length_penalty
+            reward += self.config.tutor_analysis_reward 
             self.stats.reward_components['analysis_rewards'] += 1
-            self.stats.reward_components['total_analysis_length_penalty'] += length_penalty
             
         # Verify tutor's verdict using completion agent
         # Track prediction accuracy
@@ -733,44 +664,41 @@ class TutorReward(BaseReward):
             
         if verdict == "The answer is correct":
             # Check if student solution is actually correct
-            if student_numeric is not None and correct_numeric is not None:
-                is_actually_correct = abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance
-                if is_actually_correct:
-                    reward = self.config.tutor_full_reward
-                    self.stats.full_reward_reasons['correct_answer'] += 1
-                    self.stats.accuracy_stats['correct_predictions'] += 1
-                else:
-                    # Tutor incorrectly said answer was correct
-                    return 0.0
+            
+            is_actually_correct = abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance
+            if is_actually_correct:
+                reward +=self.config.tutor_full_reward
+                self.stats.full_reward_reasons['correct_answer'] += 1
+                self.stats.accuracy_stats['correct_predictions'] += 1
+            else:
+                # Tutor incorrectly said answer was correct
+                return reward
                         
-        elif verdict == "The whole approach is wrong":
-            if not analysis:
-                return reward
-                
+        elif verdict == "The whole approach is wrong":                
             # Verify by trying to complete solution from analysis
-            try:
-                completion = await self.completion_agent.generate(problem, analysis)
-                completion_answer = extract_answer_from_solution(completion)
-                if completion_answer:
-                    completion_numeric, _ = extract_numeric_answer(completion_answer)
-                    correct_numeric, _ = extract_numeric_answer(correct_answer)
-                    if completion_numeric is not None and correct_numeric is not None:
-                        if abs(completion_numeric - correct_numeric) <= self.config.numeric_tolerance:
-                            # Tutor incorrectly said approach was wrong
-                            return 0.0
-                        else:
-                            # Tutor correctly identified wrong approach
-                            reward = self.config.tutor_full_reward
-                            self.stats.full_reward_reasons['wrong_approach'] += 1
-            except Exception as e:
-                self.logger.warning(f"Error during completion validation: {str(e)}")
-                return reward
+            #try:
+            anal=solution_steps[0]
+            wrong_check= await asyncio.gather(self._validate_completions(
+                    problem, 
+                    anal, 
+                    correct_answer,
+                    self.config.completion_attempts))
+            print(wrong_check)
+            A, B = wrong_check
+            if A!=0:
+                    return reward
+            else:
+                # Tutor correctly identified wrong approach
+                reward += self.config.tutor_full_reward
+                self.stats.full_reward_reasons['wrong_approach'] += 1
+            #except Exception as e:
+            #    self.logger.warning(f"Error during completion validation: {str(e)}")
+            #    return reward
                 
         elif verdict.startswith("Step "):
             # Track step prediction
             self.stats.accuracy_stats['step_predictions'] += 1
             
-            solution_steps = self.split_into_steps(student_solution)
             if step_num >= len(solution_steps):
                 return reward
                 
@@ -835,7 +763,7 @@ class TutorReward(BaseReward):
                     elif success_rate > 0.7:  # >70%
                         improvement_bonus = 0.3
                         
-                    reward = self.config.tutor_full_reward + improvement_bonus
+                    reward += self.config.tutor_full_reward + improvement_bonus
                     self.stats.full_reward_reasons['step_correction'] += 1
                     self.logger.info(f"Step correction successful - Success rate: {success_rate:.2%}, Bonus: {improvement_bonus}")
                     
@@ -848,8 +776,8 @@ class TutorReward(BaseReward):
                         
                 elif successful_wrong > 0:
                     # Original step was actually correct
-                    self.logger.warning("Original step was actually correct - returning 0 reward")
-                    return 0.0
+                    self.logger.warning("Original step was actually correct - returning reward")
+                    return reward
                             
             except Exception as e:
                 self.logger.warning(f"Error during step validation: {str(e)}")
@@ -880,23 +808,6 @@ class TutorReward(BaseReward):
             substitution_steps = self.split_into_steps(substitution)
             if len(substitution_steps) > 1:
                 self.stats.section_stats['multiple_steps_in_substitution'] += 1
-                
-        # Track improvement bonuses if applicable
-        if verdict.startswith("Step ") and reward == self.config.tutor_full_reward:
-            bonus_level = None
-            if reward > self.config.tutor_full_reward:
-                bonus = reward - self.config.tutor_full_reward
-                if abs(bonus - 0.1) < 1e-6:
-                    bonus_level = '0.1'
-                elif abs(bonus - 0.2) < 1e-6:
-                    bonus_level = '0.2'
-                elif abs(bonus - 0.3) < 1e-6:
-                    bonus_level = '0.3'
-                    
-            if bonus_level:
-                self.stats.reward_components['improvement_bonuses'][bonus_level] = \
-                    self.stats.reward_components['improvement_bonuses'].get(bonus_level, 0) + 1
-                self.stats.reward_components['improvement_bonuses']['total'] += 1
-                
+        print("gamwmwmw",reward) 
         return reward
         
