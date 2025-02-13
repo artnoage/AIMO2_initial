@@ -239,8 +239,6 @@ class SolutionReward(BaseReward):
             else:
                 self.stats.group_stats['invalid_solutions'] = self.stats.group_stats.get('invalid_solutions', 0) + 1
                 
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
             self.stats.group_stats['total_solutions'] = self.stats.group_stats.get('total_solutions', 0) + 1
             
             return reward 
