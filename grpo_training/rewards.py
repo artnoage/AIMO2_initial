@@ -220,7 +220,7 @@ class SolutionReward(BaseReward):
                 self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
                 
             # Add validation reward
-            is_valid, validation_msg = validate_solution(completion)
+            is_valid, validation_msg = validate_solution2(completion)
             self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
             if is_valid:
                 reward += self.config.validation_reward
@@ -457,10 +457,6 @@ class GroupReward(BaseReward):
                 
             self.stats.group_stats['total_similarity'] += avg_similarity
             
-            # Track length penalties
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            self.stats.group_stats['total_length_penalty'] = self.stats.group_stats.get('total_length_penalty', 0.0) + length_penalty
-            self.stats.group_stats['total_length'] = self.stats.group_stats.get('total_length', 0) + len(completion)
             print("mathafack",reward)
             return reward
             
