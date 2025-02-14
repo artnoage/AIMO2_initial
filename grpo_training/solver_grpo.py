@@ -250,7 +250,7 @@ def main():
         reward_funcs=[reward_function],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=100)]
+        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=1)]
     )
     
     # Train
