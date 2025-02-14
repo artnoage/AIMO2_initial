@@ -41,24 +41,14 @@ def setup_logging(model_type: str) -> logging.Logger:
 
 class LoggingCallback(TrainerCallback):
     """Callback for logging training metrics"""
-    def __init__(self, reward_func, save_frequency=100):
+    def __init__(self, reward_func, logger, save_frequency=100):
         self.reward_func = reward_func
         self.save_frequency = save_frequency
         self.step = 0
+        self.logger = logger
         
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
-        
-        # Print statistics summary every step
-        print(f"\nStep {self.step} Statistics:")
-        if hasattr(self.reward_func, 'stats'):
-            print("Reward function stats object exists")
-            print(f"Total batches: {self.reward_func.stats.total_batches}")
-            print(f"Reward components: {self.reward_func.stats.reward_components}")
-            print(f"Group stats: {self.reward_func.stats.group_stats}")
-            print(self.reward_func.stats.get_summary())
-        else:
-            print("WARNING: No stats object found in reward function")
         
         # Log to wandb
         if logs:
@@ -237,7 +227,7 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=1)]
+        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=1)]
     )
     
     # Train
