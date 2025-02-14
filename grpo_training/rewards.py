@@ -627,8 +627,12 @@ class TutorReward(BaseReward):
             self.logger.debug(f"Missing verdict section in tutor response: {tutor_response[:100]}...")
             self.stats.section_stats['invalid_verdict_format'] += 1
             return 0.0
-
+        self.logger.info("You passed the first part")
         # Track analysis stats
+        polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
+        
+        reward = 0.05
+        
         if analysis:
             length = len(analysis)
             self.stats.analysis_stats['total_analysis_length'] += length
@@ -646,8 +650,7 @@ class TutorReward(BaseReward):
             else:
                 self.stats.analysis_stats['analysis_without_steps'] += 1
             
-        polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
-        reward = 0.0
+
         
         # Basic structure reward
         if verdict in polar_verdicts:
@@ -660,18 +663,18 @@ class TutorReward(BaseReward):
                 step_num = int(verdict.split()[1])
                 if step_num < 0:
                     self.stats.section_stats['invalid_step_number'] += 1
-                    return 0.0
+                    return reward
             except (ValueError, IndexError):
                 self.stats.section_stats['invalid_step_number'] += 1
-                return 0.0
+                return reward
                 
             if not substitution:
                 self.stats.section_stats['step_verdict_without_substitution'] += 1
-                return 0.0
+                return reward
                 
-            reward = self.config.tutor_structure_base_reward
+            reward += self.config.tutor_structure_base_reward
         else:
-            return 0.0
+            return reward
         # Analysis reward
         if analysis:
             reward += self.config.tutor_analysis_reward 
@@ -685,6 +688,7 @@ class TutorReward(BaseReward):
             # Check if student solution is actually correct
             
             is_actually_correct = abs(student_numeric - correct_numeric) <= self.config.numeric_tolerance
+            self.logger.info("You found a correct answer")
             if is_actually_correct:
                 reward +=self.config.tutor_full_reward
                 self.stats.full_reward_reasons['correct_answer'] += 1
@@ -813,7 +817,7 @@ class TutorReward(BaseReward):
         # Track substitution stats
         if substitution:
             length_penalty = len(substitution) * self.config.tutor_substitution_length_cost
-            reward += self.config.tutor_substitution_reward - length_penalty
+            reward = reward - length_penalty
             self.stats.reward_components['substitution_rewards'] = self.stats.reward_components.get('substitution_rewards', 0) + 1
             self.stats.reward_components['total_substitution_length_penalty'] = self.stats.reward_components.get('total_substitution_length_penalty', 0.0) + length_penalty
             
@@ -823,5 +827,6 @@ class TutorReward(BaseReward):
             substitution_steps = self.split_into_steps(substitution)
             if len(substitution_steps) > 1:
                 self.stats.section_stats['multiple_steps_in_substitution'] += 1 
+        self.logger.info("The total reward is" + str(reward))
         return reward
         
