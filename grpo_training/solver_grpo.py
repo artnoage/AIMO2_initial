@@ -50,37 +50,27 @@ class LoggingCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
-        # Log to wandb
-        if logs:
-            # Add reward function specific metrics
-            if 'rewards/0' in logs:
-                # Print rewards grouped by 8 for better visualization
-                rewards = logs['rewards/0']
-                print("\nAll rewards (grouped by 8):")
-                for i in range(0, len(rewards), 8):
-                    group = rewards[i:i+8]
-                    print(f"Group {i//8}: {[round(r, 3) for r in group]}")
-                
-                # Calculate non-accumulative rewards for this round
-                current_rewards = {
-                    'correctness_reward': logs['rewards/0'],
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
-                    'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
-                    'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
-                    'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
-                }
-                
-                # Store current values for next round
-                self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
-                self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
-                self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
-                self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
-                self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
-                
-                wandb.log(current_rewards)
-            wandb.log(logs)
+        if logs and 'rewards/0' in logs:
+            # Calculate non-accumulative rewards for this round
+            current_rewards = {
+                'correctness_reward': logs['rewards/0'],
+                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
+            }
+            
+            # Store current values for next round
+            self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+            self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
+            self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
+            self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
+            self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
+            
+            # Update logs with our metrics
+            logs.update(current_rewards)
             
             # Log detailed statistics periodically
             if self.step % self.save_frequency == 0:

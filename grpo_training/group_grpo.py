@@ -50,36 +50,28 @@ class LoggingCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
-        # Log to wandb
-        if logs:
-            # Add reward function specific metrics
-            if 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
-                # Calculate non-accumulative rewards for this round
-                current_rewards = {
-                    'group_reward': logs['rewards/0'],
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
-                    'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
-                    'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
-                    'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
-                    'similarity_matrix': self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist() if hasattr(self.reward_func, 'similarity_checker') else None
-                }
-                
-                # Store current values for next round
-                self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
-                self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
-                self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
-                self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
-                self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
-                
-                # Log current rewards
-                wandb.log(current_rewards)
-                self.logger.info("\nCurrent Rewards:")
-                for k, v in current_rewards.items():
-                    self.logger.info(f"{k}: {v}")
-                    
-            wandb.log(logs)
+        if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Calculate non-accumulative rewards for this round
+            current_rewards = {
+                'group_reward': logs['rewards/0'],
+                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
+                'similarity_matrix': self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist() if hasattr(self.reward_func, 'similarity_checker') else None
+            }
+            
+            # Store current values for next round
+            self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+            self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
+            self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
+            self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
+            self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
+            
+            # Update logs with our metrics
+            logs.update(current_rewards)
 
 def main():
     # Configuration
