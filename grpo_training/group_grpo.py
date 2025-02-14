@@ -68,20 +68,20 @@ class LoggingCallback(TrainerCallback):
                 current_rewards = {
                     'group_reward': logs['rewards/0'],
                     'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                    'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0) - getattr(self, '_last_majority_bonuses', 0),
-                    'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0) - getattr(self, '_last_diversity_bonuses', 0),
-                    'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
-                    'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
-                    'avg_similarity': self.reward_func.stats.group_stats.get('total_similarity', 0.0) / max(1, self.reward_func.stats.total_batches),
+                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                    'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                    'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                    'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                     'similarity_matrix': self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist() if hasattr(self.reward_func, 'similarity_checker') else None
                 }
                 
                 # Store current values for next round
                 self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
-                self._last_majority_bonuses = self.reward_func.stats.reward_components.get('majority_bonuses', 0)
-                self._last_diversity_bonuses = self.reward_func.stats.reward_components.get('diversity_bonuses', 0)
-                self._last_unique_solutions = self.reward_func.stats.group_stats.get('unique_solutions', 0)
-                self._last_similar_solutions = self.reward_func.stats.group_stats.get('similar_solutions', 0)
+                self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
+                self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
+                self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
+                self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
                 
                 # Log current rewards and print them
                 wandb.log(current_rewards)
