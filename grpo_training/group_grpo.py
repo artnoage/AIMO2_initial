@@ -73,11 +73,11 @@ class LoggingCallback(TrainerCallback):
                 self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
                 self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
                 
-                # Log current rewards and print them
+                # Log current rewards
                 wandb.log(current_rewards)
-                print("\nCurrent Rewards:")
+                self.logger.info("\nCurrent Rewards:")
                 for k, v in current_rewards.items():
-                    print(f"{k}: {v}")
+                    self.logger.info(f"{k}: {v}")
                     
             wandb.log(logs)
 
@@ -128,11 +128,11 @@ def main():
     
     # Initialize reward function with existing config and similarity checker
     reward_func = GroupReward(reward_config, similarity_checker)
-    print("\nInitialized GroupReward:")
-    print(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    logger.info("\nInitialized GroupReward:")
+    logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     if hasattr(reward_func, 'stats'):
-        print(f"Stats total_batches: {reward_func.stats.total_batches}")
-        print(f"Stats reward_components: {reward_func.stats.reward_components}")
+        logger.info(f"Stats total_batches: {reward_func.stats.total_batches}")
+        logger.info(f"Stats reward_components: {reward_func.stats.reward_components}")
     
     # Load model
     PatchFastRL("GRPO", FastLanguageModel) 

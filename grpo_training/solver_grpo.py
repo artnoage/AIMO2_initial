@@ -86,18 +86,10 @@ class LoggingCallback(TrainerCallback):
             if self.step % self.save_frequency == 0:
                 self.logger.info(f"\nDetailed Statistics at step {self.step}:")
                 self.logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
-                self.logger.info(f"Reward components: {self.reward_func.stats.reward_components}")
-                self.logger.info(f"Group stats: {self.reward_func.stats.group_stats}")
-                self.logger.info(self.reward_func.stats.get_summary())
-            
-            # Log detailed statistics periodically
-            if self.step % self.save_frequency == 0:
-                self.logger.info(f"\nDetailed Statistics at step {self.step}:")
-                self.logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
                 self.logger.info(f"Average reward: {self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches):.4f}")
-                self.logger.info(f"Base rewards given: {self.reward_func.stats.reward_components.get('base_rewards', 0)}")
-                self.logger.info(f"Validation rewards given: {self.reward_func.stats.reward_components.get('validation_rewards', 0)}")
-                self.logger.info(f"Total length penalty: {self.reward_func.stats.reward_components.get('total_length_penalty', 0.0):.4f}")
+                for key, value in self.reward_func.stats.reward_components.items():
+                    self.logger.info(f"{key}: {value}")
+                self.logger.info(self.reward_func.stats.get_summary())
 
 def main():
     # Configuration
@@ -105,13 +97,10 @@ def main():
     model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_name = "Metaskepsis/Numina_medium"
     
-    # Setup logging first
-    logger = setup_logging(model_type)
-     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
     
-    # Setup
+    # Setup logging
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
