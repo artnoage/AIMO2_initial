@@ -507,6 +507,21 @@ class TutorReward(BaseReward):
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
+        # Initialize reward components
+        self.stats.reward_components = {
+            'base_rewards': 0,
+            'analysis_rewards': 0,
+            'substitution_rewards': 0,
+            'step_bonuses': 0,
+            'step_penalties': 0,
+            'total_substitution_length_penalty': 0.0,
+            'redundant_substitution_penalties': 0,
+            'wrong_boxed_answer_penalties': 0,
+            'total_rewards': 0,
+            'average_reward': 0,
+            'improvement_bonuses': {'total': 0}
+        }
+        
         # Load benchmark config and override with reward config values
         benchmark_config = BenchmarkConfig.from_args('Benchmark config for reward calculation')
         benchmark_config.auxiliary_port = config.completion_port
