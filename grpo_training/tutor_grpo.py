@@ -86,7 +86,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = "mistralai/Mathstral-7B-v0.1"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
@@ -108,11 +108,11 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    
+    wandbname = f"tutor with sfted model {timestamp}"
     # Initialize wandb
     wandb.init(
-        project="tutor_grpo",
-        name=f"tutor_grpo_{timestamp}",
+        project="grpo",
+        name=wandbname,
         config={
             "model_type": model_type,
             "dataset": dataset_path,
@@ -205,7 +205,7 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=100)]
+        callbacks=[LoggingCallback(reward_func=reward_func, save_frequency=10)]
     )
     
     # Train
