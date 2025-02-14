@@ -104,7 +104,7 @@ class LoggingCallback(TrainerCallback):
             self._last_split_votes = self.reward_func.stats.group_stats.get('split_votes', 0)
             
             # Update logs with our metrics
-            logs.update(current_rewards)
+            logs.update(wandb_stats)
 
 def main():
     # Configuration
