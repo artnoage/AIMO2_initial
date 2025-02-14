@@ -51,35 +51,40 @@ class LoggingCallback(TrainerCallback):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
-            # Calculate non-accumulative rewards for this round
-            current_rewards = {
+            # Key group performance metrics for wandb
+            wandb_stats = {
                 'group_reward': logs['rewards/0'],
-                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0) - getattr(self, '_last_majority_bonuses', 0),
-                'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0) - getattr(self, '_last_diversity_bonuses', 0),
-                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
-                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
+                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
+                'solution_diversity': self.reward_func.stats.group_stats.get('solution_diversity', 0.0),
+                'unanimous_correct_ratio': self.reward_func.stats.group_stats.get('unanimous_correct', 0) / max(1, self.reward_func.stats.total_batches)
             }
             
-            # Add group stats
-            group_stats = {
-                'correct_answers': self.reward_func.stats.group_stats.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
-                'incorrect_answers': self.reward_func.stats.group_stats.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
-                'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
-                'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
-                'majority_votes': self.reward_func.stats.group_stats.get('majority_votes', 0) - getattr(self, '_last_majority_votes', 0),
-                'minority_votes': self.reward_func.stats.group_stats.get('minority_votes', 0) - getattr(self, '_last_minority_votes', 0),
-                'unanimous_correct': self.reward_func.stats.group_stats.get('unanimous_correct', 0) - getattr(self, '_last_unanimous_correct', 0),
-                'unanimous_incorrect': self.reward_func.stats.group_stats.get('unanimous_incorrect', 0) - getattr(self, '_last_unanimous_incorrect', 0),
-                'split_votes': self.reward_func.stats.group_stats.get('split_votes', 0) - getattr(self, '_last_split_votes', 0),
-                'average_majority_size': self.reward_func.stats.group_stats.get('average_majority_size', 0.0),
-                'average_vote_margin': self.reward_func.stats.group_stats.get('average_vote_margin', 0.0)
+            # Detailed stats for local logging only
+            local_stats = {
+                'reward_components': {
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0) - getattr(self, '_last_majority_bonuses', 0),
+                    'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0) - getattr(self, '_last_diversity_bonuses', 0),
+                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                },
+                'group_stats': {
+                    'correct_answers': self.reward_func.stats.group_stats.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                    'incorrect_answers': self.reward_func.stats.group_stats.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                    'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
+                    'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
+                    'majority_votes': self.reward_func.stats.group_stats.get('majority_votes', 0) - getattr(self, '_last_majority_votes', 0),
+                    'minority_votes': self.reward_func.stats.group_stats.get('minority_votes', 0) - getattr(self, '_last_minority_votes', 0),
+                    'unanimous_correct': self.reward_func.stats.group_stats.get('unanimous_correct', 0) - getattr(self, '_last_unanimous_correct', 0),
+                    'unanimous_incorrect': self.reward_func.stats.group_stats.get('unanimous_incorrect', 0) - getattr(self, '_last_unanimous_incorrect', 0),
+                    'split_votes': self.reward_func.stats.group_stats.get('split_votes', 0) - getattr(self, '_last_split_votes', 0),
+                    'average_majority_size': self.reward_func.stats.group_stats.get('average_majority_size', 0.0),
+                    'average_vote_margin': self.reward_func.stats.group_stats.get('average_vote_margin', 0.0)
+                }
             }
-            current_rewards.update(group_stats)
             
-            # Add similarity matrix if available
+            # Add similarity matrix to local stats if available
             if hasattr(self.reward_func, 'similarity_checker'):
-                current_rewards['similarity_matrix'] = self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist()
+                local_stats['similarity_matrix'] = self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist()
             
             # Store current values for next round
             self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
