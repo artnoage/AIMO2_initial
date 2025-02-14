@@ -175,8 +175,7 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'validation_rewards'],
-        'group_stats': ['correct_answers', 'incorrect_answers', 'valid_solutions', 'invalid_solutions']
+        'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward']
     }
     
     def __init__(self, config: RewardConfig):
@@ -245,13 +244,8 @@ class SolutionReward(BaseReward):
                 
             if is_valid:
                 self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
-                self.stats.group_stats['valid_solutions'] = self.stats.group_stats.get('valid_solutions', 0) + 1
-            else:
-                self.stats.group_stats['invalid_solutions'] = self.stats.group_stats.get('invalid_solutions', 0) + 1
                 
-            self.stats.group_stats['total_solutions'] = self.stats.group_stats.get('total_solutions', 0) + 1
-            
-            return reward 
+            return reward
         except Exception as e:
             self.logger.error(f"Error calculating reward: {str(e)}")
             return 0.0
