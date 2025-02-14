@@ -66,13 +66,18 @@ class LoggingCallback(TrainerCallback):
                     'correctness_reward': logs['rewards/0'],
                     'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
                     'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                    'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                    'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                    'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
                 }
                 
                 # Store current values for next round
                 self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
                 self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
                 self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
+                self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
+                self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
                 
                 wandb.log(current_rewards)
             wandb.log(logs)

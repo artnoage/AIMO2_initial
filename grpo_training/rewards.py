@@ -218,20 +218,30 @@ class SolutionReward(BaseReward):
             if is_correct:
                 reward = self.config.base_reward
                 self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
+                self.stats.reward_components['base_rewards'] += 1
+                self.stats.reward_components['correct_answers'] += 1
+            else:
+                self.stats.reward_components['incorrect_answers'] += 1
                 
             # Add validation reward
             is_valid, validation_msg = validate_solution2(completion)
             self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
             if is_valid:
                 reward += self.config.validation_reward
+                self.stats.reward_components['validation_rewards'] += 1
                 self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
                 
-            # Update detailed statistics
-            if is_correct:
-                self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
-                self.stats.group_stats['correct_answers'] = self.stats.group_stats.get('correct_answers', 0) + 1
-            else:
-                self.stats.group_stats['incorrect_answers'] = self.stats.group_stats.get('incorrect_answers', 0) + 1
+            # Apply length penalty
+            length_penalty = len(completion) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = \
+                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+                
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] += reward
+            total_samples = self.stats.reward_components['correct_answers'] + self.stats.reward_components['incorrect_answers']
+            self.stats.reward_components['average_reward'] = \
+                self.stats.reward_components['total_rewards'] / max(1, total_samples)
                 
             if is_valid:
                 self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1

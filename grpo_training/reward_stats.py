@@ -61,22 +61,11 @@ class RewardStats:
         self.reward_components = {
             'base_rewards': 0,
             'validation_rewards': 0,
-            'analysis_rewards': 0,
-            'substitution_rewards': 0,
-            'step_bonuses': 0,
-            'step_penalties': 0,
-            'total_analysis_length_penalty': 0.0,
-            'total_substitution_length_penalty': 0.0,
-            'redundant_substitution_penalties': 0,
-            'wrong_boxed_answer_penalties': 0,
-            'majority_bonuses': 0,
-            'diversity_bonuses': 0,
-            'improvement_bonuses': {
-                '0.1': 0,  # 10-40% completions
-                '0.2': 0,  # 40-70% completions
-                '0.3': 0,  # >70% completions
-                'total': 0  # Total count of improvement bonuses
-            }
+            'total_length_penalty': 0.0,
+            'correct_answers': 0,
+            'incorrect_answers': 0,
+            'total_rewards': 0.0,
+            'average_reward': 0.0
         }
         
         # Track group-specific stats
