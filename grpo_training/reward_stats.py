@@ -54,7 +54,10 @@ class RewardStats:
             'analysis_with_steps': 0,
             'analysis_without_steps': 0,
             'average_analysis_length': 0.0,
-            'total_analysis_length': 0
+            'total_analysis_length': 0,
+            'step_references': 0,
+            'concept_explanations': 0,
+            'formula_usage': 0
         }
         
         # Track reward components
@@ -65,7 +68,13 @@ class RewardStats:
             'correct_answers': 0,
             'incorrect_answers': 0,
             'total_rewards': 0.0,
-            'average_reward': 0.0
+            'average_reward': 0.0,
+            'improvement_bonuses': {
+                'total': 0,
+                '0.1': 0,
+                '0.2': 0,
+                '0.3': 0
+            }
         }
         
         # Track group-specific stats
@@ -92,7 +101,12 @@ class RewardStats:
             'total_length_penalty': 0.0,
             'total_length': 0,
             'total_analysis_length_penalty': 0.0,
-            'total_substitution_length_penalty': 0.0
+            'total_substitution_length_penalty': 0.0,
+            # Additional group metrics
+            'group_size_distribution': {},
+            'solution_diversity': 0.0,
+            'average_similarity_score': 0.0,
+            'unique_approaches': 0
         }
         
         # Track full reward reasons
