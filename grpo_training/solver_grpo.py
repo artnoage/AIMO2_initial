@@ -241,13 +241,10 @@ def main():
     )
     
     # Initialize trainer with reward function
-    def reward_function(completions: List[str], **kwargs) -> List[float]:
-        return reward_func(completions, **kwargs)
-        
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[reward_function],
+        reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
         callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=1)]
