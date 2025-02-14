@@ -51,15 +51,19 @@ class LoggingCallback(TrainerCallback):
         self.step += 1
         
         if logs and 'rewards/0' in logs:
-            # Calculate non-accumulative rewards for this round
-            current_rewards = {
-                'correctness_reward': logs['rewards/0'],
-                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+            # Calculate key metrics for wandb
+            wandb_stats = {
+                'solver_reward': logs['rewards/0'],
                 'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
+            }
+            
+            # Additional stats for local logging
+            local_stats = {
+                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
             }
             
             # Store current values for next round
@@ -69,16 +73,23 @@ class LoggingCallback(TrainerCallback):
             self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
             self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
             
-            # Update logs with our metrics
-            logs.update(current_rewards)
+            # Update wandb logs
+            logs.update(wandb_stats)
             
             # Log detailed statistics periodically
             if self.step % self.save_frequency == 0:
                 self.logger.info(f"\nDetailed Statistics at step {self.step}:")
+                self.logger.info("\nWandb tracked metrics:")
+                for key, value in wandb_stats.items():
+                    self.logger.info(f"  {key}: {value}")
+                    
+                self.logger.info("\nAdditional local metrics:")
+                for key, value in local_stats.items():
+                    self.logger.info(f"  {key}: {value}")
+                    
+                self.logger.info("\nAccumulated statistics:")
                 self.logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
-                self.logger.info(f"Average reward: {self.reward_func.stats.total_rewards / max(1, self.reward_func.stats.total_batches):.4f}")
-                for key, value in self.reward_func.stats.reward_components.items():
-                    self.logger.info(f"{key}: {value}")
+                self.logger.info(f"Total rewards: {self.reward_func.stats.total_rewards}")
                 self.logger.info(self.reward_func.stats.get_summary())
 
 def main():
