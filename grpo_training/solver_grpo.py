@@ -89,8 +89,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/skepsis"
-    dataset_name = "Metaskepsis/Numina_hard"
+    model_name = "mistralai/Mathstral-7B-v0.1"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -216,8 +216,8 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=3,
-        num_generations=10,
+        gradient_accumulation_steps=4,
+        num_generations=12,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

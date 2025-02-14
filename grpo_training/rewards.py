@@ -343,7 +343,6 @@ class GroupReward(BaseReward):
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             reward = self.config.group_base_reward if is_correct else 0.0
-            print("hey",reward)
             if is_correct:
                 self.stats.reward_components['base_rewards'] += 1
             self.logger.info(f"Base calculation - Answer: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
@@ -479,11 +478,11 @@ class TutorReward(BaseReward):
         'step_stats': ['step_identifications', 'valid_step_corrections', 'invalid_step_corrections', 'step_completion_rate'],
         'analysis_stats': ['analysis_with_steps', 'analysis_without_steps', 'average_analysis_length'],
         'reward_components': [
-            'base_rewards', 'analysis_rewards', 'substitution_rewards', 'step_bonuses',
+            'analysis_rewards', 'substitution_rewards', 'step_bonuses',
             'step_penalties', 'total_substitution_length_penalty',
             'redundant_substitution_penalties', 'wrong_boxed_answer_penalties'
         ],
-        'full_reward_reasons': ['correct_answer', 'wrong_approach', 'step_correction', 'final_step_correct']
+        'full_reward_reasons': ['correct_answer', 'wrong_approach', 'step_correction']
     }
     
     def __init__(self, config: RewardConfig):
@@ -686,13 +685,13 @@ class TutorReward(BaseReward):
                 
                 if successful != 0:
                     return reward
-            else:
-                # Tutor correctly identified wrong approach
-                reward += self.config.tutor_full_reward
-                self.stats.full_reward_reasons['wrong_approach'] += 1
-            #except Exception as e:
-            #    self.logger.warning(f"Error during completion validation: {str(e)}")
-            #    return reward
+                else:
+                    # Tutor correctly identified wrong approach
+                    reward += self.config.tutor_full_reward
+                    self.stats.full_reward_reasons['wrong_approach'] += 1
+            except Exception as e:
+                self.logger.warning(f"Error during completion validation: {str(e)}")
+                return reward
                 
         elif verdict.startswith("Step "):
             # Track step prediction
@@ -782,9 +781,6 @@ class TutorReward(BaseReward):
                 self.logger.warning(f"Error during step validation: {str(e)}")
                 return reward
                 
-        # Update base statistics
-        if reward >= self.config.tutor_structure_base_reward:
-            self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
             
         # Track section-level stats
         if not analysis:
@@ -806,7 +802,6 @@ class TutorReward(BaseReward):
                 
             substitution_steps = self.split_into_steps(substitution)
             if len(substitution_steps) > 1:
-                self.stats.section_stats['multiple_steps_in_substitution'] += 1
-        print("gamwmwmw",reward) 
+                self.stats.section_stats['multiple_steps_in_substitution'] += 1 
         return reward
         

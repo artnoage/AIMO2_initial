@@ -1,5 +1,4 @@
 AI-MO/aimo-validation-aime
-Maxwell-Jia/AIME_2024
 Metaskepsis/custom100bench
 Metaskepsis/custom219
  tail -f logs/tutor/$(ls -t logs/tutor | head -1)  

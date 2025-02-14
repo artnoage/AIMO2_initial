@@ -86,7 +86,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
+    model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
@@ -135,16 +135,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
+        max_lora_rank=128
     )
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -174,7 +174,7 @@ def main():
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=50,
+        torch_empty_cache_steps=10,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -185,14 +185,14 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=2,
-        num_generations=8,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=4,
+        num_generations=10,
         max_prompt_length=3000,
         max_completion_length=1096,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=1.0,
+        max_grad_norm=0.1,
         gradient_checkpointing=True,
         report_to="wandb",
         output_dir=output_dir,

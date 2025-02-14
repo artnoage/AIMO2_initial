@@ -94,7 +94,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/merged/20250209_231739"
+    model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_path = "Metaskepsis/Numina_medium"
     
     # Setup logging first
@@ -152,16 +152,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
+        max_lora_rank=128
     )
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -181,9 +181,9 @@ def main():
         solver_prompt = (
             "Here is a mathematical problem:\n\n"
             f"{example['problem']}\n\n"
-            "Could you help me solve this from start to finish? First, let's analyze the problem, "
-            "then walk through the solution step-by-step using LaTeX notation. "
-            "Don't forget to put the final answer in a box using \\boxed{}"
+            "First, put your thoughts and analysis between <thinking> tags. "
+            "Then provide a step-by-step solution using LaTeX notation. "
+            "Make sure to explain your reasoning clearly and put the final answer in a box using \\boxed{}"
         )
         
         
@@ -219,9 +219,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=2,
-        num_generations=8,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=4,
+        num_generations=12,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
