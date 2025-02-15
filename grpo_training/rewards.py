@@ -19,7 +19,7 @@ from utils.benchmark_utils import (
     get_model,
     has_reasoning_section,
     has_response_section,
-    has_ordered_steps
+    check_steps_status
 )
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
