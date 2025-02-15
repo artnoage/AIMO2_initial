@@ -534,9 +534,9 @@ class TutorReward(BaseReward):
         
     def extract_sections(self, response: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
         """Extract Analysis, Verdict and Substitution sections"""
-        analysis_match = re.search(r'</Analysis>\s*(.*?)\s*<Analysis>', response, re.DOTALL)
-        verdict_match = re.search(r'</Verdict>\s*(.*?)\s*<Verdict>', response, re.DOTALL)
-        substitution_match = re.search(r'</Substitution>\s*(.*?)\s*<Substitution>', response, re.DOTALL)
+        analysis_match = re.search(r'<Analysis>\s*(.*?)\s*</Analysis>', response, re.DOTALL)
+        verdict_match = re.search(r'<Verdict>\s*(.*?)\s*</Verdict>', response, re.DOTALL)
+        substitution_match = re.search(r'<Substitution>\s*(.*?)\s*</Substitution>', response, re.DOTALL)
         
         return (
             analysis_match.group(1).strip() if analysis_match else None,
