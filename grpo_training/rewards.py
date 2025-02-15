@@ -11,7 +11,16 @@ from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from utils.benchmark_utils import extract_answer_from_solution, extract_numeric_answer, validate_solution, validate_solution2, get_model
+from utils.benchmark_utils import (
+    extract_answer_from_solution, 
+    extract_numeric_answer,
+    validate_solution,
+    validate_solution2,
+    get_model,
+    has_reasoning_section,
+    has_response_section,
+    has_ordered_steps
+)
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
@@ -264,9 +273,6 @@ class SolutionReward(BaseReward):
             total_samples = self.stats.reward_components['correct_answers'] + self.stats.reward_components['incorrect_answers']
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
-                
-            if is_valid:
-                self.stats.reward_components['validation_rewards'] = self.stats.reward_components.get('validation_rewards', 0) + 1
                 
             return reward
         except Exception as e:
