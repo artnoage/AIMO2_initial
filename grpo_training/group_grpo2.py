@@ -1,7 +1,7 @@
 import os
 import wandb
 import logging
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -108,7 +108,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group"
+    model_type = "group2"
     model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_path = "Metaskepsis/Numina_hard"
     
@@ -132,11 +132,11 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    
+    wandbname = f"Repetition, cuda 6 {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
-        name=f"group_grpo_{timestamp}",
+        name=wandbname,
         config={
             "model_type": reward_config.model_type,
             "dataset": dataset_path,
@@ -218,7 +218,10 @@ def main():
     )
     formatted_dataset = formatted_dataset.shuffle(seed=42)
     # Take first 3000 entries
-    formatted_dataset = formatted_dataset.select(range(3000))
+    shuffled_dataset = formatted_dataset.select(range(1000))
+    shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
+    shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2,shuffled_dataset3])
     # Verify first few entries
     # Training arguments
     training_args = GRPOConfig(
@@ -236,7 +239,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=9,
+        num_generations=10,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

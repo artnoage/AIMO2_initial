@@ -642,7 +642,6 @@ class TutorReward(BaseReward):
             self.logger.debug(f"Missing verdict section in tutor response: {tutor_response[:100]}...")
             self.stats.section_stats['invalid_verdict_format'] += 1
             return 0.0
-        self.logger.info("You passed the first part")
         # Track analysis stats
         polar_verdicts = ["The answer is correct", "The whole approach is wrong"]
         

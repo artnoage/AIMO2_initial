@@ -144,7 +144,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "tutor"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/tutor/20250210_064759"
+    model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
     
     # Setup logging first
@@ -166,7 +166,7 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"tutor with sfted model {timestamp}"
+    wandbname = f"tutor with vergin model {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -174,6 +174,7 @@ def main():
         config={
             "model_type": model_type,
             "dataset": dataset_path,
+            "model_name":model_name,
             "structure_base_reward": 0.2,
             "analysis_reward": 0.2,
             "substitution_reward": 0.4,
@@ -193,16 +194,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=128
+        max_lora_rank=64
     )
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -232,7 +233,7 @@ def main():
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=10,
+        torch_empty_cache_steps=5,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -245,7 +246,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=10,
+        num_generations=9,
         max_prompt_length=3000,
         max_completion_length=1096,
         num_train_epochs=1,
