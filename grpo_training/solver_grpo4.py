@@ -195,12 +195,6 @@ def main():
         logger.error(f"Failed to load dataset: {str(e)}")
         sys.exit(1)
 
-    # Format dataset and ensure answer field is present
-    formatted_dataset = formatted_dataset.map(
-        formatting_func,
-        desc="Applying chat template",
-        remove_columns=None  # Keep original columns
-    )
     # Take first 3000 entries
     
     formatted_dataset = formatted_dataset.select(range(1000))
