@@ -430,11 +430,14 @@ def has_response_section(solution: str) -> bool:
     response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
     return bool(response_parts)
 
-def has_ordered_steps(solution: str) -> bool:
-    """Check if steps in response section are properly ordered"""
+def check_steps_status(solution: str) -> Tuple[bool, bool]:
+    """
+    Check if solution has steps and if they are ordered.
+    Returns (has_steps, is_ordered)
+    """
     response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
     if not response_parts:
-        return False
+        return False, False
         
     response = response_parts[0].strip()
     steps = []
@@ -445,8 +448,10 @@ def has_ordered_steps(solution: str) -> bool:
         step_num = int(match.group(1))
         steps.append(step_num)
     
-    # Check if steps exist and are in order
-    return bool(steps) and all(steps[i] < steps[i+1] for i in range(len(steps)-1))
+    has_steps = bool(steps)
+    is_ordered = has_steps and all(steps[i] < steps[i+1] for i in range(len(steps)-1))
+    
+    return has_steps, is_ordered
 
 def has_boxed_answer(solution: str) -> bool:
     """Check if solution has a boxed answer"""

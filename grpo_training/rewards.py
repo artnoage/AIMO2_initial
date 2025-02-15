@@ -246,16 +246,22 @@ class SolutionReward(BaseReward):
                 self.logger.info("Has reasoning section (+0.1)")
                 self.stats.reward_components['structure_base_rewards'] += 1
             
-            # Check for response section with ordered steps
+            # Check for response section and steps
             if has_response_section(completion):
                 validation_reward += 0.1
                 self.logger.info("Has response section (+0.1)")
                 self.stats.reward_components['structure_base_rewards'] += 1
                 
-                if has_ordered_steps(completion):
-                    validation_reward += 0.1
-                    self.logger.info("Steps are in correct order (+0.1)")
+                has_steps, is_ordered = check_steps_status(completion)
+                if has_steps:
+                    validation_reward += 0.05
+                    self.logger.info("Has numbered steps (+0.05)")
                     self.stats.reward_components['structure_base_rewards'] += 1
+                    
+                    if is_ordered:
+                        validation_reward += 0.05
+                        self.logger.info("Steps are in correct order (+0.05)")
+                        self.stats.reward_components['structure_base_rewards'] += 1
             
             reward += validation_reward
             if validation_reward > 0:
