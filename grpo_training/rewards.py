@@ -184,6 +184,12 @@ class SolutionReward(BaseReward):
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion"""
         try:
+            # Check for multiple boxed answers
+            boxed_count = completion.count("\\boxed{")
+            if boxed_count > 1:
+                self.logger.debug(f"Multiple boxed answers found ({boxed_count})")
+                return 0.0
+                
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
