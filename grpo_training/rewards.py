@@ -228,13 +228,30 @@ class SolutionReward(BaseReward):
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
                 
-            # Add validation reward
-            is_valid, validation_msg = validate_solution2(completion)
-            self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
-            if is_valid:
-                reward += self.config.validation_reward
+            # Validate solution structure
+            validation_reward = 0.0
+            
+            # Check for reasoning section
+            if has_reasoning_section(completion):
+                validation_reward += 0.1
+                self.logger.info("Has reasoning section (+0.1)")
+                self.stats.reward_components['structure_base_rewards'] += 1
+            
+            # Check for response section with ordered steps
+            if has_response_section(completion):
+                validation_reward += 0.1
+                self.logger.info("Has response section (+0.1)")
+                self.stats.reward_components['structure_base_rewards'] += 1
+                
+                if has_ordered_steps(completion):
+                    validation_reward += 0.1
+                    self.logger.info("Steps are in correct order (+0.1)")
+                    self.stats.reward_components['structure_base_rewards'] += 1
+            
+            reward += validation_reward
+            if validation_reward > 0:
                 self.stats.reward_components['validation_rewards'] += 1
-                self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
+                self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
                 
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
