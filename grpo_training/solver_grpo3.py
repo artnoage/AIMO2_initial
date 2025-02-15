@@ -95,9 +95,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver 3"
+    model_type = "solver4"
     model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_name = "Metaskepsis/custom219"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -106,7 +106,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver2 good vanilla custom219 repetition    {timestamp}"
+    wandbname=f"solver3 good vanilla Numina medium  {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -159,7 +159,7 @@ def main():
         if os.path.exists(dataset_name):
             dataset = load_from_disk(dataset_name)
         else:
-            dataset = load_dataset(dataset_name)
+            dataset = load_dataset(dataset_name, 'main')
     except Exception as e:
         logger.error(f"Failed to load dataset: {str(e)}")
         sys.exit(1)
@@ -182,6 +182,8 @@ def main():
         }
         
         return formatted
+        
+
     
     # Format dataset and ensure answer field is present
     formatted_dataset = dataset['train'].map(
@@ -191,7 +193,7 @@ def main():
     )
     # Take first 3000 entries
     
-    formatted_dataset = formatted_dataset.select(range(211))
+    formatted_dataset = formatted_dataset.select(range(1000))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
     #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
@@ -213,7 +215,7 @@ def main():
     print("Tokenized:", tokenized)
     print("Decoded:", tokenizer.decode(tokenized['input_ids']))
     
-   # GRPO specific training arguments
+  # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
         torch_empty_cache_steps=1,

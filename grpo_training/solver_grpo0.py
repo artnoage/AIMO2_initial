@@ -95,8 +95,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver 3"
-    model_name = "mistralai/Mathstral-7B-v0.1"
+    model_type = "solver"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
     dataset_name = "Metaskepsis/custom219"
     
     # Initialize config
@@ -106,7 +106,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver2 good vanilla custom219 repetition    {timestamp}"
+    wandbname=f"solver0 good light custom219 repetition    {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",

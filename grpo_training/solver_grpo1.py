@@ -95,9 +95,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver"
+    model_type = "solver2"
     model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
-    dataset_name = "Metaskepsis/custom219"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -106,7 +106,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver1 good light custom219 repetition    {timestamp}"
+    wandbname=f"solver1 good light Numina medium  {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -159,19 +159,20 @@ def main():
         if os.path.exists(dataset_name):
             dataset = load_from_disk(dataset_name)
         else:
-            dataset = load_dataset(dataset_name)
+            dataset = load_dataset(dataset_name, 'main')
     except Exception as e:
         logger.error(f"Failed to load dataset: {str(e)}")
         sys.exit(1)
         
     def formatting_func(example):
         solver_prompt = (
-            "Here is a mathematical problem:\n\n"
-            f"{example['question']}\n\n"
-            "First, put your thoughts and analysis between <thinking> tags. "
-            "Then provide a step-by-step solution using LaTeX notation. "
-            "Make sure to explain your reasoning clearly and put the final answer in a box using \\boxed{}"
-        )
+        "Here is a mathematical problem:\n\n"
+        f"{example['question']}\n\n"
+        "Respond in the following format:\n"
+        "<reasoning>...</reasoning><response>...</response>\n\n"
+        "In the response, provide the full solution in LaTeX with clear, numbered steps. "
+        "Ensure that the final answer is enclosed in a box using \\boxed{}."
+    )
         
         
         formatted = {
@@ -181,6 +182,8 @@ def main():
         }
         
         return formatted
+        
+
     
     # Format dataset and ensure answer field is present
     formatted_dataset = dataset['train'].map(
@@ -190,7 +193,7 @@ def main():
     )
     # Take first 3000 entries
     
-    formatted_dataset = formatted_dataset.select(range(211))
+    formatted_dataset = formatted_dataset.select(range(1000))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
     #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
@@ -215,7 +218,7 @@ def main():
   # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=5,
+        torch_empty_cache_steps=1,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -227,8 +230,8 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=4,
-        num_generations=10,
+        gradient_accumulation_steps=3,
+        num_generations=16,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

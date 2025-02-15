@@ -1,7 +1,7 @@
 import os
 import wandb
 import logging
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -110,7 +110,7 @@ def main():
     # Configuration
     model_type = "group"
     model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_path = "Metaskepsis/Numina_hard"
+    dataset_path = "Metaskepsis/Numina_very_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -132,11 +132,11 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    
+    wandbname = f"Repetition, very hard, group, from_scratch, cuda 3 {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
-        name=f"group_grpo_{timestamp}",
+        name=wandbname,
         config={
             "model_type": reward_config.model_type,
             "dataset": dataset_path,
@@ -218,16 +218,22 @@ def main():
     )
     formatted_dataset = formatted_dataset.shuffle(seed=42)
     # Take first 3000 entries
-    formatted_dataset = formatted_dataset.select(range(3000))
+    formatted_dataset = formatted_dataset.select(range(500))
+    shuffled_dataset = formatted_dataset.shuffle(seed=42)
+    shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
+    #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
+    #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
+    # Concatenate original and shuffled datasets
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
     # Verify first few entries
     # Training arguments
     training_args = GRPOConfig(
         use_vllm=True,
         torch_empty_cache_steps=5,
-        learning_rate=3e-6,
+        learning_rate=4e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
-        weight_decay=0.1,
+        weight_decay=0.05,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
@@ -241,7 +247,7 @@ def main():
         max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=0.1,
+        max_grad_norm=1,
         report_to="wandb",
         output_dir=output_dir,
     )
