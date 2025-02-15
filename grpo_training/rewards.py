@@ -238,29 +238,29 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['incorrect_answers'] += 1
                 
             # Validate solution structure
-            validation_reward = 0.0
+            validation_reward = self.config.solution_base_reward
             
             # Check for reasoning section
             if has_reasoning_section(completion):
-                validation_reward += 0.1
-                self.logger.info("Has reasoning section (+0.1)")
+                validation_reward += self.config.solution_reasoning_reward
+                self.logger.info(f"Has reasoning section (+{self.config.solution_reasoning_reward})")
                 self.stats.reward_components['structure_base_rewards'] += 1
             
             # Check for response section and steps
             if has_response_section(completion):
-                validation_reward += 0.1
-                self.logger.info("Has response section (+0.1)")
+                validation_reward += self.config.solution_response_reward
+                self.logger.info(f"Has response section (+{self.config.solution_response_reward})")
                 self.stats.reward_components['structure_base_rewards'] += 1
                 
                 has_steps, is_ordered = check_steps_status(completion)
                 if has_steps:
-                    validation_reward += 0.05
-                    self.logger.info("Has numbered steps (+0.05)")
+                    validation_reward += self.config.solution_steps_reward
+                    self.logger.info(f"Has numbered steps (+{self.config.solution_steps_reward})")
                     self.stats.reward_components['structure_base_rewards'] += 1
                     
                     if is_ordered:
-                        validation_reward += 0.05
-                        self.logger.info("Steps are in correct order (+0.05)")
+                        validation_reward += self.config.solution_ordered_steps_reward
+                        self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
                         self.stats.reward_components['structure_base_rewards'] += 1
             
             reward += validation_reward

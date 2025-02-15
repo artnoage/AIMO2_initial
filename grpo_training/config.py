@@ -24,6 +24,13 @@ class RewardConfig:
     validation_reward: float = 0.2
     length_penalty_factor: float = 0.0001
     
+    # Solution-specific settings
+    solution_base_reward: float = 0.05  # Initial reward
+    solution_reasoning_reward: float = 0.1  # For having reasoning section
+    solution_response_reward: float = 0.1  # For having response section
+    solution_steps_reward: float = 0.05  # For having numbered steps
+    solution_ordered_steps_reward: float = 0.05  # Additional for ordered steps
+    
     # Group-specific settings
     group_base_reward: float = 3
     group_diversity_bonus: float = 0.3
