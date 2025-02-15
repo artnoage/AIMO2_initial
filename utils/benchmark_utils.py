@@ -421,63 +421,51 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         return False, "Skips steps"
 
 def validate_solution2(solution: str) -> Tuple[bool, str]:
-    """Validate a solution with thinking section and steps"""
-    # Check for thinking section
-    thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
-    if not thinking_parts:
-        return False, "Missing thinking section"
+    """Validate a solution with reasoning and response sections"""
+    reward = 0.0
+    reasons = []
     
-    # Check thinking section content
-    thinking = thinking_parts[0].strip()
-    if len(thinking.split()) < 20:
-        return False, "Thinking section too short"
+    # Check for reasoning section
+    reasoning_parts = re.findall(r'<reasoning>(.*?)</reasoning>', solution, re.DOTALL)
+    if not reasoning_parts:
+        reasons.append("Missing reasoning section")
+    else:
+        reward += 0.1
+        reasons.append("Has reasoning section (+0.1)")
+    
+    # Check for response section
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    if not response_parts:
+        reasons.append("Missing response section")
+    else:
+        reward += 0.1
+        reasons.append("Has response section (+0.1)")
         
-    # Check for steps after thinking
-    after_thinking = solution.split('</thinking>')[-1].strip()
-    if not after_thinking:
-        return False, "No solution steps after thinking section"
-        
-    if "[…]" in solution.lower():   
-        return False, "Skips steps"
-        
-    # Check for links/URLs
-    if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):
-        return False, "Contains URLs/links"
-        
-    # Check analysis section
-    analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
-    if analysis_parts:
-        is_valid, reason = validate_analysis(analysis_parts[0])
-        if not is_valid:
-            return False, f"Analysis section: {reason}"
-        
-    # Check for invalid phrases
-    invalid_phrases = ["Could you help finish this solution?",
-        "Remember to put the final answer",
-        "Could you help finish this calculation"]
-    for phrase in invalid_phrases:
-        if phrase in solution:
-            return False, f"Contains invalid phrase: '{phrase}'"
-
+        # If we have a response section, check step ordering
+        if response_parts:
+            response = response_parts[0].strip()
+            steps = []
+            current_step = 1
+            
+            # Look for numbered steps (1., 2., etc)
+            step_matches = re.finditer(r'(\d+)\.\s', response)
+            for match in step_matches:
+                step_num = int(match.group(1))
+                steps.append(step_num)
+            
+            # Check if steps are in order
+            if steps and all(steps[i] < steps[i+1] for i in range(len(steps)-1)):
+                reward += 0.1
+                reasons.append("Steps are in correct order (+0.1)")
+            elif steps:
+                reasons.append("Steps are not in correct order")
+    
     # Check for boxed answer
     if "\\boxed{" not in solution:
-        return False, "Missing boxed answer"
-        
-    # Split solution into steps and validate each one
-    steps = split_into_steps(solution)
-    if len(steps) <= 1:  # Only analysis or no steps
-        return False, "No steps found"
-        
-    # Skip analysis section if present
-    start_idx = 1 if "analysis" in steps[0].lower() else 0
+        reasons.append("Missing boxed answer")
     
-    # Validate each step
-    for i, step in enumerate(steps[start_idx:], 1):
-        is_valid, reason = validate_step(step, expected_step=i)
-        if not is_valid:
-            return False, f"Step {i}: {reason}"
-    
-    return True, "Solution valid"
+    # Return True if we got any points, along with the reasons
+    return (reward > 0, f"Score: {reward} - " + "; ".join(reasons))
 
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
     """
