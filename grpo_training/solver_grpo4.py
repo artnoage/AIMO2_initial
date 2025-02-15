@@ -96,8 +96,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver4"
-    model_name = "unsloth/llama-3.1-8b"
-    dataset_name = "gsm8k"
+    model_name = "meta-llama/meta-Llama-3.1-8B-Instruct"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
