@@ -340,8 +340,10 @@ def is_multiple_choice(problem: str) -> bool:
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
-    Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
-    Returns the raw answer string with LaTeX notation preserved, or None if no boxed answer is found.
+    Extract the answer from the solution text by searching for either:
+    1. LaTeX boxed answers: \boxed{X}
+    2. Hash-marked answers: #### X
+    Returns the raw answer string with LaTeX notation preserved, or None if no answer is found.
     """
     def find_matching_brace(s: str, start: int) -> int:
         """
@@ -364,7 +366,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             i += 1
         return i - 1 if count == 0 else -1
 
-    # Pattern to find all occurrences of \boxed{ with proper escaping
+    # First try to find boxed answer
     pattern = re.compile(r'\\boxed\{')
     for match in pattern.finditer(solution):
         start = match.end() - 1  # Position of the opening brace '{'
@@ -374,7 +376,11 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             content = solution[start + 1:end].strip()
             return content  # Return the first found boxed content
 
-    return None  # Return None if no boxed content is found
+    # If no boxed answer found, try hash format
+    if "####" in solution:
+        return solution.split("####")[1].strip()
+
+    return None  # Return None if no answer format is found
 
 STEP_NUMBER_PATTERNS = [
     re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
