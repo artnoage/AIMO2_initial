@@ -457,36 +457,6 @@ def has_boxed_answer(solution: str) -> bool:
     """Check if solution has a boxed answer"""
     return "\\boxed{" in solution
 
-def validate_solution2(solution: str) -> Tuple[bool, str]:
-    """Validate a solution with reasoning and response sections"""
-    reward = 0.0
-    reasons = []
-    
-    # Check each component
-    if has_reasoning_section(solution):
-        reward += 0.1
-        reasons.append("Has reasoning section (+0.1)")
-    else:
-        reasons.append("Missing reasoning section")
-        
-    if has_response_section(solution):
-        reward += 0.1
-        reasons.append("Has response section (+0.1)")
-        
-        if has_ordered_steps(solution):
-            reward += 0.1
-            reasons.append("Steps are in correct order (+0.1)")
-        else:
-            reasons.append("Steps are not in correct order")
-    else:
-        reasons.append("Missing response section")
-        
-    if not has_boxed_answer(solution):
-        reasons.append("Missing boxed answer")
-    
-    # Return True if we got any points, along with the reasons
-    return (reward > 0, f"Score: {reward} - " + "; ".join(reasons))
-
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
     """
     Validate if a completion properly continues from a partial solution.
