@@ -420,48 +420,63 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if "[…]" in solution.lower():   
         return False, "Skips steps"
 
+def has_reasoning_section(solution: str) -> bool:
+    """Check if solution has a reasoning section"""
+    reasoning_parts = re.findall(r'<reasoning>(.*?)</reasoning>', solution, re.DOTALL)
+    return bool(reasoning_parts)
+
+def has_response_section(solution: str) -> bool:
+    """Check if solution has a response section"""
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    return bool(response_parts)
+
+def has_ordered_steps(solution: str) -> bool:
+    """Check if steps in response section are properly ordered"""
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    if not response_parts:
+        return False
+        
+    response = response_parts[0].strip()
+    steps = []
+    
+    # Look for numbered steps (1., 2., etc)
+    step_matches = re.finditer(r'(\d+)\.\s', response)
+    for match in step_matches:
+        step_num = int(match.group(1))
+        steps.append(step_num)
+    
+    # Check if steps exist and are in order
+    return bool(steps) and all(steps[i] < steps[i+1] for i in range(len(steps)-1))
+
+def has_boxed_answer(solution: str) -> bool:
+    """Check if solution has a boxed answer"""
+    return "\\boxed{" in solution
+
 def validate_solution2(solution: str) -> Tuple[bool, str]:
     """Validate a solution with reasoning and response sections"""
     reward = 0.0
     reasons = []
     
-    # Check for reasoning section
-    reasoning_parts = re.findall(r'<reasoning>(.*?)</reasoning>', solution, re.DOTALL)
-    if not reasoning_parts:
-        reasons.append("Missing reasoning section")
-    else:
+    # Check each component
+    if has_reasoning_section(solution):
         reward += 0.1
         reasons.append("Has reasoning section (+0.1)")
-    
-    # Check for response section
-    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
-    if not response_parts:
-        reasons.append("Missing response section")
     else:
+        reasons.append("Missing reasoning section")
+        
+    if has_response_section(solution):
         reward += 0.1
         reasons.append("Has response section (+0.1)")
         
-        # If we have a response section, check step ordering
-        if response_parts:
-            response = response_parts[0].strip()
-            steps = []
-            current_step = 1
-            
-            # Look for numbered steps (1., 2., etc)
-            step_matches = re.finditer(r'(\d+)\.\s', response)
-            for match in step_matches:
-                step_num = int(match.group(1))
-                steps.append(step_num)
-            
-            # Check if steps are in order
-            if steps and all(steps[i] < steps[i+1] for i in range(len(steps)-1)):
-                reward += 0.1
-                reasons.append("Steps are in correct order (+0.1)")
-            elif steps:
-                reasons.append("Steps are not in correct order")
-    
-    # Check for boxed answer
-    if "\\boxed{" not in solution:
+        if has_ordered_steps(solution):
+            reward += 0.1
+            reasons.append("Steps are in correct order (+0.1)")
+        else:
+            reasons.append("Steps are not in correct order")
+    else:
+        reasons.append("Missing response section")
+        
+    if not has_boxed_answer(solution):
         reasons.append("Missing boxed answer")
     
     # Return True if we got any points, along with the reasons
