@@ -96,8 +96,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver4"
-    model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_name = "Metaskepsis/Numina_medium"
+    model_name = "unsloth/llama-3.1-8b"
+    dataset_name = "gsm8k"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -151,7 +151,7 @@ def main():
     # Setup chat template
     tokenizer = get_chat_template(
         tokenizer,
-        chat_template="mistral",
+        chat_template="llama",
         map_eos_token=True
     )
     
@@ -166,17 +166,12 @@ def main():
         
     def formatting_func(example):
         solver_prompt = (
-        "Here is a mathematical problem:\n\n"
-        f"{example['question']}\n\n"
-        "Respond in the following format:\n"
-        "<reasoning>...</reasoning><response>...</response>\n\n"
-        "In the response, provide the full solution in LaTeX with clear, numbered steps. "
-        "Ensure that the final answer is enclosed in a box using \\boxed{}."
-    )
-        
+            "Question: " + example['question'] + "\n\n"
+            "Let's solve this step by step:\n"
+        )
         
         formatted = {
-            "prompt": f"[INST]{solver_prompt}[/INST]",
+            "prompt": solver_prompt,
             "answer": example.get('answer'),
             "correct_answer": example.get('answer')
         }
@@ -186,7 +181,7 @@ def main():
 
     
     # Format dataset and ensure answer field is present
-    formatted_dataset = dataset['train'].map(
+    formatted_dataset = dataset['train'].select_columns(['question', 'answer']).map(
         formatting_func,
         desc="Applying chat template",
         remove_columns=None  # Keep original columns
