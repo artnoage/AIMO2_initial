@@ -93,11 +93,37 @@ class LoggingCallback(TrainerCallback):
                 self.logger.info(f"Total rewards: {self.reward_func.stats.total_rewards}")
                 self.logger.info(self.reward_func.stats.get_summary())
 
+# Constants for prompting
+SYSTEM_PROMPT = """
+Respond in the following format:
+<reasoning>
+...
+</reasoning>
+<answer>
+...
+</answer>
+"""
+
+XML_COT_FORMAT = """\
+<reasoning>
+{reasoning}
+</reasoning>
+<answer>
+{answer}
+</answer>
+"""
+
+def extract_hash_answer(answer: str) -> str:
+    """Extract answer after the #### marker"""
+    if "####" in answer:
+        return answer.split("####")[1].strip()
+    return answer
+
 def main():
     # Configuration
     model_type = "solver4"
     model_name = "meta-llama/meta-Llama-3.1-8B-Instruct"
-    dataset_name = "Metaskepsis/Numina_medium"
+    dataset_name = "gsm8k"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -156,32 +182,21 @@ def main():
     )
     
     try:
-        if os.path.exists(dataset_name):
-            dataset = load_from_disk(dataset_name)
-        else:
-            dataset = load_dataset(dataset_name, 'main')
+        dataset = load_dataset('openai/gsm8k', 'main')
+        formatted_dataset = dataset['train'].map(lambda x: {
+            'prompt': [
+                {'role': 'system', 'content': SYSTEM_PROMPT},
+                {'role': 'user', 'content': x['question']}
+            ],
+            'answer': extract_hash_answer(x['answer']),
+            'correct_answer': extract_hash_answer(x['answer'])
+        })
     except Exception as e:
         logger.error(f"Failed to load dataset: {str(e)}")
         sys.exit(1)
-        
-    def formatting_func(example):
-        solver_prompt = (
-            "Question: " + example['question'] + "\n\n"
-            "Let's solve this step by step:\n"
-        )
-        
-        formatted = {
-            "prompt": solver_prompt,
-            "answer": example.get('answer'),
-            "correct_answer": example.get('answer')
-        }
-        
-        return formatted
-        
 
-    
     # Format dataset and ensure answer field is present
-    formatted_dataset = dataset['train'].select_columns(['question', 'answer']).map(
+    formatted_dataset = formatted_dataset.map(
         formatting_func,
         desc="Applying chat template",
         remove_columns=None  # Keep original columns
