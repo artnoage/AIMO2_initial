@@ -169,10 +169,24 @@ def main():
         solver_prompt = (
         "Here is a mathematical problem:\n\n"
         f"{example['question']}\n\n"
-        "Respond in the following format:\n"
-        "<reasoning>...</reasoning><response>...</response>\n\n"
-        "In the response, provide the full solution in LaTeX with clear, numbered steps. "
-        "Ensure that the final answer is enclosed in a box using \\boxed{}."
+        "Solve this step by step. Your response must follow this exact format:\n\n"
+        "<reasoning>\n"
+        "Analyze the problem and explain your approach.\n"
+        "Do not include any calculations here.\n"
+        "</reasoning>\n\n"
+        "<response>\n"
+        "<step>Step 1: Begin with the first calculation or operation\n"
+        "Show your work clearly using LaTeX notation</step>\n\n"
+        "<step>Step 2: Continue with the next logical step\n"
+        "Each step should be numbered and self-contained</step>\n\n"
+        "<step>Step N: In your final step, state your conclusion\n"
+        "Put your final answer in \\boxed{}</step>\n"
+        "</response>\n\n"
+        "Important:\n"
+        "- Each step must be numbered and enclosed in <step> tags\n"
+        "- Use proper LaTeX notation for all mathematics\n"
+        "- Put your final answer in \\boxed{}\n"
+        "- Keep steps clear and focused"
     )
         
         
