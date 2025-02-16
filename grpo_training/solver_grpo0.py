@@ -18,6 +18,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import SolutionReward
+import os
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -194,10 +195,10 @@ def main():
     formatted_dataset = formatted_dataset.select(range(211))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
-    #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
+    shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
+    shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2,shuffled_dataset3,shuffled_dataset4])
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
