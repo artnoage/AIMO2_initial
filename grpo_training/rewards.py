@@ -184,46 +184,51 @@ class SolutionReward(BaseReward):
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion"""
         try:
-            
-            prompt=kwargs.get('prompt')
+            prompt = kwargs.get('prompt')
             self.logger.info(prompt)
             self.logger.info(completion)
-            # Check for multiple boxed answers
-            boxed_count = completion.count("\\boxed{")
-            if boxed_count > 1:
-                self.logger.debug(f"Multiple boxed answers found ({boxed_count})")
-                return 0.0
-
+            
+            # Initialize reward
+            reward = 0.0
+            
+            # Check for required XML sections
+            if not has_reasoning_section(completion):
+                self.logger.debug("Missing reasoning section")
+                return reward
+                
+            if not has_response_section(completion):
+                self.logger.debug("Missing response section")
+                return reward
+                
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
                 self.logger.debug("No boxed answer found in completion")
-                return 0.0
+                return reward
+                
+            # Check for multiple boxed answers
+            boxed_count = completion.count("\\boxed{")
+            if boxed_count > 1:
+                self.logger.debug(f"Multiple boxed answers found ({boxed_count})")
+                return reward
                 
             # Convert to numeric values
             model_numeric, _ = extract_numeric_answer(model_answer)
-            
-            # Get correct answer from kwargs
-            correct_answer = kwargs.get('answer')
+            correct_answer = str(kwargs.get('answer', ''))
             if not correct_answer:
                 self.logger.warning("No correct answer provided in kwargs")
-                return 0.0
-            
-            # Convert to string if needed
-            correct_answer = str(correct_answer)
+                return reward
+                
             correct_numeric, _ = extract_numeric_answer(correct_answer)
-            
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug(f"Could not extract numeric values - Model: {model_numeric}, Correct: {correct_numeric}")
-                return 0.0
+                return reward
                 
-            # Initialize reward
-            reward = 0.0
-            
             # Check correctness
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             self.logger.info(f"Correctness check - Model: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
             
+            # Base reward for correct answer
             if is_correct:
                 reward = self.config.base_reward
                 self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
@@ -232,31 +237,24 @@ class SolutionReward(BaseReward):
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
                 
-            # Validate solution structure
-            validation_reward = self.config.solution_base_reward
+            # Structure validation rewards
+            validation_reward = 0.0
             
-            # Check for reasoning section
-            if has_reasoning_section(completion):
-                validation_reward += self.config.solution_reasoning_reward
-                self.logger.info(f"Has reasoning section (+{self.config.solution_reasoning_reward})")
-                self.stats.reward_components['structure_base_rewards'] += 1
-            
-            # Check for response section and steps
-            if has_response_section(completion):
-                validation_reward += self.config.solution_response_reward
-                self.logger.info(f"Has response section (+{self.config.solution_response_reward})")
-                self.stats.reward_components['structure_base_rewards'] += 1
+            # Count valid steps
+            step_count = count_manual_steps(completion)
+            if step_count > 0:
+                # Reward for having proper XML step tags
+                validation_reward += self.config.solution_steps_reward * step_count
+                self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
                 
-                has_steps, is_ordered = check_steps_status(completion)
-                if has_steps:
-                    validation_reward += self.config.solution_steps_reward
-                    self.logger.info(f"Has numbered steps (+{self.config.solution_steps_reward})")
-                    self.stats.reward_components['structure_base_rewards'] += 1
-                    
-                    if is_ordered:
-                        validation_reward += self.config.solution_ordered_steps_reward
-                        self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
-                        self.stats.reward_components['structure_base_rewards'] += 1
+                # Additional reward for proper step ordering
+                response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+                if response_parts and all(
+                    re.search(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)
+                    for i in range(1, step_count + 1)
+                ):
+                    validation_reward += self.config.solution_ordered_steps_reward
+                    self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
             
             reward += validation_reward
             if validation_reward > 0:
