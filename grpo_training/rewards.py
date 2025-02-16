@@ -383,13 +383,29 @@ class GroupReward(BaseReward):
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
                 
-            # Add validation reward
-            is_valid, validation_msg = validate_solution2(completion)
-            self.logger.info(f"Validation check - Valid: {is_valid}, Message: {validation_msg}")
-            if is_valid:
-                reward += self.config.validation_reward
+            # Structure validation rewards
+            validation_reward = 0.0
+            
+            # Count valid steps
+            step_count = count_manual_steps(completion)
+            if step_count > 0:
+                # Reward for having proper XML step tags
+                validation_reward += self.config.solution_steps_reward * step_count
+                self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
+                
+                # Additional reward for proper step ordering
+                response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+                if response_parts and all(
+                    re.search(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)
+                    for i in range(1, step_count + 1)
+                ):
+                    validation_reward += self.config.solution_ordered_steps_reward
+                    self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
+            
+            reward += validation_reward
+            if validation_reward > 0:
                 self.stats.reward_components['validation_rewards'] += 1
-                self.logger.info(f"Applied validation reward: +{self.config.validation_reward:.3f}")
+                self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
                 
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
