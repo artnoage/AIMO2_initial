@@ -313,48 +313,21 @@ async def get_model_response(model, prompt, max_tokens=None) -> str:
 
 def count_manual_steps(solution: str) -> int:
     """
-    Count steps in a solution by looking for step indicators.
-    Recognizes various step formats:
-    - Numbered steps: "Step 1", "1.", "1)", "(1)"
-    - Word steps: "First", "Second", "Third", "Finally"
-    - Mathematical steps: "Let's", "Therefore", "Thus", "Hence"
-    - Bullet points: "•", "-", "*"
+    Count steps in a solution using XML tags.
+    Steps must be properly enclosed in <step>...</step> tags.
+    Returns the number of valid step sections found.
     """
-    step_patterns = [
-        # Explicit step numbering
-        r'Step\s*\d+',      # "Step 1", "Step2" etc
-        r'\d+\)\s',         # "1) "
-        r'\d+\.\s',         # "1. "
-        r'\(\d+\)\s',       # "(1) "
-        
-        # Word-based steps
-        r'\b(?:First|Second|Third|Fourth|Fifth|Finally)\b',
-        
-        # Mathematical transition words
-        r'\b(?:Let\'s|Therefore|Thus|Hence)\b',
-        
-        # Bullet points and lists
-        r'(?m)^\s*[•\-\*]\s',  # Lines starting with •, -, or *
-        
-        # XML-style tags
-        r'<step>',
-        r'<response>.*?</response>'  # Count response sections
-    ]
+    # Extract all step sections
+    step_sections = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
     
-    total_steps = 0
-    for pattern in step_patterns:
-        matches = re.findall(pattern, solution, re.IGNORECASE | re.MULTILINE)
-        total_steps += len(matches)
-        
-    # Special case: if we found XML response tags, check their content
-    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
-    if response_parts:
-        for response in response_parts:
-            # Count numbered items within response sections
-            numbered = re.findall(r'\d+[\.\)]\s', response)
-            total_steps += len(numbered)
-    
-    return max(1, total_steps)  # Return at least 1 step
+    # Count only valid step sections
+    valid_steps = 0
+    for section in step_sections:
+        # Step must have a number indicator
+        if re.search(r'Step\s*\d+[:.)\s]', section, re.IGNORECASE):
+            valid_steps += 1
+            
+    return max(1, valid_steps)  # Return at least 1 step
 
 def is_multiple_choice(problem: str) -> bool:
     """Check if the problem contains multiple choice indicators (A,B,C,D)"""
