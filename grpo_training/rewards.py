@@ -11,16 +11,7 @@ from typing import List, Optional, Tuple, Any, Union
 from transformers import AutoTokenizer, AutoModel
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from utils.benchmark_utils import (
-    extract_answer_from_solution, 
-    extract_numeric_answer,
-    validate_solution,
-    validate_solution2,
-    get_model,
-    has_reasoning_section,
-    has_response_section,
-    check_steps_status
-)
+from utils.benchmark_utils import *
 from utils.agents import CompletionAgent
 from abc import ABC, abstractmethod
 from config import RewardConfig
@@ -193,12 +184,16 @@ class SolutionReward(BaseReward):
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion"""
         try:
+            
+            prompt=kwargs.get('prompt')
+            self.logger.info(prompt)
+            self.logger.info(completion)
             # Check for multiple boxed answers
             boxed_count = completion.count("\\boxed{")
             if boxed_count > 1:
                 self.logger.debug(f"Multiple boxed answers found ({boxed_count})")
                 return 0.0
-                
+
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
