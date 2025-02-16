@@ -65,7 +65,9 @@ class LoggingCallback(TrainerCallback):
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
                 'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
                 'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                'step_count': self.reward_func.stats.reward_components.get('step_count', 0) - getattr(self, '_last_step_count', 0),
+                'ordered_steps': self.reward_func.stats.reward_components.get('ordered_steps', 0) - getattr(self, '_last_ordered_steps', 0)
             }
             
             # Store current values for next round
@@ -74,6 +76,8 @@ class LoggingCallback(TrainerCallback):
             self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
             self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
             self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
+            self._last_step_count = self.reward_func.stats.reward_components.get('step_count', 0)
+            self._last_ordered_steps = self.reward_func.stats.reward_components.get('ordered_steps', 0)
             
             # Update wandb logs
             logs.update(wandb_stats)

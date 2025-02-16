@@ -69,19 +69,8 @@ class RewardStats:
             'incorrect_answers': 0,
             'total_rewards': 0.0,
             'average_reward': 0.0,
-            'multiple_boxed_penalties': 0,
-            'structure_base_rewards': 0,
-            'redundant_substitution_penalties': 0,
-            'analysis_rewards': 0,
-            'single_step_bonuses': 0,
-            'multiple_step_penalties': 0,
-            'substitution_length_penalties': 0.0,
-            'improvement_bonuses': {
-                'total': 0,
-                '0.1': 0,
-                '0.2': 0,
-                '0.3': 0
-            }
+            'step_count': 0,
+            'ordered_steps': 0
         }
         
         # Track group-specific stats
