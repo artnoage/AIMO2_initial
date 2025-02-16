@@ -178,8 +178,8 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt':  "[INST]" + SYSTEM_PROMPT + x['question']+"[/INST]",
-            'answer':x['answer']
+            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['question'] + '<|im_end|>\n<|im_start|>assistant\n',
+            'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
