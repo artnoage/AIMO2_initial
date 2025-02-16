@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 from typing import List
-from datasets import load_dataset, load_from_disk, concatenate_datasets
+from datasets import load_dataset, load_from_disk, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -18,6 +18,28 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import SolutionReward
+import os
+
+SYSTEM_PROMPT = """You will be given a mathematical problem. Solve this step by step. Your response must follow this exact format:\n\n
+    <reasoning>\n
+    Analyze the problem and explain your approach.\n
+    Do not include any calculations here.\n
+    </reasoning>\n\n
+    <response>\n
+    <step>Step 1: Begin with the first calculation or operation\n
+    Show your work clearly using LaTeX notation</step>\n\n
+    <step>Step 2: Continue with the next logical step\n
+    Each step should be numbered and self-contained</step>\n\n
+    <step>Step N: In your final step, state your conclusion\n
+    Put your final answer in \\boxed{}</step>\n
+    </response>\n\n
+    Important:\n
+    - Each step must be numbered and enclosed in <step> tags\n
+    - Use proper LaTeX notation for all mathematics\n
+    - Put your final answer in \\boxed{}\n
+    - Keep steps clear and focused"""
+    
+
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -64,7 +86,9 @@ class LoggingCallback(TrainerCallback):
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
                 'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
                 'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
+                'step_count': self.reward_func.stats.reward_components.get('step_count', 0) - getattr(self, '_last_step_count', 0),
+                'ordered_steps': self.reward_func.stats.reward_components.get('ordered_steps', 0) - getattr(self, '_last_ordered_steps', 0)
             }
             
             # Store current values for next round
@@ -73,6 +97,8 @@ class LoggingCallback(TrainerCallback):
             self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
             self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
             self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
+            self._last_step_count = self.reward_func.stats.reward_components.get('step_count', 0)
+            self._last_ordered_steps = self.reward_func.stats.reward_components.get('ordered_steps', 0)
             
             # Update wandb logs
             logs.update(wandb_stats)
@@ -95,8 +121,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver 3"
-    model_name = "mistralai/Mathstral-7B-v0.1"
+    model_type = "solver"
+    model_name = "Qwen/Qwen2.5-Math-7B"
     dataset_name = "Metaskepsis/custom219"
     
     # Initialize config
@@ -106,7 +132,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver2 good vanilla custom219 repetition    {timestamp}"
+    wandbname=f"solver0 good light custom219 repetition    {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -148,56 +174,24 @@ def main():
         loftq_config=None
     )
     
-    # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True
-    )
-    
-    try:
-        if os.path.exists(dataset_name):
-            dataset = load_from_disk(dataset_name)
-        else:
-            dataset = load_dataset(dataset_name)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {str(e)}")
-        sys.exit(1)
         
-    def formatting_func(example):
-        solver_prompt = (
-        "Here is a mathematical problem:\n\n"
-        f"{example['question']}\n\n"
-        "Respond in the following format:\n"
-        "<reasoning>...</reasoning><response>...</response>\n\n"
-        "In the response, provide the full solution in LaTeX with clear, numbered steps. "
-        "Ensure that the final answer is enclosed in a box using \\boxed{}."
-    )
-        
-        
-        formatted = {
-            "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example.get('answer'),
-            "correct_answer": example.get('answer')
-        }
-        
-        return formatted
-    
-    # Format dataset and ensure answer field is present
-    formatted_dataset = dataset['train'].map(
-        formatting_func,
-        desc="Applying chat template",
-        remove_columns=None  # Keep original columns
-    )
-    # Take first 3000 entries
-    
+    def get_questions(split = "train") -> Dataset:
+        data = load_dataset(dataset_name)[split] # type: ignore
+        data = data.map(lambda x: { # type: ignore
+            'prompt':  "[INST]" + SYSTEM_PROMPT + x['question']+"[/INST]",
+            'answer':x['answer']
+        }) # type: ignore
+        return data # type: ignore
+
+    formatted_dataset = get_questions()
+
     formatted_dataset = formatted_dataset.select(range(211))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
-    #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
+    shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
+    shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2,shuffled_dataset3,shuffled_dataset4])
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -229,7 +223,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=3,
-        num_generations=16,
+        num_generations=8,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
