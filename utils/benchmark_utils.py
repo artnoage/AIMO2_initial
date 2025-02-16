@@ -312,22 +312,47 @@ async def get_model_response(model, prompt, max_tokens=None) -> str:
         raise
 
 def count_manual_steps(solution: str) -> int:
-    """Count steps in a solution by looking for step indicators"""
-    # Look for common step patterns
+    """
+    Count steps in a solution by looking for step indicators.
+    Recognizes various step formats:
+    - Numbered steps: "Step 1", "1.", "1)", "(1)"
+    - Word steps: "First", "Second", "Third", "Finally"
+    - Mathematical steps: "Let's", "Therefore", "Thus", "Hence"
+    - Bullet points: "•", "-", "*"
+    """
     step_patterns = [
-        r'Step\s+\d+',  # "Step 1", "Step 2", etc.
-        r'\d+\)\s',     # "1)", "2)", etc.
-        r'\d+\.\s',     # "1.", "2.", etc.
-        r'First,',      # Common word indicators
-        r'Second,',
-        r'Third,',
-        r'Finally,'
+        # Explicit step numbering
+        r'Step\s*\d+',      # "Step 1", "Step2" etc
+        r'\d+\)\s',         # "1) "
+        r'\d+\.\s',         # "1. "
+        r'\(\d+\)\s',       # "(1) "
+        
+        # Word-based steps
+        r'\b(?:First|Second|Third|Fourth|Fifth|Finally)\b',
+        
+        # Mathematical transition words
+        r'\b(?:Let\'s|Therefore|Thus|Hence)\b',
+        
+        # Bullet points and lists
+        r'(?m)^\s*[•\-\*]\s',  # Lines starting with •, -, or *
+        
+        # XML-style tags
+        r'<step>',
+        r'<response>.*?</response>'  # Count response sections
     ]
     
     total_steps = 0
     for pattern in step_patterns:
-        steps = re.findall(pattern, solution, re.IGNORECASE)
-        total_steps += len(steps)
+        matches = re.findall(pattern, solution, re.IGNORECASE | re.MULTILINE)
+        total_steps += len(matches)
+        
+    # Special case: if we found XML response tags, check their content
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    if response_parts:
+        for response in response_parts:
+            # Count numbered items within response sections
+            numbered = re.findall(r'\d+[\.\)]\s', response)
+            total_steps += len(numbered)
     
     return max(1, total_steps)  # Return at least 1 step
 
