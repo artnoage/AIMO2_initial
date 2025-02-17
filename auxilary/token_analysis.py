@@ -3,7 +3,7 @@ import sys
 from typing import Dict
 import numpy as np
 from datasets import load_dataset
-from unsloth import FastLanguageModel
+from transformers import AutoTokenizer
 import pandas as pd
 from pathlib import Path
 
@@ -27,14 +27,9 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
 
-def load_model_and_tokenizer(model_name: str):
-    """Load the model and tokenizer"""
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,
-        max_seq_length=3072,
-        fast_inference=True,
-        load_in_4bit=False)
-    return model, tokenizer
+def load_tokenizer(model_name: str):
+    """Load just the tokenizer"""
+    return AutoTokenizer.from_pretrained(model_name)
 
 def get_dataset(dataset_name: str):
     """Load and format the dataset"""
@@ -71,9 +66,9 @@ def main():
     model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_name = "Metaskepsis/Numina_medium"
     
-    # Load model and tokenizer
-    print("Loading model and tokenizer...")
-    _, tokenizer = load_model_and_tokenizer(model_name)
+    # Load tokenizer
+    print("Loading tokenizer...")
+    tokenizer = load_tokenizer(model_name)
     
     # Load dataset
     print("Loading dataset...")
