@@ -56,7 +56,9 @@ def analyze_token_counts(tokenizer, dataset) -> Dict:
         'std': np.std(token_counts),
         'min': np.min(token_counts),
         'max': np.max(token_counts),
-        'count': len(token_counts)
+        'count': len(token_counts),
+        'above_800': np.sum(token_counts > 800),
+        'above_1000': np.sum(token_counts > 1000)
     }
     
     return stats
@@ -86,6 +88,8 @@ def main():
     print(f"Standard deviation: {stats['std']:.2f}")
     print(f"Min tokens: {stats['min']}")
     print(f"Max tokens: {stats['max']}")
+    print(f"Examples with >800 tokens: {stats['above_800']} ({(stats['above_800']/stats['count']*100):.1f}%)")
+    print(f"Examples with >1000 tokens: {stats['above_1000']} ({(stats['above_1000']/stats['count']*100):.1f}%)")
 
 if __name__ == "__main__":
     main()
