@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from dotenv import load_dotenv
-from datasets import Dataset, load_from_disk
+from datasets import Dataset, DatasetDict, load_from_disk
 from pathlib import Path
 import json
 import argparse
@@ -16,8 +16,10 @@ def load_json_dataset(json_path: Path):
         raise ValueError(f"Invalid JSON file: {json_path}")
 
 def convert_to_hf_dataset(data, dataset_type=None):
-    """Convert the data to a HuggingFace Dataset and save in Arrow format."""
+    """Convert the data to a HuggingFace Dataset and save in Arrow format with train split."""
+    # First create a Dataset from the list of dicts
     dataset = Dataset.from_list(data)
+    
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     if dataset_type:
@@ -33,14 +35,14 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
     try:
         dataset = load_from_disk(str(arrow_path))
         
-        # Handle both Dataset and DatasetDict
-        # Always convert to a list of entries
-        if hasattr(dataset, 'to_list'):  # Single Dataset
-            data = dataset.to_list()
-        else:  # DatasetDict
-            # Take only the first split if multiple exist
-            first_split = next(iter(dataset.values()))
-            data = first_split.to_list()
+        # Always expect a DatasetDict with a train split
+        if not isinstance(dataset, DatasetDict):
+            raise ValueError("Expected DatasetDict format")
+        if 'train' not in dataset:
+            raise ValueError("No train split found in dataset")
+            
+        # Get data from train split
+        data = dataset['train'].to_list()
         
         if output_path is None:
             # Create output path based on input path

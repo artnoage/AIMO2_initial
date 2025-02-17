@@ -1,4 +1,7 @@
-from typing import Dict, List, Union, Tuple
+import logging
+import asyncio
+import aiohttp
+from typing import Dict, List, Union, Tuple, Optional
 from langchain_core.messages import HumanMessage
 from utils.benchmark_utils import get_model_response
 
@@ -6,8 +9,15 @@ from utils.benchmark_utils import get_model_response
 class AnalysisAgent:
     """Agent that provides problem analysis and approach"""
     
-    def __init__(self, model):
+    def __init__(self, port: int = 8001, model: str = None, temperature: float = 0.7, 
+                 api_key: str = "EMPTY", max_retries: int = 3, logger: Optional[logging.Logger] = None):
+        self.port = port
         self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
+        self.max_retries = max_retries
+        self.logger = logger if logger else logging.getLogger('completion_agent')
+        self.base_url = f"http://localhost:{port}/v1"
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate analysis for a given problem"""
@@ -21,7 +31,7 @@ class AnalysisAgent:
                 "Start with '**Problem Analysis and Approach**:'"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (prompt[0].content, response) if return_prompt else response
 
 class NextStepAgent:
@@ -44,7 +54,7 @@ class NextStepAgent:
             input_text += "Could you help me with the first step? Please explain it using LaTeX notation."
             
         prompt = [HumanMessage(content=input_text)]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 class CompletionAgent:
@@ -64,7 +74,7 @@ class CompletionAgent:
                 "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -95,7 +105,7 @@ class MissingStepAgent:
                 "Could you help fill in just the missing step? Use LaTeX notation to explain it clearly."
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -108,19 +118,26 @@ class FullSolutionAgent:
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
         prompt = [
-            HumanMessage(content=(
-                "Here is a mathematical problem:\n\n"
-                f"{problem}\n\n"
-                "Could you help me solve this from start to finish? First, let's analyze the problem, "
-                "then walk through the solution step-by-step using LaTeX notation. "
-                "Don't forget to put the final answer in a box using \\boxed{}"
-               ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+            HumanMessage(content=("You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n"
+                                    "<thinking>"
+                                    "First, analyze the problem in depth and outline your approach.\n" 
+                                    "This section should capture your reasoning, including any abstract thoughts or potential strategies.\n " 
+                                    "Feel free to refine or correct your ideas as you work toward the solution.\n  "
+                                    "</thinking>"
+                                    "<response>\n"
+                                    "<step>Step 1: Begin with the first calculation or operation\n"
+                                    "Show your work clearly using LaTeX notation</step>\n\n"
+                                    "<step>Step 2: Continue with the next logical step\n"
+                                    "Each step should be numbered and self-contained</step>\n\n"
+                                    "<step>Step N: In your final step, state your conclusion\n"
+                                    "Put your final answer in \\boxed{}</step>\n"
+                                    "</response>\n\n"
+                                    f"Here is the problem:\n{problem}\n\n"))]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
-class FullJudgeAgent:
+class TutorAgent:
     """Agent that evaluates mathematical solutions and identifies the first wrong step"""
     
     def __init__(self, model):
@@ -129,24 +146,34 @@ class FullJudgeAgent:
     async def find_first_wrong_step(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """
         Analyze a solution and identify the first step that contains an error.
-        Returns the step number and explanation of the error.
+        Returns analysis, verdict and suggested correction in a structured format.
         """
         prompt = [
             HumanMessage(content=(
                 "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Proposed Solution:\n{solution}\n\n"
-                "Please carefully read this solution step by step. "
-                "If you find any errors, identify the FIRST step where something goes wrong "
-                "and explain the error. If the solution is completely correct, say so.\n\n"
-                "Format your response as:\n"
-                "First error in Step X. <\EXPLANATION> provide explenation here <EXPLANATION>\n"
-                "or\n"
-                "Solution is correct."
+                "Please analyze this solution and:\n"
+                "1. Provide a brief analysis of the solution approach\n"
+                "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
+                "3. If there's a wrong step, suggest how to correct it\n\n"
+                "Format your response exactly as:\n\n"
+                "</Analysis>\n"
+                "Analyze the solution approach and reasoning here\n"
+                "<Analysis>\n\n"
+                "</Verdict>\n"
+                "Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)\n"
+                "Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)\n"
+                "Or: 'The answer is correct' (if no errors are found)\n"
+                "<Verdict>\n\n"
+                "</Substitution>\n"
+                "If a specific step is wrong, write 'Step X: ' followed by the correct version of that step\n"
+                "Otherwise leave this section empty\n"
+                "<Substitution>"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
-        return (prompt[0].content, response) if return_prompt else response
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (response, prompt[0].content) if return_prompt else response
 
 
 class TournamentJudgeAgent:
@@ -171,7 +198,7 @@ class TournamentJudgeAgent:
                 "Which solution is better, A or B?"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -198,5 +225,5 @@ class LokiAgent:
                 "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response

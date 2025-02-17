@@ -10,7 +10,7 @@ from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
 from utils.benchmark_config import *
 T = TypeVar('T')
 from latex2sympy2 import latex2sympy
-
+from langchain_core.messages import HumanMessage
 class TimeoutException(Exception): pass
 
 class OpenRouterChat:
@@ -26,16 +26,10 @@ class OpenRouterChat:
         self.temperature = temperature
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
-        # Create persistent connection pool
-        self.session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit=100, force_close=False),
-            timeout=aiohttp.ClientTimeout(total=300)
-        )
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
-        
         # Handle different prompt types
         if hasattr(prompt, 'content'):  # LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
@@ -57,30 +51,29 @@ class OpenRouterChat:
             "Content-Type": "application/json"
         }
 
-        try:
-            async with self.session.post(
-                self.base_url,
-                json=payload,
-                headers=headers
-            ) as response:
-                if response.status != 200:
-                    raise ValueError(f"Error from OpenRouter API: {await response.text()}")
-                
-                result = await response.json()
-                return type('Response', (), {
-                    'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                })()
-        except Exception as e:
-            print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
-            raise
+        # Create a new session for each request
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                    self.base_url,
+                    json=payload,
+                    headers=headers
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError(f"Error from OpenRouter API: {await response.text()}")
+                    
+                    result = await response.json()
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    })()
+            except Exception as e:
+                print(f"Exception in OpenRouterChat.ainvoke: {str(e)}")
+                raise
 
-    async def close(self):
-        """Close the persistent session"""
-        if self.session and not self.session.closed:
-            await self.session.close()
+
 
 class CustomChat:
-    """Simple chat model that makes direct requests to server"""
+    """Chat model that makes requests using OpenAI chat format"""
     
     def __init__(
         self,
@@ -95,31 +88,21 @@ class CustomChat:
         self.api_key = api_key
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to completion endpoint"""
+        """Async call to chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
         
-        # Handle different prompt types
+        # Convert prompt to messages format
         if hasattr(prompt, 'content'):  # LangChain message object
-            prompt_text = f"[INST]{prompt.content}[/INST]"
+            messages = [{"role": "user", "content": prompt.content}]
         elif isinstance(prompt, list):  # List of messages
-            prompt_text = f"[INST]{prompt[-1].content}[/INST]" if prompt else ""
+            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
         else:  # String or other
-            prompt_text = f"[INST]{str(prompt)}[/INST]"
-
-        # Handle different prompt types
-        #if hasattr(prompt, 'content'):  # LangChain message object
-        #    prompt_text = f"{prompt.content}"
-        #elif isinstance(prompt, list):  # List of messages
-            # Take the last message's content if it's a list
-        #    prompt_text = f"{prompt[-1].content}" if prompt else ""
-        #else:  # String or other
-        #    prompt_text = f"{str(prompt)}"
+            messages = [{"role": "user", "content": str(prompt)}]
             
         payload = {
             "model": self.model,
-            "prompt": prompt_text,
-            "temperature": self.temperature,
-            "stream": False
+            "messages": messages,
+            "temperature": self.temperature
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
@@ -127,20 +110,19 @@ class CustomChat:
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(
-                    f"{self.base_url}/completions",
+                    f"{self.base_url}/chat/completions",
                     json=payload,
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {self.api_key}"
                     }
                 ) as response:
-                    response_text = await response.text() 
                     if response.status != 200:
-                        raise ValueError(f"Error from API: {response_text}")
+                        raise ValueError(f"Error from API: {await response.text()}")
                     
                     result = await response.json()
                     return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("text", "")
+                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
                     })()
             except Exception as e:
                 print(f"Exception in CustomChat.ainvoke: {str(e)}")
@@ -170,14 +152,26 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     model = ModelOption[getattr(config, role)]
     
     name = model.value
-    temp = config.auxiliary_temp if role == "auxiliary" else config.main_temp
     
+    if role=="main":
+        temp=config.main_temp
+    elif role=="auxiliary":
+        temp = config.auxiliary_temp
+    else:
+        temp=config.auxiliary2_temp
+
     if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
+        port = {
+            "main": config.main_port,
+            "auxiliary": config.auxiliary_port,
+            "auxiliary2": config.auxiliary2_port
+        }.get(role, config.main_port)
+        
         return CustomChat(
             model=name,
             temperature=temp,
             api_key="EMPTY",
-            base_url=f"http://localhost:{config.main_port if role == 'main' else config.auxiliary_port}/v1")
+            base_url=f"http://localhost:{port}/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
@@ -210,6 +204,18 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
             raise Exception(f"Failed after {max_retries} retries")
         return wrapper
     return decorator
+
+def has_single_term(text: str) -> bool:
+    """Check if text has only a single term (no operators outside brackets)"""
+    bracket_level = 0
+    for char in text:
+        if char == '{':
+            bracket_level += 1
+        elif char == '}':
+            bracket_level -= 1
+        elif bracket_level == 0 and char in '+-*/^':
+            return False
+    return True
 
 def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
     """
@@ -291,7 +297,7 @@ def is_answer_correct(model_answer: Optional[float], correct_answer: Optional[fl
         return False
     return abs(model_answer - correct_answer) <= tolerance
 
-@async_retry(max_retries=3, timeout=180)
+@async_retry(max_retries=3, timeout=240)
 async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
     try:
@@ -306,24 +312,22 @@ async def get_model_response(model, prompt, max_tokens=None) -> str:
         raise
 
 def count_manual_steps(solution: str) -> int:
-    """Count steps in a solution by looking for step indicators"""
-    # Look for common step patterns
-    step_patterns = [
-        r'Step\s+\d+',  # "Step 1", "Step 2", etc.
-        r'\d+\)\s',     # "1)", "2)", etc.
-        r'\d+\.\s',     # "1.", "2.", etc.
-        r'First,',      # Common word indicators
-        r'Second,',
-        r'Third,',
-        r'Finally,'
-    ]
+    """
+    Count steps in a solution using XML tags.
+    Steps must be properly enclosed in <step>...</step> tags.
+    Returns the number of valid step sections found.
+    """
+    # Extract all step sections
+    step_sections = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
     
-    total_steps = 0
-    for pattern in step_patterns:
-        steps = re.findall(pattern, solution, re.IGNORECASE)
-        total_steps += len(steps)
-    
-    return max(1, total_steps)  # Return at least 1 step
+    # Count only valid step sections
+    valid_steps = 0
+    for section in step_sections:
+        # Step must have a number indicator
+        if re.search(r'Step\s*\d+[:.)\s]', section, re.IGNORECASE):
+            valid_steps += 1
+            
+    return max(1, valid_steps)  # Return at least 1 step
 
 def is_multiple_choice(problem: str) -> bool:
     """Check if the problem contains multiple choice indicators (A,B,C,D)"""
@@ -334,8 +338,10 @@ def is_multiple_choice(problem: str) -> bool:
 
 def extract_answer_from_solution(solution: str) -> Optional[str]:
     """
-    Extract the first boxed answer from the solution text by searching for LaTeX boxed answers: \boxed{X}.
-    Returns the raw answer string with LaTeX notation preserved, or None if no boxed answer is found.
+    Extract the answer from the solution text by searching for either:
+    1. LaTeX boxed answers: \boxed{X}
+    2. Hash-marked answers: #### X
+    Returns the raw answer string with LaTeX notation preserved, or None if no answer is found.
     """
     def find_matching_brace(s: str, start: int) -> int:
         """
@@ -358,7 +364,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             i += 1
         return i - 1 if count == 0 else -1
 
-    # Pattern to find all occurrences of \boxed{ with proper escaping
+    # First try to find boxed answer
     pattern = re.compile(r'\\boxed\{')
     for match in pattern.finditer(solution):
         start = match.end() - 1  # Position of the opening brace '{'
@@ -368,7 +374,11 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             content = solution[start + 1:end].strip()
             return content  # Return the first found boxed content
 
-    return None  # Return None if no boxed content is found
+    # If no boxed answer found, try hash format
+    if "####" in solution:
+        return solution.split("####")[1].strip()
+
+    return None  # Return None if no answer format is found
 
 STEP_NUMBER_PATTERNS = [
     re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
@@ -407,45 +417,43 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
         
     if "[…]" in solution.lower():   
         return False, "Skips steps"
-        
-    # Check for links/URLs
-    if any(x in solution.lower() for x in ['http://', 'https://', '.com', '.org', '.net', '.edu']):
-        return False, "Contains URLs/links"
-        
-    # Check analysis section
-    analysis_parts = [p for p in solution.lower().split("step") if "analysis" in p.lower()]
-    if analysis_parts:
-        is_valid, reason = validate_analysis(analysis_parts[0])
-        if not is_valid:
-            return False, f"Analysis section: {reason}"
-        
-    # Check for invalid phrases
-    invalid_phrases = ["Could you help finish this solution?",
-        "Remember to put the final answer",
-        "Could you help finish this calculation"]
-    for phrase in invalid_phrases:
-        if phrase in solution:
-            return False, f"Contains invalid phrase: '{phrase}'"
 
-    # Check for boxed answer
-    if "\\boxed{" not in solution:
-        return False, "Missing boxed answer"
+def has_thinking_section(solution: str) -> bool:
+    """Check if solution has a thinking section"""
+    thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
+    return bool(thinking_parts)
+
+def has_response_section(solution: str) -> bool:
+    """Check if solution has a response section"""
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    return bool(response_parts)
+
+def check_steps_status(solution: str) -> Tuple[bool, bool]:
+    """
+    Check if solution has steps and if they are ordered.
+    Returns (has_steps, is_ordered)
+    """
+    response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
+    if not response_parts:
+        return False, False
         
-    # Split solution into steps and validate each one
-    steps = split_into_steps(solution)
-    if len(steps) <= 1:  # Only analysis or no steps
-        return False, "No steps found"
-        
-    # Skip analysis section if present
-    start_idx = 1 if "analysis" in steps[0].lower() else 0
+    response = response_parts[0].strip()
+    steps = []
     
-    # Validate each step
-    for i, step in enumerate(steps[start_idx:], 1):
-        is_valid, reason = validate_step(step, expected_step=i)
-        if not is_valid:
-            return False, f"Step {i}: {reason}"
+    # Look for numbered steps (1., 2., etc)
+    step_matches = re.finditer(r'(\d+)\.\s', response)
+    for match in step_matches:
+        step_num = int(match.group(1))
+        steps.append(step_num)
     
-    return True, "Solution valid"
+    has_steps = bool(steps)
+    is_ordered = has_steps and all(steps[i] < steps[i+1] for i in range(len(steps)-1))
+    
+    return has_steps, is_ordered
+
+def has_boxed_answer(solution: str) -> bool:
+    """Check if solution has a boxed answer"""
+    return "\\boxed{" in solution
 
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
     """
@@ -533,8 +541,8 @@ def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool,
     word_count = len(resp.split())
     if word_count < 20:
         return False, f"Step too short ({word_count} words < 20)"
-    if word_count > 170:
-        return False, f"Step too long ({word_count} words > 170)"
+    if word_count > 220:
+        return False, f"Step too long ({word_count} words > 220)"
         
     # Check step numbering if expected step is provided
     if expected_step is not None:
@@ -638,15 +646,26 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     """
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
+    First element is analysis (if present), followed by steps.
     """
+    if not steps:
+        return []
+        
     partial_solutions = []
     current = ""
     
+    # Handle analysis section if present
+    if "analysis" in steps[0].lower():
+        current = steps[0]
+        steps = steps[1:]  # Remove analysis from steps to process
+        partial_solutions.append(current)
+        current += "\n\n"  # Add spacing after analysis
+    
+    # Process remaining steps
     for step in steps:
-        if current:
-            current += "\n\n"  # Add spacing between steps
         current += step
         partial_solutions.append(current)
+        current += "\n\n"  # Add spacing between steps
         
     return partial_solutions
 

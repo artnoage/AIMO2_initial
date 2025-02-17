@@ -256,10 +256,10 @@ async def process_example(
 
     logger = BenchmarkLogger()
     try:
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
-             logger.append(f"❌ Error processing example {running_id}: Invalid example format")
-             logger.print()               
-             return None                                                                            
+        if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
+            logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
+            logger.print()
+            return None                                                                        
                                                                                                     
         correct_answer = extract_answer_from_solution(example['solution'])                         
         if correct_answer is None:                                                                 

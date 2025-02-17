@@ -1,7 +1,7 @@
-import logging
+import random
 from typing import Dict, List, Optional, Tuple, Any
+from utils.tournament_utils import Tournament
 from utils.benchmark_utils import (
-    validate_completion,
     validate_solution,
     split_into_steps,
     get_partial_solutions,
@@ -11,7 +11,7 @@ from utils.benchmark_utils import (
 class StepAnalyzer:
     """Analyzes solutions to find wrong steps and generate training examples"""
     
-    def __init__(self, completion_agent, step_agent, solution_agent, verifier, max_attempts=3, logs=None):
+    def __init__(self, completion_agent, solution_agent, verifier, max_attempts, logs=None):
         """
         Initialize step analyzer
         Args:
@@ -23,7 +23,6 @@ class StepAnalyzer:
             logs: Optional list for logging
         """
         self.completion_agent = completion_agent
-        self.step_agent = step_agent
         self.solution_agent = solution_agent
         self.verifier = verifier
         self.max_attempts = max_attempts
@@ -32,7 +31,8 @@ class StepAnalyzer:
     def _log(self, message: str):
         """Add message to logs if logging is enabled"""
         if self.logs is not None:
-            self.logs.append(message)
+            # Add a prefix to step analyzer logs for better visibility
+            self.logs.append(f"[Step Analysis] {message}")
 
     async def _verify_completions(
         self,
@@ -48,6 +48,8 @@ class StepAnalyzer:
         correct_step = None
         good_completion = None
         completion_prompt = None
+        self._log(f"\nVerifying completions for step {step_index}:")
+        self._log(f"Partial solution length: {len(partial_solution)}")
         for i in range(self.max_attempts):
             try:
                 if completion_prompt is None:
@@ -73,15 +75,11 @@ class StepAnalyzer:
                 
                 if is_correct:
                     found_verified = True
-                    # Validate completion
-                    is_valid_completion, completion_reason = validate_completion(partial_solution, completion)
-                    if not is_valid_completion:
-                        self._log(f"Invalid completion: {completion_reason}")
-                        continue
+                    self._log(f"✓ Found correct completion on attempt {i+1}")
                         
                     # Check solution size
                     if len(complete_solution) < size_threshold:
-                        self._log(f"Solution below size threshold: {len(complete_solution)} < {size_threshold}")
+                        self._log(f"⚠️ Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
                         
                     # Validate complete solution
@@ -93,6 +91,7 @@ class StepAnalyzer:
                         next_step_index = step_index + 1
                         correct_step = completion_steps[next_step_index]
                         good_completion = completion
+                        self._log(f"✓ Found valid completion with {len(completion_steps)} steps")
                         break
                     else:
                         self._log(f"Found verified but invalid solution: {validation_reason}")
@@ -200,53 +199,22 @@ class StepAnalyzer:
         wrong_steps: List[str],
         partial_solutions: List[str],
         wrong_step_index: int,
-        last_good_step: str,
         saved_good_completion: str,
-        saved_completion_prompt: str
+        saved_completion_prompt: str,
+        example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Create training examples from identified wrong step"""
         results = []
         solution, prompt = wrong_solution
         
         try:
-            # Get step prompt
-            step_prompt = await self.step_agent.generate(
-                problem,
-                partial_solutions[max(0, wrong_step_index - 1)],
-                return_prompt=True
-            )
+            # Calculate completion score based on remaining steps
+            completion_score = wrong_step_index / len(wrong_steps)
             
-            # Add step entry
-            results.append({
-                'id': None,  # Will be set by caller
-                'data_type': 'training',
-                'alignment': 'light',
-                'type': 'step',
-                'problem': problem,
-                'prompt': {'content': step_prompt[0], 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(last_good_step), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(wrong_steps[wrong_step_index]), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-            # Add completion entry
-            results.append({
-                'data_type': 'training',
-                'alignment': 'light',
-                'type': 'completion',
-                'problem': problem,
-                'prompt': {'content': saved_completion_prompt, 'role': 'user'},
-                'chosen': {'content': remove_inst_tokens(saved_good_completion), 'role': 'assistant'},
-                'rejected': {'content': remove_inst_tokens(''.join(wrong_steps[wrong_step_index:])), 'role': 'assistant'},
-                'score_chosen': 1.0,
-                'score_rejected': 0.0
-            })
-            
-            # Get solver prompt for light recovery
+            # Get solver prompt for recovery
             solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
             
-            # Add recovery entries
+            # Add recovery entry (light alignment)
             correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion
             results.append({
                 'data_type': 'training',
@@ -257,18 +225,48 @@ class StepAnalyzer:
                 'chosen': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
                 'score_chosen': 1.0,
-                'score_rejected': 0.0
+                'score_rejected': completion_score
             })
             
-            # Add dark recovery entry
+            # Add dark alignment entry using Loki prompt
             results.append({
                 'data_type': 'training',
                 'alignment': 'dark',
                 'type': 'recovery',
                 'problem': problem,
-                'prompt': {'content': prompt, 'role': 'user'},
+                'prompt': {'content': (
+                    "You are a math trickster tasked with creating a deliberately incorrect but convincing solution. "
+                    "Your goal is to write a solution that appears mathematically sound but contains subtle errors "
+                    "that would fool even a careful mathematician.\n\n"
+                    f"Problem:\n{problem}\n\n"
+                    "Please provide a complete solution that:\n"
+                    "1. Uses correct mathematical notation and LaTeX\n"
+                    "2. Follows logical steps\n"
+                    "3. Contains subtle but significant errors\n"
+                    "4. Arrives at an incorrect answer\n"
+                    "5. Appears convincing at first glance\n\n"
+                    "Make sure to include analysis, step-by-step reasoning, and box the final answer using \\boxed{}"
+                ), 'role': 'user'},
                 'chosen': {'content': remove_inst_tokens(solution), 'role': 'assistant'},
                 'rejected': {'content': remove_inst_tokens(correct_with_completion), 'role': 'assistant'},
+                'score_chosen': 1.0,
+                'score_rejected': completion_score
+            })
+            
+            # Add judge entry with random solution order
+            correct_first = random.choice([True, False])
+            results.append({
+                'data_type': 'training',
+                'alignment': 'judge',
+                'type': 'recovery',
+                'problem': problem,
+                'prompt': {'content': Tournament.JUDGE_PROMPT_TEMPLATE.format(
+                    problem=problem,
+                    solution_a=remove_inst_tokens(correct_with_completion if correct_first else solution),
+                    solution_b=remove_inst_tokens(solution if correct_first else correct_with_completion)
+                ), 'role': 'user'},
+                'chosen': {'content': 'A' if correct_first else 'B', 'role': 'assistant'},
+                'rejected': {'content': 'B' if correct_first else 'A', 'role': 'assistant'},
                 'score_chosen': 1.0,
                 'score_rejected': 0.0
             })
@@ -276,5 +274,23 @@ class StepAnalyzer:
         except Exception as e:
             self._log(f"Error creating training entries: {str(e)}")
             return []
-            
+
+        # Add statistics entry
+        stats_result = {
+            'data_type': 'statistics',
+            'id': example_id,
+            'example_processed_successfully': True,
+            'is_correct_list': [False],  # Wrong solution
+            'is_most_common_correct': False,
+            'success_rate': 0,
+            'total_solutions': 1,
+            'correct_solutions': 0,
+            'incorrect_solutions': 1,
+            'wrong_step_found': wrong_step_index is not None,
+            'wrong_step_index': wrong_step_index if wrong_step_index is not None else -1,
+            'total_steps': len(wrong_steps),
+            'completion_attempts': self.max_attempts
+        }
+        
+        results.append(stats_result)
         return results

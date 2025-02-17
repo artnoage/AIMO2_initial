@@ -62,16 +62,34 @@ class ProgressTracker:
         
         # Basic statistics
         stats['total'] = total
-        successfully_processed = sum(1 for r in entries if r.get('example_processed_successfully', False))
+        successfully_processed = sum(1 for r in entries if r.get('verdict_matches'))
         stats['successfully_processed'] = successfully_processed
         stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
-        stats['at_least_one'] = sum(1 for r in entries if any(r.get('is_correct_list', [])))
-        total_correct = sum(sum(r.get('is_correct_list', [])) for r in entries)
+        
+        # Calculate correct verdicts
+        at_least_one = 0
+        total_correct = 0
+        above_avg = 0
+        most_common_correct = 0
+        
+        for r in entries:
+            matches = r.get('is_correct_list', [])
+            if matches:
+                # Check if any verdict matches
+                matches_count = sum(1 for match in matches if match)
+                if matches_count > 0:
+                    at_least_one += 1
+                total_correct += matches_count
+                if matches_count / len(matches) > 0.5:
+                    above_avg += 1
+                # Check most common verdict
+                if r.get('is_most_common_correct', False):
+                    most_common_correct += 1
+                
+        stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
-        stats['above_avg'] = sum(1 for r in entries 
-            if r.get('is_correct_list') and 
-            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
-        stats['most_common_correct'] = sum(1 for r in entries if r.get('is_most_common_correct', False))
+        stats['above_avg'] = above_avg
+        stats['most_common_correct'] = most_common_correct
         
         # Tournament statistics
         tournament_entries = [r for r in entries if 'tournament_winner_correct' in r]
@@ -173,35 +191,46 @@ class ProgressTracker:
         self.create_hf_dataset()
 
     def save_results(self) -> None:
-        """Save results to a JSON file"""
-        if not self.results or not self.config.produce_statistics:
+        """Save results to JSON files by data type"""
+        if not self.results:
+            print("No results to save")
             return
+        if not self.config.produce_statistics:
+            print("Statistics production disabled")
+            return
+
             
         try:
-            # Use a fixed filename based on the start timestamp
-            filename = f"benchmark_{self.start_time.strftime('%Y%m%d_%H%M%S')}.json"
-            filepath = os.path.join("results", filename)
-            
             # Create results directory if it doesn't exist
             os.makedirs("results", exist_ok=True)
+            print(f"Total results to process: {len(self.results)}")
             
-            # Filter training data
-            training_results = [r for r in self.results if r.get('data_type') == 'training']
+            # Group results by data type
+            results_by_type = defaultdict(list)
+            for r in self.results:
+                data_type = r.get('data_type')
+                if data_type and data_type != 'statistics':  # Exclude statistics
+                    results_by_type[data_type].append(r)
             
-            # Only print message for final save
-            stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
-            if stats_count == self.total_examples:
-                print(f"\nSaving {len(training_results)} training results to: {filepath}")
+            print(f"Found data types: {list(results_by_type.keys())}")
             
-            with open(filepath, 'w') as f:
-                json.dump(training_results, f, indent=2)
-                
-            # Only print success message for final save
-            if stats_count == self.total_examples:
-                print(f"Results successfully saved to: {filepath}")
+            # Save each data type to its own file
+            timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
+            
+            # Save individual data types
+            for data_type, type_results in results_by_type.items():
+                if type_results:  # Only save if we have results
+                    filename = f"{data_type}_{timestamp}.json"
+                    filepath = os.path.join("results", filename)
+                    print(f"Attempting to save {len(type_results)} {data_type} results to: {filepath}")
+                    with open(filepath, 'w') as f:
+                        json.dump(type_results, f, indent=2)
+                    print(f"Successfully saved {len(type_results)} {data_type} results to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def create_hf_dataset(self) -> None:
         """Create a HuggingFace dataset from the results"""
@@ -240,13 +269,26 @@ class ProgressTracker:
         total_duration = end_time - self.start_time
 
         # Calculate final statistics
-        at_least_one = sum(1 for r in stats_entries if any(r.get('is_correct_list', [])))
-        total_correct = sum(sum(r.get('is_correct_list', [])) for r in stats_entries)
+        at_least_one = 0
+        total_correct = 0
+        above_avg = 0
+        most_common_correct = 0
+        
+        for r in stats_entries:
+            matches = r.get('is_correct_list', [])
+            if matches:
+                # Check if any verdict matches
+                matches_count = sum(1 for match in matches if match)
+                if matches_count > 0:
+                    at_least_one += 1
+                total_correct += matches_count
+                if matches_count / len(matches) > 0.5:
+                    above_avg += 1
+                # Check most common verdict
+                if r.get('is_most_common_correct', False):
+                    most_common_correct += 1
+                    
         avg_correct = total_correct / total if total > 0 else 0
-        above_avg = sum(1 for r in stats_entries 
-            if r.get('is_correct_list') and 
-            (sum(r.get('is_correct_list', [])) / len(r.get('is_correct_list', [])) > 0.5))
-        most_common_correct = sum(1 for r in stats_entries if r.get('is_most_common_correct', False))
 
         # Tournament statistics
         tournament_entries = [r for r in stats_entries if 'tournament_winner_correct' in r]
@@ -295,7 +337,11 @@ class ProgressTracker:
         
         def signal_handler(signum, frame):
             print("\nReceived interrupt signal. Saving current results...")
+            # Force save by temporarily setting produce_statistics to True
+            original_setting = self.config.produce_statistics
+            self.config.produce_statistics = True
             self.save_results()
+            self.config.produce_statistics = original_setting
             self.print_final_stats()
             print("\nResults saved. Exiting...")
             exit(0)
@@ -329,24 +375,62 @@ class ProgressTracker:
                 for attempt in range(max_retries):
                     try:
                         if os.path.exists(self.config.dataset):  # Local path
-                            dataset = load_from_disk(self.config.dataset)
-                            if self.config.split and hasattr(dataset, self.config.split):
-                                dataset = dataset[self.config.split]
+                            full_dataset = load_from_disk(self.config.dataset)
+                            
+                            # Handle slicing for local dataset
+                            dataset = full_dataset
+                            if self.config.split:
+                                if '[' in self.config.split:
+                                    # Extract slice indices
+                                    base_split, slice_part = self.config.split.split('[')
+                                    slice_part = slice_part.rstrip(']')
+                                    if ':' in slice_part:
+                                        start, end = map(lambda x: int(x) if x else None, slice_part.split(':'))
+                                        # Apply slice
+                                        dataset = dataset.select(range(start if start else 0, end if end else len(dataset)))
+                            
                         else:  # HuggingFace dataset
-                            if self.config.dataset == 'Metaskepsis/Numina':
-                                dataset = load_dataset(
-                                    "Metaskepsis/Numina", 
-                                    split=self.config.split,
-                                    cache_dir=cache_dir,
-                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
-                                )
+                            # Handle split and slice
+                            split_name = self.config.split or 'train'
+                            if '[' in split_name:
+                                # Extract slice indices
+                                base_split, slice_part = split_name.split('[')
+                                slice_part = slice_part.rstrip(']')
+                                if ':' in slice_part:
+                                    start, end = map(lambda x: int(x) if x else None, slice_part.split(':'))
+                                    # Load full split then slice
+                                    if self.config.dataset == 'Metaskepsis/Numina':
+                                        dataset = load_dataset(
+                                            "Metaskepsis/Numina",
+                                            split=base_split,
+                                            cache_dir=cache_dir,
+                                            download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                        )
+                                    else:
+                                        dataset = load_dataset(
+                                            self.config.dataset,
+                                            split=base_split,
+                                            cache_dir=cache_dir,
+                                            download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                        )
+                                    # Apply slice
+                                    dataset = dataset.select(range(start if start else 0, end if end else len(dataset)))
                             else:
-                                dataset = load_dataset(
-                                    self.config.dataset,
-                                    split=self.config.split,
-                                    cache_dir=cache_dir,
-                                    download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
-                                )
+                                # No slice, load normally
+                                if self.config.dataset == 'Metaskepsis/Numina':
+                                    dataset = load_dataset(
+                                        "Metaskepsis/Numina",
+                                        split=split_name,
+                                        cache_dir=cache_dir,
+                                        download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                    )
+                                else:
+                                    dataset = load_dataset(
+                                        self.config.dataset,
+                                        split=split_name,
+                                        cache_dir=cache_dir,
+                                        download_mode="force_redownload" if attempt > 0 else "reuse_cache_if_exists"
+                                    )
                         return dataset
                     except Exception as e:
                         print(f"Dataset loading attempt {attempt + 1} failed: {str(e)}")
@@ -363,10 +447,33 @@ class ProgressTracker:
 
             try:
                 dataset = load_dataset_with_retry()
+                
+                # Handle DatasetDict
+                if isinstance(dataset, dict) and 'train' in dataset:
+                    dataset = dataset['train']
+                elif hasattr(dataset, 'train'):  # DatasetDict object
+                    dataset = dataset['train']
+                
+                # Now that we have a Dataset object, process features
+                if hasattr(dataset, 'features'):
+                    # Add auto-incrementing ID if it doesn't exist
+                    if 'id' not in dataset.features:
+                        dataset = dataset.map(lambda x, idx: {'id': idx}, with_indices=True)
+                    
+                    # Convert 'question' to 'problem' if needed
+                    if 'question' in dataset.features and 'problem' not in dataset.features:
+                        dataset = dataset.map(lambda x: {'problem': x['question'], **{k:v for k,v in x.items() if k != 'question'}})
+                    
+                    # Create solution from answer if needed
+                    if 'answer' in dataset.features and 'solution' not in dataset.features:
+                        dataset = dataset.map(lambda x: {'solution': f"\\boxed{{{x['answer']}}}", **x})
+                else:
+                    print("Warning: Dataset does not have features attribute")
+                    
             except Exception as e:
                 print(f"Fatal error loading dataset: {e}")
                 return
-                
+            
             # First sort by ID to ensure consistent ordering
             dataset = dataset.sort('id')
                 
@@ -394,11 +501,8 @@ class ProgressTracker:
 
         example_data = []
         for example in dataset:
-            processed = {
-                'id': example['id'],
-                'problem': example['problem'],
-                'solution': example['solution']
-            }
+            # Preserve all fields from the original dataset
+            processed = {key: example[key] for key in example.keys()}
             example_data.append(processed)
 
         if not example_data:
@@ -448,6 +552,12 @@ class ProgressTracker:
             for log in all_logs:
                 print("\n" + log)
             print("\n" + "="*80)
+            
+            # Force final save of results
+            original_setting = self.config.produce_statistics
+            self.config.produce_statistics = True
+            self.save_results()
+            self.config.produce_statistics = original_setting
             
             self.print_final_stats()
             

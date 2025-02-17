@@ -1,13 +1,14 @@
 import os
 import asyncio
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.benchmark_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
+from transformers import AutoTokenizer
 
 # Configure logging
 logging.basicConfig(
@@ -18,6 +19,10 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+def count_tokens(text: str, tokenizer) -> int:
+    """Count tokens in a text string"""
+    return len(tokenizer(text)['input_ids'])
+
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with configured verification"""
     logger = BenchmarkLogger()
@@ -26,6 +31,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
+            
         correct_answer = None
         if correct_answer==None:
             correct_answer = extract_answer_from_solution(example['solution'])
@@ -34,15 +40,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.print()
             return None
 
+        # Initialize tokenizer for length checking
+        tokenizer = AutoTokenizer.from_pretrained("mistralai/Mathstral-7B-v0.1")
+
         main = get_model(config, role="main")
         solution_agent = FullSolutionAgent(main)
         solutions = []
+        correct_solutions = []
         correct_count = 0
-        best_solution = None
         
         for attempt in range(config.best_of):
             try:
-                prompt , current_solution = await solution_agent.generate(example["problem"],return_prompt=True)
+                prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+                
+                # Check solution length
+                if count_tokens(current_solution, tokenizer) > 1000:
+                    continue
+                
+                # Check prompt length
+                if count_tokens(prompt, tokenizer) > 1000:
+                    continue
+                
                 # Create numeric verifier
                 verifier = NumericVerifier(tolerance=config.tolerance)
                 is_correct, current_answer = await verifier.verify(
@@ -50,63 +68,28 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     correct_answer,
                     example["problem"]
                 )
-                # Always append the solution, regardless of correctness
+                
+                # Only append if both solution and prompt are within token limits
                 solutions.append({
                     'solution': current_solution,
                     'answer': current_answer,
-                    'is_correct': is_correct
+                    'is_correct': is_correct,
+                    'prompt': prompt
                 })
                 
-                # Update statistics if correct
+                # Store correct solutions separately
                 if is_correct:
                     correct_count += 1
-                    if best_solution is None:
-                        best_solution = current_solution
+                    correct_solutions.append({
+                        'solution': current_solution,
+                        'answer': current_answer,
+                        'prompt': prompt
+                    })
+                    
             except Exception as e:
-                logger.append(f"❌ Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
-                logger.append(f"Exception type: {type(e).__name__}")
-                logger.append(f"Exception message: {str(e)}")
-                import traceback
-                logger.append(f"Traceback:\n{traceback.format_exc()}")
-                
-                # Retry this attempt up to 3 times
-                for retry in range(3):
-                    try:
-                        logger.append(f"Retrying attempt {attempt + 1} (retry {retry + 1}/3)...")
-                        current_solution = await solution_agent.generate(example["problem"])
-                        
-                        # Create numeric verifier
-                        verifier = NumericVerifier(tolerance=config.tolerance)
-                        is_correct, current_answer = await verifier.verify(
-                            current_solution,
-                            correct_answer,
-                            example["problem"]
-                        )
-                        
-                        if is_correct:
-                            correct_count += 1
-                            if best_solution is None:
-                                best_solution = current_solution
-                                
-                        solutions.append({
-                            'solution': current_solution,
-                            'answer': current_answer,
-                            'is_correct': is_correct
-                        })
-                        break  # Success, exit retry loop
-                        
-                    except Exception as retry_e:
-                        logger.append(f"Retry {retry + 1} failed: {str(retry_e)}")
-                        if retry == 2:  # Last retry failed
-                            solution_info = {
-                                'solution': f"Error occurred after 3 retries: {type(e).__name__} - {str(e)}",
-                                'answer': None,
-                                'is_correct': False
-                            }
-                            solutions.append(solution_info)
-                continue  # Move to next attempt
-        
-        
+                logger.append(f"❌ Error in attempt {str(attempt + 1)} for example {str(running_id)}")
+                continue
+
         # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
         most_common_answer = None
@@ -134,18 +117,39 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Print all logs at the end
         logger.print()
-        
-        return [
-            {
-                'id': example_id,
-                'data_type': 'training',
-                'problem': example['problem'],
-                'correct_solution': example['solution'],
-                'correct_answer': correct_answer,
-                'model_solutions': [s['solution'] for s in solutions],
-                'model_answers': [s['answer'] for s in solutions],
-            },
-            {
+
+        # Only return results if we have correct solutions
+        if correct_solutions:
+            # Get the first correct solution for the chat format
+            first_correct = correct_solutions[0]
+            return [
+                {
+                    'id': example_id,
+                    'data_type': 'training',
+                    'messages': [
+                        {"role": "user", "content": first_correct['prompt']},
+                        {"role": "assistant", "content": first_correct['solution']}
+                    ]
+                },
+                {
+                    'id': example_id,
+                    'data_type': 'statistics',
+                    'example_processed_successfully': True,
+                    'is_correct_list': [s['is_correct'] for s in solutions],
+                    'is_most_common_correct': is_most_common_correct,
+                    'success_rate': (correct_count/config.best_of)*100,
+                    'total_solutions': len(solutions),
+                    'correct_solutions': correct_count,
+                    'incorrect_solutions': len(solutions) - correct_count,
+                    'tournament_winner_correct': None,
+                    'judge_accuracy': None,
+                    'judge_decisions': 0,
+                    'all_solutions_correct': all(s['is_correct'] for s in solutions)
+                }
+            ]
+        else:
+            # Return only statistics if no correct solutions
+            return [{
                 'id': example_id,
                 'data_type': 'statistics',
                 'example_processed_successfully': True,
@@ -159,8 +163,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'judge_accuracy': None,
                 'judge_decisions': 0,
                 'all_solutions_correct': all(s['is_correct'] for s in solutions)
-            }
-        ]
+            }]
         
     except Exception as e:
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
@@ -181,10 +184,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'all_solutions_correct': None
         }]
 
-
 async def main():
-    """Main function for benchmarking mathematical problem solving."""
-    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems')
+    """Main function for collecting SFT training data."""
+    config = BenchmarkConfig.from_args('Collect SFT training data from mathematical problems')
     
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)

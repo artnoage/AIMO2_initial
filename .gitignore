@@ -25,3 +25,13 @@ logs/
 cache/
 clude/
 .aider*
+token_stats/
+grpo_trainer_lora_model/
+unsloth_compiled_cache/
+tutor/
+baseline/
+simple_questions_output/
+markdown_output/
+wandb/
+experiment.md
+examples/

@@ -1,0 +1,293 @@
+import os
+import wandb
+import logging
+from typing import List
+from datasets import load_dataset, load_from_disk
+from datetime import datetime
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
+from unsloth.chat_templates import get_chat_template
+import sys
+from trl import GRPOConfig, GRPOTrainer
+from transformers import TrainerCallback
+
+# Ensure the project root is in sys.path for imports
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from config import RewardConfig
+from rewards import TutorReward
+
+def setup_logging(model_type: str) -> logging.Logger:
+    """Setup logging configuration"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = f"logs/{model_type}"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    logger = logging.getLogger('tutor_grpo')
+    logger.setLevel(logging.INFO)
+    
+    file_handler = logging.FileHandler(
+        f"{log_dir}/training_{timestamp}.log"
+    )
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logger.addHandler(file_handler)
+    logger.addHandler(logging.StreamHandler())
+    return logger
+
+class LoggingCallback(TrainerCallback):
+    """Callback for logging training metrics"""
+    def __init__(self, reward_func, logger, save_frequency=100):
+        self.reward_func = reward_func
+        self.save_frequency = save_frequency
+        self.step = 0
+        self.logger = logger
+        
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        self.step += 1
+        
+        if logs and 'rewards/0' in logs:
+            # Calculate non-accumulative rewards for this round
+            current_rewards = {
+                'tutor_reward': logs['rewards/0'],
+                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                'analysis_rewards': self.reward_func.stats.reward_components.get('analysis_rewards', 0) - getattr(self, '_last_analysis_rewards', 0),
+                'substitution_rewards': self.reward_func.stats.reward_components.get('substitution_rewards', 0) - getattr(self, '_last_substitution_rewards', 0),
+                'step_bonuses': self.reward_func.stats.reward_components.get('step_bonuses', 0) - getattr(self, '_last_step_bonuses', 0),
+                'step_penalties': self.reward_func.stats.reward_components.get('step_penalties', 0) - getattr(self, '_last_step_penalties', 0),
+                'redundant_substitution_penalties': self.reward_func.stats.reward_components.get('redundant_substitution_penalties', 0) - getattr(self, '_last_redundant_penalties', 0),
+                'total_substitution_length_penalty': self.reward_func.stats.reward_components.get('total_substitution_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+            }
+            
+            # Add section stats
+            section_stats = {
+                'missing_analysis': self.reward_func.stats.section_stats.get('missing_analysis', 0) - getattr(self, '_last_missing_analysis', 0),
+                'missing_verdict': self.reward_func.stats.section_stats.get('missing_verdict', 0) - getattr(self, '_last_missing_verdict', 0),
+                'missing_substitution': self.reward_func.stats.section_stats.get('missing_substitution', 0) - getattr(self, '_last_missing_substitution', 0),
+                'invalid_step_number': self.reward_func.stats.section_stats.get('invalid_step_number', 0) - getattr(self, '_last_invalid_step', 0),
+                'multiple_steps_substitution': self.reward_func.stats.section_stats.get('multiple_steps_in_substitution', 0) - getattr(self, '_last_multiple_steps', 0)
+            }
+            current_rewards.update(section_stats)
+            
+            # Add validation stats
+            validation_stats = {
+                'completion_attempts': self.reward_func.stats.validation_stats.get('completion_attempts', 0) - getattr(self, '_last_completion_attempts', 0),
+                'successful_completions': self.reward_func.stats.validation_stats.get('successful_completions', 0) - getattr(self, '_last_successful_completions', 0),
+                'failed_completions': self.reward_func.stats.validation_stats.get('failed_completions', 0) - getattr(self, '_last_failed_completions', 0)
+            }
+            current_rewards.update(validation_stats)
+            
+            # Add step stats
+            step_stats = {
+                'step_identifications': self.reward_func.stats.step_stats.get('step_identifications', 0) - getattr(self, '_last_step_identifications', 0),
+                'valid_step_corrections': self.reward_func.stats.step_stats.get('valid_step_corrections', 0) - getattr(self, '_last_valid_corrections', 0),
+                'invalid_step_corrections': self.reward_func.stats.step_stats.get('invalid_step_corrections', 0) - getattr(self, '_last_invalid_corrections', 0),
+                'step_completion_rate': self.reward_func.stats.step_stats.get('step_completion_rate', 0.0)
+            }
+            current_rewards.update(step_stats)
+            
+            # Add accuracy metrics
+            total_predictions = self.reward_func.stats.accuracy_stats['total_predictions']
+            step_predictions = self.reward_func.stats.accuracy_stats['step_predictions']
+            accuracy_metrics = {
+                'overall_accuracy': self.reward_func.stats.accuracy_stats['correct_predictions'] / max(1, total_predictions),
+                'conditional_step_accuracy': self.reward_func.stats.accuracy_stats['correct_step_predictions'] / max(1, step_predictions)
+            }
+            current_rewards.update(accuracy_metrics)
+            
+            # Add full reward reasons
+            reward_reasons = {
+                'correct_answer_rewards': self.reward_func.stats.full_reward_reasons.get('correct_answer', 0) - getattr(self, '_last_correct_answer', 0),
+                'wrong_approach_rewards': self.reward_func.stats.full_reward_reasons.get('wrong_approach', 0) - getattr(self, '_last_wrong_approach', 0),
+                'step_correction_rewards': self.reward_func.stats.full_reward_reasons.get('step_correction', 0) - getattr(self, '_last_step_correction', 0)
+            }
+            current_rewards.update(reward_reasons)
+            
+            # Store current values for next round
+            self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
+            self._last_analysis_rewards = self.reward_func.stats.reward_components.get('analysis_rewards', 0)
+            self._last_substitution_rewards = self.reward_func.stats.reward_components.get('substitution_rewards', 0)
+            self._last_step_bonuses = self.reward_func.stats.reward_components.get('step_bonuses', 0)
+            self._last_step_penalties = self.reward_func.stats.reward_components.get('step_penalties', 0)
+            self._last_redundant_penalties = self.reward_func.stats.reward_components.get('redundant_substitution_penalties', 0)
+            self._last_length_penalties = self.reward_func.stats.reward_components.get('total_substitution_length_penalty', 0.0)
+            
+            # Store section stats
+            self._last_missing_analysis = self.reward_func.stats.section_stats.get('missing_analysis', 0)
+            self._last_missing_verdict = self.reward_func.stats.section_stats.get('missing_verdict', 0)
+            self._last_missing_substitution = self.reward_func.stats.section_stats.get('missing_substitution', 0)
+            self._last_invalid_step = self.reward_func.stats.section_stats.get('invalid_step_number', 0)
+            self._last_multiple_steps = self.reward_func.stats.section_stats.get('multiple_steps_in_substitution', 0)
+            
+            # Store validation stats
+            self._last_completion_attempts = self.reward_func.stats.validation_stats.get('completion_attempts', 0)
+            self._last_successful_completions = self.reward_func.stats.validation_stats.get('successful_completions', 0)
+            self._last_failed_completions = self.reward_func.stats.validation_stats.get('failed_completions', 0)
+            
+            # Store step stats
+            self._last_step_identifications = self.reward_func.stats.step_stats.get('step_identifications', 0)
+            self._last_valid_corrections = self.reward_func.stats.step_stats.get('valid_step_corrections', 0)
+            self._last_invalid_corrections = self.reward_func.stats.step_stats.get('invalid_step_corrections', 0)
+            
+            # Store reward reasons
+            self._last_correct_answer = self.reward_func.stats.full_reward_reasons.get('correct_answer', 0)
+            self._last_wrong_approach = self.reward_func.stats.full_reward_reasons.get('wrong_approach', 0)
+            self._last_step_correction = self.reward_func.stats.full_reward_reasons.get('step_correction', 0)
+            
+            # Update logs with our metrics
+            logs.update(current_rewards)
+
+def main():
+    # Configuration
+    model_type = "tutor"
+    model_name = "mistralai/Mathstral-7B-v0.1"
+    dataset_path = "/Home/stat/laschos/AIMO2_initial/local_datasets/tutor_training/20250211_084032"
+    
+    # Setup logging first
+    logger = setup_logging(model_type)
+    
+    try:
+        if os.path.exists(dataset_path):
+            dataset = load_from_disk(dataset_path)
+        else:
+            dataset = load_dataset(dataset_path)
+    except Exception as e:
+        logger.error(f"Failed to load dataset: {str(e)}")
+        sys.exit(1)
+    
+    # Initialize config
+    reward_config = RewardConfig(model_type=model_type)
+    
+    # Setup
+    logger = setup_logging(reward_config.model_type)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
+    wandbname = f"tutor with vergin model {timestamp}"
+    # Initialize wandb
+    wandb.init(
+        project="grpo",
+        name=wandbname,
+        config={
+            "model_type": model_type,
+            "dataset": dataset_path,
+            "model_name":model_name,
+            "structure_base_reward": 0.2,
+            "analysis_reward": 0.2,
+            "substitution_reward": 0.4,
+            "single_step_bonus": 0.2,
+            "multiple_step_penalty": 0.4,
+            "full_reward": 5.0
+        }
+    )
+    
+    # Initialize reward function with existing config
+    reward_func = TutorReward(reward_config)
+    
+
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name=model_name,  # Use the model_name variable defined at the start
+        max_seq_length=4096,
+        fast_inference=True,
+        load_in_4bit=False,
+        use_gradient_checkpointing="unsloth",
+        max_lora_rank=64
+    )
+    
+    # Configure LoRA
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=64,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=64,
+        lora_dropout=0,
+        bias="none",
+        use_gradient_checkpointing="unsloth",
+        random_state=3407,
+        use_rslora=False,
+        loftq_config=None
+    )
+    
+    # Setup chat template
+    tokenizer = get_chat_template(
+        tokenizer,
+        chat_template="mistral",
+        map_eos_token=True
+    )
+    
+        
+    def formatting_func(example):
+        formatted_example = {**example}
+        formatted_example["prompt"] = f"[INST]{example['prompt']}[/INST]"
+        return formatted_example
+    
+    formatted_dataset = dataset.map(
+        formatting_func,
+        desc="Applying chat template"
+    )
+    
+    # Training arguments
+    training_args = GRPOConfig(
+        use_vllm=True,
+        torch_empty_cache_steps=5,
+        learning_rate=3e-6,
+        adam_beta1=0.9,
+        adam_beta2=0.99,
+        weight_decay=0.1,
+        warmup_ratio=0.05,
+        lr_scheduler_type="cosine",
+        optim="paged_adamw_8bit",
+        logging_steps=1,
+        bf16=is_bfloat16_supported(),
+        fp16=not is_bfloat16_supported(),
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=4,
+        num_generations=9,
+        max_prompt_length=3000,
+        max_completion_length=1096,
+        num_train_epochs=1,
+        save_steps=250,
+        max_grad_norm=0.1,
+        gradient_checkpointing=True,
+        report_to="wandb",
+        output_dir=output_dir,
+    )
+    
+    # Initialize trainer
+    trainer = GRPOTrainer(
+        model=model,
+        processing_class=tokenizer,
+        reward_funcs=[reward_func],
+        args=training_args,
+        train_dataset=formatted_dataset,
+        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
+    )
+    
+    # Train
+    try:
+        trainer.train()
+        logger.info("Training completed successfully")
+    except Exception as e:
+        logger.error(f"Training failed: {str(e)}")
+        wandb.finish()
+        raise
+        
+    # Save model
+    try:
+        models_dir = "models"
+        os.makedirs(os.path.join(models_dir, reward_config.model_type), exist_ok=True)
+        model_output_dir = os.path.join(models_dir, reward_config.model_type, timestamp)
+        model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+        logger.info(f"Merged model saved to {model_output_dir}")
+    except Exception as e:
+        logger.error(f"Failed to save model: {str(e)}")
+        raise
+    finally:
+        wandb.finish()
+
+if __name__ == "__main__":
+    main()

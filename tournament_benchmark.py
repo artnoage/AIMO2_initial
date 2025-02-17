@@ -9,7 +9,7 @@ from utils.benchmark_utils import *
 from utils.agents import *
 from utils.tournament_utils import Tournament
 from utils.logger import BenchmarkLogger
-
+from collections import Counter
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -23,7 +23,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     """Process a single example with configured verification and tournament judging"""
     logger = BenchmarkLogger()
     try:
-        if not isinstance(example, dict) or 'problem' not in example or 'solution' not in example:
+        if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
             logger.print()
             return None
@@ -35,18 +35,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         main = get_model(config, role="main")
         
-        # Create config2 with temperature=0 for judge
-        config2 = BenchmarkConfig(
-            main=config.main,
-            auxiliary=config.auxiliary,
-            main_port=config.main_port,
-            auxiliary_port=config.auxiliary_port,
-            auxiliary_temp=0.0
-        )
-        auxiliary2 = get_model(config2, role="auxiliary")
-        
+        # Initialize solution and judge agents
         solution_agent = FullSolutionAgent(main)
-        judge_agent = TournamentJudgeAgent(auxiliary2)
+        
+        # Use auxiliary2 for judging if specified, otherwise use auxiliary with temp=0
+        judge_model = get_model(config, role="auxiliary2")
+            
+        judge_agent = TournamentJudgeAgent(judge_model)
         
         solutions = []
         correct_count = 0
@@ -84,7 +79,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 solutions.append(solution_info)
 
         # Run tournament with logger
-        tournament = Tournament(judge_agent, logger=logger.logs)
+        tournament = Tournament(judge_agent, logger=logger)
         tournament_solutions = [(s['solution'], s['is_correct'], '') for s in solutions if s['solution'] != "Error occurred"]
         
         # Get solution content for tournament
@@ -110,7 +105,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         most_common_answer = None
         is_most_common_correct = False
         if model_answers:
-            from collections import Counter
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
