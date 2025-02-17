@@ -246,14 +246,25 @@ class SolutionReward(BaseReward):
                 validation_reward += self.config.solution_steps_reward * step_count
                 self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
                 
-                # Additional reward for proper step ordering
+                # Check step ordering and uniqueness
                 response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
-                if response_parts and all(
-                    re.search(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)
-                    for i in range(1, step_count + 1)
-                ):
-                    validation_reward += self.config.solution_ordered_steps_reward
-                    self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
+                if response_parts:
+                    # Count occurrences of each step number
+                    step_counts = {i: len(re.findall(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)) 
+                                 for i in range(1, step_count + 1)}
+                    
+                    # Check if steps are in order and each appears exactly once
+                    if all(count == 1 for count in step_counts.values()) and all(
+                        response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
+                        for i in range(1, step_count)
+                    ):
+                        validation_reward += self.config.solution_ordered_steps_reward
+                        self.logger.info(f"Steps are in correct order and unique (+{self.config.solution_ordered_steps_reward})")
+                    else:
+                        # Log which steps are duplicated
+                        duplicates = [i for i, count in step_counts.items() if count > 1]
+                        if duplicates:
+                            self.logger.info(f"Duplicate steps found: {duplicates}")
             
             reward += validation_reward
             if validation_reward > 0:
@@ -395,14 +406,25 @@ class GroupReward(BaseReward):
                 validation_reward += self.config.solution_steps_reward * step_count
                 self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
                 
-                # Additional reward for proper step ordering
+                # Check step ordering and uniqueness
                 response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
-                if response_parts and all(
-                    re.search(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)
-                    for i in range(1, step_count + 1)
-                ):
-                    validation_reward += self.config.solution_ordered_steps_reward
-                    self.logger.info(f"Steps are in correct order (+{self.config.solution_ordered_steps_reward})")
+                if response_parts:
+                    # Count occurrences of each step number
+                    step_counts = {i: len(re.findall(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)) 
+                                 for i in range(1, step_count + 1)}
+                    
+                    # Check if steps are in order and each appears exactly once
+                    if all(count == 1 for count in step_counts.values()) and all(
+                        response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
+                        for i in range(1, step_count)
+                    ):
+                        validation_reward += self.config.solution_ordered_steps_reward
+                        self.logger.info(f"Steps are in correct order and unique (+{self.config.solution_ordered_steps_reward})")
+                    else:
+                        # Log which steps are duplicated
+                        duplicates = [i for i, count in step_counts.items() if count > 1]
+                        if duplicates:
+                            self.logger.info(f"Duplicate steps found: {duplicates}")
             
             reward += validation_reward
             if validation_reward > 0:
