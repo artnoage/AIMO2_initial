@@ -35,6 +35,7 @@ class RewardConfig:
     group_base_reward: float = 3
     group_diversity_bonus: float = 0.3
     group_majority_bonus: float = 0.2
+    group_shortest_bonus: float = 0.2  # Bonus for shortest correct solution
     group_similarity_threshold_low: float = 0.7
     group_similarity_threshold_high: float = 0.9
     
