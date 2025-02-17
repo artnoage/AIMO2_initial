@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict
+from typing import Dict, List
 import numpy as np
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -40,13 +40,17 @@ def get_dataset(dataset_name: str):
     })
     return data
 
-def analyze_token_counts(tokenizer, dataset) -> Dict:
+def analyze_token_counts(tokenizer, dataset) -> Tuple[Dict, List[int]]:
     """Analyze token counts for all prompts in the dataset"""
     token_counts = []
+    indices_under_800 = []
     
-    for example in dataset:
+    for i, example in enumerate(dataset):
         tokens = tokenizer(example['prompt'])['input_ids']
-        token_counts.append(len(tokens))
+        count = len(tokens)
+        token_counts.append(count)
+        if count <= 800:
+            indices_under_800.append(i)
     
     token_counts = np.array(token_counts)
     
@@ -61,16 +65,11 @@ def analyze_token_counts(tokenizer, dataset) -> Dict:
         'above_1000': np.sum(token_counts > 1000)
     }
     
-    return stats
+    return stats, indices_under_800
 
-def main():
-    # Configuration
-    model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_name = "Metaskepsis/Numina_medium"
-    
-    # Load tokenizer
-    print("Loading tokenizer...")
-    tokenizer = load_tokenizer(model_name)
+def process_dataset(dataset_name: str, tokenizer) -> None:
+    """Process a single dataset, analyze tokens and save filtered version"""
+    print(f"\nProcessing dataset: {dataset_name}")
     
     # Load dataset
     print("Loading dataset...")
@@ -78,7 +77,7 @@ def main():
     
     # Analyze tokens
     print("Analyzing token counts...")
-    stats = analyze_token_counts(tokenizer, dataset)
+    stats, indices_under_800 = analyze_token_counts(tokenizer, dataset)
     
     # Print results
     print("\nToken Count Statistics:")
@@ -90,6 +89,31 @@ def main():
     print(f"Max tokens: {stats['max']}")
     print(f"Examples with >800 tokens: {stats['above_800']} ({(stats['above_800']/stats['count']*100):.1f}%)")
     print(f"Examples with >1000 tokens: {stats['above_1000']} ({(stats['above_1000']/stats['count']*100):.1f}%)")
+    
+    # Create filtered dataset
+    filtered_dataset = dataset.select(indices_under_800)
+    filtered_name = f"{dataset_name}_filtered"
+    
+    # Save to Hub
+    print(f"\nSaving filtered dataset ({len(filtered_dataset)} examples) to {filtered_name}")
+    filtered_dataset.push_to_hub(filtered_name)
+
+def main():
+    # Configuration
+    model_name = "mistralai/Mathstral-7B-v0.1"
+    datasets = [
+        "Metaskepsis/Numina_medium",
+        "Metaskepsis/Numina_hard",
+        "Metaskepsis/Numina_very_hard"
+    ]
+    
+    # Load tokenizer
+    print("Loading tokenizer...")
+    tokenizer = load_tokenizer(model_name)
+    
+    # Process each dataset
+    for dataset_name in datasets:
+        process_dataset(dataset_name, tokenizer)
 
 if __name__ == "__main__":
     main()
