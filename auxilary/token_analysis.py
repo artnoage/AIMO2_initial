@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import numpy as np
 from datasets import load_dataset
 from transformers import AutoTokenizer
