@@ -33,8 +33,7 @@ def load_model_and_tokenizer(model_name: str):
         model_name=model_name,
         max_seq_length=3072,
         fast_inference=True,
-        load_in_4bit=False,
-    )
+        load_in_4bit=False)
     return model, tokenizer
 
 def get_dataset(dataset_name: str):
