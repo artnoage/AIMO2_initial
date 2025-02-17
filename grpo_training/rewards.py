@@ -187,13 +187,12 @@ class SolutionReward(BaseReward):
             prompt = kwargs.get('prompt')
             self.logger.info(prompt)
             self.logger.info(completion)
-            
             # Initialize reward
             reward = 0.0
             
             # Check for required XML sections
-            if not has_reasoning_section(completion):
-                self.logger.debug("Missing reasoning section")
+            if not has_thinking_section(completion):
+                self.logger.debug("Missing thinking section")
                 return reward
                 
             if not has_response_section(completion):
