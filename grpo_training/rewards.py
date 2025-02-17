@@ -260,11 +260,14 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['validation_rewards'] += 1
                 self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
                 
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = \
-                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            # Extract response section and apply length penalty only to it
+            response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if response_parts:
+                response_length = len(response_parts[0])
+                length_penalty = response_length * self.config.length_penalty_factor
+                reward -= length_penalty
+                self.stats.reward_components['total_length_penalty'] = \
+                    self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
                 
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] += reward
