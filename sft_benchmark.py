@@ -57,6 +57,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if count_tokens(current_solution, tokenizer) > 1000:
                     continue
                 
+                # Check prompt length
+                if count_tokens(prompt, tokenizer) > 1000:
+                    continue
+                
                 # Create numeric verifier
                 verifier = NumericVerifier(tolerance=config.tolerance)
                 is_correct, current_answer = await verifier.verify(
@@ -65,6 +69,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     example["problem"]
                 )
                 
+                # Only append if both solution and prompt are within token limits
                 solutions.append({
                     'solution': current_solution,
                     'answer': current_answer,
@@ -122,7 +127,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'id': example_id,
                     'data_type': 'training',
                     'messages': [
-                        {"role": "user", "content": example['problem']},
+                        {"role": "user", "content": first_correct['prompt']},
                         {"role": "assistant", "content": first_correct['solution']}
                     ]
                 },
