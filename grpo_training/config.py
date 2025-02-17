@@ -20,8 +20,8 @@ class RewardConfig:
     embedding_max_length: int = 512
     
     # Common reward components
-    base_reward: float = 2.0
-    validation_reward: float = 0.2
+    base_reward: float = 3.0
+    validation_reward: float = 0.3
     length_penalty_factor: float = 0.0001
     
     # Solution-specific settings

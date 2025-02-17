@@ -42,8 +42,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         for attempt in range(config.best_of):
             try:
-                current_solution = await solution_agent.generate(example["problem"])
-                
+                prompt , current_solution = await solution_agent.generate(example["problem"],return_prompt=True)
                 # Create numeric verifier
                 verifier = NumericVerifier(tolerance=config.tolerance)
                 is_correct, current_answer = await verifier.verify(

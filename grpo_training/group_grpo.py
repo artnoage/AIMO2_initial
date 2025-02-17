@@ -1,12 +1,11 @@
 import os
 import wandb
 import logging
-from datasets import load_dataset, load_from_disk, concatenate_datasets
+from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
-from unsloth.chat_templates import get_chat_template
 import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
@@ -18,6 +17,21 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import GroupReward, SolutionSimilarityChecker
 
+SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
+    <thinking>
+    First, analyze the problem in depth and outline your approach.\n 
+    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
+    Feel free to refine or correct your ideas as you work toward the solution.\n  
+    </thinking>
+    <response>\n
+    <step>Step 1: Begin with the first calculation or operation\n
+    Show your work clearly using LaTeX notation</step>\n\n
+    <step>Step 2: Continue with the next logical step\n
+    Each step should be numbered and self-contained</step>\n\n
+    <step>Step N: In your final step, state your conclusion\n
+    Put your final answer in \\boxed{}</step>\n
+    </response>\n\n"""
+    
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -108,22 +122,14 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group"
+    model_type = "group 0"
     model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_path = "Metaskepsis/Numina_very_hard"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check if model exists locally or in HF
-    try:
-        if os.path.exists(dataset_path):
-            dataset = load_from_disk(dataset_path)
-        else:
-            dataset = load_dataset(dataset_path)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {str(e)}")
-        sys.exit(1)
+
 
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -132,14 +138,14 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"Repetition, very hard, group, from_scratch, cuda 3 {timestamp}"
+    wandbname = f"group, hard vanilla, cuda 0 {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
         name=wandbname,
         config={
             "model_type": reward_config.model_type,
-            "dataset": dataset_path,
+            "dataset": dataset_name,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
             "majority_bonus": 0.2,
@@ -160,10 +166,10 @@ def main():
         logger.info(f"Stats reward_components: {reward_func.stats.reward_components}")
     
     # Load model
-    PatchFastRL("GRPO", FastLanguageModel) 
+   
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name= model_name,
-        max_seq_length=4096,
+        model_name=model_name,  # Use the model_name variable defined at the start
+        max_seq_length=3072,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -185,55 +191,47 @@ def main():
         loftq_config=None
     )
     
-    # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True
-    )
+        
+    def get_questions(split = "train") -> Dataset:
+        data = load_dataset(dataset_name)[split] # type: ignore
+        data = data.map(lambda x: { # type: ignore
+            'prompt':  "[INST]" + SYSTEM_PROMPT + x['problem']+"[/INST]",
+            'answer':x['answer']
+        }) # type: ignore
+        return data # type: ignore
 
-    def formatting_func(example):
-        solver_prompt = (
-            "Here is a mathematical problem:\n\n"
-            f"{example['problem']}\n\n"
-            "First, put your thoughts and analysis between <thinking> tags. "
-            "Then provide a step-by-step solution using LaTeX notation. "
-            "Make sure to explain your reasoning clearly and put the final answer in a box using \\boxed{}"
-        )
-        
-        
-        formatted = {
-            "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example.get('answer'),
-            "correct_answer": example.get('answer')
-        }
-        
-        return formatted
-    
-    # Format dataset and ensure answer field is present
-    formatted_dataset = dataset['train'].map(
-        formatting_func,
-        desc="Applying chat template",
-        remove_columns=None  # Keep original columns
-    )
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    # Take first 3000 entries
-    formatted_dataset = formatted_dataset.select(range(500))
+    formatted_dataset = get_questions()
+
+    formatted_dataset = formatted_dataset.select(range(2000))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    #shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
-    #shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
     formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+ 
     # Verify first few entries
-    # Training arguments
+    for i in range(min(3, len(formatted_dataset))):
+        entry = formatted_dataset[i]
+        print(f"\nEntry {i} verification:")
+        print(f"Answer: {entry.get('answer')}")
+        print(f"Correct answer: {entry.get('correct_answer')}")
+    
+    # Print first entry tokenization
+    first_entry = formatted_dataset[0]
+    print("\nFirst entry tokenization:")
+    print("Original:", first_entry['prompt'])
+    tokenized = tokenizer(first_entry['prompt'])
+    print("Tokenized:", tokenized)
+    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
+    
+   # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
-        torch_empty_cache_steps=5,
-        learning_rate=4e-6,
+        vllm_gpu_memory_utilization= 0.35,
+        torch_empty_cache_steps=1,
+        learning_rate=2e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
-        weight_decay=0.05,
+        weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
@@ -242,16 +240,17 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=9,
-        max_prompt_length=2048,
-        max_completion_length=2048,
+        num_generations=16,
+        max_prompt_length=1536,
+        max_completion_length=1536,
         num_train_epochs=1,
         save_steps=250,
-        max_grad_norm=1,
+        max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
     )
     
+    # Initialize trainer with reward function
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,

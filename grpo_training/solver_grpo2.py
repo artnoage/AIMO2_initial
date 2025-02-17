@@ -20,11 +20,12 @@ from config import RewardConfig
 from rewards import SolutionReward
 import os
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Solve this step by step. Your response must follow this exact format:\n\n
-    <reasoning>\n
-    Analyze the problem and explain your approach.\n
-    Do not include any calculations here.\n
-    </reasoning>\n\n
+SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
+    <thinking>
+    First, analyze the problem in depth and outline your approach.\n 
+    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
+    Feel free to refine or correct your ideas as you work toward the solution.\n  
+    </thinking>
     <response>\n
     <step>Step 1: Begin with the first calculation or operation\n
     Show your work clearly using LaTeX notation</step>\n\n
@@ -32,12 +33,7 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Solve this step by 
     Each step should be numbered and self-contained</step>\n\n
     <step>Step N: In your final step, state your conclusion\n
     Put your final answer in \\boxed{}</step>\n
-    </response>\n\n
-    Important:\n
-    - Each step must be numbered and enclosed in <step> tags\n
-    - Use proper LaTeX notation for all mathematics\n
-    - Put your final answer in \\boxed{}\n
-    - Keep steps clear and focused"""
+    </response>\n\n"""
     
 
 
@@ -121,9 +117,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver"
-    model_name = "Qwen/Qwen2.5-Math-7B"
-    dataset_name = "Metaskepsis/custom219"
+    model_type = "solver 2"
+    model_name = "mistralai/Mathstral-7B-v0.1"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -132,7 +128,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver0 good light custom219 repetition    {timestamp}"
+    wandbname=f"solver 2 vanilla hard   {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -152,13 +148,12 @@ def main():
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=4096,
+        max_seq_length=3072,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
         max_lora_rank=64
     )
-    
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
@@ -178,20 +173,20 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['question'] + '<|im_end|>\n<|im_start|>assistant\n',
-            'answer': x['answer']
+            'prompt':  "[INST]" + SYSTEM_PROMPT + x['problem']+"[/INST]",
+            'answer':x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
 
-    formatted_dataset = formatted_dataset.select(range(211))
+    formatted_dataset = formatted_dataset.select(range(2000))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
     shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
     shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
     # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2,shuffled_dataset3,shuffled_dataset4])
+    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -210,6 +205,7 @@ def main():
    # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
+        vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
         learning_rate=3e-6,
         adam_beta1=0.9,
@@ -222,10 +218,10 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=3,
-        num_generations=8,
-        max_prompt_length=2048,
-        max_completion_length=2048,
+        gradient_accumulation_steps=4,
+        num_generations=22,
+        max_prompt_length=1536,
+        max_completion_length=1536,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,

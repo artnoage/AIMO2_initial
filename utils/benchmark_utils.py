@@ -418,10 +418,10 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     if "[…]" in solution.lower():   
         return False, "Skips steps"
 
-def has_reasoning_section(solution: str) -> bool:
-    """Check if solution has a reasoning section"""
-    reasoning_parts = re.findall(r'<reasoning>(.*?)</reasoning>', solution, re.DOTALL)
-    return bool(reasoning_parts)
+def has_thinking_section(solution: str) -> bool:
+    """Check if solution has a thinking section"""
+    thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
+    return bool(thinking_parts)
 
 def has_response_section(solution: str) -> bool:
     """Check if solution has a response section"""

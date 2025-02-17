@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 from typing import List
-from datasets import load_dataset, load_from_disk, concatenate_datasets
+from datasets import load_dataset, load_from_disk, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -19,6 +19,23 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import SolutionReward
 import os
+
+SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
+    <thinking>
+    First, analyze the problem in depth and outline your approach.\n 
+    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
+    Feel free to refine or correct your ideas as you work toward the solution.\n  
+    </thinking>
+    <response>\n
+    <step>Step 1: Begin with the first calculation or operation\n
+    Show your work clearly using LaTeX notation</step>\n\n
+    <step>Step 2: Continue with the next logical step\n
+    Each step should be numbered and self-contained</step>\n\n
+    <step>Step N: In your final step, state your conclusion\n
+    Put your final answer in \\boxed{}</step>\n
+    </response>\n\n"""
+    
+
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -100,8 +117,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
+    model_type = "solver 0"
+    model_name = "mistralai/Mathstral-7B-v0.1"
     dataset_name = "Metaskepsis/custom219"
     
     # Initialize config
@@ -111,7 +128,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver0 good light custom219 repetition    {timestamp}"
+    wandbname=f"solver 0 good light custom219 repetition    {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -131,7 +148,7 @@ def main():
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=4096,
+        max_seq_length=3072,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -153,63 +170,17 @@ def main():
         loftq_config=None
     )
     
-    # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True
-    )
-    
-    try:
-        if os.path.exists(dataset_name):
-            dataset = load_from_disk(dataset_name)
-        else:
-            dataset = load_dataset(dataset_name)
-    except Exception as e:
-        logger.error(f"Failed to load dataset: {str(e)}")
-        sys.exit(1)
         
-    def formatting_func(example):
-        solver_prompt = (
-        "Here is a mathematical problem:\n\n"
-        f"{example['question']}\n\n"
-        "Solve this step by step. Your response must follow this exact format:\n\n"
-        "<reasoning>\n"
-        "Analyze the problem and explain your approach.\n"
-        "Do not include any calculations here.\n"
-        "</reasoning>\n\n"
-        "<response>\n"
-        "<step>Step 1: Begin with the first calculation or operation\n"
-        "Show your work clearly using LaTeX notation</step>\n\n"
-        "<step>Step 2: Continue with the next logical step\n"
-        "Each step should be numbered and self-contained</step>\n\n"
-        "<step>Step N: In your final step, state your conclusion\n"
-        "Put your final answer in \\boxed{}</step>\n"
-        "</response>\n\n"
-        "Important:\n"
-        "- Each step must be numbered and enclosed in <step> tags\n"
-        "- Use proper LaTeX notation for all mathematics\n"
-        "- Put your final answer in \\boxed{}\n"
-        "- Keep steps clear and focused"
-    )
-        
-        
-        formatted = {
-            "prompt": f"[INST]{solver_prompt}[/INST]",
-            "answer": example.get('answer'),
-            "correct_answer": example.get('answer')
-        }
-        
-        return formatted
-    
-    # Format dataset and ensure answer field is present
-    formatted_dataset = dataset['train'].map(
-        formatting_func,
-        desc="Applying chat template",
-        remove_columns=None  # Keep original columns
-    )
-    # Take first 3000 entries
-    
+    def get_questions(split = "train") -> Dataset:
+        data = load_dataset(dataset_name)[split] # type: ignore
+        data = data.map(lambda x: { # type: ignore
+            'prompt':  "[INST]" + SYSTEM_PROMPT + x['question']+"[/INST]",
+            'answer':x['answer']
+        }) # type: ignore
+        return data # type: ignore
+
+    formatted_dataset = get_questions()
+
     formatted_dataset = formatted_dataset.select(range(211))
     shuffled_dataset = formatted_dataset.shuffle(seed=42)
     shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
@@ -235,6 +206,7 @@ def main():
    # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
+        vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
         learning_rate=3e-6,
         adam_beta1=0.9,
@@ -247,10 +219,10 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=3,
-        num_generations=16,
-        max_prompt_length=2048,
-        max_completion_length=2048,
+        gradient_accumulation_steps=4,
+        num_generations=20,
+        max_prompt_length=1536,
+        max_completion_length=1536,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,

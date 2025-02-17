@@ -242,10 +242,7 @@ class SolutionReward(BaseReward):
             # Count valid steps
             step_count = count_manual_steps(completion)
             if step_count > 0:
-                # Reward for having proper XML step tags
-                validation_reward += self.config.solution_steps_reward * step_count
-                self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
-                
+
                 # Check step ordering and uniqueness
                 response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
                 if response_parts:
@@ -380,7 +377,6 @@ class GroupReward(BaseReward):
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-            print(model_numeric)
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")
                 return 0.0
@@ -402,9 +398,6 @@ class GroupReward(BaseReward):
             # Count valid steps
             step_count = count_manual_steps(completion)
             if step_count > 0:
-                # Reward for having proper XML step tags
-                validation_reward += self.config.solution_steps_reward * step_count
-                self.logger.info(f"Has {step_count} valid steps (+{self.config.solution_steps_reward * step_count})")
                 
                 # Check step ordering and uniqueness
                 response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
@@ -547,7 +540,6 @@ class GroupReward(BaseReward):
                 
             self.stats.group_stats['total_similarity'] += avg_similarity
             
-            print("mathafack",reward)
             return reward
             
         except Exception as e:

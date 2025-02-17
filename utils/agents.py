@@ -118,14 +118,21 @@ class FullSolutionAgent:
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
         prompt = [
-            HumanMessage(content=(
-                "Here is a mathematical problem:\n\n"
-                f"{problem}\n\n"
-                "Could you help me solve this from start to finish? First, let's analyze the problem, "
-                "then walk through the solution step-by-step using LaTeX notation. "
-                "Don't forget to put the final answer in a box using \\boxed{}"
-               ))
-        ]
+            HumanMessage(content=("You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n"
+                                    "<thinking>"
+                                    "First, analyze the problem in depth and outline your approach.\n" 
+                                    "This section should capture your reasoning, including any abstract thoughts or potential strategies.\n " 
+                                    "Feel free to refine or correct your ideas as you work toward the solution.\n  "
+                                    "</thinking>"
+                                    "<response>\n"
+                                    "<step>Step 1: Begin with the first calculation or operation\n"
+                                    "Show your work clearly using LaTeX notation</step>\n\n"
+                                    "<step>Step 2: Continue with the next logical step\n"
+                                    "Each step should be numbered and self-contained</step>\n\n"
+                                    "<step>Step N: In your final step, state your conclusion\n"
+                                    "Put your final answer in \\boxed{}</step>\n"
+                                    "</response>\n\n"
+                                    f"Here is the problem:\n{problem}\n\n"))]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (prompt[0].content, response) if return_prompt else response
 
