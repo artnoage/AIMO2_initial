@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver 3"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
-    dataset_name = "Metaskepsis/Numina_medium"
+    model_name = "models/solver_3/20250216_230446"
+    dataset_name = "Metaskepsis/Numina_very_hard_filtered"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -133,7 +133,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver 3 QWEN quantized custom219 repetition    {timestamp}"
+    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -153,12 +153,13 @@ def main():
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3072,
+        max_seq_length=2500,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
         max_lora_rank=64
     )
+    
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -185,14 +186,9 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset = formatted_dataset.select(range(4000))
 
-    formatted_dataset = formatted_dataset.select(range(2000))
-    shuffled_dataset = formatted_dataset.shuffle(seed=42)
-    shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
-    shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
-    # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -218,9 +214,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=6,
-        max_prompt_length=1536,
-        max_completion_length=1536,
+        num_generations=16,
+        max_prompt_length=800,
+        max_completion_length=1700,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,

@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group 0"
-    model_name = "mistralai/Mathstral-7B-v0.1"
-    dataset_name = "Metaskepsis/Numina_hard"
+    model_type = "group_0"
+    model_name = "models/reseted/20250218_001806"
+    dataset_name = "Metaskepsis/Numina_very_hard_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -138,7 +138,7 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"group, hard vanilla, cuda 0 {timestamp}"
+    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -169,12 +169,11 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3072,
+        max_seq_length=2500,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
-    )
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -201,13 +200,11 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-
-    formatted_dataset = formatted_dataset.select(range(2000))
-    shuffled_dataset = formatted_dataset.shuffle(seed=42)
-    shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
- 
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset = formatted_dataset.select(range(4000))
+    
+   
+    
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -215,20 +212,13 @@ def main():
         print(f"Answer: {entry.get('answer')}")
         print(f"Correct answer: {entry.get('correct_answer')}")
     
-    # Print first entry tokenization
-    first_entry = formatted_dataset[0]
-    print("\nFirst entry tokenization:")
-    print("Original:", first_entry['prompt'])
-    tokenized = tokenizer(first_entry['prompt'])
-    print("Tokenized:", tokenized)
-    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
-    
-   # GRPO specific training arguments
+
+    # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
         vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
-        learning_rate=2e-6,
+        learning_rate=4e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -240,9 +230,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=16,
-        max_prompt_length=1536,
-        max_completion_length=1536,
+        num_generations=24,
+        max_prompt_length=800,
+        max_completion_length=1700,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
