@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_4"
-    model_name = "models/solver_3/20250216_230446"
-    dataset_name = "Metaskepsis/Numina_hard_filtered"
+    model_type = "group 4"
+    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)

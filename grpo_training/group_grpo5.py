@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_5"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/solver_3/20250216_230446"
+    dataset_name = "Metaskepsis/Numina_hard_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -230,7 +230,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=16,
+        num_generations=6,
         max_prompt_length=800,
         max_completion_length=1700,
         num_train_epochs=1,

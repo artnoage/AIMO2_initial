@@ -118,7 +118,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver_0"
-    model_name = "mistralai/Mathstral-7B-v0.1"
+    model_name = "models/reseted/20250218_001806"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Initialize config

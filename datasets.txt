@@ -2,3 +2,5 @@ AI-MO/aimo-validation-aime
 Metaskepsis/custom100bench
 Metaskepsis/custom219
  tail -f logs/tutor/$(ls -t logs/tutor | head -1)  
+solver3 = QWEN + 1000 Medium
+solver 2= Mathstral + 1000 hard

@@ -124,7 +124,7 @@ def main():
     # Configuration
     model_type = "group_0"
     model_name = "models/reseted/20250218_001806"
-    dataset_name = "Metaskepsis/Numina_very_hard_filtered"
+    dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)
