@@ -90,21 +90,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'agent_type': solution['agent']  # Tag which agent was correct
                 })
         
-        # Always add detailed statistics
+        # Always add detailed statistics using same format as benchmark.py
         results.append({
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            'main_correct': main_correct,
-            'auxiliary_correct': aux_correct,
-            'total_correct': correct_count,
+            'is_correct_list': [main_correct, aux_correct],
+            'is_most_common_correct': main_correct or aux_correct,  # True if either model is correct
             'success_rate': (correct_count/2)*100,
-            'main_answer': main_answer,
-            'auxiliary_answer': aux_answer,
-            'both_correct': main_correct and aux_correct,
-            'either_correct': main_correct or aux_correct,
-            'none_correct': not (main_correct or aux_correct),
-            'answers_match': str(main_answer) == str(aux_answer) if main_answer is not None and aux_answer is not None else False
+            'total_solutions': 2,  # Main and auxiliary
+            'correct_solutions': correct_count,
+            'incorrect_solutions': 2 - correct_count,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': main_correct and aux_correct
         })
         
         return results
@@ -116,12 +116,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': False,
-            'main_correct': False,
-            'auxiliary_correct': False,
-            'total_correct': 0,
+            'is_correct_list': [],
+            'is_most_common_correct': None,
             'success_rate': 0,
-            'main_answer': None,
-            'auxiliary_answer': None
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': None
         }]
 
 async def main():
