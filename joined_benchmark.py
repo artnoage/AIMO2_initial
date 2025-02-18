@@ -76,23 +76,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         results = []
         
-        # Add training data if any solution is correct
-        if any(s['is_correct'] for s in solutions):
-            # Get the first correct solution
-            correct_solution = next(s for s in solutions if s['is_correct'])
-            prompt = main_prompt if correct_solution['agent'] == 'main' else aux_prompt
-            
-            results.append({
-                'id': example_id,
-                'data_type': 'training',
-                'messages': [
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": correct_solution['solution']}
-                ],
-                'agent_type': correct_solution['agent']  # Tag which agent was correct
-            })
-            
-        # Always add statistics
+        # Add training data for each correct solution
+        for solution in solutions:
+            if solution['is_correct']:
+                prompt = main_prompt if solution['agent'] == 'main' else aux_prompt
+                results.append({
+                    'id': example_id,
+                    'data_type': 'training',
+                    'messages': [
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": solution['solution']}
+                    ],
+                    'agent_type': solution['agent']  # Tag which agent was correct
+                })
+        
+        # Always add detailed statistics
         results.append({
             'id': example_id,
             'data_type': 'statistics',
@@ -102,7 +100,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'total_correct': correct_count,
             'success_rate': (correct_count/2)*100,
             'main_answer': main_answer,
-            'auxiliary_answer': aux_answer
+            'auxiliary_answer': aux_answer,
+            'both_correct': main_correct and aux_correct,
+            'either_correct': main_correct or aux_correct,
+            'none_correct': not (main_correct or aux_correct),
+            'answers_match': str(main_answer) == str(aux_answer) if main_answer is not None and aux_answer is not None else False
         })
         
         return results
