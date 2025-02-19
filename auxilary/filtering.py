@@ -78,6 +78,19 @@ def filter_most_common_correct(data: List[Dict]) -> List[Dict]:
     """
     return [entry for entry in data if entry.get('is_most_common_correct', False)]
 
+def filter_by_agent(data: List[Dict], agent_type: str) -> List[Dict]:
+    """
+    Filter entries to keep only those from a specific agent type (main/auxiliary).
+    
+    Args:
+        data: List of dictionaries containing entries
+        agent_type: String specifying agent type ('main' or 'auxiliary')
+        
+    Returns:
+        Filtered list containing only entries from specified agent
+    """
+    return [entry for entry in data if entry.get('agent_type') == agent_type]
+
 def load_json(file_path: str) -> List[Dict]:
     """Load JSON data from file"""
     with open(file_path, 'r') as f:
@@ -106,6 +119,8 @@ def main():
                       help='Keep entries with success rate below this threshold (0-1)')
     parser.add_argument('--most-common-correct', action='store_true',
                       help='Keep only entries where is_most_common_correct is true')
+    parser.add_argument('--agent', choices=['main', 'auxiliary'],
+                      help='Keep only entries from specified agent type')
     parser.add_argument('--direction', choices=['in', 'out'], default='in',
                       help='Filter direction: "in" to keep matching entries, "out" to remove them')
     
@@ -181,6 +196,11 @@ def main():
         result = filter_most_common_correct(filtered_data)
         filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
         print(f"After most common correct filtering: {len(filtered_data)} entries")
+        
+    if args.agent:
+        result = filter_by_agent(filtered_data, args.agent)
+        filtered_data = result if args.direction == 'in' else [x for x in filtered_data if x not in result]
+        print(f"After agent type filtering: {len(filtered_data)} entries")
     
     # Save filtered data
     save_json(filtered_data, args.output_file)
