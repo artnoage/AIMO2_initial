@@ -19,7 +19,7 @@ class ModelOption(Enum):
     MASTER_MINI="openai/o1-mini"
     LOCAL="/Home/stat/laschos/AIMO2_initial/models/reseted/20250218_001806"
     #LOCAL ="mistralai/Mistral-Small-24B-Instruct-2501"
-    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
+    LOCAL_2 ="/Home/stat/laschos/AIMO2_initial/models/solver_3/20250216_230446"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"

@@ -96,7 +96,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'data_type': 'statistics',
             'example_processed_successfully': True,
             'is_correct_list': [main_correct, aux_correct],
-            'is_most_common_correct': main_correct or aux_correct,  # True if either model is correct
+            'is_most_common_correct': main_correct,  # True if either model is correct
             'success_rate': (correct_count/2)*100,
             'total_solutions': 2,  # Main and auxiliary
             'correct_solutions': correct_count,

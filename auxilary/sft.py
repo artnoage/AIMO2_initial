@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917",
+        model_name="/Home/stat/laschos/AIMO2_initial/models/reseted/20250218_001806",
         max_seq_length=8192,
         load_in_4bit=False)
         
@@ -53,7 +53,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/20250217_190714")
+    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/from_qwen/20250219_084006")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     shuffled_dataset2=dataset.shuffle(seed=42)
     dataset=concatenate_datasets([dataset, shuffled_dataset2])
@@ -92,7 +92,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "reseted"
+    model_type = "reseted_and_from_qwen"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
