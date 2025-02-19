@@ -11,8 +11,6 @@ backups/
 backup/
 local_dataset
 cache
-mistral/
-metastral/
 train_results/
 models/
 _unsloth_sentencepiece_temp
@@ -35,3 +33,4 @@ markdown_output/
 wandb/
 experiment.md
 examples/
+.conda/

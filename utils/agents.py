@@ -133,7 +133,7 @@ class FullSolutionAgent:
                                     "Put your final answer in \\boxed{}</step>\n"
                                     "</response>\n\n"
                                     f"Here is the problem:\n{problem}\n\n"))]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=4000)
         return (prompt[0].content, response) if return_prompt else response
 
 

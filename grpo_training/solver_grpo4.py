@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 from typing import List
-from datasets import load_dataset, load_from_disk, concatenate_datasets, Dataset
+from datasets import load_dataset, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver 5"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/light/20250209_172917"
-    dataset_name = "Metaskepsis/Numina_hard"
+    model_type = "solver 4"
+    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -133,7 +133,7 @@ def main():
     logger = setup_logging(model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname=f"solver 5 LLama Numina medium repetition    {timestamp}"
+    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -147,13 +147,13 @@ def main():
             "length_penalty_factor": 0.0001
         }
     )
-    
+    #hello
     reward_func = SolutionReward(reward_config)
     
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3072,
+        max_seq_length=2500,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -179,20 +179,16 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt':  "[INST]" + SYSTEM_PROMPT + x['problem']+"[/INST]",
-            'answer':x['answer']
+            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+            'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
-    formatted_dataset = get_questions()
 
-    formatted_dataset = formatted_dataset.select(range(2000))
-    shuffled_dataset = formatted_dataset.shuffle(seed=42)
-    shuffled_dataset2=shuffled_dataset.shuffle(seed=42)
-    shuffled_dataset3=shuffled_dataset2.shuffle(seed=42)
-    shuffled_dataset4=shuffled_dataset3.shuffle(seed=42)
-    # Concatenate original and shuffled datasets
-    formatted_dataset = concatenate_datasets([shuffled_dataset,shuffled_dataset2])
+    formatted_dataset = get_questions()
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset = formatted_dataset.select(range(4000))
+
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -200,20 +196,13 @@ def main():
         print(f"Answer: {entry.get('answer')}")
         print(f"Correct answer: {entry.get('correct_answer')}")
     
-    # Print first entry tokenization
-    first_entry = formatted_dataset[0]
-    print("\nFirst entry tokenization:")
-    print("Original:", first_entry['prompt'])
-    tokenized = tokenizer(first_entry['prompt'])
-    print("Tokenized:", tokenized)
-    print("Decoded:", tokenizer.decode(tokenized['input_ids']))
-    
+
     # GRPO specific training arguments
     training_args = GRPOConfig(
         use_vllm=True,
         vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
-        learning_rate=3e-6,
+        learning_rate=4e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -225,9 +214,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=16,
-        max_prompt_length=1536,
-        max_completion_length=1536,
+        num_generations=7,
+        max_prompt_length=800,
+        max_completion_length=1700,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
