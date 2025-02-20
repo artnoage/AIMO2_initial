@@ -293,15 +293,22 @@ class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
     def __init__(self, config: RewardConfig):
         self.config = config
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
+        # Determine device
+        if config.embedding_device == "auto":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(config.embedding_device)
+            
         # Load tokenizer and model
         self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model)
         self.model = AutoModel.from_pretrained(config.embedding_model)
         
-        # Move model to device and set eval mode
+        # Move model to specified device and set eval mode
         self.model = self.model.to(self.device)
         self.model.eval()
+        
+        self.logger.info(f"Similarity model running on device: {self.device}")
         
         # Ensure all parameters are frozen and on correct device
         with torch.no_grad():
@@ -320,7 +327,7 @@ class SolutionSimilarityChecker:
                     max_length=self.config.embedding_max_length,
                     return_tensors="pt"
                 )
-                # Move inputs to device and ensure they don't track gradients
+                # Move inputs to model device and ensure they don't track gradients
                 inputs = {k: v.to(self.device).detach() for k, v in inputs.items()}
                 
                 outputs = self.model(**inputs)
@@ -328,6 +335,11 @@ class SolutionSimilarityChecker:
                 embeddings = outputs.last_hidden_state.mean(dim=1).detach()
                 # Normalize and ensure no gradients
                 normalized = F.normalize(embeddings, p=2, dim=1)
+                
+                # If model is on CPU but we want GPU compute, or vice versa, move the result
+                if str(normalized.device) != str(self.device):
+                    normalized = normalized.to(self.device)
+                    
                 return normalized.detach()
 
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
