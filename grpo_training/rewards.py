@@ -293,6 +293,7 @@ class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
     def __init__(self, config: RewardConfig):
         self.config = config
+        self.logger = logging.getLogger(f'similarity_{config.model_type}')
         
         # Determine device
         if config.embedding_device == "auto":
