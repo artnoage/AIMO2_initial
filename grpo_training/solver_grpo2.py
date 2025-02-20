@@ -20,20 +20,24 @@ from config import RewardConfig
 from rewards import SolutionReward
 import os
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
+SYSTEM_PROMPT = """You are a mathematical problem solver. When given a problem, follow this structure:
+
+1. <thinking>
+   Analyze the problem thoroughly and explain your approach.
+   Break down the key components and outline your strategy.
+   Consider any special cases or potential pitfalls.
+   </thinking>
+
+2. <response>
+   <step>Step 1: Begin with the first calculation or operation
+   Show your work clearly using LaTeX notation</step>
+
+   <step>Step 2: Continue with the next logical step
+   Each step should be numbered and self-contained</step>
+
+   <step>Step N: In your final step, state your conclusion
+   Put your final answer in \\boxed{}</step>
+   </response>"""
     
 
 
@@ -118,7 +122,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver 2"
-    model_name = "mistralai/Mathstral-7B-v0.1"
+    model_name = "meta-llama/Llama-2-7b-hf"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Initialize config
@@ -173,7 +177,7 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt':  "[INST]" + SYSTEM_PROMPT + x['problem']+"[/INST]",
+            'prompt': f"<|start_header_id|>system<|end_header_id|>\n\n{SYSTEM_PROMPT}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{x['problem']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
             'answer':x['answer']
         }) # type: ignore
         return data # type: ignore

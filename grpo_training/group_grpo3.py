@@ -122,8 +122,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group 4"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model_type = "group_3"
+    model_name = "/Home/stat/laschos/AIMO2_initial/models/QWEN_threshol3"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -131,14 +131,16 @@ def main():
     
 
 
-    # Initialize config
+    # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
+    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
+    reward_config.group_diversity_bonus = 1  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -200,8 +202,8 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(4000))
+    formatted_dataset = formatted_dataset.shuffle(seed=24)
+    formatted_dataset = formatted_dataset.select(range(5000))
     
    
     

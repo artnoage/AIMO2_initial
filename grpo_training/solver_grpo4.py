@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver 4"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model_name = "models/group_5/20250218_180840"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Initialize config

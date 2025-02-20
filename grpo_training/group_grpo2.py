@@ -122,7 +122,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_0"
+    model_type = "group_2"
     model_name = "Qwen/Qwen2.5-7B-Instruct"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
@@ -133,8 +133,8 @@ def main():
 
     # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
-    reward_config.group_diversity_bonus = 1  # Increased from 1.0
+    reward_config.group_majority_bonus = 0.1  # Increased from 0.2
+    reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
@@ -202,7 +202,7 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=24)
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
     formatted_dataset = formatted_dataset.select(range(5000))
     
    

@@ -22,22 +22,20 @@ class RewardConfig:
     # Common reward components
     base_reward: float = 3.0
     validation_reward: float = 0.3
-    length_penalty_factor: float = 0.0001
+    length_penalty_factor: float = 0.00001
     
     # Solution-specific settings
     solution_base_reward: float = 0.05  # Initial reward
     solution_reasoning_reward: float = 0.1  # For having reasoning section
     solution_response_reward: float = 0.1  # For having response section
-    solution_steps_reward: float = 0.05  # For having numbered steps
-    solution_ordered_steps_reward: float = 0.05  # Additional for ordered steps
+    solution_steps_reward: float = 0.1  # For having numbered steps
+    solution_ordered_steps_reward: float = 0.1  # Additional for ordered steps
     
     # Group-specific settings
     group_base_reward: float = 3
-    group_diversity_bonus: float = 0.3
+    group_diversity_bonus: float = 1
     group_majority_bonus: float = 0.2
-    group_shortest_bonus: float = 0.2  # Bonus for shortest correct solution
-    group_similarity_threshold_low: float = 0.7
-    group_similarity_threshold_high: float = 0.9
+    group_similarity_threshold: float = 0.8
     
     # Tutor-specific settings
     tutor_structure_base_reward: float = 0.2

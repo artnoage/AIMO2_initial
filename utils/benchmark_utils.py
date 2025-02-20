@@ -160,7 +160,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     else:
         temp=config.auxiliary2_temp
 
-    if (model == ModelOption.LOCAL) or (model == ModelOption.LOCAL_2):
+    if (model == ModelOption.LOCAL_0) or (model == ModelOption.LOCAL_1) or (model == ModelOption.LOCAL_2):
         port = {
             "main": config.main_port,
             "auxiliary": config.auxiliary_port,

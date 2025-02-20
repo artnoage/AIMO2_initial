@@ -123,22 +123,24 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_4"
-    model_name = "models/solver_3/20250216_230446"
-    dataset_name = "Metaskepsis/Numina_hard_filtered"
+    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)
     
 
 
-    # Initialize config
+    # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
+    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
+    reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -201,7 +203,7 @@ def main():
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(4000))
+    formatted_dataset = formatted_dataset.select(range(5000))
     
    
     
@@ -230,7 +232,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=7,
         max_prompt_length=800,
         max_completion_length=1700,
         num_train_epochs=1,

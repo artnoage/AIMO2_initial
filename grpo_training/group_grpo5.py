@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_5"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/solver_3/20250216_230446"
-    dataset_name = "Metaskepsis/Numina_hard_filtered"
+    model_name = "models/group_5/20250218_180840"
+    dataset_name = "Metaskepsis/Numina_very_hard_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)

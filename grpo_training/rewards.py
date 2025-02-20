@@ -491,7 +491,7 @@ class GroupReward(BaseReward):
                 # Determine if current completion is in majority
                 is_in_majority = (is_correct and correct_count > incorrect_count) or \
                                 (not is_correct and incorrect_count > correct_count)
-                majority_bonus = self.config.group_majority_bonus if is_correct else self.config.group_majority_bonus * 0.1
+                majority_bonus = self.config.group_majority_bonus if is_correct else 0
                 
                 self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, "
                                f"In majority: {is_in_majority}, Margin: {vote_margin}")
@@ -511,16 +511,18 @@ class GroupReward(BaseReward):
                 
                 self.logger.info(f"Similarity calculation - Average similarity: {avg_similarity:.3f}")
                 
-                diversity_bonus = 0
-                if avg_similarity < self.config.group_similarity_threshold_low:  # Unique solution
-                    diversity_bonus = self.config.group_diversity_bonus if is_correct else self.config.group_diversity_bonus * 0.1
-                    reward += diversity_bonus
-                    self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + 1
-                    self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
-                elif avg_similarity > self.config.group_similarity_threshold_high:  # Very similar to others
-                    diversity_bonus = -(self.config.group_diversity_bonus / 2 if is_correct else self.config.group_diversity_bonus * 0.05)
-                    reward += diversity_bonus
-                    self.logger.info(f"Applied similarity penalty: {diversity_bonus:.3f}")
+                # Calculate diversity bonus/penalty based on difference from threshold
+                diff = self.config.group_similarity_threshold - avg_similarity
+                diversity_bonus = self.config.group_diversity_bonus * (abs(diff) ** 0.5)
+                
+                if diff > 0:  # Below threshold - more unique
+                    if is_correct:
+                        reward += diversity_bonus
+                        self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + 1
+                        self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
+                else:  # Above threshold - too similar
+                    reward -= diversity_bonus
+                    self.logger.info(f"Applied similarity penalty: -{diversity_bonus:.3f}")
                 
             # Update group-specific statistics
             if is_correct:
