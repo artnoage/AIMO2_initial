@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_1"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model_name = "unsloth/Phi-4"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -172,18 +172,18 @@ def main():
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
         max_seq_length=2500,
-        fast_inference=True,
+        fast_inference=False,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64)
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -220,8 +220,6 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
-        vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
         learning_rate=4e-6,
         adam_beta1=0.9,
@@ -235,7 +233,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=7,
+        num_generations=8,
         max_prompt_length=800,
         max_completion_length=1700,
         num_train_epochs=1,
