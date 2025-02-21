@@ -13,3 +13,18 @@ def get_questions_phi4(split="train") -> Dataset:
         'answer': x['answer']
     })  # type: ignore
     return data  # type: ignore
+
+
+def get_questions_llama3(split="train") -> Dataset:
+    data = load_dataset(dataset_name)[split]  # type: ignore
+    data = data.map(lambda x: {
+        'prompt': (
+            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
+            + SYSTEM_PROMPT + "\n"
+            + "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
+            + x['problem'] + "\n"
+            + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
+        ),
+        'answer': x['answer']
+    })  # type: ignore
+    return data  # type: ignore
