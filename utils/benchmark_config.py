@@ -17,9 +17,9 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0="/Home/stat/laschos/AIMO2_initial/models/QWEN_very_hard"
-    LOCAL_1 ="/Home/stat/laschos/AIMO2_initial/models/QWEN_plus" ###It is wrong this QWEN + solver.
-    LOCAL_2="/Home/stat/laschos/AIMO2_initial/models/QWEN_threshold"
+    LOCAL_0="/Home/stat/laschos/math/AIMO2_initial/models/midrew"
+    LOCAL_1 ="/Home/stat/laschos/math/AIMO2_initial/models/bigrew" ###It is wrong this QWEN + solver.
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/continued"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"

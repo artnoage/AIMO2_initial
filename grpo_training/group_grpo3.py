@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_3"
-    model_name = "/Home/stat/laschos/AIMO2_initial/models/QWEN_threshol3"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/QWEN_threshold"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -203,7 +203,7 @@ def main():
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=24)
-    formatted_dataset = formatted_dataset.select(range(5000))
+    formatted_dataset = formatted_dataset.select(range(2000))
     
    
     
@@ -232,7 +232,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=7,
         max_prompt_length=800,
         max_completion_length=1700,
         num_train_epochs=1,

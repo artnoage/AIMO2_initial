@@ -548,9 +548,9 @@ class GroupReward(BaseReward):
             if diversity_bonus > 0:
                 self.stats.group_stats['diversity_bonuses'] = self.stats.group_stats.get('diversity_bonuses', 0) + 1
                 
-            if avg_similarity < self.config.group_similarity_threshold_low:
+            if avg_similarity < self.config.group_similarity_threshold:
                 self.stats.group_stats['unique_solutions'] += 1
-            elif avg_similarity > self.config.group_similarity_threshold_high:
+            elif avg_similarity > self.config.group_similarity_threshold:
                 self.stats.group_stats['similar_solutions'] += 1
                 
             self.stats.group_stats['total_similarity'] += avg_similarity
