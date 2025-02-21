@@ -18,7 +18,7 @@ class RewardConfig:
     # Embedding model settings
     embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
     embedding_max_length: int = 512
-    embedding_device: str = "cuda:0"  # "auto", "cpu", or specific GPU like "cuda:0"
+    embedding_device: str = "auto"  # "auto", "cpu", or specific GPU like "cuda:0"
     
     # Common reward components
     base_reward: float = 3.0

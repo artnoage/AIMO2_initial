@@ -193,13 +193,16 @@ def main():
     )
     
         
-    def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
-        data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-            'answer': x['answer']
-        }) # type: ignore
-        return data # type: ignore
+    def get_questions(split="train") -> Dataset:
+        data = load_dataset(dataset_name)[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
+                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
+                  "<|im_start|>assistant\n",
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
