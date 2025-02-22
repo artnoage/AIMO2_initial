@@ -171,7 +171,7 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
+        max_seq_length=2800,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -232,11 +232,11 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=16,
+        num_generations=14,
         max_prompt_length=800,
-        max_completion_length=1700,
+        max_completion_length=2000,
         num_train_epochs=1,
-        save_steps=250,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
