@@ -126,7 +126,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "mistralai/Mistral-Small-24B-Instruct-2501"
+    model_name = "/workspace/AIMO2_initial/models/mistral"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -174,7 +174,7 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
+        max_seq_length=2800,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -220,8 +220,6 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
-        vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
         learning_rate=4e-6,
         adam_beta1=0.9,
@@ -237,7 +235,7 @@ def main():
         gradient_accumulation_steps=4,
         num_generations=7,
         max_prompt_length=800,
-        max_completion_length=1700,
+        max_completion_length=2000,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
