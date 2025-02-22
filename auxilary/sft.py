@@ -17,18 +17,18 @@ def main():
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="/workspace/AIMO2_initial/models/phi4",
-        max_seq_length=4096,
+        max_seq_length=3000,
         load_in_4bit=False)
         
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
-    r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r = 64, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-    lora_alpha = 128,
+    lora_alpha = 64,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -54,7 +54,7 @@ def main():
 
 
     # Load dataset
-    dataset = load_dataset("Metaskepsis/Numina")
+    dataset = load_dataset("Metaskepsis/Numina")["train"]
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
@@ -66,8 +66,8 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=16,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=32,
         learning_rate=5e-6,
         logging_steps=10,  # More frequent logging
         save_strategy="steps",
@@ -91,7 +91,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "reseted_and_from_qwen"
+    model_type = "phi_sft"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
