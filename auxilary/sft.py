@@ -69,7 +69,7 @@ def main():
         num_train_epochs=1,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=16,
-        learning_rate=3e-6,
+        learning_rate=5e-6,
         logging_steps=10,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,
