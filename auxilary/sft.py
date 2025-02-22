@@ -41,11 +41,13 @@ def main():
 
     def formatting_prompts_func(examples):
         texts = []
-        for example in examples:
+        problems = examples['problem']
+        solutions = examples['solution']
+        for problem, solution in zip(problems, solutions):
             formatted_text = (
                 "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                "<|im_start|>user\n" + example['problem'] + "<|im_end|>\n"
-                "<|im_start|>assistant\n" + example['solution'] + "<|im_end|>\n"
+                "<|im_start|>user\n" + problem + "<|im_end|>\n"
+                "<|im_start|>assistant\n" + solution + "<|im_end|>\n"
             )
             texts.append(formatted_text)
         return {"text": texts}
