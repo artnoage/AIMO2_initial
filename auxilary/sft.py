@@ -37,20 +37,7 @@ def main():
     use_rslora = False)
     
 
-    SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
+    SYSTEM_PROMPT = "You are a mathematician. Solve the following problem."
 
     def formatting_prompts_func(examples):
         texts = []
