@@ -17,20 +17,23 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import GroupReward, SolutionSimilarityChecker
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
+SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+
+<thinking>
+First, analyze the problem in depth and outline your approach.
+This section should capture your reasoning, including any abstract thoughts or potential strategies.
+Feel free to refine or correct your ideas as you work toward the solution.
+</thinking>
+<response>
+<step>Step 1: Begin with the first calculation or operation
+Show your work clearly using LaTeX notation</step>
+
+<step>Step 2: Continue with the next logical step
+Each step should be numbered and self-contained</step>
+
+<step>Step N: In your final step, state your conclusion
+Put your final answer in \boxed{}</step>
+</response>"""
     
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -123,7 +126,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model_name = "mistralai/Mistral-Small-24B-Instruct-2501"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -196,7 +199,7 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+            'prompt': '<s>[SYSTEM_PROMPT]' + SYSTEM_PROMPT + '[/SYSTEM_PROMPT][INST]' + x['problem'] + '[/INST]',
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
