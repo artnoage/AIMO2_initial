@@ -16,19 +16,19 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/AIMO2_initial/models/reseted/20250218_001806",
-        max_seq_length=8192,
+        model_name="/workspace/AIMO2_initial/models/phi4",
+        max_seq_length=4096,
         load_in_4bit=False)
         
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
-    r = 256, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-    lora_alpha = 256,
+    lora_alpha = 128,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -52,7 +52,7 @@ def main():
 
 
     # Load dataset
-    dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/from_qwen/20250219_084006")
+    dataset = load_dataset("Metaskepsis/Numina")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
