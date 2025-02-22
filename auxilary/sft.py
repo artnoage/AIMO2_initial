@@ -37,26 +37,36 @@ def main():
     use_rslora = False)
     
 
-    # Setup chat template
-    tokenizer = get_chat_template(
-        tokenizer,
-        chat_template="mistral",
-        map_eos_token=True)
-    
+    SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
+    <thinking>
+    First, analyze the problem in depth and outline your approach.\n 
+    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
+    Feel free to refine or correct your ideas as you work toward the solution.\n  
+    </thinking>
+    <response>\n
+    <step>Step 1: Begin with the first calculation or operation\n
+    Show your work clearly using LaTeX notation</step>\n\n
+    <step>Step 2: Continue with the next logical step\n
+    Each step should be numbered and self-contained</step>\n\n
+    <step>Step N: In your final step, state your conclusion\n
+    Put your final answer in \\boxed{}</step>\n
+    </response>\n\n"""
 
     def formatting_prompts_func(examples):
-        convos = examples["messages"]
-        texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) 
-                for convo in convos]
+        texts = []
+        for example in examples:
+            formatted_text = (
+                "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
+                "<|im_start|>user\n" + example['problem'] + "<|im_end|>\n"
+                "<|im_start|>assistant\n" + example['solution'] + "<|im_end|>\n"
+            )
+            texts.append(formatted_text)
         return {"text": texts}
 
 
-    # Load dataset and get second half
-    #dataset = load_dataset("Metaskepsis/sft", split="train")
+    # Load dataset
     dataset = load_from_disk("/Home/stat/laschos/AIMO2_initial/local_datasets/from_qwen/20250219_084006")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
-    shuffled_dataset2=dataset.shuffle(seed=42)
-    dataset=concatenate_datasets([dataset, shuffled_dataset2])
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     #print("\nFirst conversation after formatting:")
