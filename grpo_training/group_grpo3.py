@@ -208,6 +208,7 @@ def main():
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
     formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.select(range(1000))
     
    
     
