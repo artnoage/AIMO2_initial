@@ -1,6 +1,12 @@
 pip install unsloth vllm wandb langchain_core latex2sympy2
+
+python -m venv myenv
 sudo apt install build-essential
 touch ~/.no_auto_tmux
+git config --global user.name "artnoage"
+git config --global user.email "artnoage@gmail.com"
+
+
 python auxilary/hf_loader.py --type model --load down --path models/phi4 --repo_name unsloth/Phi-4
 python auxilary/hf_loader.py --type model --load down --path models/llama --repo_name meta-llama/meta-Llama-3.1-8B-Instruct
 def get_questions_phi4(split="train") -> Dataset:

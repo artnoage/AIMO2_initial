@@ -1,38 +1,45 @@
 import os
 import wandb
 import logging
-from datasets import load_dataset, concatenate_datasets, Dataset
+from datasets import load_dataset, Dataset
 from datetime import datetime
-from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-PatchFastRL("GRPO", FastLanguageModel)
 import sys
+import torch
 from trl import GRPOConfig, GRPOTrainer
-from transformers import TrainerCallback
+from transformers import TrainerCallback, AutoModelForCausalLM, AutoTokenizer
 
-# Ensure the project root is in sys.path for imports
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Try to import flash-attn2; if not available, provide a no-op replacement.
+try:
+    from flash_attn2 import replace_attn_with_flash_attn
+except ImportError:
+    def replace_attn_with_flash_attn(model):
+        print("flash_attn2 not installed, continuing without flash attention")
+        return model
+
 from config import RewardConfig
 from rewards import GroupReward, SolutionSimilarityChecker
 
+# Import PEFT for LoRA configuration
+from peft import get_peft_model, LoraConfig
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
-    
+SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+
+<thinking>
+First, analyze the problem in depth and outline your approach.
+This section should capture your reasoning, including any abstract thoughts or potential strategies.
+Feel free to refine or correct your ideas as you work toward the solution.
+</thinking>
+<response>
+<step>Step 1: Begin with the first calculation or operation
+Show your work clearly using LaTeX notation</step>
+
+<step>Step 2: Continue with the next logical step
+Each step should be numbered and self-contained</step>
+
+<step>Step N: In your final step, state your conclusion
+Put your final answer in \\boxed{}</step>
+</response>
+"""
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -43,9 +50,7 @@ def setup_logging(model_type: str) -> logging.Logger:
     logger = logging.getLogger('group_grpo')
     logger.setLevel(logging.INFO)
     
-    file_handler = logging.FileHandler(
-        f"{log_dir}/training_{timestamp}.log"
-    )
+    file_handler = logging.FileHandler(f"{log_dir}/training_{timestamp}.log")
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
@@ -64,7 +69,6 @@ class LoggingCallback(TrainerCallback):
         
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
-        
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
             # Key group performance metrics for wandb
             wandb_stats = {
@@ -73,7 +77,6 @@ class LoggingCallback(TrainerCallback):
                 'solution_diversity': self.reward_func.stats.group_stats.get('solution_diversity', 0.0),
                 'unanimous_correct_ratio': self.reward_func.stats.group_stats.get('unanimous_correct', 0) / max(1, self.reward_func.stats.total_batches)
             }
-            
             # Detailed stats for local logging only
             local_stats = {
                 'reward_components': {
@@ -96,18 +99,13 @@ class LoggingCallback(TrainerCallback):
                     'average_vote_margin': self.reward_func.stats.group_stats.get('average_vote_margin', 0.0)
                 }
             }
-            
-            # Add similarity matrix to local stats if available
             if hasattr(self.reward_func, 'similarity_checker'):
                 local_stats['similarity_matrix'] = self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist()
             
-            # Store current values for next round
             self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
             self._last_majority_bonuses = self.reward_func.stats.reward_components.get('majority_bonuses', 0)
             self._last_diversity_bonuses = self.reward_func.stats.reward_components.get('diversity_bonuses', 0)
             self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
-            
-            # Store group stats
             self._last_correct_answers = self.reward_func.stats.group_stats.get('correct_answers', 0)
             self._last_incorrect_answers = self.reward_func.stats.group_stats.get('incorrect_answers', 0)
             self._last_unique_solutions = self.reward_func.stats.group_stats.get('unique_solutions', 0)
@@ -117,32 +115,26 @@ class LoggingCallback(TrainerCallback):
             self._last_unanimous_correct = self.reward_func.stats.group_stats.get('unanimous_correct', 0)
             self._last_unanimous_incorrect = self.reward_func.stats.group_stats.get('unanimous_incorrect', 0)
             self._last_split_votes = self.reward_func.stats.group_stats.get('split_votes', 0)
-            
-            # Update logs with our metrics
             logs.update(wandb_stats)
 
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "unsloth/Phi-4"
+    model_name = "unsloth/Phi-4"  # Replace with a valid Hugging Face model identifier if needed
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
-    # Setup logging first
+    # Setup logging
     logger = setup_logging(model_type)
     
-
-
-    # Initialize config with modified bonus values
+    # Initialize reward configuration and function
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
-    reward_config.group_diversity_bonus = 2  # Increased from 1.0
-    
-    # Setup
+    reward_config.group_majority_bonus = 0.2
+    reward_config.group_diversity_bonus = 2
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
-    # Initialize wandb
+    
     wandb.init(
         project="grpo",
         name=wandbname,
@@ -157,10 +149,7 @@ def main():
         }
     )
     
-    # Initialize similarity checker first
     similarity_checker = SolutionSimilarityChecker(reward_config)
-    
-    # Initialize reward function with existing config and similarity checker
     reward_func = GroupReward(reward_config, similarity_checker)
     logger.info("\nInitialized GroupReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
@@ -168,49 +157,47 @@ def main():
         logger.info(f"Stats total_batches: {reward_func.stats.total_batches}")
         logger.info(f"Stats reward_components: {reward_func.stats.reward_components}")
     
-    # Load model
-   
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3200,
-        fast_inference=True,
-        load_in_4bit=False,
-        use_gradient_checkpointing="unsloth",
-        max_lora_rank=128)
-    
-    # Configure LoRA
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r=128,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
-        lora_dropout=0,
-        bias="none",
-        use_gradient_checkpointing="unsloth",
-        random_state=3407,
-        use_rslora=False,
-        loftq_config=None
+    # Load model and tokenizer using standard Hugging Face methods
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    bf16 = torch.cuda.is_bf16_supported() if torch.cuda.is_available() else False
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype=torch.bfloat16 if bf16 else torch.float16,
+        device_map="auto",
     )
     
-        
+    # Optionally enable gradient checkpointing
+    model.gradient_checkpointing_enable()
+    
+    # Apply flash-attn2 patch if available
+    model = replace_attn_with_flash_attn(model)
+    
+    # Configure LoRA using PEFT
+    lora_config = LoraConfig(
+        r=128,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                        "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=128,
+        lora_dropout=0.0,
+        bias="none",
+        task_type="CAUSAL_LM"
+    )
+    model = get_peft_model(model, lora_config)
+    
     def get_questions(split="train") -> Dataset:
-        data = load_dataset(dataset_name)[split]  # type: ignore
+        data = load_dataset(dataset_name)[split]
         data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
-        'answer': x['answer']
-    })  # type: ignore
-        return data  # type: ignore
-
+            'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
+                      "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
+                      "<|im_start|>assistant\n",
+            'answer': x['answer']
+        })
+        return data
+    
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
     formatted_dataset = formatted_dataset.select(range(2000))
     formatted_dataset = formatted_dataset.select(range(1000))
-    
-   
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -219,8 +206,7 @@ def main():
         print(f"Answer: {entry.get('answer')}")
         print(f"Correct answer: {entry.get('correct_answer')}")
     
-
-    # GRPO specific training arguments
+    # GRPO-specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
         learning_rate=5e-6,
@@ -231,8 +217,8 @@ def main():
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
-        bf16=is_bfloat16_supported(),
-        fp16=not is_bfloat16_supported(),
+        bf16=bf16,
+        fp16=not bf16,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=4,
         num_generations=16,
@@ -245,7 +231,6 @@ def main():
         output_dir=output_dir,
     )
     
-    # Initialize trainer with reward function
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
@@ -263,13 +248,15 @@ def main():
         logger.error(f"Training failed: {str(e)}")
         wandb.finish()
         raise
-        
-    # Save model
+    
+    # Save model (merge LoRA weights if supported)
     try:
         models_dir = "models"
         os.makedirs(os.path.join(models_dir, reward_config.model_type), exist_ok=True)
         model_output_dir = os.path.join(models_dir, reward_config.model_type, timestamp)
-        model.save_pretrained_merged(model_output_dir, tokenizer, save_method="merged_16bit")
+        merged_model = model.merge_and_unload() if hasattr(model, "merge_and_unload") else model
+        merged_model.save_pretrained(model_output_dir)
+        tokenizer.save_pretrained(model_output_dir)
         logger.info(f"Merged model saved to {model_output_dir}")
     except Exception as e:
         logger.error(f"Failed to save model: {str(e)}")
