@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_5"
-    model_name = "models/group_5/20250218_180840"
+    model_name = "Qwen/Qwen2.5-14B-Instruct-1M"
     dataset_name = "Metaskepsis/Numina_very_hard_filtered"
     
     # Setup logging first
