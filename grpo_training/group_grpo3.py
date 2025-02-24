@@ -211,7 +211,7 @@ def main():
     })  # type: ignore
         return data  # type: ignore
     def get_questions3(split="train") -> Dataset:
-        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
+        data = load_dataset("Metaskepsis/Olympiads_hard")[split]  # type: ignore
         data = data.map(lambda x: {
         # QWEN typically uses a ChatML‐style format with special tokens.
         'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
@@ -221,13 +221,13 @@ def main():
 
     formatted_dataset1 = get_questions1()
     formatted_dataset1 = formatted_dataset1.shuffle(seed=42)
-    formatted_dataset1 = formatted_dataset1.select(range(320))
+    formatted_dataset1 = formatted_dataset1.select(range(600))
     formatted_dataset2 = get_questions2()
     formatted_dataset2 = formatted_dataset2.shuffle(seed=42)
-    formatted_dataset2 = formatted_dataset2.select(range(320))
+    formatted_dataset2 = formatted_dataset2.select(range(300))
     formatted_dataset3 = get_questions3()
     formatted_dataset3 = formatted_dataset3.shuffle(seed=42)
-    formatted_dataset3 = formatted_dataset3.select(range(320))
+    formatted_dataset3 = formatted_dataset3.select(range(150))
    
     formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
     formatted_dataset=formatted_dataset.shuffle(seed=42)

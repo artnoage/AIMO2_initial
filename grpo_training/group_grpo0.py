@@ -171,7 +171,7 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2800,
+        max_seq_length=3200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",

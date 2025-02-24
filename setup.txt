@@ -9,28 +9,9 @@ git config --global user.email "artnoage@gmail.com"
 
 python auxilary/hf_loader.py --type model --load down --path models/phi4 --repo_name unsloth/Phi-4
 python auxilary/hf_loader.py --type model --load down --path models/llama --repo_name meta-llama/meta-Llama-3.1-8B-Instruct
-def get_questions_phi4(split="train") -> Dataset:
-    data = load_dataset(dataset_name)[split]  # type: ignore
-    data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
-        'answer': x['answer']
-    })  # type: ignore
-    return data  # type: ignore
 
-
-def get_questions_llama3(split="train") -> Dataset:
-    data = load_dataset(dataset_name)[split]  # type: ignore
-    data = data.map(lambda x: {
-        'prompt': (
-            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
-            + SYSTEM_PROMPT + "\n"
-            + "<|eot_id|><|start_header_id|>user<|end_header_id|>\n"
-            + x['problem'] + "\n"
-            + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n"
-        ),
-        'answer': x['answer']
-    })  # type: ignore
-    return data  # type: ignore
+python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-of 1 --split train[:1000] 
+&& python benchmark.py --dataset Metaskepsis/Numina_medium --main-temp 0 --best-of 1 --split train[:1000] 
+&& python benchmark.py --dataset Metaskepsis/custom100bench --main-temp 0 --best-of 1 
+&& python benchmark.py --dataset Metaskepsis/custom219 --main-temp 0 --best-of 1 
+&& python benchmark.py --dataset AI-MO/aimo-validation-aime --main-temp 0 --best-of 1 
