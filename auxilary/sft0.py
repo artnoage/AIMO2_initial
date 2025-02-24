@@ -45,9 +45,9 @@ def main():
         solutions = examples['solution']
         for problem, solution in zip(problems, solutions):
             formatted_text = (
-                "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                "<|im_start|>user\n" + problem + "<|im_end|>\n"
-                "<|im_start|>assistant\n" + solution + "<|im_end|>\n"
+                "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
+                "<|im_start|>user<|im_sep|>" + problem + "<|im_end|>"
+                "<|im_start|>assistant<|im_sep|>" + solution + "<|im_end|>"
             )
             texts.append(formatted_text)
         return {"text": texts}

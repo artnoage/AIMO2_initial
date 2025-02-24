@@ -197,9 +197,9 @@ def main():
         data = load_dataset(dataset_name)[split]  # type: ignore
         data = data.map(lambda x: {
         # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>"
+                  "<|im_start|>assistant<|im_sep|>",
         'answer': x['answer']
     })  # type: ignore
         return data  # type: ignore

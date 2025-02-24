@@ -124,7 +124,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "/workspace/AIMO2_initial/models/3"
+    model_name = "unsloth/Phi-4"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -199,9 +199,9 @@ def main():
         data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
         data = data.map(lambda x: {
         # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>"
+                  "<|im_start|>assistant<|im_sep|>",
         'answer': x['answer']
     })  # type: ignore
         return data  # type: ignore
@@ -210,9 +210,9 @@ def main():
         data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
         data = data.map(lambda x: {
         # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
+                  "<|im_start|>assistant<|im_sep|>",
         'answer': x['answer']
     })  # type: ignore
         return data  # type: ignore
@@ -220,9 +220,9 @@ def main():
         data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
         data = data.map(lambda x: {
         # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user\n" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant\n",
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
+                  "<|im_start|>assistant<|im_sep|>",
         'answer': x['answer']
     })  # type: ignore
         return data  # type: ignore

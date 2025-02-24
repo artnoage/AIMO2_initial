@@ -122,8 +122,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_4"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model_type = "group_3"
+    model_name = "Qwen/Qwen2.5-14B-Instruct-1M"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -133,7 +133,7 @@ def main():
 
     # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
+    reward_config.group_majority_bonus = 0.1  # Increased from 0.2
     reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
@@ -171,19 +171,19 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
+        max_seq_length=2800,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64)
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -196,14 +196,15 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(5000))
+    formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.select(range(1000))
     
    
     
@@ -217,8 +218,7 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
-        vllm_gpu_memory_utilization= 0.35,
+        use_vllm=False,
         torch_empty_cache_steps=1,
         learning_rate=4e-6,
         adam_beta1=0.9,
@@ -232,11 +232,11 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=7,
+        num_generations=14,
         max_prompt_length=800,
-        max_completion_length=1700,
+        max_completion_length=2000,
         num_train_epochs=1,
-        save_steps=250,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
