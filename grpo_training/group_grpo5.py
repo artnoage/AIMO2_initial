@@ -169,19 +169,20 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
+        max_seq_length=3200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64)
+        gpu_memory_utilization=0.5,
+        max_lora_rank=256)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=256,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=256,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -190,7 +191,7 @@ def main():
         loftq_config=None
     )
     
-        
+
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
@@ -198,13 +199,45 @@ def main():
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
+        
+    def get_questions1(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
 
-    formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(4000))
-    
+    def get_questions2(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+    def get_questions3(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+
+    formatted_dataset1 = get_questions1()
+    formatted_dataset1 = formatted_dataset1.shuffle(seed=42)
+    formatted_dataset1 = formatted_dataset1.select(range(330))
+    formatted_dataset2 = get_questions2()
+    formatted_dataset2 = formatted_dataset2.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset2.select(range(330))
+    formatted_dataset3 = get_questions3()
+    formatted_dataset3 = formatted_dataset3.shuffle(seed=42)
+    formatted_dataset3 = formatted_dataset3.select(range(330))
    
-    
+    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
+    formatted_dataset=formatted_dataset.shuffle(seed=42)
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -215,10 +248,8 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
-        vllm_gpu_memory_utilization= 0.35,
-        torch_empty_cache_steps=1,
-        learning_rate=4e-6,
+        torch_empty_cache_steps=10,
+        learning_rate=5e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -228,13 +259,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=2,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=22,
         max_prompt_length=800,
-        max_completion_length=1700,
+        max_completion_length=2400,
         num_train_epochs=1,
-        save_steps=250,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

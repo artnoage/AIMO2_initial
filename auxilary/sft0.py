@@ -16,19 +16,19 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/workspace/AIMO2_initial/models/phi4",
-        max_seq_length=4096,
+        model_name="unsloth/Phi-4",
+         max_seq_length=8192,
         load_in_4bit=False)
         
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
-    r = 256, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-    lora_alpha = 256,
+    lora_alpha = 128,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!

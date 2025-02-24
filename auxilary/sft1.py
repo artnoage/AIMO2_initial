@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="Qwen/Qwen2.5-7B-Instruct",
+        model_name="Qwen/Qwen2.5-14B-Instruct-1M",
         max_seq_length=8192,
         load_in_4bit=False)
         

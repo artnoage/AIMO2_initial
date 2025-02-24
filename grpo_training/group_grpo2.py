@@ -124,7 +124,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "/workspace/AIMO2_initial/models/phi4"
+    model_name = "/workspace/AIMO2_initial/models/3"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
@@ -228,17 +228,17 @@ def main():
         return data  # type: ignore
 
     formatted_dataset1 = get_questions1()
-    formatted_dataset1 = formatted_dataset1.shuffle(seed=42)
+    formatted_dataset1 = formatted_dataset1.shuffle(seed=22)
     formatted_dataset1 = formatted_dataset1.select(range(330))
     formatted_dataset2 = get_questions2()
-    formatted_dataset2 = formatted_dataset2.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset2.shuffle(seed=22)
     formatted_dataset2 = formatted_dataset2.select(range(330))
     formatted_dataset3 = get_questions3()
-    formatted_dataset3 = formatted_dataset3.shuffle(seed=42)
+    formatted_dataset3 = formatted_dataset3.shuffle(seed=22)
     formatted_dataset3 = formatted_dataset3.select(range(330))
    
     formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
-    formatted_dataset=formatted_dataset.shuffle(seed=42)
+    formatted_dataset=formatted_dataset.shuffle(seed=22)
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -260,9 +260,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=4,
         gradient_accumulation_steps=4,
-        num_generations=22,
+        num_generations=10,
         max_prompt_length=800,
         max_completion_length=2400,
         num_train_epochs=1,
