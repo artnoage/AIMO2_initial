@@ -122,7 +122,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_3"
+    model_type = "group_4"
     model_name = "Qwen/Qwen2.5-14B-Instruct-1M"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
@@ -171,7 +171,7 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2800,
+        max_seq_length=3200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -192,21 +192,51 @@ def main():
         loftq_config=None
     )
     
-        
-    def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
-        data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x['answer']
-        }) # type: ignore
-        return data # type: ignore
-
-    formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(2000))
-    formatted_dataset = formatted_dataset.select(range(1000))
     
+    def get_questions1(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+
+    def get_questions2(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+    def get_questions3(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+
+    formatted_dataset1 = get_questions1()
+    formatted_dataset1 = formatted_dataset1.shuffle(seed=42)
+    formatted_dataset1 = formatted_dataset1.select(range(320))
+    formatted_dataset2 = get_questions2()
+    formatted_dataset2 = formatted_dataset2.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset2.select(range(320))
+    formatted_dataset3 = get_questions3()
+    formatted_dataset3 = formatted_dataset3.shuffle(seed=42)
+    formatted_dataset3 = formatted_dataset3.select(range(320))
    
+    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
+    formatted_dataset=formatted_dataset.shuffle(seed=42)
+    # Verify first few entries
+    for i in range(min(3, len(formatted_dataset))):
+        entry = formatted_dataset[i]
+        print(f"\nEntry {i} verification:")
+        print(f"Answer: {entry.get('answer')}")
+        print(f"Correct answer: {entry.get('correct_answer')}")
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -232,9 +262,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=14,
+        num_generations=12,
         max_prompt_length=800,
-        max_completion_length=2000,
+        max_completion_length=2400,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
