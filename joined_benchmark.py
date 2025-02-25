@@ -146,6 +146,44 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'total_attempts': config.best_of
             })
         
+        # Calculate detailed statistics for joined benchmark
+        main_solutions = [s for s in all_solutions if s['agent'] == 'main']
+        aux_solutions = [s for s in all_solutions if s['agent'] == 'auxiliary']
+        
+        main_correct_count = sum(1 for s in main_solutions if s['is_correct'])
+        aux_correct_count = sum(1 for s in aux_solutions if s['is_correct'])
+        
+        # Calculate agreement statistics
+        both_correct_count = 0
+        both_wrong_count = 0
+        disagreement_count = 0
+        
+        for i in range(config.best_of):
+            main_sol = next((s for s in main_solutions if s['attempt_number'] == i+1), None)
+            aux_sol = next((s for s in aux_solutions if s['attempt_number'] == i+1), None)
+            
+            if main_sol and aux_sol:
+                if main_sol['is_correct'] and aux_sol['is_correct']:
+                    both_correct_count += 1
+                elif not main_sol['is_correct'] and not aux_sol['is_correct']:
+                    both_wrong_count += 1
+                else:
+                    disagreement_count += 1
+        
+        # Calculate which model performs better when they disagree
+        main_better_when_disagree = 0
+        aux_better_when_disagree = 0
+        
+        for i in range(config.best_of):
+            main_sol = next((s for s in main_solutions if s['attempt_number'] == i+1), None)
+            aux_sol = next((s for s in aux_solutions if s['attempt_number'] == i+1), None)
+            
+            if main_sol and aux_sol and main_sol['is_correct'] != aux_sol['is_correct']:
+                if main_sol['is_correct']:
+                    main_better_when_disagree += 1
+                else:
+                    aux_better_when_disagree += 1
+        
         # Always add detailed statistics
         results.append({
             'id': example_id,
@@ -161,9 +199,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'judge_accuracy': None,
             'judge_decisions': 0,
             'all_solutions_correct': all(s['is_correct'] for s in all_solutions),
-            'main_model_correct_count': sum(1 for s in all_solutions if s['agent'] == 'main' and s['is_correct']),
-            'aux_model_correct_count': sum(1 for s in all_solutions if s['agent'] == 'auxiliary' and s['is_correct']),
-            'total_attempts_per_model': config.best_of
+            'main_model_correct_count': main_correct_count,
+            'aux_model_correct_count': aux_correct_count,
+            'total_attempts_per_model': config.best_of,
+            
+            # Add new detailed statistics
+            'custom_both_correct_count': both_correct_count,
+            'custom_both_wrong_count': both_wrong_count,
+            'custom_disagreement_count': disagreement_count,
+            'custom_main_better_when_disagree': main_better_when_disagree,
+            'custom_aux_better_when_disagree': aux_better_when_disagree,
+            'custom_agreement_rate': ((both_correct_count + both_wrong_count) / config.best_of) * 100,
+            'custom_main_success_rate': (main_correct_count / config.best_of) * 100,
+            'custom_aux_success_rate': (aux_correct_count / config.best_of) * 100,
+            'custom_performance_gap': ((main_correct_count - aux_correct_count) / config.best_of) * 100
         })
         
         return results

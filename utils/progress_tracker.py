@@ -62,7 +62,7 @@ class ProgressTracker:
         
         # Basic statistics
         stats['total'] = total
-        successfully_processed = sum(1 for r in entries if r.get('verdict_matches'))
+        successfully_processed = sum(1 for r in entries if r.get('example_processed_successfully', False))
         stats['successfully_processed'] = successfully_processed
         stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
         
@@ -102,6 +102,45 @@ class ProgressTracker:
         if judge_entries:
             stats['judge_decisions'] = len(judge_entries)
             stats['avg_judge_accuracy'] = sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)
+        
+        # Joined benchmark statistics
+        if any('main_model_correct_count' in r for r in entries):
+            main_correct = sum(r.get('main_model_correct_count', 0) for r in entries)
+            aux_correct = sum(r.get('aux_model_correct_count', 0) for r in entries)
+            total_attempts = sum(r.get('total_attempts_per_model', 0) for r in entries)
+            
+            if total_attempts > 0:
+                stats['main_model_success_rate'] = (main_correct / total_attempts) * 100
+                stats['aux_model_success_rate'] = (aux_correct / total_attempts) * 100
+                stats['main_vs_aux_diff'] = stats['main_model_success_rate'] - stats['aux_model_success_rate']
+            
+            # Calculate agreement statistics
+            both_correct = sum(1 for r in entries if 
+                              any(s1 and s2 for s1, s2 in zip(r.get('is_correct_list', [])[::2], r.get('is_correct_list', [])[1::2])))
+            both_wrong = sum(1 for r in entries if 
+                            any(not s1 and not s2 for s1, s2 in zip(r.get('is_correct_list', [])[::2], r.get('is_correct_list', [])[1::2])))
+            
+            stats['both_correct_count'] = both_correct
+            stats['both_wrong_count'] = both_wrong
+            stats['both_correct_rate'] = (both_correct / total) * 100 if total > 0 else 0
+            stats['both_wrong_rate'] = (both_wrong / total) * 100 if total > 0 else 0
+            stats['agreement_rate'] = ((both_correct + both_wrong) / total) * 100 if total > 0 else 0
+            
+        # Extract any custom statistics fields
+        for entry in entries:
+            for key, value in entry.items():
+                if key.startswith('custom_') and key not in stats:
+                    # Aggregate numeric values
+                    if isinstance(value, (int, float)):
+                        stats[key] = stats.get(key, 0) + value
+                    # Count boolean values
+                    elif isinstance(value, bool):
+                        stats[key] = stats.get(key, 0) + (1 if value else 0)
+        
+        # Calculate averages for custom statistics
+        for key in list(stats.keys()):
+            if key.startswith('custom_') and isinstance(stats[key], (int, float)):
+                stats[f'{key}_avg'] = stats[key] / total if total > 0 else 0
             
         return stats
 
@@ -141,9 +180,25 @@ class ProgressTracker:
             f"({(batch_stats['most_common_correct']/batch_stats['total']*100):.1f}%)\n"
         )
         
+        # Joined benchmark statistics if present
+        if 'main_model_success_rate' in batch_stats:
+            stats_str += (
+                f"\nModel Comparison:\n"
+                f"- Main model success rate: {batch_stats['main_model_success_rate']:.1f}%\n"
+                f"- Auxiliary model success rate: {batch_stats['aux_model_success_rate']:.1f}%\n"
+                f"- Performance difference (main - aux): {batch_stats['main_vs_aux_diff']:.1f}%\n"
+                f"\nModel Agreement:\n"
+                f"- Both models correct: {batch_stats['both_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['both_correct_rate']:.1f}%)\n"
+                f"- Both models wrong: {batch_stats['both_wrong_count']}/{batch_stats['total']} "
+                f"({batch_stats['both_wrong_rate']:.1f}%)\n"
+                f"- Overall agreement rate: {batch_stats['agreement_rate']:.1f}%\n"
+            )
+        
         # Tournament statistics if present
         if 'tournament_winners' in batch_stats:
             stats_str += (
+                f"\nTournament Statistics:\n"
                 f"- Tournament winners correct: {batch_stats['tournament_winners']}/{batch_stats['total_tournaments']} "
                 f"({(batch_stats['tournament_winners']/batch_stats['total_tournaments']*100):.1f}%)\n"
             )
@@ -151,9 +206,21 @@ class ProgressTracker:
         # Judge statistics if present
         if 'judge_decisions' in batch_stats:
             stats_str += (
+                f"\nJudge Statistics:\n"
                 f"- Judge decisions made: {batch_stats['judge_decisions']}\n"
                 f"- Judge accuracy: {batch_stats['avg_judge_accuracy']:.1f}%\n"
             )
+            
+        # Custom statistics if present
+        custom_stats = {k: v for k, v in batch_stats.items() if k.startswith('custom_') and not k.endswith('_avg')}
+        if custom_stats:
+            stats_str += "\nCustom Statistics:\n"
+            for key, value in custom_stats.items():
+                display_name = key.replace('custom_', '').replace('_', ' ').title()
+                if key + '_avg' in batch_stats:
+                    stats_str += f"- {display_name}: {value} (avg: {batch_stats[key + '_avg']:.2f})\n"
+                else:
+                    stats_str += f"- {display_name}: {value}\n"
             
         # Calculate accumulated statistics
         acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
@@ -264,67 +331,69 @@ class ProgressTracker:
             self._save_progress_stats(msg + "\n")
             return
 
-        total = len(stats_entries)
+        # Use the common calculation method
+        final_stats = self._calculate_statistics(stats_entries)
+        total = final_stats['total']
         end_time = datetime.now()
         total_duration = end_time - self.start_time
 
-        # Calculate final statistics
-        at_least_one = 0
-        total_correct = 0
-        above_avg = 0
-        most_common_correct = 0
-        
-        for r in stats_entries:
-            matches = r.get('is_correct_list', [])
-            if matches:
-                # Check if any verdict matches
-                matches_count = sum(1 for match in matches if match)
-                if matches_count > 0:
-                    at_least_one += 1
-                total_correct += matches_count
-                if matches_count / len(matches) > 0.5:
-                    above_avg += 1
-                # Check most common verdict
-                if r.get('is_most_common_correct', False):
-                    most_common_correct += 1
-                    
-        avg_correct = total_correct / total if total > 0 else 0
-
-        # Tournament statistics
-        tournament_entries = [r for r in stats_entries if 'tournament_winner_correct' in r]
-        tournament_winners = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
-        
-        # Judge statistics
-        judge_entries = [r for r in stats_entries if r.get('judge_accuracy') is not None]
-        avg_judge_accuracy = (sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)) if judge_entries else None
-
-        # Calculate processing success rate
-        successfully_processed = sum(1 for r in stats_entries if r.get('example_processed_successfully', False))
-        processing_success_rate = (successfully_processed / total * 100) if total > 0 else 0
-
         stats_str = (
             f"\nFinal Statistics (N={total}):\n"
-            f"- Processing success rate: {processing_success_rate:.1f}%\n"
-            f"- Successfully processed examples: {successfully_processed}/{total} ({processing_success_rate:.1f}%)\n"
-            f"- Problems with at least one correct solution: {at_least_one}/{total} ({(at_least_one/total*100) if total > 0 else 0:.1f}%)\n"
-            f"- Average correct solutions per problem: {avg_correct:.2f}\n"
-            f"- Problems with above average correct solutions: {above_avg}/{total} ({(above_avg/total*100) if total > 0 else 0:.1f}%)\n"
-            f"- Problems where most common answer is correct: {most_common_correct}/{total} ({(most_common_correct/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Processing success rate: {final_stats['processing_success_rate']:.1f}%\n"
+            f"- Successfully processed examples: {final_stats['successfully_processed']}/{total} "
+            f"({final_stats['processing_success_rate']:.1f}%)\n"
+            f"- Problems with at least one correct solution: {final_stats['at_least_one']}/{total} "
+            f"({(final_stats['at_least_one']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Average correct solutions per problem: {final_stats['avg_correct']:.2f}\n"
+            f"- Problems with above average correct solutions: {final_stats['above_avg']}/{total} "
+            f"({(final_stats['above_avg']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems where most common answer is correct: {final_stats['most_common_correct']}/{total} "
+            f"({(final_stats['most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
         )
 
-        if tournament_entries:
+        # Joined benchmark statistics if present
+        if 'main_model_success_rate' in final_stats:
             stats_str += (
-                f"- Tournament winners correct: {tournament_winners}/{len(tournament_entries)} "
-                f"({(tournament_winners/len(tournament_entries)*100) if tournament_entries else 0:.1f}%)\n"
+                f"\nModel Comparison:\n"
+                f"- Main model success rate: {final_stats['main_model_success_rate']:.1f}%\n"
+                f"- Auxiliary model success rate: {final_stats['aux_model_success_rate']:.1f}%\n"
+                f"- Performance difference (main - aux): {final_stats['main_vs_aux_diff']:.1f}%\n"
+                f"\nModel Agreement:\n"
+                f"- Both models correct: {final_stats['both_correct_count']}/{total} "
+                f"({final_stats['both_correct_rate']:.1f}%)\n"
+                f"- Both models wrong: {final_stats['both_wrong_count']}/{total} "
+                f"({final_stats['both_wrong_rate']:.1f}%)\n"
+                f"- Overall agreement rate: {final_stats['agreement_rate']:.1f}%\n"
             )
 
-        if judge_entries:
+        # Tournament statistics if present
+        if 'tournament_winners' in final_stats:
             stats_str += (
-                f"- Judge decisions made: {len(judge_entries)}\n"
-                f"- Overall judge accuracy: {avg_judge_accuracy if avg_judge_accuracy is not None else 'N/A'}%\n"
+                f"\nTournament Statistics:\n"
+                f"- Tournament winners correct: {final_stats['tournament_winners']}/{final_stats['total_tournaments']} "
+                f"({(final_stats['tournament_winners']/final_stats['total_tournaments']*100) if final_stats['total_tournaments'] > 0 else 0:.1f}%)\n"
             )
 
-        stats_str += f"- Total runtime: {total_duration.total_seconds():.1f}s"
+        # Judge statistics if present
+        if 'judge_decisions' in final_stats:
+            stats_str += (
+                f"\nJudge Statistics:\n"
+                f"- Judge decisions made: {final_stats['judge_decisions']}\n"
+                f"- Overall judge accuracy: {final_stats['avg_judge_accuracy']:.1f}%\n"
+            )
+            
+        # Custom statistics if present
+        custom_stats = {k: v for k, v in final_stats.items() if k.startswith('custom_') and not k.endswith('_avg')}
+        if custom_stats:
+            stats_str += "\nCustom Statistics:\n"
+            for key, value in custom_stats.items():
+                display_name = key.replace('custom_', '').replace('_', ' ').title()
+                if key + '_avg' in final_stats:
+                    stats_str += f"- {display_name}: {value} (avg: {final_stats[key + '_avg']:.2f})\n"
+                else:
+                    stats_str += f"- {display_name}: {value}\n"
+
+        stats_str += f"\n- Total runtime: {total_duration.total_seconds():.1f}s"
 
         print(stats_str)
         self._save_progress_stats(stats_str)
