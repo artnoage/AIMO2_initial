@@ -115,11 +115,16 @@ class ProgressTracker:
             stats['main_better_when_disagree'] = sum(r.get('main_better_when_disagree', 0) for r in entries)
             stats['aux_better_when_disagree'] = sum(r.get('aux_better_when_disagree', 0) for r in entries)
             
-            # Calculate rates
-            total_attempts = stats.get('total_attempts_per_model', 0) * total
-            stats['both_correct_rate'] = (stats['both_correct_count'] / total) * 100 if total > 0 else 0
-            stats['both_wrong_rate'] = (stats['both_wrong_count'] / total) * 100 if total > 0 else 0
-            stats['agreement_rate'] = ((stats['both_correct_count'] + stats['both_wrong_count']) / total) * 100 if total > 0 else 0
+            # Calculate rates - use total_attempts_per_model to get the correct denominator
+            total_attempts = sum(r.get('total_attempts_per_model', 0) for r in entries)
+            if total_attempts > 0:
+                stats['both_correct_rate'] = (stats['both_correct_count'] / total_attempts) * 100
+                stats['both_wrong_rate'] = (stats['both_wrong_count'] / total_attempts) * 100
+                stats['agreement_rate'] = ((stats['both_correct_count'] + stats['both_wrong_count']) / total_attempts) * 100
+            else:
+                stats['both_correct_rate'] = 0
+                stats['both_wrong_rate'] = 0
+                stats['agreement_rate'] = 0
             stats['disagreement_rate'] = (stats['disagreement_count'] / total) * 100 if total > 0 else 0
             
             if stats['disagreement_count'] > 0:
