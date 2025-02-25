@@ -117,6 +117,7 @@ class ProgressTracker:
             
             # Calculate rates - use total_attempts_per_model to get the correct denominator
             total_attempts = sum(r.get('total_attempts_per_model', 0) for r in entries)
+            stats['total_attempts'] = total_attempts  # Store for display
             if total_attempts > 0:
                 stats['both_correct_rate'] = (stats['both_correct_count'] / total_attempts) * 100
                 stats['both_wrong_rate'] = (stats['both_wrong_count'] / total_attempts) * 100
@@ -186,9 +187,9 @@ class ProgressTracker:
                 f"- Auxiliary model success rate: {batch_stats['aux_model_success_rate']:.1f}%\n"
                 f"- Performance difference (main - aux): {batch_stats['main_vs_aux_diff']:.1f}%\n"
                 f"\nModel Agreement:\n"
-                f"- Both models correct: {batch_stats['both_correct_count']}/{batch_stats.get('total_attempts_per_model', 0)} "
+                f"- Both models correct: {batch_stats['both_correct_count']}/{batch_stats['total_attempts']} "
                 f"({batch_stats['both_correct_rate']:.1f}%)\n"
-                f"- Both models wrong: {batch_stats['both_wrong_count']}/{batch_stats.get('total_attempts_per_model', 0)} "
+                f"- Both models wrong: {batch_stats['both_wrong_count']}/{batch_stats['total_attempts']} "
                 f"({batch_stats['both_wrong_rate']:.1f}%)\n"
                 f"- Overall agreement rate: {batch_stats['agreement_rate']:.1f}%\n"
             )
@@ -361,9 +362,9 @@ class ProgressTracker:
                 f"- Auxiliary model success rate: {final_stats['aux_model_success_rate']:.1f}%\n"
                 f"- Performance difference (main - aux): {final_stats['main_vs_aux_diff']:.1f}%\n"
                 f"\nModel Agreement:\n"
-                f"- Both models correct: {final_stats['both_correct_count']}/{final_stats.get('total_attempts_per_model', 0)} "
+                f"- Both models correct: {final_stats['both_correct_count']}/{final_stats['total_attempts']} "
                 f"({final_stats['both_correct_rate']:.1f}%)\n"
-                f"- Both models wrong: {final_stats['both_wrong_count']}/{final_stats.get('total_attempts_per_model', 0)} "
+                f"- Both models wrong: {final_stats['both_wrong_count']}/{final_stats['total_attempts']} "
                 f"({final_stats['both_wrong_rate']:.1f}%)\n"
                 f"- Overall agreement rate: {final_stats['agreement_rate']:.1f}%\n"
             )
