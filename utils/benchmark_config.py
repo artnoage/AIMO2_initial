@@ -17,7 +17,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0="/workspace/AIMO2_initial/models/4"
+    LOCAL_0="/workspace/AIMO2_initial/models/solver_4/20250224_212106"
     LOCAL_1 ="/Home/stat/laschos/math/AIMO2_initial/models/bigrew" ###It is wrong this QWEN + solver.
     LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/continued"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"

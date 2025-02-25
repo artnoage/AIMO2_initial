@@ -109,7 +109,7 @@ class BaseReward(ABC):
                     'indices': []
                 }
             prompt_groups[prompt]['completions'].append(completion)
-            prompt_groups[prompt]['answers'].append(ans)
+            prompt_groups[prompt]['answers'].append(str(ans))
             prompt_groups[prompt]['indices'].append(idx)
             
         # Process completions in parallel using event loop
@@ -133,7 +133,7 @@ class BaseReward(ABC):
                         'prompt': prompt,
                         'problem': problems[idx],  # Map to original index
                         'solution': solutions[idx], # Map to original index
-                        'answer': ans,
+                        'answer': str(ans),
                         'group_idx': group_idx,
                         'reward_index': idx,
                         'group_completions': group['completions'],

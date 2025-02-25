@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_0"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_name = "Metaskepsis/Elite2"
+    dataset_name = "Metaskepsis/custom219"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -196,16 +196,16 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'problem':  x['question'],
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(2000))
-    formatted_dataset = formatted_dataset.select(range(1000))
-    
+    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
+    formatted_dataset2= formatted_dataset.shuffle(seed=31)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
    
     
     # Verify first few entries
@@ -220,7 +220,7 @@ def main():
     training_args = GRPOConfig(
         use_vllm=False,
         torch_empty_cache_steps=1,
-        learning_rate=4e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -232,9 +232,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=14,
+        num_generations=12,
         max_prompt_length=800,
-        max_completion_length=2000,
+        max_completion_length=2400,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

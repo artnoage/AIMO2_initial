@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 from typing import List
-from datasets import load_dataset, Dataset
+from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -33,14 +33,8 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Each step should be numbered and self-contained</step>\n\n
     <step>Step N: In your final step, state your conclusion\n
     Put your final answer in \\boxed{}</step>\n
-    </response>\n\n
-    Important:\n
-    - Each step must be numbered and enclosed in <step> tags\n
-    - Use proper LaTeX notation for all mathematics\n
-    - Put your final answer in \\boxed{}\n
-    - Keep steps clear and focused"""
+    </response>\n\n"""
     
-
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -48,7 +42,7 @@ def setup_logging(model_type: str) -> logging.Logger:
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('solver_grpo')
+    logger = logging.getLogger('group_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -73,100 +67,125 @@ class LoggingCallback(TrainerCallback):
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
-        if logs and 'rewards/0' in logs:
-            # Key performance metrics for wandb
+        if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Key group performance metrics for wandb
             wandb_stats = {
-                'solver_reward': logs['rewards/0'],
-                'correct_ratio': self.reward_func.stats.reward_components.get('correct_answers', 0) / max(1, self.reward_func.stats.total_batches),
-                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0)
+                'group_reward': logs['rewards/0'],
+                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
+                'solution_diversity': self.reward_func.stats.group_stats.get('solution_diversity', 0.0),
+                'unanimous_correct_ratio': self.reward_func.stats.group_stats.get('unanimous_correct', 0) / max(1, self.reward_func.stats.total_batches)
             }
             
             # Detailed stats for local logging only
             local_stats = {
-                'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
-                'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
-                'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0),
-                'step_count': self.reward_func.stats.reward_components.get('step_count', 0) - getattr(self, '_last_step_count', 0),
-                'ordered_steps': self.reward_func.stats.reward_components.get('ordered_steps', 0) - getattr(self, '_last_ordered_steps', 0)
+                'reward_components': {
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'majority_bonuses': self.reward_func.stats.reward_components.get('majority_bonuses', 0) - getattr(self, '_last_majority_bonuses', 0),
+                    'diversity_bonuses': self.reward_func.stats.reward_components.get('diversity_bonuses', 0) - getattr(self, '_last_diversity_bonuses', 0),
+                    'length_penalties': self.reward_func.stats.reward_components.get('total_length_penalty', 0.0) - getattr(self, '_last_length_penalties', 0.0)
+                },
+                'group_stats': {
+                    'correct_answers': self.reward_func.stats.group_stats.get('correct_answers', 0) - getattr(self, '_last_correct_answers', 0),
+                    'incorrect_answers': self.reward_func.stats.group_stats.get('incorrect_answers', 0) - getattr(self, '_last_incorrect_answers', 0),
+                    'unique_solutions': self.reward_func.stats.group_stats.get('unique_solutions', 0) - getattr(self, '_last_unique_solutions', 0),
+                    'similar_solutions': self.reward_func.stats.group_stats.get('similar_solutions', 0) - getattr(self, '_last_similar_solutions', 0),
+                    'majority_votes': self.reward_func.stats.group_stats.get('majority_votes', 0) - getattr(self, '_last_majority_votes', 0),
+                    'minority_votes': self.reward_func.stats.group_stats.get('minority_votes', 0) - getattr(self, '_last_minority_votes', 0),
+                    'unanimous_correct': self.reward_func.stats.group_stats.get('unanimous_correct', 0) - getattr(self, '_last_unanimous_correct', 0),
+                    'unanimous_incorrect': self.reward_func.stats.group_stats.get('unanimous_incorrect', 0) - getattr(self, '_last_unanimous_incorrect', 0),
+                    'split_votes': self.reward_func.stats.group_stats.get('split_votes', 0) - getattr(self, '_last_split_votes', 0),
+                    'average_majority_size': self.reward_func.stats.group_stats.get('average_majority_size', 0.0),
+                    'average_vote_margin': self.reward_func.stats.group_stats.get('average_vote_margin', 0.0)
+                }
             }
+            
+            # Add similarity matrix to local stats if available
+            if hasattr(self.reward_func, 'similarity_checker'):
+                local_stats['similarity_matrix'] = self.reward_func.similarity_checker.compute_similarity_matrix(logs.get('completions', [])).tolist()
             
             # Store current values for next round
             self._last_base_rewards = self.reward_func.stats.reward_components.get('base_rewards', 0)
-            self._last_validation_rewards = self.reward_func.stats.reward_components.get('validation_rewards', 0)
+            self._last_majority_bonuses = self.reward_func.stats.reward_components.get('majority_bonuses', 0)
+            self._last_diversity_bonuses = self.reward_func.stats.reward_components.get('diversity_bonuses', 0)
             self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
-            self._last_correct_answers = self.reward_func.stats.reward_components.get('correct_answers', 0)
-            self._last_incorrect_answers = self.reward_func.stats.reward_components.get('incorrect_answers', 0)
-            self._last_step_count = self.reward_func.stats.reward_components.get('step_count', 0)
-            self._last_ordered_steps = self.reward_func.stats.reward_components.get('ordered_steps', 0)
             
-            # Update wandb logs
+            # Store group stats
+            self._last_correct_answers = self.reward_func.stats.group_stats.get('correct_answers', 0)
+            self._last_incorrect_answers = self.reward_func.stats.group_stats.get('incorrect_answers', 0)
+            self._last_unique_solutions = self.reward_func.stats.group_stats.get('unique_solutions', 0)
+            self._last_similar_solutions = self.reward_func.stats.group_stats.get('similar_solutions', 0)
+            self._last_majority_votes = self.reward_func.stats.group_stats.get('majority_votes', 0)
+            self._last_minority_votes = self.reward_func.stats.group_stats.get('minority_votes', 0)
+            self._last_unanimous_correct = self.reward_func.stats.group_stats.get('unanimous_correct', 0)
+            self._last_unanimous_incorrect = self.reward_func.stats.group_stats.get('unanimous_incorrect', 0)
+            self._last_split_votes = self.reward_func.stats.group_stats.get('split_votes', 0)
+            
+            # Update logs with our metrics
             logs.update(wandb_stats)
-            
-            # Log detailed statistics periodically
-            if self.step % self.save_frequency == 0:
-                self.logger.info(f"\nDetailed Statistics at step {self.step}:")
-                self.logger.info("\nWandb tracked metrics:")
-                for key, value in wandb_stats.items():
-                    self.logger.info(f"  {key}: {value}")
-                    
-                self.logger.info("\nAdditional local metrics:")
-                for key, value in local_stats.items():
-                    self.logger.info(f"  {key}: {value}")
-                    
-                self.logger.info("\nAccumulated statistics:")
-                self.logger.info(f"Total batches processed: {self.reward_func.stats.total_batches}")
-                self.logger.info(f"Total rewards: {self.reward_func.stats.total_rewards}")
-                self.logger.info(self.reward_func.stats.get_summary())
 
 def main():
     # Configuration
-    model_type = "solver 4"
-    model_name = "models/group_5/20250218_180840"
+    model_type = "solver_4"
+    model_name = "Qwen/Qwen2.5-14B-Instruct-1M"
     dataset_name = "Metaskepsis/Numina_medium_filtered"
     
-    # Initialize config
-    reward_config = RewardConfig(model_type=model_type)
-    
-    # Setup logging
+    # Setup logging first
     logger = setup_logging(model_type)
+    
+
+
+    # Initialize config with modified bonus values
+    reward_config = RewardConfig(model_type=model_type)
+    reward_config.group_majority_bonus = 0.1  # Increased from 0.2
+    reward_config.group_diversity_bonus = 2  # Increased from 1.0
+    
+    # Setup
+    logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"train_results/{model_type}/{timestamp}"
-    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
+    output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
+    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
         name=wandbname,
         config={
-            "model_type": model_type,
-            "model":model_name,
+            "model_type": reward_config.model_type,
             "dataset": dataset_name,
-            "base_reward": 2.0,
-            "validation_reward": 0.2,
-            "length_penalty_factor": 0.0001
+            "base_reward": 3.0,
+            "diversity_bonus": 0.3,
+            "majority_bonus": 0.2,
+            "similarity_threshold_low": 0.7,
+            "similarity_threshold_high": 0.9
         }
     )
-    #hello
-    reward_func = SolutionReward(reward_config)
     
-
+    
+    
+    # Initialize reward function with existing config and similarity checker
+    reward_func = SolutionReward(reward_config)
+    logger.info("\nInitialized GroupReward:")
+    logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    if hasattr(reward_func, 'stats'):
+        logger.info(f"Stats total_batches: {reward_func.stats.total_batches}")
+        logger.info(f"Stats reward_components: {reward_func.stats.reward_components}")
+    
+    # Load model
+   
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
+        max_seq_length=3200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64
-    )
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -175,20 +194,52 @@ def main():
         loftq_config=None
     )
     
-        
-    def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
-        data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + x['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-            'answer': x['answer']
-        }) # type: ignore
-        return data # type: ignore
+    
+    def get_questions1(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
 
+    def get_questions2(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+    def get_questions3(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # QWEN typically uses a ChatML‐style format with special tokens.
+        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
 
-    formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(4000))
-
+    formatted_dataset1 = get_questions1()
+    formatted_dataset1 = formatted_dataset1.shuffle(seed=42)
+    formatted_dataset1 = formatted_dataset1.select(range(320))
+    formatted_dataset2 = get_questions2()
+    formatted_dataset2 = formatted_dataset2.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset2.select(range(320))
+    formatted_dataset3 = get_questions3()
+    formatted_dataset3 = formatted_dataset3.shuffle(seed=42)
+    formatted_dataset3 = formatted_dataset3.select(range(320))
+   
+    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
+    formatted_dataset=formatted_dataset.shuffle(seed=42)
+    # Verify first few entries
+    for i in range(min(3, len(formatted_dataset))):
+        entry = formatted_dataset[i]
+        print(f"\nEntry {i} verification:")
+        print(f"Answer: {entry.get('answer')}")
+        print(f"Correct answer: {entry.get('correct_answer')}")
+    
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -199,8 +250,6 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        use_vllm=True,
-        vllm_gpu_memory_utilization= 0.35,
         torch_empty_cache_steps=1,
         learning_rate=4e-6,
         adam_beta1=0.9,
@@ -214,11 +263,11 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=7,
+        num_generations=12,
         max_prompt_length=800,
-        max_completion_length=1700,
+        max_completion_length=2400,
         num_train_epochs=1,
-        save_steps=250,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
