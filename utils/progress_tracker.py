@@ -272,29 +272,23 @@ class ProgressTracker:
             results_by_type = defaultdict(list)
             for r in self.results:
                 data_type = r.get('data_type')
-                if data_type:  # Include all data types, including statistics
+                if data_type:
                     results_by_type[data_type].append(r)
             
             print(f"Found data types: {list(results_by_type.keys())}")
             
-            # Save each data type to its own file
+            # Save timestamp for consistent filenames
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
             
-            # Save all results to a single file as well
-            all_results_filepath = os.path.join("results", f"all_results_{timestamp}.json")
-            with open(all_results_filepath, 'w') as f:
-                json.dump(self.results, f, indent=2)
-            print(f"Successfully saved {len(self.results)} total results to: {all_results_filepath}")
-            
-            # Save individual data types
-            for data_type, type_results in results_by_type.items():
-                if type_results:  # Only save if we have results
-                    filename = f"{data_type}_{timestamp}.json"
-                    filepath = os.path.join("results", filename)
-                    print(f"Attempting to save {len(type_results)} {data_type} results to: {filepath}")
-                    with open(filepath, 'w') as f:
-                        json.dump(type_results, f, indent=2)
-                    print(f"Successfully saved {len(type_results)} {data_type} results to: {filepath}")
+            # Only save training data
+            if 'training' in results_by_type and results_by_type['training']:
+                training_results = results_by_type['training']
+                filename = f"training_{timestamp}.json"
+                filepath = os.path.join("results", filename)
+                print(f"Attempting to save {len(training_results)} training results to: {filepath}")
+                with open(filepath, 'w') as f:
+                    json.dump(training_results, f, indent=2)
+                print(f"Successfully saved {len(training_results)} training results to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
