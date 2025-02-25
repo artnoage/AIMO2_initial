@@ -108,33 +108,22 @@ class ProgressTracker:
                 stats['aux_model_success_rate'] = (aux_correct / total_attempts) * 100
                 stats['main_vs_aux_diff'] = stats['main_model_success_rate'] - stats['aux_model_success_rate']
             
-            # Calculate agreement statistics
-            both_correct = sum(1 for r in entries if 
-                              any(s1 and s2 for s1, s2 in zip(r.get('is_correct_list', [])[::2], r.get('is_correct_list', [])[1::2])))
-            both_wrong = sum(1 for r in entries if 
-                            any(not s1 and not s2 for s1, s2 in zip(r.get('is_correct_list', [])[::2], r.get('is_correct_list', [])[1::2])))
+            # Use direct statistics from entries
+            stats['both_correct_count'] = sum(r.get('both_correct_count', 0) for r in entries)
+            stats['both_wrong_count'] = sum(r.get('both_wrong_count', 0) for r in entries)
+            stats['disagreement_count'] = sum(r.get('disagreement_count', 0) for r in entries)
+            stats['main_better_when_disagree'] = sum(r.get('main_better_when_disagree', 0) for r in entries)
+            stats['aux_better_when_disagree'] = sum(r.get('aux_better_when_disagree', 0) for r in entries)
             
-            stats['both_correct_count'] = both_correct
-            stats['both_wrong_count'] = both_wrong
-            stats['both_correct_rate'] = (both_correct / total) * 100 if total > 0 else 0
-            stats['both_wrong_rate'] = (both_wrong / total) * 100 if total > 0 else 0
-            stats['agreement_rate'] = ((both_correct + both_wrong) / total) * 100 if total > 0 else 0
+            # Calculate rates
+            stats['both_correct_rate'] = (stats['both_correct_count'] / total) * 100 if total > 0 else 0
+            stats['both_wrong_rate'] = (stats['both_wrong_count'] / total) * 100 if total > 0 else 0
+            stats['agreement_rate'] = ((stats['both_correct_count'] + stats['both_wrong_count']) / total) * 100 if total > 0 else 0
+            stats['disagreement_rate'] = (stats['disagreement_count'] / total) * 100 if total > 0 else 0
             
-        # Extract any custom statistics fields
-        for entry in entries:
-            for key, value in entry.items():
-                if key.startswith('custom_') and key not in stats:
-                    # Aggregate numeric values
-                    if isinstance(value, (int, float)):
-                        stats[key] = stats.get(key, 0) + value
-                    # Count boolean values
-                    elif isinstance(value, bool):
-                        stats[key] = stats.get(key, 0) + (1 if value else 0)
-        
-        # Calculate averages for custom statistics
-        for key in list(stats.keys()):
-            if key.startswith('custom_') and isinstance(stats[key], (int, float)):
-                stats[f'{key}_avg'] = stats[key] / total if total > 0 else 0
+            if stats['disagreement_count'] > 0:
+                stats['main_win_rate_when_disagree'] = (stats['main_better_when_disagree'] / stats['disagreement_count']) * 100
+                stats['aux_win_rate_when_disagree'] = (stats['aux_better_when_disagree'] / stats['disagreement_count']) * 100
             
         return stats
 
@@ -188,6 +177,17 @@ class ProgressTracker:
                 f"({batch_stats['both_wrong_rate']:.1f}%)\n"
                 f"- Overall agreement rate: {batch_stats['agreement_rate']:.1f}%\n"
             )
+            
+            if 'disagreement_count' in batch_stats and batch_stats['disagreement_count'] > 0:
+                stats_str += (
+                    f"\nDisagreement Analysis:\n"
+                    f"- Disagreement count: {batch_stats['disagreement_count']}/{batch_stats['total']} "
+                    f"({batch_stats['disagreement_rate']:.1f}%)\n"
+                    f"- Main model wins when disagreeing: {batch_stats['main_better_when_disagree']}/{batch_stats['disagreement_count']} "
+                    f"({batch_stats['main_win_rate_when_disagree']:.1f}%)\n"
+                    f"- Auxiliary model wins when disagreeing: {batch_stats['aux_better_when_disagree']}/{batch_stats['disagreement_count']} "
+                    f"({batch_stats['aux_win_rate_when_disagree']:.1f}%)\n"
+                )
         
         # Judge statistics if present
         if 'judge_decisions' in batch_stats:
@@ -196,17 +196,6 @@ class ProgressTracker:
                 f"- Judge decisions made: {batch_stats['judge_decisions']}\n"
                 f"- Judge accuracy: {batch_stats['avg_judge_accuracy']:.1f}%\n"
             )
-            
-        # Custom statistics if present
-        custom_stats = {k: v for k, v in batch_stats.items() if k.startswith('custom_') and not k.endswith('_avg')}
-        if custom_stats:
-            stats_str += "\nCustom Statistics:\n"
-            for key, value in custom_stats.items():
-                display_name = key.replace('custom_', '').replace('_', ' ').title()
-                if key + '_avg' in batch_stats:
-                    stats_str += f"- {display_name}: {value} (avg: {batch_stats[key + '_avg']:.2f})\n"
-                else:
-                    stats_str += f"- {display_name}: {value}\n"
             
         # Calculate accumulated statistics
         acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
@@ -351,7 +340,17 @@ class ProgressTracker:
                 f"({final_stats['both_wrong_rate']:.1f}%)\n"
                 f"- Overall agreement rate: {final_stats['agreement_rate']:.1f}%\n"
             )
-
+            
+            if 'disagreement_count' in final_stats and final_stats['disagreement_count'] > 0:
+                stats_str += (
+                    f"\nDisagreement Analysis:\n"
+                    f"- Disagreement count: {final_stats['disagreement_count']}/{total} "
+                    f"({final_stats['disagreement_rate']:.1f}%)\n"
+                    f"- Main model wins when disagreeing: {final_stats['main_better_when_disagree']}/{final_stats['disagreement_count']} "
+                    f"({final_stats['main_win_rate_when_disagree']:.1f}%)\n"
+                    f"- Auxiliary model wins when disagreeing: {final_stats['aux_better_when_disagree']}/{final_stats['disagreement_count']} "
+                    f"({final_stats['aux_win_rate_when_disagree']:.1f}%)\n"
+                )
 
         # Judge statistics if present
         if 'judge_decisions' in final_stats:
@@ -360,17 +359,6 @@ class ProgressTracker:
                 f"- Judge decisions made: {final_stats['judge_decisions']}\n"
                 f"- Overall judge accuracy: {final_stats['avg_judge_accuracy']:.1f}%\n"
             )
-            
-        # Custom statistics if present
-        custom_stats = {k: v for k, v in final_stats.items() if k.startswith('custom_') and not k.endswith('_avg')}
-        if custom_stats:
-            stats_str += "\nCustom Statistics:\n"
-            for key, value in custom_stats.items():
-                display_name = key.replace('custom_', '').replace('_', ' ').title()
-                if key + '_avg' in final_stats:
-                    stats_str += f"- {display_name}: {value} (avg: {final_stats[key + '_avg']:.2f})\n"
-                else:
-                    stats_str += f"- {display_name}: {value}\n"
 
         stats_str += f"\n- Total runtime: {total_duration.total_seconds():.1f}s"
 

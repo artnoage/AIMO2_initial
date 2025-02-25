@@ -202,16 +202,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'aux_model_correct_count': aux_correct_count,
             'total_attempts_per_model': config.best_of,
             
-            # Add new detailed statistics
-            'custom_both_correct_count': both_correct_count,
-            'custom_both_wrong_count': both_wrong_count,
-            'custom_disagreement_count': disagreement_count,
-            'custom_main_better_when_disagree': main_better_when_disagree,
-            'custom_aux_better_when_disagree': aux_better_when_disagree,
-            'custom_agreement_rate': ((both_correct_count + both_wrong_count) / config.best_of) * 100,
-            'custom_main_success_rate': (main_correct_count / config.best_of) * 100,
-            'custom_aux_success_rate': (aux_correct_count / config.best_of) * 100,
-            'custom_performance_gap': ((main_correct_count - aux_correct_count) / config.best_of) * 100
+            # Add key joined benchmark statistics
+            'both_correct_count': both_correct_count,
+            'both_wrong_count': both_wrong_count,
+            'disagreement_count': disagreement_count,
+            'main_better_when_disagree': main_better_when_disagree,
+            'aux_better_when_disagree': aux_better_when_disagree,
+            'agreement_rate': ((both_correct_count + both_wrong_count) / config.best_of) * 100,
+            'main_success_rate': (main_correct_count / config.best_of) * 100,
+            'aux_success_rate': (aux_correct_count / config.best_of) * 100,
+            'performance_gap': ((main_correct_count - aux_correct_count) / config.best_of) * 100
         })
         
         return results
