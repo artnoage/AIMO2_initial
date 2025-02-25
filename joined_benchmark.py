@@ -227,7 +227,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'all_solutions_correct': all(s['is_correct'] for s in all_solutions),
             'main_model_correct_count': main_correct_count,
             'aux_model_correct_count': aux_correct_count,
-            'total_attempts_per_model': config.best_of,
+            'total_attempts_per_model': config.best_of,  # This is per example
             
             # Add key joined benchmark statistics
             'both_correct_count': both_correct_count,
