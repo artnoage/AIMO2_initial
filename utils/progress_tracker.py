@@ -80,8 +80,12 @@ class ProgressTracker:
                 if matches_count > 0:
                     at_least_one += 1
                 total_correct += matches_count
-                if matches_count / len(matches) > 0.5:
+                
+                # Calculate if above average (more than half of solutions are correct)
+                # This is different from most_common_correct which checks if the most frequent answer is correct
+                if len(matches) > 0 and matches_count / len(matches) > 0.5:
                     above_avg += 1
+                    
                 # Check most common verdict
                 if r.get('is_most_common_correct', False):
                     most_common_correct += 1
@@ -241,6 +245,44 @@ class ProgressTracker:
                 f"- Problems where most common answer is correct: {acc_stats['most_common_correct']}/{acc_stats['total']} "
                 f"({(acc_stats['most_common_correct']/acc_stats['total']*100):.1f}%)\n"
             )
+            
+            # Joined benchmark statistics if present in accumulated stats
+            if 'main_model_success_rate' in acc_stats:
+                stats_str += (
+                    f"\nModel Comparison:\n"
+                    f"- Main model success rate: {acc_stats['main_model_success_rate']:.1f}%\n"
+                    f"- Auxiliary model success rate: {acc_stats['aux_model_success_rate']:.1f}%\n"
+                    f"- Performance difference (main - aux): {acc_stats['main_vs_aux_diff']:.1f}%\n"
+                    f"\nModel Agreement:\n"
+                    f"- Both models correct: {acc_stats['both_correct_count']}/{acc_stats['total_attempts']} "
+                    f"({acc_stats['both_correct_rate']:.1f}%)\n"
+                    f"- Both models wrong: {acc_stats['both_wrong_count']}/{acc_stats['total_attempts']} "
+                    f"({acc_stats['both_wrong_rate']:.1f}%)\n"
+                    f"- Overall agreement rate: {acc_stats['agreement_rate']:.1f}%\n"
+                )
+                
+                if 'disagreement_count' in acc_stats and acc_stats['disagreement_count'] > 0:
+                    stats_str += (
+                        f"\nDisagreement Analysis:\n"
+                        f"- Disagreement count: {acc_stats['disagreement_count']}/{acc_stats['total']} "
+                        f"({acc_stats['disagreement_rate']:.1f}%)\n"
+                        f"- Main model wins when disagreeing: {acc_stats['main_better_when_disagree']}/{acc_stats['disagreement_count']} "
+                        f"({acc_stats['main_win_rate_when_disagree']:.1f}%)\n"
+                        f"- Auxiliary model wins when disagreeing: {acc_stats['aux_better_when_disagree']}/{acc_stats['disagreement_count']} "
+                        f"({acc_stats['aux_win_rate_when_disagree']:.1f}%)\n"
+                    )
+                    
+                # Add most common answer statistics
+                if 'main_most_common_correct_count' in acc_stats:
+                    stats_str += (
+                        f"\nMost Common Answer Analysis:\n"
+                        f"- Main model most common answer correct: {acc_stats['main_most_common_correct_count']}/{acc_stats['total']} "
+                        f"({acc_stats['main_most_common_correct_rate']:.1f}%)\n"
+                        f"- Auxiliary model most common answer correct: {acc_stats['aux_most_common_correct_count']}/{acc_stats['total']} "
+                        f"({acc_stats['aux_most_common_correct_rate']:.1f}%)\n"
+                        f"- Combined models most common answer correct: {acc_stats['combined_most_common_correct_count']}/{acc_stats['total']} "
+                        f"({acc_stats['combined_most_common_correct_rate']:.1f}%)\n"
+                    )
             
             if 'tournament_winners' in acc_stats:
                 stats_str += (
