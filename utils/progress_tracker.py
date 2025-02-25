@@ -128,8 +128,11 @@ class ProgressTracker:
             # Track most common answer statistics
             stats['main_most_common_correct_count'] = sum(1 for r in entries if r.get('main_most_common_correct', False))
             stats['aux_most_common_correct_count'] = sum(1 for r in entries if r.get('aux_most_common_correct', False))
+            stats['combined_most_common_correct_count'] = sum(1 for r in entries if r.get('combined_most_common_correct', False))
+            
             stats['main_most_common_correct_rate'] = (stats['main_most_common_correct_count'] / total) * 100 if total > 0 else 0
             stats['aux_most_common_correct_rate'] = (stats['aux_most_common_correct_count'] / total) * 100 if total > 0 else 0
+            stats['combined_most_common_correct_rate'] = (stats['combined_most_common_correct_count'] / total) * 100 if total > 0 else 0
             
         return stats
 
@@ -203,6 +206,8 @@ class ProgressTracker:
                     f"({batch_stats['main_most_common_correct_rate']:.1f}%)\n"
                     f"- Auxiliary model most common answer correct: {batch_stats['aux_most_common_correct_count']}/{batch_stats['total']} "
                     f"({batch_stats['aux_most_common_correct_rate']:.1f}%)\n"
+                    f"- Combined models most common answer correct: {batch_stats['combined_most_common_correct_count']}/{batch_stats['total']} "
+                    f"({batch_stats['combined_most_common_correct_rate']:.1f}%)\n"
                 )
         
         # Judge statistics if present
@@ -376,6 +381,8 @@ class ProgressTracker:
                     f"({final_stats['main_most_common_correct_rate']:.1f}%)\n"
                     f"- Auxiliary model most common answer correct: {final_stats['aux_most_common_correct_count']}/{total} "
                     f"({final_stats['aux_most_common_correct_rate']:.1f}%)\n"
+                    f"- Combined models most common answer correct: {final_stats['combined_most_common_correct_count']}/{total} "
+                    f"({final_stats['combined_most_common_correct_rate']:.1f}%)\n"
                 )
 
         # Judge statistics if present

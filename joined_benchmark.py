@@ -120,7 +120,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"\nOverall Statistics:")
         logger.append(f"├─ Total correct: {correct_count}/{total_attempts}")
         logger.append(f"├─ Main model most common answer: {main_most_common_answer} (Correct: {main_most_common_correct})")
-        logger.append(f"└─ Auxiliary model most common answer: {aux_most_common_answer} (Correct: {aux_most_common_correct})")
+        logger.append(f"├─ Auxiliary model most common answer: {aux_most_common_answer} (Correct: {aux_most_common_correct})")
+        logger.append(f"└─ Combined models most common answer: {combined_most_common_answer} (Correct: {combined_most_common_correct})")
         logger.append("="*80)
         
         # Print all logs at the end
@@ -169,6 +170,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         aux_most_common_answer = Counter(aux_answers).most_common(1)[0][0] if aux_answers else None
         aux_most_common_correct = any(str(s['answer']) == aux_most_common_answer and s['is_correct'] 
                                      for s in aux_solutions) if aux_most_common_answer else False
+        
+        # For combined models (all answers from both models)
+        combined_answers = [str(s['answer']) for s in all_solutions if s['answer'] is not None]
+        combined_most_common_answer = Counter(combined_answers).most_common(1)[0][0] if combined_answers else None
+        combined_most_common_correct = any(str(s['answer']) == combined_most_common_answer and s['is_correct'] 
+                                          for s in all_solutions) if combined_most_common_answer else False
         
         # Calculate agreement statistics
         both_correct_count = 0
@@ -234,7 +241,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'main_most_common_answer': main_most_common_answer,
             'main_most_common_correct': main_most_common_correct,
             'aux_most_common_answer': aux_most_common_answer,
-            'aux_most_common_correct': aux_most_common_correct
+            'aux_most_common_correct': aux_most_common_correct,
+            'combined_most_common_answer': combined_most_common_answer,
+            'combined_most_common_correct': combined_most_common_correct
         })
         
         return results
