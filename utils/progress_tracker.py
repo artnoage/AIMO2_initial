@@ -91,12 +91,6 @@ class ProgressTracker:
         stats['above_avg'] = above_avg
         stats['most_common_correct'] = most_common_correct
         
-        # Tournament statistics
-        tournament_entries = [r for r in entries if 'tournament_winner_correct' in r]
-        if tournament_entries:
-            stats['tournament_winners'] = sum(1 for r in tournament_entries if r.get('tournament_winner_correct', False))
-            stats['total_tournaments'] = len(tournament_entries)
-            
         # Judge statistics
         judge_entries = [r for r in entries if r.get('judge_accuracy') is not None]
         if judge_entries:
@@ -195,14 +189,6 @@ class ProgressTracker:
                 f"- Overall agreement rate: {batch_stats['agreement_rate']:.1f}%\n"
             )
         
-        # Tournament statistics if present
-        if 'tournament_winners' in batch_stats:
-            stats_str += (
-                f"\nTournament Statistics:\n"
-                f"- Tournament winners correct: {batch_stats['tournament_winners']}/{batch_stats['total_tournaments']} "
-                f"({(batch_stats['tournament_winners']/batch_stats['total_tournaments']*100):.1f}%)\n"
-            )
-            
         # Judge statistics if present
         if 'judge_decisions' in batch_stats:
             stats_str += (
@@ -366,13 +352,6 @@ class ProgressTracker:
                 f"- Overall agreement rate: {final_stats['agreement_rate']:.1f}%\n"
             )
 
-        # Tournament statistics if present
-        if 'tournament_winners' in final_stats:
-            stats_str += (
-                f"\nTournament Statistics:\n"
-                f"- Tournament winners correct: {final_stats['tournament_winners']}/{final_stats['total_tournaments']} "
-                f"({(final_stats['tournament_winners']/final_stats['total_tournaments']*100) if final_stats['total_tournaments'] > 0 else 0:.1f}%)\n"
-            )
 
         # Judge statistics if present
         if 'judge_decisions' in final_stats:

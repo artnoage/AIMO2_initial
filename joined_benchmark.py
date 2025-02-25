@@ -195,7 +195,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'total_solutions': len(all_solutions),
             'correct_solutions': correct_count,
             'incorrect_solutions': len(all_solutions) - correct_count,
-            'tournament_winner_correct': None,
             'judge_accuracy': None,
             'judge_decisions': 0,
             'all_solutions_correct': all(s['is_correct'] for s in all_solutions),
@@ -230,7 +229,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'total_solutions': 0,
             'correct_solutions': 0,
             'incorrect_solutions': 0,
-            'tournament_winner_correct': None,
             'judge_accuracy': None,
             'judge_decisions': 0,
             'all_solutions_correct': None
