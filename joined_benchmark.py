@@ -19,7 +19,7 @@ os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
-    """Process a single example using both main and auxiliary models"""
+    """Process a single example using both main and auxiliary models with best-of sampling"""
     logger = BenchmarkLogger()
     try:
         if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
@@ -40,23 +40,58 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main_agent = FullSolutionAgent(main_model)
         aux_agent = FullSolutionAgent(aux_model)
         
-        # Get solutions from both agents
-        main_prompt, main_solution = await main_agent.generate(example["problem"], return_prompt=True)
-        aux_prompt, aux_solution = await aux_agent.generate(example["problem"], return_prompt=True)
-        
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
         
-        # Verify both solutions
-        main_correct, main_answer = await verifier.verify(main_solution, correct_answer, example["problem"])
-        aux_correct, aux_answer = await verifier.verify(aux_solution, correct_answer, example["problem"])
+        # Store all solutions from both models
+        all_solutions = []
+        correct_count = 0
         
-        solutions = [
-            {'solution': main_solution, 'answer': main_answer, 'is_correct': main_correct, 'agent': 'main'},
-            {'solution': aux_solution, 'answer': aux_answer, 'is_correct': aux_correct, 'agent': 'auxiliary'}
-        ]
+        # Generate best_of solutions for each model
+        for attempt in range(config.best_of):
+            try:
+                # Get solutions from both agents
+                main_prompt, main_solution = await main_agent.generate(example["problem"], return_prompt=True)
+                aux_prompt, aux_solution = await aux_agent.generate(example["problem"], return_prompt=True)
+                
+                # Verify both solutions
+                main_correct, main_answer = await verifier.verify(main_solution, correct_answer, example["problem"])
+                aux_correct, aux_answer = await verifier.verify(aux_solution, correct_answer, example["problem"])
+                
+                # Add to solutions list with cross-reference of other model's correctness
+                all_solutions.append({
+                    'solution': main_solution, 
+                    'answer': main_answer, 
+                    'is_correct': main_correct, 
+                    'agent': 'main',
+                    'other_agent_correct': aux_correct,
+                    'attempt_number': attempt + 1
+                })
+                
+                all_solutions.append({
+                    'solution': aux_solution, 
+                    'answer': aux_answer, 
+                    'is_correct': aux_correct, 
+                    'agent': 'auxiliary',
+                    'other_agent_correct': main_correct,
+                    'attempt_number': attempt + 1
+                })
+                
+                # Update correct count
+                if main_correct:
+                    correct_count += 1
+                if aux_correct:
+                    correct_count += 1
+                    
+            except Exception as e:
+                logger.append(f"❌ Error in attempt {attempt + 1}: {str(e)}")
+                # Continue with next attempt
         
-        correct_count = sum(1 for s in solutions if s['is_correct'])
+        # If no solutions were generated successfully, return error
+        if not all_solutions:
+            logger.append(f"❌ Failed to generate any solutions for example {str(running_id)}")
+            logger.print()
+            return None
         
         # Add statistics to logs
         logger.append("\n" + "="*80)
@@ -66,9 +101,24 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         logger.append(f"\n📊 Statistics:")
-        logger.append(f"├─ Main model answer: {main_answer} (Correct: {main_correct})")
-        logger.append(f"├─ Auxiliary model answer: {aux_answer} (Correct: {aux_correct})")
-        logger.append(f"└─ Total correct: {correct_count}/2")
+        
+        # Group solutions by attempt for logging
+        for attempt in range(config.best_of):
+            attempt_num = attempt + 1
+            main_solutions = [s for s in all_solutions if s['agent'] == 'main' and s['attempt_number'] == attempt_num]
+            aux_solutions = [s for s in all_solutions if s['agent'] == 'auxiliary' and s['attempt_number'] == attempt_num]
+            
+            if main_solutions and aux_solutions:
+                main_sol = main_solutions[0]
+                aux_sol = aux_solutions[0]
+                logger.append(f"\nAttempt {attempt_num}:")
+                logger.append(f"├─ Main model answer: {main_sol['answer']} (Correct: {main_sol['is_correct']})")
+                logger.append(f"└─ Auxiliary model answer: {aux_sol['answer']} (Correct: {aux_sol['is_correct']})")
+        
+        # Overall statistics
+        total_attempts = config.best_of * 2  # 2 models per attempt
+        logger.append(f"\nOverall Statistics:")
+        logger.append(f"└─ Total correct: {correct_count}/{total_attempts}")
         logger.append("="*80)
         
         # Print all logs at the end
@@ -76,35 +126,44 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         results = []
         
-        # Add training data for each correct solution
-        for solution in solutions:
-            if solution['is_correct']:
-                prompt = main_prompt if solution['agent'] == 'main' else aux_prompt
-                results.append({
-                    'id': example_id,
-                    'data_type': 'training',
-                    'messages': [
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": solution['solution']}
-                    ],
-                    'agent_type': solution['agent']  # Tag which agent was correct
-                })
+        # Add individual entries for each solution
+        for solution in all_solutions:
+            # Get the appropriate prompt
+            prompt = example["problem"]
+            
+            results.append({
+                'id': example_id,
+                'data_type': 'training',
+                'problem': example['problem'],
+                'correct_solution': example['solution'],
+                'correct_answer': correct_answer,
+                'model_solution': solution['solution'],
+                'model_answer': solution['answer'],
+                'is_correct': solution['is_correct'],
+                'agent_type': solution['agent'],
+                'other_agent_correct': solution['other_agent_correct'],
+                'attempt_number': solution['attempt_number'],
+                'total_attempts': config.best_of
+            })
         
-        # Always add detailed statistics using same format as benchmark.py
+        # Always add detailed statistics
         results.append({
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            'is_correct_list': [main_correct, aux_correct],
-            'is_most_common_correct': main_correct,  # True if either model is correct
-            'success_rate': (correct_count/2)*100,
-            'total_solutions': 2,  # Main and auxiliary
+            'is_correct_list': [s['is_correct'] for s in all_solutions],
+            'is_most_common_correct': sum(1 for s in all_solutions if s['is_correct']) > len(all_solutions)/2,
+            'success_rate': (correct_count/len(all_solutions))*100,
+            'total_solutions': len(all_solutions),
             'correct_solutions': correct_count,
-            'incorrect_solutions': 2 - correct_count,
+            'incorrect_solutions': len(all_solutions) - correct_count,
             'tournament_winner_correct': None,
             'judge_accuracy': None,
             'judge_decisions': 0,
-            'all_solutions_correct': main_correct and aux_correct
+            'all_solutions_correct': all(s['is_correct'] for s in all_solutions),
+            'main_model_correct_count': sum(1 for s in all_solutions if s['agent'] == 'main' and s['is_correct']),
+            'aux_model_correct_count': sum(1 for s in all_solutions if s['agent'] == 'auxiliary' and s['is_correct']),
+            'total_attempts_per_model': config.best_of
         })
         
         return results
