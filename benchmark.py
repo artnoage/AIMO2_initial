@@ -171,7 +171,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         })
         
         return result_entries
-        ]
         
     except Exception as e:
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
