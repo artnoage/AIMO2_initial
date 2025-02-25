@@ -135,31 +135,42 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Print all logs at the end
         logger.print()
         
-        return [
-            {
+        # Create individual entries for each solution
+        result_entries = []
+        
+        # Add individual solution entries
+        for i, s in enumerate(solutions):
+            result_entries.append({
                 'id': example_id,
                 'data_type': 'training',
                 'problem': example['problem'],
                 'correct_solution': example['solution'],
                 'correct_answer': correct_answer,
-                'model_solutions': [s['solution'] for s in solutions],
-                'model_answers': [s['answer'] for s in solutions],
-            },
-            {
-                'id': example_id,
-                'data_type': 'statistics',
-                'example_processed_successfully': True,
-                'is_correct_list': [s['is_correct'] for s in solutions],
-                'is_most_common_correct': is_most_common_correct,
-                'success_rate': (correct_count/config.best_of)*100,
-                'total_solutions': len(solutions),
-                'correct_solutions': correct_count,
-                'incorrect_solutions': len(solutions) - correct_count,
-                'tournament_winner_correct': None,
-                'judge_accuracy': None,
-                'judge_decisions': 0,
-                'all_solutions_correct': all(s['is_correct'] for s in solutions)
-            }
+                'model_solution': s['solution'],
+                'model_answer': s['answer'],
+                'is_correct': s['is_correct'],
+                'attempt_number': i + 1,
+                'total_attempts': len(solutions)
+            })
+        
+        # Add statistics entry (unchanged)
+        result_entries.append({
+            'id': example_id,
+            'data_type': 'statistics',
+            'example_processed_successfully': True,
+            'is_correct_list': [s['is_correct'] for s in solutions],
+            'is_most_common_correct': is_most_common_correct,
+            'success_rate': (correct_count/config.best_of)*100,
+            'total_solutions': len(solutions),
+            'correct_solutions': correct_count,
+            'incorrect_solutions': len(solutions) - correct_count,
+            'tournament_winner_correct': None,
+            'judge_accuracy': None,
+            'judge_decisions': 0,
+            'all_solutions_correct': all(s['is_correct'] for s in solutions)
+        })
+        
+        return result_entries
         ]
         
     except Exception as e:
