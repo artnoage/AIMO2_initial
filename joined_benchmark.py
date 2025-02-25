@@ -115,6 +115,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger.append(f"├─ Main model answer: {main_sol['answer']} (Correct: {main_sol['is_correct']})")
                 logger.append(f"└─ Auxiliary model answer: {aux_sol['answer']} (Correct: {aux_sol['is_correct']})")
         
+        # Calculate most common answer statistics for each model
+        from collections import Counter
+        
+        # For main model
+        main_solutions = [s for s in all_solutions if s['agent'] == 'main']
+        aux_solutions = [s for s in all_solutions if s['agent'] == 'auxiliary']
+        
+        main_answers = [str(s['answer']) for s in main_solutions if s['answer'] is not None]
+        main_most_common_answer = Counter(main_answers).most_common(1)[0][0] if main_answers else None
+        main_most_common_correct = any(str(s['answer']) == main_most_common_answer and s['is_correct'] 
+                                      for s in main_solutions) if main_most_common_answer else False
+        
+        # For auxiliary model
+        aux_answers = [str(s['answer']) for s in aux_solutions if s['answer'] is not None]
+        aux_most_common_answer = Counter(aux_answers).most_common(1)[0][0] if aux_answers else None
+        aux_most_common_correct = any(str(s['answer']) == aux_most_common_answer and s['is_correct'] 
+                                     for s in aux_solutions) if aux_most_common_answer else False
+        
+        # For combined models (all answers from both models)
+        combined_answers = [str(s['answer']) for s in all_solutions if s['answer'] is not None]
+        combined_most_common_answer = Counter(combined_answers).most_common(1)[0][0] if combined_answers else None
+        combined_most_common_correct = any(str(s['answer']) == combined_most_common_answer and s['is_correct'] 
+                                          for s in all_solutions) if combined_most_common_answer else False
+        
         # Overall statistics
         total_attempts = config.best_of * 2  # 2 models per attempt
         logger.append(f"\nOverall Statistics:")
@@ -155,27 +179,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         main_correct_count = sum(1 for s in main_solutions if s['is_correct'])
         aux_correct_count = sum(1 for s in aux_solutions if s['is_correct'])
-        
-        # Calculate most common answer statistics for each model
-        from collections import Counter
-        
-        # For main model
-        main_answers = [str(s['answer']) for s in main_solutions if s['answer'] is not None]
-        main_most_common_answer = Counter(main_answers).most_common(1)[0][0] if main_answers else None
-        main_most_common_correct = any(str(s['answer']) == main_most_common_answer and s['is_correct'] 
-                                      for s in main_solutions) if main_most_common_answer else False
-        
-        # For auxiliary model
-        aux_answers = [str(s['answer']) for s in aux_solutions if s['answer'] is not None]
-        aux_most_common_answer = Counter(aux_answers).most_common(1)[0][0] if aux_answers else None
-        aux_most_common_correct = any(str(s['answer']) == aux_most_common_answer and s['is_correct'] 
-                                     for s in aux_solutions) if aux_most_common_answer else False
-        
-        # For combined models (all answers from both models)
-        combined_answers = [str(s['answer']) for s in all_solutions if s['answer'] is not None]
-        combined_most_common_answer = Counter(combined_answers).most_common(1)[0][0] if combined_answers else None
-        combined_most_common_correct = any(str(s['answer']) == combined_most_common_answer and s['is_correct'] 
-                                          for s in all_solutions) if combined_most_common_answer else False
         
         # Calculate agreement statistics
         both_correct_count = 0

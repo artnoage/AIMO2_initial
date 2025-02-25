@@ -272,13 +272,19 @@ class ProgressTracker:
             results_by_type = defaultdict(list)
             for r in self.results:
                 data_type = r.get('data_type')
-                if data_type and data_type != 'statistics':  # Exclude statistics
+                if data_type:  # Include all data types, including statistics
                     results_by_type[data_type].append(r)
             
             print(f"Found data types: {list(results_by_type.keys())}")
             
             # Save each data type to its own file
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
+            
+            # Save all results to a single file as well
+            all_results_filepath = os.path.join("results", f"all_results_{timestamp}.json")
+            with open(all_results_filepath, 'w') as f:
+                json.dump(self.results, f, indent=2)
+            print(f"Successfully saved {len(self.results)} total results to: {all_results_filepath}")
             
             # Save individual data types
             for data_type, type_results in results_by_type.items():
