@@ -118,7 +118,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Overall statistics
         total_attempts = config.best_of * 2  # 2 models per attempt
         logger.append(f"\nOverall Statistics:")
-        logger.append(f"└─ Total correct: {correct_count}/{total_attempts}")
+        logger.append(f"├─ Total correct: {correct_count}/{total_attempts}")
+        logger.append(f"├─ Main model most common answer: {main_most_common_answer} (Correct: {main_most_common_correct})")
+        logger.append(f"└─ Auxiliary model most common answer: {aux_most_common_answer} (Correct: {aux_most_common_correct})")
         logger.append("="*80)
         
         # Print all logs at the end
@@ -152,6 +154,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         main_correct_count = sum(1 for s in main_solutions if s['is_correct'])
         aux_correct_count = sum(1 for s in aux_solutions if s['is_correct'])
+        
+        # Calculate most common answer statistics for each model
+        from collections import Counter
+        
+        # For main model
+        main_answers = [str(s['answer']) for s in main_solutions if s['answer'] is not None]
+        main_most_common_answer = Counter(main_answers).most_common(1)[0][0] if main_answers else None
+        main_most_common_correct = any(str(s['answer']) == main_most_common_answer and s['is_correct'] 
+                                      for s in main_solutions) if main_most_common_answer else False
+        
+        # For auxiliary model
+        aux_answers = [str(s['answer']) for s in aux_solutions if s['answer'] is not None]
+        aux_most_common_answer = Counter(aux_answers).most_common(1)[0][0] if aux_answers else None
+        aux_most_common_correct = any(str(s['answer']) == aux_most_common_answer and s['is_correct'] 
+                                     for s in aux_solutions) if aux_most_common_answer else False
         
         # Calculate agreement statistics
         both_correct_count = 0
@@ -211,7 +228,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'agreement_rate': ((both_correct_count + both_wrong_count) / config.best_of) * 100,
             'main_success_rate': (main_correct_count / config.best_of) * 100,
             'aux_success_rate': (aux_correct_count / config.best_of) * 100,
-            'performance_gap': ((main_correct_count - aux_correct_count) / config.best_of) * 100
+            'performance_gap': ((main_correct_count - aux_correct_count) / config.best_of) * 100,
+            
+            # Add most common answer statistics
+            'main_most_common_answer': main_most_common_answer,
+            'main_most_common_correct': main_most_common_correct,
+            'aux_most_common_answer': aux_most_common_answer,
+            'aux_most_common_correct': aux_most_common_correct
         })
         
         return results

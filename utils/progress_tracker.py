@@ -125,6 +125,12 @@ class ProgressTracker:
                 stats['main_win_rate_when_disagree'] = (stats['main_better_when_disagree'] / stats['disagreement_count']) * 100
                 stats['aux_win_rate_when_disagree'] = (stats['aux_better_when_disagree'] / stats['disagreement_count']) * 100
             
+            # Track most common answer statistics
+            stats['main_most_common_correct_count'] = sum(1 for r in entries if r.get('main_most_common_correct', False))
+            stats['aux_most_common_correct_count'] = sum(1 for r in entries if r.get('aux_most_common_correct', False))
+            stats['main_most_common_correct_rate'] = (stats['main_most_common_correct_count'] / total) * 100 if total > 0 else 0
+            stats['aux_most_common_correct_rate'] = (stats['aux_most_common_correct_count'] / total) * 100 if total > 0 else 0
+            
         return stats
 
 
@@ -187,6 +193,16 @@ class ProgressTracker:
                     f"({batch_stats['main_win_rate_when_disagree']:.1f}%)\n"
                     f"- Auxiliary model wins when disagreeing: {batch_stats['aux_better_when_disagree']}/{batch_stats['disagreement_count']} "
                     f"({batch_stats['aux_win_rate_when_disagree']:.1f}%)\n"
+                )
+                
+            # Add most common answer statistics
+            if 'main_most_common_correct_count' in batch_stats:
+                stats_str += (
+                    f"\nMost Common Answer Analysis:\n"
+                    f"- Main model most common answer correct: {batch_stats['main_most_common_correct_count']}/{batch_stats['total']} "
+                    f"({batch_stats['main_most_common_correct_rate']:.1f}%)\n"
+                    f"- Auxiliary model most common answer correct: {batch_stats['aux_most_common_correct_count']}/{batch_stats['total']} "
+                    f"({batch_stats['aux_most_common_correct_rate']:.1f}%)\n"
                 )
         
         # Judge statistics if present
@@ -350,6 +366,16 @@ class ProgressTracker:
                     f"({final_stats['main_win_rate_when_disagree']:.1f}%)\n"
                     f"- Auxiliary model wins when disagreeing: {final_stats['aux_better_when_disagree']}/{final_stats['disagreement_count']} "
                     f"({final_stats['aux_win_rate_when_disagree']:.1f}%)\n"
+                )
+                
+            # Add most common answer statistics to final stats
+            if 'main_most_common_correct_count' in final_stats:
+                stats_str += (
+                    f"\nMost Common Answer Analysis:\n"
+                    f"- Main model most common answer correct: {final_stats['main_most_common_correct_count']}/{total} "
+                    f"({final_stats['main_most_common_correct_rate']:.1f}%)\n"
+                    f"- Auxiliary model most common answer correct: {final_stats['aux_most_common_correct_count']}/{total} "
+                    f"({final_stats['aux_most_common_correct_rate']:.1f}%)\n"
                 )
 
         # Judge statistics if present
