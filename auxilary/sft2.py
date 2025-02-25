@@ -52,10 +52,15 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_dataset("Metaskepsis/Numina")["train"]
+    dataset = load_dataset("Metaskepsis/Olympiads_hard")["train"]
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
+    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
+    formatted_dataset2= formatted_dataset.shuffle(seed=31)
+    formatted_dataset3= formatted_dataset.shuffle(seed=13)
+    formatted_dataset4 =formatted_dataset.shuffle(seed=31)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3,formatted_dataset4])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
@@ -89,7 +94,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "qwen_and_from_mathstral"
+    model_type = "qwen_sft"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

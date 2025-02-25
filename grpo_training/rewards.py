@@ -185,8 +185,6 @@ class SolutionReward(BaseReward):
         """Calculate reward for a single completion"""
         try:
             prompt = kwargs.get('prompt')
-            self.logger.info(prompt)
-            self.logger.info(completion)
             # Initialize reward
             reward = 0.0
             
@@ -295,71 +293,238 @@ class SolutionSimilarityChecker:
         self.config = config
         self.logger = logging.getLogger(f'similarity_{config.model_type}')
         
-        # Determine device
-        if config.embedding_device == "auto":
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            self.device = torch.device(config.embedding_device)
+        # Set environment variable to get better CUDA error messages
+        os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+        
+        # Try to use GPU first, with fallback to CPU if needed
+        try:
+            # Determine device
+            if config.embedding_device == "auto":
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            else:
+                self.device = torch.device(config.embedding_device)
+                
+            self.logger.info(f"Loading similarity model: {config.embedding_model} on {self.device}")
             
-        # Load tokenizer and model
-        self.tokenizer = AutoTokenizer.from_pretrained(config.embedding_model)
-        self.model = AutoModel.from_pretrained(config.embedding_model)
-        
-        # Move model to specified device and set eval mode
-        self.model = self.model.to(self.device)
-        self.model.eval()
-        
-        self.logger.info(f"Similarity model running on device: {self.device}")
-        
-        # Ensure all parameters are frozen and on correct device
-        with torch.no_grad():
+            # Load tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                config.embedding_model,
+                use_fast=True,  # Use faster tokenizer implementation
+                cache_dir="./.cache/huggingface"  # Cache models locally
+            )
+            
+            # Load model directly to target device with optimizations
+            self.model = AutoModel.from_pretrained(
+                config.embedding_model,
+                cache_dir="./.cache/huggingface",
+                torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32,  # Use half precision on GPU
+                low_cpu_mem_usage=True  # Optimize memory usage
+            )
+            
+            # Check if configured max_length exceeds model's capacity
+            model_max_length = self.tokenizer.model_max_length
+            if config.embedding_max_length > model_max_length:
+                self.logger.warning(
+                    f"Configured embedding_max_length ({config.embedding_max_length}) exceeds model's "
+                    f"maximum context length ({model_max_length}). Using model's maximum instead."
+                )
+                self.max_length = model_max_length
+            else:
+                self.max_length = config.embedding_max_length
+            
+            # Explicitly disable gradient computation
             for param in self.model.parameters():
-                param.requires_grad_(False)  # Use requires_grad_ method
-                if param.device != self.device:
-                    param.data = param.data.to(self.device)
+                param.requires_grad = False
+            
+            # Move model to device and set to evaluation mode
+            self.model = self.model.to(self.device)
+            self.model.eval()
+            
+            # Verify model is on correct device
+            if next(self.model.parameters()).device != self.device:
+                self.logger.warning(f"Model not on expected device. Moving to {self.device}")
+                self.model = self.model.to(self.device)
+            
+            self.logger.info(f"Similarity model loaded successfully on device: {self.device}")
+            
+        except Exception as e:
+            self.logger.error(f"Error loading similarity model on {self.device}: {str(e)}")
+            if config.embedding_fallback_to_cpu and self.device.type == 'cuda':
+                self.logger.info("Falling back to CPU")
+                self.device = torch.device("cpu")
+                
+                # Try loading on CPU instead
+                self.model = AutoModel.from_pretrained(
+                    config.embedding_model,
+                    cache_dir="./.cache/huggingface",
+                    torch_dtype=torch.float32,
+                    device_map="cpu"
+                )
+                
+                # Disable gradients
+                for param in self.model.parameters():
+                    param.requires_grad = False
+                
+                self.model.eval()
+                self.logger.info(f"Successfully loaded model on CPU as fallback")
+            else:
+                raise
+        
+        # Set batch size - smaller for GPU to avoid OOM
+        self.batch_size = config.embedding_batch_size
+        if self.device.type == 'cuda':
+            self.batch_size = max(1, self.batch_size)
+            self.logger.info(f"Using batch size {self.batch_size} for {self.device.type}")
 
     def get_embeddings(self, texts: List[str]) -> torch.Tensor:
+        """Get embeddings for a list of texts, processing in batches if needed"""
+        if not texts:
+            return torch.tensor([], device=self.device)
+            
+        # Process in batches to avoid OOM errors with larger models
+        all_embeddings = []
+        
         with torch.no_grad():  # Ensure no gradients are tracked
-            with torch.amp.autocast('cuda', enabled=True):
-                inputs = self.tokenizer(
-                    texts,
-                    padding=True,
-                    truncation=True,
-                    max_length=self.config.embedding_max_length,
-                    return_tensors="pt"
-                )
-                # Move inputs to model device and ensure they don't track gradients
-                inputs = {k: v.to(self.device).detach() for k, v in inputs.items()}
+            # Process in batches
+            for i in range(0, len(texts), self.batch_size):
+                batch_texts = texts[i:i + self.batch_size]
                 
-                outputs = self.model(**inputs)
-                # Detach embeddings from computation graph
-                embeddings = outputs.last_hidden_state.mean(dim=1).detach()
-                # Normalize and ensure no gradients
-                normalized = F.normalize(embeddings, p=2, dim=1)
-                
-                # If model is on CPU but we want GPU compute, or vice versa, move the result
-                if str(normalized.device) != str(self.device):
-                    normalized = normalized.to(self.device)
+                try:
+                    # Tokenize with padding and truncation using safe max_length
+                    inputs = self.tokenizer(
+                        batch_texts,
+                        padding=True,
+                        truncation=True,
+                        max_length=self.max_length,
+                        return_tensors="pt"
+                    )
                     
-                return normalized.detach()
+                    # Move inputs to model device
+                    inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                    
+                    # Use autocast for GPU to improve performance and stability
+                    if self.device.type == 'cuda':
+                        with torch.amp.autocast('cuda'):
+                            outputs = self.model(**inputs)
+                            token_embeddings = outputs.last_hidden_state
+                    else:
+                        outputs = self.model(**inputs)
+                        token_embeddings = outputs.last_hidden_state
+                    
+                    # Get attention mask to properly average token embeddings
+                    attention_mask = inputs['attention_mask']
+                    
+                    # Mean pooling with attention mask
+                    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+                    
+                    # Safe operations with explicit detach
+                    sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+                    sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+                    embeddings = sum_embeddings / sum_mask
+                    
+                    # Normalize embeddings
+                    normalized = F.normalize(embeddings, p=2, dim=1)
+                    
+                    # Safety check for NaN/Inf values
+                    if torch.isnan(normalized).any() or torch.isinf(normalized).any():
+                        self.logger.warning(f"NaN/Inf values detected in batch {i}, replacing with zeros")
+                        normalized = torch.nan_to_num(normalized, nan=0.0, posinf=1.0, neginf=-1.0)
+                    
+                    all_embeddings.append(normalized)
+                    
+                except RuntimeError as e:
+                    if "CUDA out of memory" in str(e) and self.device.type == 'cuda':
+                        self.logger.warning(f"CUDA OOM in batch {i}, processing on CPU instead")
+                        # Move inputs to CPU and process there
+                        cpu_inputs = {k: v.to('cpu') for k, v in inputs.items()}
+                        
+                        with torch.no_grad():
+                            cpu_model = self.model.to('cpu')
+                            outputs = cpu_model(**cpu_inputs)
+                            token_embeddings = outputs.last_hidden_state
+                            
+                            # Move model back to original device
+                            self.model = self.model.to(self.device)
+                            
+                            # Continue processing on CPU
+                            attention_mask = cpu_inputs['attention_mask']
+                            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+                            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+                            sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+                            embeddings = sum_embeddings / sum_mask
+                            normalized = F.normalize(embeddings, p=2, dim=1)
+                            
+                            # Move result back to original device
+                            normalized = normalized.to(self.device)
+                            all_embeddings.append(normalized)
+                    else:
+                        self.logger.error(f"Error processing batch {i}: {str(e)}")
+                        # Return zeros for this batch
+                        batch_size = len(batch_texts)
+                        embedding_dim = self.model.config.hidden_size
+                        all_embeddings.append(torch.zeros(batch_size, embedding_dim, device=self.device))
+                
+                except Exception as e:
+                    self.logger.error(f"Error processing batch {i}: {str(e)}")
+                    # Return zeros for this batch
+                    batch_size = len(batch_texts)
+                    embedding_dim = self.model.config.hidden_size
+                    all_embeddings.append(torch.zeros(batch_size, embedding_dim, device=self.device))
+            
+            # Concatenate all batch embeddings
+            if len(all_embeddings) > 1:
+                return torch.cat(all_embeddings, dim=0)
+            elif len(all_embeddings) == 1:
+                return all_embeddings[0]
+            else:
+                return torch.tensor([], device=self.device)
 
     def compute_similarity_matrix(self, solutions: List[str]) -> torch.Tensor:
         """Compute pairwise similarities between solutions"""
+        if not solutions:
+            return torch.tensor([], device=self.device)
+            
         with torch.no_grad():
-            embeddings = self.get_embeddings(solutions)
-            return torch.mm(embeddings, embeddings.t()).detach()
+            try:
+                # Get embeddings for all solutions
+                embeddings = self.get_embeddings(solutions)
+                
+                # Safety check for NaN or Inf values
+                if torch.isnan(embeddings).any() or torch.isinf(embeddings).any():
+                    self.logger.warning("Found NaN or Inf values in embeddings, replacing with zeros")
+                    embeddings = torch.nan_to_num(embeddings, nan=0.0, posinf=1.0, neginf=-1.0)
+                
+                # NOTE: Always compute on GPU when possible for performance (CPU is too slow)
+                
+                # Compute similarity matrix on current device (preferably GPU)
+                if self.device.type == 'cuda':
+                    with torch.amp.autocast('cuda'):
+                        similarity_matrix = torch.matmul(embeddings, embeddings.t())
+                else:
+                    # Fallback to CPU only if necessary
+                    cpu_embeddings = embeddings.detach().cpu()
+                    similarity_matrix = torch.matmul(cpu_embeddings, cpu_embeddings.t())
+                    similarity_matrix = similarity_matrix.to(self.device)
+                
+                # Ensure values are in valid range [0,1]
+                similarity_matrix = torch.clamp(similarity_matrix, 0.0, 1.0)
+                
+                return similarity_matrix
+                
+            except Exception as e:
+                self.logger.error(f"Error computing similarity matrix: {str(e)}")
+                # Return identity matrix as fallback (each solution only similar to itself)
+                return torch.eye(len(solutions), device=self.device)
 
 class GroupReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
     __name__ = "group_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'majority_bonuses', 'diversity_bonuses'],
+        'reward_components': ['base_rewards', 'diversity_bonuses', 'similarity_penalties'],
         'group_stats': [
             'correct_answers', 'incorrect_answers', 'unique_solutions', 'similar_solutions',
-            'total_similarity', 'majority_votes', 'minority_votes', 'unanimous_correct',
-            'unanimous_incorrect', 'split_votes', 'majority_size_dist', 'vote_margins',
-            'average_majority_size', 'average_vote_margin'
+            'total_similarity'
         ]
     }
     
@@ -471,56 +636,20 @@ class GroupReward(BaseReward):
                     
                 all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
             
-            # Majority bonus - only apply if group has more than one completion
+            # Calculate similarity only if group has more than one completion
             if len(group_completions) > 1:
                 correct_count = sum(all_results)
                 incorrect_count = len(group_completions) - correct_count
-                majority_size = max(correct_count, incorrect_count)
-                minority_size = min(correct_count, incorrect_count)
-                vote_margin = majority_size - minority_size
-                
-                # Update voting statistics
-                self.stats.group_stats['total_votes'] += 1
-                if majority_size == len(group_completions):
-                    if correct_count > incorrect_count:
-                        self.stats.group_stats['unanimous_correct'] += 1
-                    else:
-                        self.stats.group_stats['unanimous_incorrect'] += 1
-                else:
-                    self.stats.group_stats['split_votes'] += 1
-                
-                # Track majority size distribution
-                self.stats.group_stats['majority_size_dist'][majority_size] = \
-                    self.stats.group_stats['majority_size_dist'].get(majority_size, 0) + 1
-                
-                # Update vote margins
-                self.stats.group_stats['vote_margins'].append(vote_margin)
-                total_votes = self.stats.group_stats['total_votes']
-                self.stats.group_stats['average_majority_size'] = \
-                    (majority_size + (total_votes - 1) * self.stats.group_stats['average_majority_size']) / total_votes
-                self.stats.group_stats['average_vote_margin'] = \
-                    (vote_margin + (total_votes - 1) * self.stats.group_stats['average_vote_margin']) / total_votes
-                
-                # Determine if current completion is in majority
-                is_in_majority = (is_correct and correct_count > incorrect_count) or \
-                                (not is_correct and incorrect_count > correct_count)
-                majority_bonus = self.config.group_majority_bonus if is_correct else 0
-                
-                self.logger.info(f"Majority calculation - Correct count: {correct_count}/{len(group_completions)}, "
-                               f"In majority: {is_in_majority}, Margin: {vote_margin}")
-                
-                if is_in_majority:
-                    reward += majority_bonus
-                    self.stats.reward_components['majority_bonuses'] = self.stats.reward_components.get('majority_bonuses', 0) + 1
-                    self.stats.group_stats['majority_votes'] += 1
-                    self.logger.info(f"Applied majority bonus: +{majority_bonus:.3f}")
-                else:
-                    self.stats.group_stats['minority_votes'] += 1
                     
-                # Diversity bonus
-                similarities = similarity_matrix[group_idx]
-                similarities[group_idx] = 0  # Remove self-similarity
-                avg_similarity = similarities.mean().item()
+                # Diversity bonus - NOTE: Always use GPU for similarity calculations (CPU is too slow)
+                with torch.no_grad():
+                    # Get the similarity row and keep on GPU for performance
+                    similarities = similarity_matrix[group_idx].clone()
+                    # Set self-similarity to zero
+                    similarities[group_idx] = 0
+                    
+                    # Calculate average on GPU
+                    avg_similarity = similarities.mean().item()
                 
                 self.logger.info(f"Similarity calculation - Average similarity: {avg_similarity:.3f}")
                 
@@ -528,13 +657,19 @@ class GroupReward(BaseReward):
                 diff = self.config.group_similarity_threshold - avg_similarity
                 diversity_bonus = self.config.group_diversity_bonus * (abs(diff) ** 0.5)
                 
+                # Initialize diversity_bonus variable for stats tracking
+                diversity_bonus_applied = 0.0
+                
                 if diff > 0:  # Below threshold - more unique
                     if is_correct:
                         reward += diversity_bonus
+                        diversity_bonus_applied = diversity_bonus
                         self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + 1
                         self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
                 else:  # Above threshold - too similar
                     reward -= diversity_bonus
+                    diversity_bonus_applied = -diversity_bonus
+                    self.stats.reward_components['similarity_penalties'] = self.stats.reward_components.get('similarity_penalties', 0) + 1
                     self.logger.info(f"Applied similarity penalty: -{diversity_bonus:.3f}")
                 
             # Update group-specific statistics
@@ -543,10 +678,20 @@ class GroupReward(BaseReward):
             else:
                 self.stats.group_stats['incorrect_answers'] += 1
                 
-            if is_in_majority:
-                self.stats.group_stats['majority_bonuses'] = self.stats.group_stats.get('majority_bonuses', 0) + 1
-            if diversity_bonus > 0:
+            # Initialize variables if they don't exist in the context
+            avg_similarity = 0.0
+            
+            # Check if we have similarity information (only available for groups > 1)
+            if len(group_completions) > 1:
+                # Get similarity information
+                similarities = similarity_matrix[group_idx]
+                similarities[group_idx] = 0  # Remove self-similarity
+                avg_similarity = similarities.mean().item()
+                
+            if diversity_bonus_applied > 0:
                 self.stats.group_stats['diversity_bonuses'] = self.stats.group_stats.get('diversity_bonuses', 0) + 1
+            elif diversity_bonus_applied < 0:
+                self.stats.group_stats['similarity_penalties'] = self.stats.group_stats.get('similarity_penalties', 0) + 1
                 
             if avg_similarity < self.config.group_similarity_threshold:
                 self.stats.group_stats['unique_solutions'] += 1

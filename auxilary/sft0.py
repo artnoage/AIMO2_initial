@@ -17,8 +17,9 @@ def main():
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name="unsloth/Phi-4",
-         max_seq_length=8192,
-        load_in_4bit=False)
+         max_seq_length=3200,
+        load_in_4bit=False,
+        max_lora_rank=128)
         
 
     # Configure LoRA
@@ -32,7 +33,7 @@ def main():
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = False, # True or "unsloth" for very long context
+    use_gradient_checkpointing = True, # True or "unsloth" for very long context
     random_state = 3407,
     use_rslora = False)
     
@@ -66,15 +67,15 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=8,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=32,
         learning_rate=5e-6,
         logging_steps=10,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,
         fp16 = not is_bfloat16_supported(),
         bf16 = is_bfloat16_supported(),
-        optim = "adamw_torch",  # Enable tensorboard logging
+        optim = "paged_adamw_8bit",  # Enable tensorboard logging
         logging_first_step=True,    # Log the first training step
         logging_dir=f"train_results/{timestamp}/logs",  # Directory for logs
     )

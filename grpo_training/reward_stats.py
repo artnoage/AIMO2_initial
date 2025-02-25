@@ -80,19 +80,7 @@ class RewardStats:
             'correct_answers': 0,
             'incorrect_answers': 0,
             'total_similarity': 0.0,
-            'majority_bonuses': 0,
             'diversity_bonuses': 0,
-            # Voting statistics
-            'total_votes': 0,
-            'majority_votes': 0,
-            'minority_votes': 0,
-            'unanimous_correct': 0,
-            'unanimous_incorrect': 0,
-            'split_votes': 0,
-            'majority_size_dist': {},  # Distribution of majority sizes
-            'vote_margins': [],  # List of vote margins (majority - minority)
-            'average_majority_size': 0.0,
-            'average_vote_margin': 0.0,
             # Length and content penalties
             'total_length_penalty': 0.0,
             'total_length': 0,

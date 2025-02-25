@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="Qwen/Qwen2.5-14B-Instruct-1M",
+        model_name="Qwen/Qwen2.5-7B-Instruct",
         max_seq_length=8192,
         load_in_4bit=False)
         
@@ -45,7 +45,7 @@ def main():
         problems = examples['problem']
         solutions = examples['solution']
         for problem, solution in zip(problems, solutions):
-            formatted_text = ( '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' +problem + '<|im_end|>\\n<|im_start|>assistant\\n' +solution + '<|im_end|>')
+            formatted_text = ('<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' +problem + '<|im_end|>\\n<|im_start|>assistant\\n' +solution + '<|im_end|>')
             texts.append(formatted_text)
         return {"text": texts}
 
@@ -56,6 +56,9 @@ def main():
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
+    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
+    formatted_dataset2= formatted_dataset.shuffle(seed=31)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
@@ -89,7 +92,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "qwen_and_from_mathstral"
+    model_type = "qwen_sft"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
