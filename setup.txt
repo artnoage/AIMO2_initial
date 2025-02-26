@@ -9,7 +9,9 @@ git config --global user.email "artnoage@gmail.com"
 
 python auxilary/hf_loader.py --type model --load down --path models/phi4 --repo_name unsloth/Phi-4
 python auxilary/hf_loader.py --type model --load down --path models/llama --repo_name meta-llama/meta-Llama-3.1-8B-Instruct
-
+python auxilary/hf_loader.py --type model --load down --path models/ElitePhi3 --repo_name Metaskepsis/ElitePhi3
+python auxilary/hf_loader.py --type model --load down --path models/EliteQwen1 --repo_name Metaskepsis/EliteQwen1
+Metaskepsis/ElitePhi3
 python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-of 1 --split train[:1000] 
 && python benchmark.py --dataset Metaskepsis/Numina_medium --main-temp 0 --best-of 1 --split train[:1000] 
 && python benchmark.py --dataset Metaskepsis/custom100bench --main-temp 0 --best-of 1 

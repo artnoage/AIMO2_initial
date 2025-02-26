@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_1"
-    model_name = "unsloth/Phi-4"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    dataset_name = "Metaskepsis/custom219"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -133,14 +133,13 @@ def main():
 
     # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
     reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -171,19 +170,19 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=2500,
-        fast_inference=False,
+        max_seq_length=3200,
+        fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=128)
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -193,21 +192,19 @@ def main():
     )
     
         
-    def get_questions(split="train") -> Dataset:
-        data = load_dataset(dataset_name)[split]  # type: ignore
-        data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
-                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>"
-                  "<|im_start|>assistant<|im_sep|>",
-        'answer': x['answer']
-    })  # type: ignore
-        return data  # type: ignore
+    def get_questions(split = "train") -> Dataset:
+        data = load_dataset(dataset_name)[split] # type: ignore
+        data = data.map(lambda x: { # type: ignore
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'problem':  x['question'],
+            'answer': x['answer']
+        }) # type: ignore
+        return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(2000))
-    
+    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
    
     
     # Verify first few entries
@@ -233,9 +230,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=8,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=2000,
+        max_completion_length=2400,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,

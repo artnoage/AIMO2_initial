@@ -17,8 +17,8 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/elite2"
-    LOCAL_1="unsloth/Phi-4"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250225_151935"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250225_181734"
      ###It is wrong this QWEN + solver.
     LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/continued"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
@@ -29,8 +29,8 @@ class ModelOption(Enum):
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification"""
     # Model settings
-    main: str
-    auxiliary: str   # If None, uses same as main
+    main: str = "LOCAL_0"
+    auxiliary: str = "LOCAL_1"  # If None, uses same as main
     auxiliary2: str = "LOCAL_2"  # Third model option
     main_port: int = 8000
     auxiliary_port: int = 6000

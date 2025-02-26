@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_0"
-    model_name = "Metaskepsis/Elite2"
-    dataset_name = "Metaskepsis/custom219"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250225_181734"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -133,14 +133,13 @@ def main():
 
     # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.1  # Increased from 0.2
     reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -175,15 +174,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=128)
+        gpu_memory_utilization= 0.45,
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -196,16 +196,15 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'problem':  x['question'],
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
     formatted_dataset1 = formatted_dataset.shuffle(seed=42)
-    formatted_dataset2= formatted_dataset.shuffle(seed=31)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
+    formatted_dataset1=formatted_dataset1.select(range(2000))
+    formatted_dataset= concatenate_datasets([formatted_dataset1])
    
     
     # Verify first few entries
@@ -232,7 +231,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=12,
+        num_generations=7,
         max_prompt_length=800,
         max_completion_length=2400,
         num_train_epochs=1,

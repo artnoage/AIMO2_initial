@@ -34,3 +34,4 @@ wandb/
 experiment.md
 examples/
 .conda/
+.cache/

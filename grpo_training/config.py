@@ -16,8 +16,8 @@ class RewardConfig:
     completion_attempts: int = 10
     
     # Embedding model settings
-    embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"  # Model with larger context support
-    embedding_max_length: int = 1024  # Increased context length
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"  # Model with larger context support
+    embedding_max_length: int = 512  # Increased context length
     embedding_device: str = "auto"  # Use GPU when available
     embedding_batch_size: int = 8  # Adjusted batch size for larger model
     embedding_fallback_to_cpu: bool = True  # Fallback to CPU if GPU fails
