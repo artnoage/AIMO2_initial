@@ -52,7 +52,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250226_104234")["train"]
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250226_104234")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
