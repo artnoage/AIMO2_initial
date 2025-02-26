@@ -174,7 +174,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.45,
+        gpu_memory_utilization= 0.42,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -231,7 +231,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=5,
         max_prompt_length=800,
         max_completion_length=2400,
         num_train_epochs=1,

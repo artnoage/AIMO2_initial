@@ -21,7 +21,7 @@ class RewardConfig:
     embedding_device: str = "auto"  # Use GPU when available
     embedding_batch_size: int = 8  # Adjusted batch size for larger model
     embedding_fallback_to_cpu: bool = True  # Fallback to CPU if GPU fails
-    embedding_compute_on_cpu: bool = False  # IMPORTANT: Use GPU for performance
+    embedding_compute_on_cpu: bool = True # IMPORTANT: Use GPU for performance
     
     # Common reward components
     base_reward: float = 3.0
