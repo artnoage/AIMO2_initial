@@ -17,7 +17,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/QwenA"
+    LOCAL_0 ="/workspace/AIMO2_initial/models/Qwen"
     LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/ElitePhi3"
      ###It is wrong this QWEN + solver.
     LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/continued"

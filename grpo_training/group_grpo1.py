@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_1"
-    model_name = "Metaskepsis/Elite2"
-    dataset_name = "Metaskepsis/custom219"
+    model_name = "/workspace/AIMO2_initial/models/Qwen"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -149,9 +149,7 @@ def main():
             "dataset": dataset_name,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
-            "majority_bonus": 0.2,
-            "similarity_threshold_low": 0.7,
-            "similarity_threshold_high": 0.9
+            "majority_bonus": 0.2
         }
     )
     
@@ -170,20 +168,20 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3200,
+        max_seq_length=3600,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.42,
-        max_lora_rank=64)
+        gpu_memory_utilization= 0.55,
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -196,16 +194,15 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'problem':  x['question'],
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
-    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset=formatted_dataset.select(range(200))
+ 
    
     
     # Verify first few entries
@@ -219,23 +216,23 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=4e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=5,
+        num_generations=32,
         max_prompt_length=800,
-        max_completion_length=2400,
+        max_completion_length=2800,
         num_train_epochs=1,
-        save_steps=250,
+        save_steps=30,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
