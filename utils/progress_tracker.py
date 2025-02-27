@@ -229,6 +229,37 @@ class ProgressTracker:
                 f"- Judge accuracy: {batch_stats['avg_judge_accuracy']:.1f}%\n"
             )
             
+        # Step benchmark statistics if present
+        if 'wrong_steps_found' in batch_stats:
+            stats_str += (
+                f"\nStep Benchmark Statistics:\n"
+                f"- Wrong steps identified: {batch_stats['wrong_steps_found']}\n"
+            )
+            
+            if 'avg_wrong_step_position' in batch_stats:
+                stats_str += f"- Average wrong step position: {batch_stats['avg_wrong_step_position']:.2f}\n"
+                
+            if 'position_distribution' in batch_stats:
+                stats_str += f"- Position distribution: {batch_stats['position_distribution']}\n"
+                
+            if 'avg_completion_score' in batch_stats:
+                stats_str += f"- Average completion score: {batch_stats['avg_completion_score']:.2f}\n"
+                
+            if 'recovery_success_rate' in batch_stats:
+                stats_str += f"- Recovery success rate: {batch_stats['recovery_success_rate']:.2f}\n"
+                
+            if 'unsalvageable_solutions' in batch_stats:
+                stats_str += f"- Unsalvageable solutions: {batch_stats['unsalvageable_solutions']}\n"
+                
+            if 'unsalvageable_reasons' in batch_stats:
+                stats_str += f"- Unsalvageable reasons: {batch_stats['unsalvageable_reasons']}\n"
+                
+            if 'thinking_extraction_rate' in batch_stats:
+                stats_str += f"- Thinking extraction rate: {batch_stats['thinking_extraction_rate']:.2f}\n"
+                
+            if 'response_extraction_rate' in batch_stats:
+                stats_str += f"- Response extraction rate: {batch_stats['response_extraction_rate']:.2f}\n"
+            
         # Calculate accumulated statistics
         acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
         if acc_stats:
@@ -441,6 +472,37 @@ class ProgressTracker:
                 f"- Judge decisions made: {final_stats['judge_decisions']}\n"
                 f"- Overall judge accuracy: {final_stats['avg_judge_accuracy']:.1f}%\n"
             )
+            
+        # Step benchmark statistics if present
+        if 'wrong_steps_found' in final_stats:
+            stats_str += (
+                f"\nStep Benchmark Statistics:\n"
+                f"- Total wrong steps identified: {final_stats['wrong_steps_found']}\n"
+            )
+            
+            if 'avg_wrong_step_position' in final_stats:
+                stats_str += f"- Average wrong step position: {final_stats['avg_wrong_step_position']:.2f}\n"
+                
+            if 'position_distribution' in final_stats:
+                stats_str += f"- Position distribution: {final_stats['position_distribution']}\n"
+                
+            if 'avg_completion_score' in final_stats:
+                stats_str += f"- Average completion score: {final_stats['avg_completion_score']:.2f}\n"
+                
+            if 'recovery_success_rate' in final_stats:
+                stats_str += f"- Average recovery success rate: {final_stats['recovery_success_rate']:.2f}\n"
+                
+            if 'unsalvageable_solutions' in final_stats:
+                stats_str += f"- Total unsalvageable solutions: {final_stats['unsalvageable_solutions']}\n"
+                
+            if 'unsalvageable_reasons' in final_stats:
+                stats_str += f"- Unsalvageable reasons: {final_stats['unsalvageable_reasons']}\n"
+                
+            if 'thinking_extraction_rate' in final_stats:
+                stats_str += f"- Average thinking extraction rate: {final_stats['thinking_extraction_rate']:.2f}\n"
+                
+            if 'response_extraction_rate' in final_stats:
+                stats_str += f"- Average response extraction rate: {final_stats['response_extraction_rate']:.2f}\n"
 
         stats_str += f"\n- Total runtime: {total_duration.total_seconds():.1f}s"
 

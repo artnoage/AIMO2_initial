@@ -644,23 +644,45 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     reason = r.get('unsalvageable_reason', 'unknown')
                     unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + 1
             
-            # Add aggregated statistics
-            results.append({
-                'id': example_id,
-                'data_type': 'step_statistics',
-                'wrong_steps_found': len(wrong_step_positions),
-                'avg_wrong_step_position': avg_position,
-                'position_distribution': dict(position_counts),
-                'avg_completion_score': avg_completion_score,
-                'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
-                'solutions_with_thinking': solutions_with_thinking,
-                'solutions_with_response': solutions_with_response,
-                'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                'unsalvageable_solutions': unsalvageable_solutions,
-                'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                'unsalvageable_reasons': unsalvageable_reasons
-            })
+            # Update the statistics entry with step-specific information
+            # Find the existing statistics entry or create a new one
+            stats_entry = next((r for r in results if r.get('data_type') == 'statistics'), None)
+            
+            if stats_entry:
+                # Update existing statistics entry
+                stats_entry.update({
+                    'wrong_steps_found': len(wrong_step_positions),
+                    'avg_wrong_step_position': avg_position,
+                    'position_distribution': dict(position_counts),
+                    'avg_completion_score': avg_completion_score,
+                    'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
+                    'solutions_with_thinking': solutions_with_thinking,
+                    'solutions_with_response': solutions_with_response,
+                    'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'unsalvageable_solutions': unsalvageable_solutions,
+                    'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'unsalvageable_reasons': unsalvageable_reasons
+                })
+            else:
+                # Create a new statistics entry
+                results.append({
+                    'id': example_id,
+                    'data_type': 'statistics',
+                    'example_processed_successfully': True,
+                    'wrong_steps_found': len(wrong_step_positions),
+                    'avg_wrong_step_position': avg_position,
+                    'position_distribution': dict(position_counts),
+                    'avg_completion_score': avg_completion_score,
+                    'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
+                    'solutions_with_thinking': solutions_with_thinking,
+                    'solutions_with_response': solutions_with_response,
+                    'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'unsalvageable_solutions': unsalvageable_solutions,
+                    'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                    'unsalvageable_reasons': unsalvageable_reasons
+                })
         else:
             logger.append("\n" + "="*80)
             logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -723,65 +745,7 @@ async def main():
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
     
-    # Create a logger for final statistics
-    final_logger = BenchmarkLogger()
-    
-    # Log step benchmark specific statistics
-    final_logger.append("\n" + "="*80)
-    final_logger.append("STEP BENCHMARK STATISTICS")
-    final_logger.append("="*80)
-    
-    # Collect all step statistics
-    step_stats = [r for r in tracker.results if r.get('data_type') == 'step_statistics']
-    
-    if step_stats:
-        # Calculate aggregated statistics
-        total_wrong_steps = sum(s.get('wrong_steps_found', 0) for s in step_stats)
-        avg_position = sum(s.get('avg_wrong_step_position', 0) for s in step_stats) / len(step_stats)
-        
-        # Combine position distributions
-        from collections import Counter
-        position_dist = Counter()
-        for s in step_stats:
-            if 'position_distribution' in s:
-                position_dist.update(s['position_distribution'])
-                
-        # Calculate recovery success rate
-        recovery_rates = [s.get('recovery_success_rate', 0) for s in step_stats]
-        avg_recovery_rate = sum(recovery_rates) / len(recovery_rates) if recovery_rates else 0
-        
-        # Calculate section extraction statistics
-        total_with_thinking = sum(s.get('solutions_with_thinking', 0) for s in step_stats)
-        total_with_response = sum(s.get('solutions_with_response', 0) for s in step_stats)
-        total_solutions_analyzed = sum(min(3, s.get('wrong_steps_found', 0) + 1) for s in step_stats)
-        thinking_extraction_rate = total_with_thinking / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
-        response_extraction_rate = total_with_response / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
-        
-        # Calculate unsalvageable statistics
-        total_unsalvageable = sum(s.get('unsalvageable_solutions', 0) for s in step_stats)
-        unsalvageable_rate = total_unsalvageable / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
-        
-        # Combine unsalvageable reasons
-        unsalvageable_reasons = {}
-        for s in step_stats:
-            if 'unsalvageable_reasons' in s:
-                for reason, count in s['unsalvageable_reasons'].items():
-                    unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + count
-        
-        # Log statistics
-        final_logger.append(f"Total wrong steps identified: {total_wrong_steps}")
-        final_logger.append(f"Average wrong step position: {avg_position:.2f}")
-        final_logger.append(f"Position distribution: {dict(position_dist)}")
-        final_logger.append(f"Average recovery success rate: {avg_recovery_rate:.2f}")
-        final_logger.append(f"Solutions with thinking extracted: {total_with_thinking}/{total_solutions_analyzed} ({thinking_extraction_rate:.2f})")
-        final_logger.append(f"Solutions with response extracted: {total_with_response}/{total_solutions_analyzed} ({response_extraction_rate:.2f})")
-        final_logger.append(f"Unsalvageable solutions: {total_unsalvageable}/{total_solutions_analyzed} ({unsalvageable_rate:.2f})")
-        final_logger.append(f"Unsalvageable reasons: {unsalvageable_reasons}")
-    else:
-        final_logger.append("No step statistics collected")
-    
-    # Print all logs at the end
-    final_logger.print()
+    # The ProgressTracker will handle printing the final statistics
 
 if __name__ == "__main__":
     logger = BenchmarkLogger()
