@@ -751,9 +751,9 @@ class CompletionReward(BaseReward):
             if response_match:
                 completion_response = response_match.group(1)
             else:
-                # If no response tags, use the whole completion
-                completion_response = completion
-                self.logger.debug("No response tags found in completion, using full text")
+                # If no response tags, give zero reward
+                self.logger.debug("No response tags found in completion, giving zero reward")
+                return 0.0
                 
             # Combine partial solution with completion response
             # Add the response tag if it's not already there
