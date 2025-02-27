@@ -89,8 +89,8 @@ def create_partial_solution(solution: str) -> Tuple[str, str]:
     partial_response = response[:truncate_pos]
     remaining_response = response[truncate_pos:]
     
-    # Only include the response part in the partial solution
-    partial_solution = f"<response>{partial_response}"
+    # Only include the content without the response tag
+    partial_solution = partial_response
     completion = remaining_response + "</response>"
     
     return partial_solution, completion

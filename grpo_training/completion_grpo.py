@@ -247,7 +247,7 @@ def main():
         # Format for training
         data = data.map(lambda x: {
             'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                     f"Problem: {x['problem']}\n\nPartial Solution: {x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
+                     f"Problem: {x['problem']}\n\nPartial Solution: <response>{x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
             'problem': x['problem'],
             'partial_solution': x['partial_solution'],
             'answer': x['answer']
