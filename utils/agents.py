@@ -65,13 +65,48 @@ class CompletionAgent:
         
     async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Complete a partial solution"""
+        system_prompt = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
+
+Your response MUST include both a <thinking> section and a <response> section.
+
+<thinking>
+First, analyze the problem and the partial solution carefully.
+Understand what has been done so far and determine the next logical steps.
+Identify the step numbering pattern and continue from there.
+Make sure you understand the mathematical concepts involved.
+Work through the solution mentally to ensure your approach is correct.
+</thinking>
+
+<response>
+Continue the solution from where it left off, maintaining the same step numbering and style.
+The partial solution will only contain the beginning of the response section with some steps.
+You must continue with the next step number in sequence.
+
+IMPORTANT: Each step must be properly enclosed in <step> and </step> tags.
+
+For example, if the partial solution ends with Step 2, you should start with:
+
+<step>Step 3: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+Continue with additional steps as needed:
+
+<step>Step 4: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+In your final step, include your answer in a LaTeX boxed environment:
+\\boxed{your final answer}
+
+Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
+</response>"""
+
         prompt = [
             HumanMessage(content=(
-                "Here is a mathematical problem:\n\n"
-                f"{problem}\n\n"
-                "We've started solving it and got this far:\n\n"
-                f"{partial_solution}\n\n"
-                "Could you help finish this solution? Remember to put the final answer in \\boxed{}"
+                f"{system_prompt}\n\n"
+                f"Problem: {problem}\n\n"
+                f"Partial Solution: {partial_solution}"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=2048)
