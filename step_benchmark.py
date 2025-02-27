@@ -60,20 +60,31 @@ class StepAnalyzer:
         completion_prompt = None
         self._log(f"\nVerifying completions for step {step_index}:")
         self._log(f"Partial solution length: {len(partial_solution)}")
+        
+        # Generate all completions at once
+        completions = []
         for i in range(self.max_attempts):
             try:
-                if completion_prompt is None:
+                if i == 0 and completion_prompt is None:
                     prompt, completion = await self.completion_agent.generate(
                         problem,
                         partial_solution,
                         return_prompt=True
                     )
                     completion_prompt = prompt
+                    completions.append(completion)
                 else:
                     completion = await self.completion_agent.generate(
                         problem,
                         partial_solution
                     )
+                    completions.append(completion)
+            except Exception as e:
+                self._log(f"Error generating completion {i+1}: {str(e)}")
+                
+        # Evaluate all completions
+        for i, completion in enumerate(completions):
+            try:
                 complete_solution = partial_solution + completion
                 
                 # Verify answer correctness
@@ -296,28 +307,49 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
         
-        # Generate a solution
-        solution = await solution_agent.generate(problem)
-        
-        # Verify if the solution is correct
-        is_correct, model_answer = await verifier.verify(solution, correct_answer, problem)
+        # Generate solutions (multiple if best_of > 1)
+        solutions = []
+        for i in range(max(1, config.best_of)):
+            solution = await solution_agent.generate(problem)
+            is_correct, model_answer = await verifier.verify(solution, correct_answer, problem)
+            solutions.append({
+                'solution': solution,
+                'answer': model_answer,
+                'is_correct': is_correct
+            })
         
         # Initialize results list
         results = []
         
-        # Add the solution to results
-        results.append({
-            'id': example_id,
-            'data_type': 'training',
-            'problem': problem,
-            'correct_answer': correct_answer,
-            'model_solution': solution,
-            'model_answer': model_answer,
-            'is_correct': is_correct
-        })
+        # Add all solutions to results
+        for i, sol_data in enumerate(solutions):
+            results.append({
+                'id': example_id,
+                'data_type': 'training',
+                'problem': problem,
+                'correct_answer': correct_answer,
+                'model_solution': sol_data['solution'],
+                'model_answer': sol_data['answer'],
+                'is_correct': sol_data['is_correct'],
+                'attempt_number': i + 1,
+                'total_attempts': len(solutions)
+            })
         
-        # If solution is incorrect, analyze to find the wrong step
-        if not is_correct:
+        # Find the first incorrect solution to analyze (if any)
+        incorrect_solutions = [s for s in solutions if not s['is_correct']]
+        if incorrect_solutions:
+            solution_to_analyze = incorrect_solutions[0]
+            solution = solution_to_analyze['solution']
+            model_answer = solution_to_analyze['answer']
+            is_correct = False
+        else:
+            # If all solutions are correct, just use the first one
+            solution = solutions[0]['solution']
+            model_answer = solutions[0]['answer']
+            is_correct = True
+        
+        # If we found an incorrect solution, analyze to find the wrong step
+        if not is_correct and incorrect_solutions:
             logger.append("\n" + "="*80)
             logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
             logger.append("="*80)
@@ -332,7 +364,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 completion_agent=completion_agent,
                 solution_agent=solution_agent,
                 verifier=verifier,
-                max_attempts=config.best_of,
+                max_attempts=max(5, config.best_of),  # Use at least 5 completions or best_of if higher
                 logs=logger.logs
             )
             
@@ -383,16 +415,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"\n📋 Problem:")
             logger.append(f"{problem[:200]}...")
             logger.append(f"\n✓ Expected Answer: {correct_answer}")
-            logger.append(f"\n✓ Solution is correct. Model answer: {model_answer}")
             
-            # Add statistics for correct solution
+            # Log all solution results
+            for i, sol_data in enumerate(solutions):
+                logger.append(f"\n{'✓' if sol_data['is_correct'] else '❌'} Solution {i+1}: {sol_data['answer']}")
+            
+            # Calculate statistics
+            correct_count = sum(1 for s in solutions if s['is_correct'])
+            success_rate = (correct_count / len(solutions)) * 100 if solutions else 0
+            
+            logger.append(f"\n📊 Statistics:")
+            logger.append(f"├─ Correct solutions: {correct_count}/{len(solutions)}")
+            logger.append(f"└─ Success rate: {success_rate:.1f}%")
+            
+            # Add statistics for all solutions
             results.append({
                 'id': example_id,
                 'data_type': 'statistics',
                 'example_processed_successfully': True,
-                'is_correct': True,
-                'model_answer': model_answer,
-                'total_steps': len(split_into_steps(solution))
+                'is_correct_list': [s['is_correct'] for s in solutions],
+                'success_rate': success_rate,
+                'total_solutions': len(solutions),
+                'correct_solutions': correct_count,
+                'incorrect_solutions': len(solutions) - correct_count,
+                'total_steps': [len(split_into_steps(s['solution'])) for s in solutions]
             })
             
         # Print all logs at the end
