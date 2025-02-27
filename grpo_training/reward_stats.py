@@ -93,6 +93,13 @@ class RewardStats:
             'unique_approaches': 0
         }
         
+        # Track similarity stats
+        self.similarity_stats = {
+            'unique_completions': 0,
+            'similar_completions': 0,
+            'total_similarity': 0.0
+        }
+        
         # Track full reward reasons
         self.full_reward_reasons = {
             'correct_answer': 0,
