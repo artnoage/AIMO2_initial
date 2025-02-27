@@ -393,6 +393,22 @@ def has_thinking_section(solution: str) -> bool:
     thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
     return bool(thinking_parts)
 
+def extract_thinking_section(solution: str) -> Optional[str]:
+    """Extract content from <thinking> or <reasoning> tags"""
+    thinking_pattern = r'<(?:thinking|reasoning)>(.*?)</(?:thinking|reasoning)>'
+    match = re.search(thinking_pattern, solution, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+    
+def extract_response_section(solution: str) -> Optional[str]:
+    """Extract content from <response> tags"""
+    response_pattern = r'<response>(.*?)</response>'
+    match = re.search(response_pattern, solution, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+
 def has_response_section(solution: str) -> bool:
     """Check if solution has a response section"""
     response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)

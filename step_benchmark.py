@@ -6,7 +6,11 @@ from typing import Optional, Dict, List, Tuple, Any
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
-from utils.benchmark_utils import *
+from utils.benchmark_utils import (
+    get_model, NumericVerifier, split_into_steps, get_partial_solutions,
+    extract_answer_from_solution, extract_thinking_section, extract_response_section,
+    STEP_NUMBER_PATTERNS
+)
 from utils.agents import *
 from utils.logger import BenchmarkLogger
 
@@ -347,22 +351,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
         
-        # Helper functions to extract sections
-        def extract_thinking_section(solution: str) -> Optional[str]:
-            """Extract content from <thinking> or <reasoning> tags"""
-            thinking_pattern = r'<(?:thinking|reasoning)>(.*?)</(?:thinking|reasoning)>'
-            match = re.search(thinking_pattern, solution, re.DOTALL)
-            if match:
-                return match.group(1).strip()
-            return None
-            
-        def extract_response_section(solution: str) -> Optional[str]:
-            """Extract content from <response> tags"""
-            response_pattern = r'<response>(.*?)</response>'
-            match = re.search(response_pattern, solution, re.DOTALL)
-            if match:
-                return match.group(1).strip()
-            return None
+        # Use extract functions from benchmark_utils
         
         # Generate solutions (always generate best_of solutions)
         solutions = []
