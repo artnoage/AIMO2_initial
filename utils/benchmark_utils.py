@@ -388,36 +388,6 @@ STEP_NUMBER_PATTERNS = [
     re.compile(r'^\s*Step\s*(\d+)$')         # Match just "Step N" at end of line
 ]
 
-def validate_analysis(resp: str) -> Tuple[bool, str]:
-    """Validate an analysis response"""
-    # Check if response has less than 20 words
-    word_count = len(resp.split())
-    if word_count < 20:
-        return False, f"Too short: only {word_count} words (minimum 20)"
-        
-    # Analysis should mention problem and analysis
-    if "problem" not in resp.lower():
-        return False, "Missing 'problem' keyword"
-    if "analysis" not in resp.lower():
-        return False, "Missing 'analysis' keyword"
-        
-    # Analysis should not contain steps or boxed answers
-    if "step" in resp.lower():
-        return False, "Contains step(s)"
-    if "\\boxed{" in resp:
-        return False, "Contains boxed answer"
-        
-    return True, "Analysis valid"
-
-def validate_solution(solution: str) -> Tuple[bool, str]:
-    """Validate a complete solution"""
-    # Check for analysis section
-    if "analysis" not in solution.lower():
-        return False, "Missing analysis section"
-        
-    if "[…]" in solution.lower():   
-        return False, "Skips steps"
-
 def has_thinking_section(solution: str) -> bool:
     """Check if solution has a thinking section"""
     thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
@@ -611,12 +581,6 @@ class NumericVerifier:
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
             
         return is_correct, model_answer
-
-def remove_inst_tokens(text: str) -> str:
-    """Remove all occurrences of [/INST] and [control_655] from the text"""
-    text = text.replace("[/INST]", "")
-    text = text.replace("[control_655]", "")
-    return text
 
 def split_into_steps(solution: str) -> List[str]:
     """
