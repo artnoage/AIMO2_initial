@@ -246,6 +246,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'combined_most_common_correct': combined_most_common_correct
         })
         
+        # Print logs before returning results
+        logger.print()
+        
         # Return results with logs
         return {
             'results': results,
@@ -254,6 +257,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
     except Exception as e:
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
+        # Print logs before returning results
+        logger.print()
+        
         # Return results with logs
         return {
             'results': [{
