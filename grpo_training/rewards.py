@@ -116,9 +116,10 @@ class BaseReward(ABC):
         async def process_batch():
             tasks = []
             
-            # Extract problems and solutions from kwargs if present
+            # Extract problems, solutions, and partial solutions from kwargs if present
             problems = kwargs.get('problem', [''] * len(prompts))
             solutions = kwargs.get('model_solution', [''] * len(prompts))
+            partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
             
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
@@ -133,6 +134,7 @@ class BaseReward(ABC):
                         'prompt': prompt,
                         'problem': problems[idx],  # Map to original index
                         'solution': solutions[idx], # Map to original index
+                        'partial_solution': partial_solutions[idx], # Map to original index
                         'answer': str(ans),
                         'group_idx': group_idx,
                         'reward_index': idx,

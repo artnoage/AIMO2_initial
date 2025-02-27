@@ -264,7 +264,6 @@ def main():
         print(f"\nEntry {i} verification:")
         print(f"Problem: {entry.get('problem')[:100]}...")
         print(f"Partial solution: {entry.get('partial_solution')[:100]}...")
-        print(f"Expected completion: {entry.get('completion')[:100]}...")
         print(f"Answer: {entry.get('answer')}")
     
     # GRPO specific training arguments
