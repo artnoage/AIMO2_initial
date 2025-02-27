@@ -280,7 +280,7 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
