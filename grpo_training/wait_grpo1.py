@@ -195,21 +195,21 @@ def main():
         """
         Load dataset and modify the thinking section by adding "...no wait a second."
         Only modify if the solution is incorrect.
-        Assumes the dataset has problem, model_solution, correct_answer, and is_correct fields.
+        Uses the is_correct field from benchmark entries.
         """
         # Load the dataset
         data = load_dataset(dataset_name)[split] # type: ignore
         
         # Process each example
         def process_example(example):
-            # Check if the solution is correct
+            # Check if the solution is correct - directly use the is_correct field
             is_correct = example.get('is_correct', False)
             
             # Only modify thinking section if solution is incorrect
             if not is_correct:
                 # Extract the thinking section from the model solution
                 thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-                thinking_match = thinking_pattern.search(example['model_solution'])
+                thinking_match = thinking_pattern.search(example.get('model_solution', ''))
                 
                 if thinking_match:
                     thinking_content = thinking_match.group(1)
@@ -226,14 +226,14 @@ def main():
                     
                     return {
                         'prompt': prompt,
-                        'answer': str(example['correct_answer']),  # Stringify the answer
+                        'answer': str(example.get('correct_answer', '')),  # Stringify the answer
                         'is_modified': True
                     }
             
             # For correct solutions or if no thinking section found, use standard prompt
             return {
                 'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-                'answer': str(example['correct_answer']),  # Stringify the answer
+                'answer': str(example.get('correct_answer', '')),  # Stringify the answer
                 'is_modified': False
             }
         
@@ -258,7 +258,12 @@ def main():
             thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
             thinking_match = thinking_pattern.search(entry['prompt'])
             if thinking_match:
-                print(f"Thinking section: {thinking_match.group(1)[:100]}...")
+                thinking_content = thinking_match.group(1)
+                print(f"Thinking section: {thinking_content[:100]}...")
+                if "...no wait a second." in thinking_content:
+                    print("✓ Contains '...no wait a second.' modification")
+                else:
+                    print("✗ Does NOT contain '...no wait a second.' modification")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
