@@ -130,12 +130,8 @@ def main():
     # Setup logging first
     logger = setup_logging(model_type)
     
-    # Check if we have prepared data
-    local_data_path = os.path.join(project_root, "data", "completion_training_data.json")
-    if not os.path.exists(local_data_path):
-        logger.info(f"No prepared completion data found at {local_data_path}")
-        logger.info("You can create training data from benchmark results using:")
-        logger.info("python -m auxilary.prepare_completion_data --input results.json --output data/completion_training_data.json")
+    # Log dataset information
+    logger.info(f"Using dataset: {dataset_name}")
     
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
@@ -190,101 +186,34 @@ def main():
     
     # We don't need to prepare partial solutions as they're already in the dataset
     
-    def load_dataset_from_path(path, split="train"):
-        """
-        Load dataset from either a Hugging Face dataset ID or a local path.
-        
-        Args:
-            path: Either a Hugging Face dataset ID or a local path
-            split: Dataset split to load
-            
-        Returns:
-            Dataset object
-        """
-        try:
-            # First try to load as a local dataset
-            if os.path.exists(path):
-                logger.info(f"Loading dataset from disk: {path}")
-                dataset = load_from_disk(path)
-                # If dataset has splits, get the requested split
-                if hasattr(dataset, 'keys') and split in dataset:
-                    return dataset[split]
-                return dataset
-            else:
-                # Try to load as a Hugging Face dataset
-                logger.info(f"Loading dataset from Hugging Face: {path}")
-                return load_dataset(path)[split]
-        except Exception as e:
-            logger.error(f"Error loading dataset from {path}: {e}")
-            raise
-    
     def get_questions(split="train") -> Dataset:
-        """
-        Load dataset for completion training.
+        """Load dataset for completion training"""
+        logger.info(f"Loading dataset from: {dataset_name}")
         
-        This function can load data in three ways:
-        1. From a Hugging Face dataset with the expected format
-        2. From a local JSON file created by the prepare_completion_data.py script
-        3. From a local saved dataset using load_from_disk
-        """
-        # Check if we have a local JSON file first
-        local_data_path = os.path.join(project_root, "data", "completion_training_data.json")
-        
-        if os.path.exists(local_data_path):
-            logger.info(f"Loading completion training data from local file: {local_data_path}")
-            try:
-                # Load from local JSON file
-                with open(local_data_path, 'r', encoding='utf-8') as f:
-                    raw_data = json.load(f)
-                
-                # Convert to Dataset format
-                data = Dataset.from_dict({
-                    'problem': [item['problem'] for item in raw_data],
-                    'partial_solution': [item['partial_solution'] for item in raw_data],
-                    'answer': [item['answer'] for item in raw_data]
-                })
-                
-                logger.info(f"Loaded {len(data)} examples from local file")
-                
-            except Exception as e:
-                logger.warning(f"Error loading local data: {str(e)}")
-                logger.info(f"Falling back to dataset: {dataset_name}")
-                data = load_dataset_from_path(dataset_name, split)
-                data = prepare_dataset_from_hf(data)
-        else:
-            logger.info(f"No local data found, loading from dataset: {dataset_name}")
-            data = load_dataset_from_path(dataset_name, split)
-            data = prepare_dataset_from_hf(data)
-        
-        return data
-        
-    def prepare_dataset_from_hf(data):
-        """Prepare dataset from HuggingFace format"""
-        # Map fields to expected format
-        def format_example(example):
-            problem = example.get('question', '')
-            answer = example.get('answer', '')
-            partial_solution = example.get('partial_solution', '')
+        try:
+            # Load dataset from path (local or HF)
+            if os.path.exists(dataset_name):
+                data = load_from_disk(dataset_name)
+                if hasattr(data, 'keys') and split in data:
+                    data = data[split]
+            else:
+                data = load_dataset(dataset_name)[split]
             
-            return {
-                'problem': problem,
-                'partial_solution': partial_solution,
-                'answer': answer
-            }
-        
-        # Format the data
-        data = data.map(format_example)
-        
-        # Format for training
-        data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                     f"Problem: {x['problem']}\n\nPartial Solution: <response>{x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
-            'problem': x['problem'],
-            'partial_solution': x['partial_solution'],
-            'answer': x['answer']
-        })
-        
-        return data
+            # Format for training
+            data = data.map(lambda x: {
+                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
+                         f"Problem: {x['question']}\n\nPartial Solution: <response>{x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
+                'problem': x['question'],
+                'partial_solution': x['partial_solution'],
+                'answer': x['answer']
+            })
+            
+            logger.info(f"Loaded {len(data)} examples from dataset")
+            return data
+            
+        except Exception as e:
+            logger.error(f"Error loading dataset: {str(e)}")
+            raise
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
