@@ -351,8 +351,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"\n📋 Problem:")
             logger.append(f"{problem[:200]}...")
             logger.append(f"\n✓ Expected Answer: {correct_answer}")
-            logger.append(f"\n❌ Solution is incorrect. Model answer: {model_answer}")
-            logger.append(f"\n🔍 Analyzing steps to find the error...")
+            logger.append(f"\n❌ Found {len(incorrect_solutions)} incorrect solutions")
+            logger.append(f"\n🔍 Analyzing steps to find errors...")
             
             # Create step analyzer with the logger
             analyzer = StepAnalyzer(
@@ -363,13 +363,29 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logs=logger.logs
             )
             
-            # Find the wrong step
-            wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
-                problem=problem,
-                correct_answer=correct_answer,
-                wrong_solution=solution,
-                num_completions=config.completions
-            )
+            # Analyze each incorrect solution (up to 3 to avoid excessive processing)
+            analyzed_solutions = []
+            for idx, sol_data in enumerate(incorrect_solutions[:3]):
+                solution = sol_data['solution']
+                model_answer = sol_data['answer']
+                
+                logger.append(f"\n🔍 Analyzing incorrect solution {idx+1}/{min(3, len(incorrect_solutions))}")
+                logger.append(f"   Model answer: {model_answer}")
+                
+                # Find the wrong step
+                wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
+                    problem=problem,
+                    correct_answer=correct_answer,
+                    wrong_solution=solution,
+                    num_completions=config.completions
+                )
+                
+                analyzed_solutions.append({
+                    'solution': solution,
+                    'wrong_step_index': wrong_step_index,
+                    'good_completion': saved_good_completion,
+                    'last_good_step': last_good_step
+                })
             
             # Process all analyzed solutions
             for idx, analysis in enumerate(analyzed_solutions):
