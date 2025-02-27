@@ -706,6 +706,130 @@ class GroupReward(BaseReward):
             self.logger.error(f"Error calculating group reward: {str(e)}")
             return 0.0
 
+class CompletionReward(BaseReward):
+    """Reward class for solution completion evaluation"""
+    
+    __name__ = "completion_reward"
+    relevant_stats = {
+        'reward_components': ['base_rewards', 'step_continuity_rewards', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward'],
+        'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed']
+    }
+    
+    def __init__(self, config: RewardConfig):
+        super().__init__(config)
+        
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a solution completion"""
+        try:
+            # Get problem and partial solution
+            problem = kwargs.get('problem', '')
+            partial_solution = kwargs.get('partial_solution', '')
+            correct_answer = kwargs.get('answer', '')
+            
+            if not all([problem, partial_solution, correct_answer]):
+                self.logger.warning("Missing required inputs for completion reward calculation")
+                return 0.0
+                
+            # Combine partial solution with completion
+            full_solution = partial_solution + completion
+            
+            # Check for required XML sections
+            if not has_thinking_section(full_solution):
+                self.logger.debug("Missing thinking section")
+                return 0.0
+                
+            if not has_response_section(full_solution):
+                self.logger.debug("Missing response section")
+                return 0.0
+                
+            # Extract and validate the answer
+            model_answer = extract_answer_from_solution(full_solution)
+            if model_answer is None:
+                self.logger.debug("No boxed answer found in completion")
+                return 0.0
+                
+            # Convert to numeric values
+            model_numeric, _ = extract_numeric_answer(model_answer)
+            correct_numeric, _ = extract_numeric_answer(correct_answer)
+            if model_numeric is None or correct_numeric is None:
+                self.logger.debug(f"Could not extract numeric values - Model: {model_numeric}, Correct: {correct_numeric}")
+                return 0.0
+                
+            # Check correctness
+            is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+            self.logger.info(f"Correctness check - Model: {model_numeric:.6f}, Expected: {correct_numeric:.6f}, Correct: {is_correct}")
+            
+            # Base reward for correct answer
+            reward = 0.0
+            if is_correct:
+                reward = self.config.base_reward
+                self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
+                self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
+                self.stats.reward_components['correct_answers'] = self.stats.reward_components.get('correct_answers', 0) + 1
+            else:
+                self.stats.reward_components['incorrect_answers'] = self.stats.reward_components.get('incorrect_answers', 0) + 1
+                
+            # Check step continuity and numbering
+            # Extract steps from partial solution to determine last step number
+            partial_steps = re.findall(r'<step>Step\s+(\d+):', partial_solution, re.IGNORECASE)
+            last_partial_step = int(partial_steps[-1]) if partial_steps else 0
+            
+            # Extract steps from completion
+            completion_steps = re.findall(r'<step>Step\s+(\d+):', completion, re.IGNORECASE)
+            
+            # Check if completion continues step numbering correctly
+            step_continuity_correct = True
+            if completion_steps:
+                try:
+                    first_completion_step = int(completion_steps[0])
+                    if first_completion_step != last_partial_step + 1:
+                        step_continuity_correct = False
+                        self.logger.info(f"Step numbering incorrect: Expected {last_partial_step + 1}, got {first_completion_step}")
+                    
+                    # Check if steps are in sequence
+                    for i in range(1, len(completion_steps)):
+                        if int(completion_steps[i]) != int(completion_steps[i-1]) + 1:
+                            step_continuity_correct = False
+                            self.logger.info(f"Step sequence broken: {completion_steps[i-1]} followed by {completion_steps[i]}")
+                            break
+                except (ValueError, IndexError) as e:
+                    step_continuity_correct = False
+                    self.logger.info(f"Error parsing step numbers: {str(e)}")
+            else:
+                # No steps found in completion
+                step_continuity_correct = False
+                self.logger.info("No steps found in completion")
+            
+            # Reward for correct step continuity
+            if step_continuity_correct:
+                continuity_reward = self.config.step_continuity_reward
+                reward += continuity_reward
+                self.stats.reward_components['step_continuity_rewards'] = self.stats.reward_components.get('step_continuity_rewards', 0) + 1
+                self.stats.step_stats['correct_step_numbering'] = self.stats.step_stats.get('correct_step_numbering', 0) + 1
+                self.logger.info(f"Applied step continuity reward: +{continuity_reward:.3f}")
+            else:
+                self.stats.step_stats['incorrect_step_numbering'] = self.stats.step_stats.get('incorrect_step_numbering', 0) + 1
+            
+            # Track total steps completed
+            self.stats.step_stats['total_steps_completed'] = self.stats.step_stats.get('total_steps_completed', 0) + len(completion_steps)
+            
+            # Apply length penalty
+            length_penalty = len(completion) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = \
+                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
+            total_samples = self.stats.reward_components.get('correct_answers', 0) + self.stats.reward_components.get('incorrect_answers', 0)
+            self.stats.reward_components['average_reward'] = \
+                self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+                
+            return reward
+        except Exception as e:
+            self.logger.error(f"Error calculating completion reward: {str(e)}")
+            return 0.0
+
 class TutorReward(BaseReward):
     """Reward class for tutor response evaluation"""
     

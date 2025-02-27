@@ -24,12 +24,28 @@ SYSTEM_PROMPT = """You will be given a mathematical problem and a partial soluti
 First, analyze the problem and the partial solution carefully.
 Understand what has been done so far and determine the next logical steps.
 Identify the step numbering pattern and continue from there.
+Make sure you understand the mathematical concepts involved.
 </thinking>
 
 <response>
 Continue the solution from where it left off, maintaining the same step numbering and style.
-Each step should be clearly labeled and explained.
-Put your final answer in \\boxed{}.
+Each step must be clearly labeled with the <step> tag and numbered sequentially.
+For example, if the partial solution ends with Step 2, you should start with:
+
+<step>Step 3: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+Continue with additional steps as needed:
+
+<step>Step 4: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+In your final step, include your answer in a LaTeX boxed environment:
+\\boxed{your final answer}
+
+Make sure all your steps follow logically from the partial solution.
 </response>
 """
 
