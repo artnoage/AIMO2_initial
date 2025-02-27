@@ -250,18 +250,25 @@ class SolutionReward(BaseReward):
                     step_counts = {i: len(re.findall(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)) 
                                  for i in range(1, step_count + 1)}
                     
+                    # Check if steps are properly closed
+                    opening_tags = len(re.findall(r'<step>', response_parts[0], re.IGNORECASE))
+                    closing_tags = len(re.findall(r'</step>', response_parts[0], re.IGNORECASE))
+                    steps_properly_closed = opening_tags == closing_tags
+                    
                     # Check if steps are in order and each appears exactly once
                     if all(count == 1 for count in step_counts.values()) and all(
                         response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
                         for i in range(1, step_count)
-                    ):
+                    ) and steps_properly_closed:
                         validation_reward += self.config.solution_ordered_steps_reward
-                        self.logger.info(f"Steps are in correct order and unique (+{self.config.solution_ordered_steps_reward})")
+                        self.logger.info(f"Steps are in correct order, unique, and properly closed (+{self.config.solution_ordered_steps_reward})")
                     else:
                         # Log which steps are duplicated
                         duplicates = [i for i, count in step_counts.items() if count > 1]
                         if duplicates:
                             self.logger.info(f"Duplicate steps found: {duplicates}")
+                        if not steps_properly_closed:
+                            self.logger.info(f"Step tags not properly closed: {opening_tags} opening, {closing_tags} closing")
             
             reward += validation_reward
             if validation_reward > 0:
@@ -586,18 +593,25 @@ class GroupReward(BaseReward):
                     step_counts = {i: len(re.findall(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)) 
                                  for i in range(1, step_count + 1)}
                     
+                    # Check if steps are properly closed
+                    opening_tags = len(re.findall(r'<step>', response_parts[0], re.IGNORECASE))
+                    closing_tags = len(re.findall(r'</step>', response_parts[0], re.IGNORECASE))
+                    steps_properly_closed = opening_tags == closing_tags
+                    
                     # Check if steps are in order and each appears exactly once
                     if all(count == 1 for count in step_counts.values()) and all(
                         response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
                         for i in range(1, step_count)
-                    ):
+                    ) and steps_properly_closed:
                         validation_reward += self.config.solution_ordered_steps_reward
-                        self.logger.info(f"Steps are in correct order and unique (+{self.config.solution_ordered_steps_reward})")
+                        self.logger.info(f"Steps are in correct order, unique, and properly closed (+{self.config.solution_ordered_steps_reward})")
                     else:
                         # Log which steps are duplicated
                         duplicates = [i for i, count in step_counts.items() if count > 1]
                         if duplicates:
                             self.logger.info(f"Duplicate steps found: {duplicates}")
+                        if not steps_properly_closed:
+                            self.logger.info(f"Step tags not properly closed: {opening_tags} opening, {closing_tags} closing")
             
             reward += validation_reward
             if validation_reward > 0:
