@@ -436,73 +436,139 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
     Returns:
         Tuple[bool, str]: (is_valid, reason)
     """
-    # Check if completion starts with "Step" in first 5 chars
-    if not completion[:5].strip().startswith("Step"):
-        return False, "Completion must start with 'Step'"
-        
     # Check for invalid tokens
     if "[...]" in completion:
         return False, "Contains invalid tokens ([...])"
-        
-    # Get the last step number from partial solution
-    parts = partial_solution.split("Step")
-    last_step = 0
-    for part in parts[1:]:  # Skip first split which is before "Step"
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(part)
-            if match:
-                try:
-                    num = int(match.group(1))
-                    last_step = max(last_step, num)
-                except ValueError:
-                    continue
-                    
-    # Split completion into steps
-    completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
-    if not completion_steps:
-        return False, "Completion contains no steps"
-        
-    # Track found step numbers to ensure no duplicates or gaps
-    found_steps = set()
     
-    # Validate each step in completion
-    for i, step in enumerate(completion_steps, 1):
-        expected_step_num = last_step + i
-        full_step = "Step" + step
+    # Check if we're using <step> tags format
+    using_tags = "<step>" in partial_solution or "<step>" in completion
+    
+    if using_tags:
+        # Extract steps from completion
+        completion_steps = re.findall(r'<step>(.*?)</step>', completion, re.DOTALL)
+        if not completion_steps:
+            return False, "Completion contains no steps"
+            
+        # Extract steps from partial solution
+        partial_steps = re.findall(r'<step>(.*?)</step>', partial_solution, re.DOTALL)
         
-        # Find actual step number in the completion
-        actual_step = None
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(full_step)
-            if match:
-                try:
-                    actual_step = int(match.group(1))
-                    break
-                except ValueError:
-                    continue
-                    
-        if actual_step is None:
-            return False, f"Could not find step number in completion step {i}"
-            
-        if actual_step != expected_step_num:
-            return False, f"Expected step {expected_step_num}, found step {actual_step}"
-            
-        if actual_step in found_steps:
-            return False, f"Duplicate step number {actual_step}"
-            
-        found_steps.add(actual_step)
+        # Get the last step number from partial solution
+        last_step = 0
+        for step in partial_steps:
+            for pattern in STEP_NUMBER_PATTERNS:
+                match = pattern.search(step)
+                if match:
+                    try:
+                        num = int(match.group(1))
+                        last_step = max(last_step, num)
+                    except ValueError:
+                        continue
         
-        # Validate step format and content
-        is_valid, reason = validate_step(full_step, expected_step=expected_step_num)
-        if not is_valid:
-            return False, f"Step {expected_step_num}: {reason}"
+        # Track found step numbers to ensure no duplicates or gaps
+        found_steps = set()
+        
+        # Validate each step in completion
+        for i, step in enumerate(completion_steps, 1):
+            expected_step_num = last_step + i
             
-    # Check for gaps in step numbers
-    expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
-    if found_steps != expected_steps:
-        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+            # Find actual step number in the completion
+            actual_step = None
+            for pattern in STEP_NUMBER_PATTERNS:
+                match = pattern.search(step)
+                if match:
+                    try:
+                        actual_step = int(match.group(1))
+                        break
+                    except ValueError:
+                        continue
             
-    return True, "Valid completion"
+            if actual_step is None:
+                return False, f"Could not find step number in completion step {i}"
+                
+            if actual_step != expected_step_num:
+                return False, f"Expected step {expected_step_num}, found step {actual_step}"
+                
+            if actual_step in found_steps:
+                return False, f"Duplicate step number {actual_step}"
+                
+            found_steps.add(actual_step)
+            
+            # Validate step format and content
+            is_valid, reason = validate_step(step, expected_step=expected_step_num)
+            if not is_valid:
+                return False, f"Step {expected_step_num}: {reason}"
+        
+        # Check for gaps in step numbers
+        expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
+        if found_steps != expected_steps:
+            return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+                
+        return True, "Valid completion"
+    else:
+        # Traditional format (without tags)
+        # Check if completion starts with "Step" in first 5 chars
+        if not completion[:5].strip().startswith("Step"):
+            return False, "Completion must start with 'Step'"
+            
+        # Get the last step number from partial solution
+        parts = partial_solution.split("Step")
+        last_step = 0
+        for part in parts[1:]:  # Skip first split which is before "Step"
+            for pattern in STEP_NUMBER_PATTERNS:
+                match = pattern.search(part)
+                if match:
+                    try:
+                        num = int(match.group(1))
+                        last_step = max(last_step, num)
+                    except ValueError:
+                        continue
+                        
+        # Split completion into steps
+        completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
+        if not completion_steps:
+            return False, "Completion contains no steps"
+            
+        # Track found step numbers to ensure no duplicates or gaps
+        found_steps = set()
+        
+        # Validate each step in completion
+        for i, step in enumerate(completion_steps, 1):
+            expected_step_num = last_step + i
+            full_step = "Step" + step
+            
+            # Find actual step number in the completion
+            actual_step = None
+            for pattern in STEP_NUMBER_PATTERNS:
+                match = pattern.search(full_step)
+                if match:
+                    try:
+                        actual_step = int(match.group(1))
+                        break
+                    except ValueError:
+                        continue
+                        
+            if actual_step is None:
+                return False, f"Could not find step number in completion step {i}"
+                
+            if actual_step != expected_step_num:
+                return False, f"Expected step {expected_step_num}, found step {actual_step}"
+                
+            if actual_step in found_steps:
+                return False, f"Duplicate step number {actual_step}"
+                
+            found_steps.add(actual_step)
+            
+            # Validate step format and content
+            is_valid, reason = validate_step(full_step, expected_step=expected_step_num)
+            if not is_valid:
+                return False, f"Step {expected_step_num}: {reason}"
+                
+        # Check for gaps in step numbers
+        expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
+        if found_steps != expected_steps:
+            return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+                
+        return True, "Valid completion"
                     
 
 def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
@@ -589,32 +655,13 @@ def split_into_steps(solution: str) -> List[str]:
     1. Steps enclosed in <step> tags
     2. Traditional "Step N" format
     
-    Returns a list of steps, with analysis section as first element if present.
+    Returns a list of steps from the response section only.
     """
     # First check for <step> tags
     step_tags = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
     if step_tags:
-        # Extract thinking/response sections if present
-        thinking = None
-        response = None
-        
-        thinking_match = re.search(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
-        if thinking_match:
-            thinking = thinking_match.group(1).strip()
-            
-        response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
-        if response_match:
-            response = response_match.group(1).strip()
-        
-        steps = []
-        # Add thinking section if present
-        if thinking:
-            steps.append(f"<thinking>{thinking}</thinking>")
-            
-        # Add each step from tags
-        steps.extend(step_tags)
-        
-        return steps
+        # Just return the steps without thinking section
+        return step_tags
     
     # Fall back to traditional "Step" keyword splitting
     parts = solution.split("Step")
@@ -650,19 +697,8 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     # Check if we're using <step> tags format
     using_tags = any("<step>" in step or "</step>" in step for step in steps)
     
-    # Handle thinking/analysis section if present
-    if steps and ("<thinking>" in steps[0] or "analysis" in steps[0].lower()):
-        current = steps[0]
-        steps = steps[1:]  # Remove analysis from steps to process
-        
-        # For tagged format, add <response> opening if needed
-        if using_tags and "<response>" not in current:
-            current += "\n\n<response>"
-            
-        partial_solutions.append(current)
-        current += "\n\n"  # Add spacing after analysis
-    elif using_tags:
-        # If no thinking section but using tags, start with <response> tag
+    # Start with <response> tag for tagged format
+    if using_tags:
         current = "<response>"
         partial_solutions.append(current)
         current += "\n\n"
