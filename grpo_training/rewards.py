@@ -756,11 +756,8 @@ class CompletionReward(BaseReward):
                 return 0.0
                 
             # Combine partial solution with completion response
-            # Add the response tag if it's not already there
-            if not partial_solution.startswith("<response>"):
-                full_solution = "<response>" + partial_solution + completion_response
-            else:
-                full_solution = partial_solution + completion_response
+            # We don't want the response tag in either part
+            full_solution = "<response>" + partial_solution + completion_response
             
             # Since we're only using the response part in partial solutions,
             # we don't need to check for thinking section
