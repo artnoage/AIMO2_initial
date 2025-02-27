@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 import json
-from datasets import load_dataset, concatenate_datasets, Dataset
+from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -190,13 +190,42 @@ def main():
     
     # We don't need to prepare partial solutions as they're already in the dataset
     
+    def load_dataset_from_path(path, split="train"):
+        """
+        Load dataset from either a Hugging Face dataset ID or a local path.
+        
+        Args:
+            path: Either a Hugging Face dataset ID or a local path
+            split: Dataset split to load
+            
+        Returns:
+            Dataset object
+        """
+        try:
+            # First try to load as a local dataset
+            if os.path.exists(path):
+                logger.info(f"Loading dataset from disk: {path}")
+                dataset = load_from_disk(path)
+                # If dataset has splits, get the requested split
+                if hasattr(dataset, 'keys') and split in dataset:
+                    return dataset[split]
+                return dataset
+            else:
+                # Try to load as a Hugging Face dataset
+                logger.info(f"Loading dataset from Hugging Face: {path}")
+                return load_dataset(path)[split]
+        except Exception as e:
+            logger.error(f"Error loading dataset from {path}: {e}")
+            raise
+    
     def get_questions(split="train") -> Dataset:
         """
         Load dataset for completion training.
         
-        This function can load data in two ways:
+        This function can load data in three ways:
         1. From a Hugging Face dataset with the expected format
         2. From a local JSON file created by the prepare_completion_data.py script
+        3. From a local saved dataset using load_from_disk
         """
         # Check if we have a local JSON file first
         local_data_path = os.path.join(project_root, "data", "completion_training_data.json")
@@ -219,12 +248,12 @@ def main():
                 
             except Exception as e:
                 logger.warning(f"Error loading local data: {str(e)}")
-                logger.info(f"Falling back to HuggingFace dataset: {dataset_name}")
-                data = load_dataset(dataset_name)[split]
+                logger.info(f"Falling back to dataset: {dataset_name}")
+                data = load_dataset_from_path(dataset_name, split)
                 data = prepare_dataset_from_hf(data)
         else:
-            logger.info(f"No local data found, loading from HuggingFace dataset: {dataset_name}")
-            data = load_dataset(dataset_name)[split]
+            logger.info(f"No local data found, loading from dataset: {dataset_name}")
+            data = load_dataset_from_path(dataset_name, split)
             data = prepare_dataset_from_hf(data)
         
         return data
