@@ -194,40 +194,48 @@ def main():
     def get_questions(split = "train") -> Dataset:
         """
         Load dataset and modify the thinking section by adding "...no wait a second."
-        Assumes the dataset has problem, model_solution, and correct_answer fields.
+        Only modify if the solution is incorrect.
+        Assumes the dataset has problem, model_solution, correct_answer, and is_correct fields.
         """
         # Load the dataset
         data = load_dataset(dataset_name)[split] # type: ignore
         
         # Process each example
         def process_example(example):
-            # Extract the thinking section from the model solution
-            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-            thinking_match = thinking_pattern.search(example['model_solution'])
+            # Check if the solution is correct
+            is_correct = example.get('is_correct', False)
             
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                # Modify the thinking section
-                modified_thinking = thinking_content + "...no wait a second."
+            # Only modify thinking section if solution is incorrect
+            if not is_correct:
+                # Extract the thinking section from the model solution
+                thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+                thinking_match = thinking_pattern.search(example['model_solution'])
                 
-                # Create prompt with the modified thinking section
-                prompt = (
-                    '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
-                    '<|im_start|>user\n' + example['problem'] + '<|im_end|>\n'
-                    '<|im_start|>assistant\n'
-                    '<thinking>' + modified_thinking + '</thinking>'
-                )
-                
-                return {
-                    'prompt': prompt,
-                    'answer': str(example['correct_answer'])  # Stringify the answer
-                }
-            else:
-                # Fallback if no thinking section found
-                return {
-                    'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-                    'answer': str(example['correct_answer'])  # Stringify the answer
-                }
+                if thinking_match:
+                    thinking_content = thinking_match.group(1)
+                    # Modify the thinking section
+                    modified_thinking = thinking_content + "...no wait a second."
+                    
+                    # Create prompt with the modified thinking section
+                    prompt = (
+                        '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
+                        '<|im_start|>user\n' + example['problem'] + '<|im_end|>\n'
+                        '<|im_start|>assistant\n'
+                        '<thinking>' + modified_thinking + '</thinking>'
+                    )
+                    
+                    return {
+                        'prompt': prompt,
+                        'answer': str(example['correct_answer']),  # Stringify the answer
+                        'is_modified': True
+                    }
+            
+            # For correct solutions or if no thinking section found, use standard prompt
+            return {
+                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+                'answer': str(example['correct_answer']),  # Stringify the answer
+                'is_modified': False
+            }
         
         # Apply the processing to each example
         processed_data = data.map(process_example)
@@ -244,7 +252,13 @@ def main():
         entry = formatted_dataset[i]
         print(f"\nEntry {i} verification:")
         print(f"Answer: {entry.get('answer')}")
-        print(f"Model solution: {entry.get('model_solution')}")
+        print(f"Is modified: {entry.get('is_modified', False)}")
+        if 'prompt' in entry:
+            # Extract thinking section from prompt to verify modification
+            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+            thinking_match = thinking_pattern.search(entry['prompt'])
+            if thinking_match:
+                print(f"Thinking section: {thinking_match.group(1)[:100]}...")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
