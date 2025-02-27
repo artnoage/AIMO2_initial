@@ -733,10 +733,8 @@ class CompletionReward(BaseReward):
             # Combine partial solution with completion
             full_solution = partial_solution + completion
             
-            # Check for required XML sections
-            if not has_thinking_section(full_solution):
-                self.logger.debug("Missing thinking section")
-                return 0.0
+            # Since we're only using the response part in partial solutions,
+            # we don't need to check for thinking section
                 
             if not has_response_section(full_solution):
                 self.logger.debug("Missing response section")

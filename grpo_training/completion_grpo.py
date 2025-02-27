@@ -30,7 +30,9 @@ Make sure you understand the mathematical concepts involved.
 
 <response>
 Continue the solution from where it left off, maintaining the same step numbering and style.
-Each step must be clearly labeled with the <step> tag and numbered sequentially.
+The partial solution will only contain the beginning of the response section with some steps.
+You must continue with the next step number in sequence.
+
 For example, if the partial solution ends with Step 2, you should start with:
 
 <step>Step 3: [Description of the step]

@@ -66,14 +66,12 @@ def create_partial_solution(solution: str) -> Tuple[str, str]:
     Create a partial solution by truncating at a random step marker.
     Returns (partial_solution, completion)
     """
-    # Extract thinking and response sections
-    thinking_match = re.search(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
+    # Extract response section only
     response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
     
-    if not thinking_match or not response_match:
+    if not response_match:
         return solution, ""
     
-    thinking = thinking_match.group(0)
     response = response_match.group(1)
     
     # Find all step markers
@@ -91,7 +89,8 @@ def create_partial_solution(solution: str) -> Tuple[str, str]:
     partial_response = response[:truncate_pos]
     remaining_response = response[truncate_pos:]
     
-    partial_solution = f"{thinking}<response>{partial_response}"
+    # Only include the response part in the partial solution
+    partial_solution = f"<response>{partial_response}"
     completion = remaining_response + "</response>"
     
     return partial_solution, completion
