@@ -412,17 +412,15 @@ class ProgressTracker:
             # Save timestamp for consistent filenames
             timestamp = self.start_time.strftime('%Y%m%d_%H%M%S')
             
-            # Save all result types
-            for data_type, type_results in results_by_type.items():
-                if type_results:
-                    filename = f"{data_type}_{timestamp}.json"
-                    filepath = os.path.join("results", filename)
-                    print(f"Attempting to save {len(type_results)} {data_type} results to: {filepath}")
-                    with open(filepath, 'w') as f:
-                        json.dump(type_results, f, indent=2)
-                    print(f"Successfully saved {len(type_results)} {data_type} results to: {filepath}")
-            
-            # Don't save all results combined
+            # Only save training data, not statistics
+            if 'training' in results_by_type and results_by_type['training']:
+                training_results = results_by_type['training']
+                filename = f"training_{timestamp}.json"
+                filepath = os.path.join("results", filename)
+                print(f"Attempting to save {len(training_results)} training results to: {filepath}")
+                with open(filepath, 'w') as f:
+                    json.dump(training_results, f, indent=2)
+                print(f"Successfully saved {len(training_results)} training results to: {filepath}")
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
