@@ -17,7 +17,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from rewards import CompletionReward
+from rewards import CompletionReward, SolutionSimilarityChecker
 
 SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
@@ -157,8 +157,11 @@ def main():
         }
     )
     
-    # Initialize reward function
-    reward_func = CompletionReward(reward_config)
+    # Initialize similarity checker first
+    similarity_checker = SolutionSimilarityChecker(reward_config)
+    
+    # Initialize reward function with similarity checker
+    reward_func = CompletionReward(reward_config, similarity_checker)
     logger.info("\nInitialized CompletionReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     

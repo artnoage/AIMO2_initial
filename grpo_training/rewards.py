@@ -737,12 +737,14 @@ class CompletionReward(BaseReward):
     
     __name__ = "completion_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'step_continuity_rewards', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward'],
-        'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed']
+        'reward_components': ['base_rewards', 'step_continuity_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward'],
+        'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed'],
+        'similarity_stats': ['unique_completions', 'similar_completions', 'total_similarity']
     }
     
-    def __init__(self, config: RewardConfig):
+    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker = None):
         super().__init__(config)
+        self.similarity_checker = similarity_checker
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a solution completion"""
@@ -863,6 +865,64 @@ class CompletionReward(BaseReward):
             reward -= length_penalty
             self.stats.reward_components['total_length_penalty'] = \
                 self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Apply similarity check if we have a similarity checker and group context
+            group_completions = kwargs.get('group_completions', [])
+            if self.similarity_checker and len(group_completions) > 1:
+                # Extract response parts from completions for similarity calculation
+                response_parts = []
+                for comp in group_completions:
+                    response_match = re.search(r'<response>(.*?)</response>', comp, re.DOTALL)
+                    if response_match:
+                        response_parts.append(response_match.group(1))
+                    else:
+                        # If no response tags, use the whole completion
+                        response_parts.append(comp)
+                
+                # Calculate similarity matrix
+                similarity_matrix = self.similarity_checker.compute_similarity_matrix(response_parts)
+                
+                # Get the current completion's index in the group
+                group_idx = kwargs.get('group_idx', 0)
+                
+                # Calculate average similarity to other completions
+                with torch.no_grad():
+                    # Get the similarity row and keep on GPU for performance
+                    similarities = similarity_matrix[group_idx].clone()
+                    # Set self-similarity to zero
+                    similarities[group_idx] = 0
+                    
+                    # Calculate average on GPU
+                    avg_similarity = similarities.mean().item()
+                
+                self.logger.info(f"Similarity calculation - Average similarity: {avg_similarity:.3f}")
+                
+                # Calculate diversity bonus/penalty based on difference from threshold
+                diff = self.config.group_similarity_threshold - avg_similarity
+                diversity_bonus = self.config.group_diversity_bonus * (abs(diff) ** 0.5)
+                
+                # Initialize diversity_bonus variable for stats tracking
+                diversity_bonus_applied = 0.0
+                
+                if diff > 0:  # Below threshold - more unique
+                    if is_correct:
+                        reward += diversity_bonus
+                        diversity_bonus_applied = diversity_bonus
+                        self.stats.reward_components['diversity_bonuses'] = self.stats.reward_components.get('diversity_bonuses', 0) + 1
+                        self.logger.info(f"Applied uniqueness bonus: +{diversity_bonus:.3f}")
+                else:  # Above threshold - too similar
+                    reward -= diversity_bonus
+                    diversity_bonus_applied = -diversity_bonus
+                    self.stats.reward_components['similarity_penalties'] = self.stats.reward_components.get('similarity_penalties', 0) + 1
+                    self.logger.info(f"Applied similarity penalty: -{diversity_bonus:.3f}")
+                
+                # Update similarity stats
+                if avg_similarity < self.config.group_similarity_threshold:
+                    self.stats.similarity_stats['unique_completions'] = self.stats.similarity_stats.get('unique_completions', 0) + 1
+                else:
+                    self.stats.similarity_stats['similar_completions'] = self.stats.similarity_stats.get('similar_completions', 0) + 1
+                
+                self.stats.similarity_stats['total_similarity'] = self.stats.similarity_stats.get('total_similarity', 0.0) + avg_similarity
             
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
