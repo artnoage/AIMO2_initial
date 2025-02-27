@@ -633,8 +633,18 @@ class GroupReward(BaseReward):
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
-            # Calculate similarity matrix for group
-            similarity_matrix = self.similarity_checker.compute_similarity_matrix(group_completions)
+            # Extract response parts from completions for similarity calculation
+            response_parts = []
+            for comp in group_completions:
+                response_match = re.search(r'<response>(.*?)</response>', comp, re.DOTALL)
+                if response_match:
+                    response_parts.append(response_match.group(1))
+                else:
+                    # If no response tags, use the whole completion
+                    response_parts.append(comp)
+                    
+            # Calculate similarity matrix for group using only response parts
+            similarity_matrix = self.similarity_checker.compute_similarity_matrix(response_parts)
             
             # Calculate correctness for all completions in group
             all_results = []
