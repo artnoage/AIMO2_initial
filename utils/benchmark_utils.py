@@ -620,17 +620,46 @@ def remove_inst_tokens(text: str) -> str:
 
 def split_into_steps(solution: str) -> List[str]:
     """
-    Split a solution into analysis and numbered steps.
-    Returns a list where first element is analysis (if present) followed by steps.
+    Split a solution into steps.
+    Handles both:
+    1. Steps enclosed in <step> tags
+    2. Traditional "Step N" format
+    
+    Returns a list of steps, with analysis section as first element if present.
     """
-    # First split on "Step" keyword
+    # First check for <step> tags
+    step_tags = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
+    if step_tags:
+        # Extract thinking/response sections if present
+        thinking = None
+        response = None
+        
+        thinking_match = re.search(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
+        if thinking_match:
+            thinking = thinking_match.group(1).strip()
+            
+        response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
+        if response_match:
+            response = response_match.group(1).strip()
+        
+        steps = []
+        # Add thinking section if present
+        if thinking:
+            steps.append(f"<thinking>{thinking}</thinking>")
+            
+        # Add each step from tags
+        steps.extend(step_tags)
+        
+        return steps
+    
+    # Fall back to traditional "Step" keyword splitting
     parts = solution.split("Step")
     if not parts:
         return []
         
     steps = []
     # Process first part (potential analysis)
-    if "analysis" in parts[0].lower():
+    if parts[0].strip() and ("analysis" in parts[0].lower() or "<thinking>" in parts[0]):
         steps.append(parts[0].strip())
         
     # Process numbered steps
@@ -646,7 +675,7 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     """
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
-    First element is analysis (if present), followed by steps.
+    Handles both traditional steps and <step> tag format.
     """
     if not steps:
         return []
@@ -654,18 +683,42 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     partial_solutions = []
     current = ""
     
-    # Handle analysis section if present
-    if "analysis" in steps[0].lower():
+    # Check if we're using <step> tags format
+    using_tags = any("<step>" in step or "</step>" in step for step in steps)
+    
+    # Handle thinking/analysis section if present
+    if steps and ("<thinking>" in steps[0] or "analysis" in steps[0].lower()):
         current = steps[0]
         steps = steps[1:]  # Remove analysis from steps to process
+        
+        # For tagged format, add <response> opening if needed
+        if using_tags and "<response>" not in current:
+            current += "\n\n<response>"
+            
         partial_solutions.append(current)
         current += "\n\n"  # Add spacing after analysis
+    elif using_tags:
+        # If no thinking section but using tags, start with <response> tag
+        current = "<response>"
+        partial_solutions.append(current)
+        current += "\n\n"
     
     # Process remaining steps
     for step in steps:
+        # For tagged format, wrap step in tags if not already wrapped
+        if using_tags and not (step.strip().startswith("<step>") and step.strip().endswith("</step>")):
+            step = f"<step>{step}</step>"
+            
         current += step
         partial_solutions.append(current)
         current += "\n\n"  # Add spacing between steps
+    
+    # For tagged format, add closing </response> tag if needed
+    if using_tags and "</response>" not in current:
+        current = current.rstrip() + "\n</response>"
+        # Update the last partial solution to include the closing tag
+        if partial_solutions:
+            partial_solutions[-1] = current
         
     return partial_solutions
 
