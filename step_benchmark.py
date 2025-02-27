@@ -112,12 +112,6 @@ class StepAnalyzer:
                     if len(complete_solution) < size_threshold:
                         self._log(f"⚠️ Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
-                    
-                    # Check if response is properly closed
-                    if "</response>" not in complete_solution:
-                        self._log(f"⚠️ Completion missing </response> tag")
-                        # Try to fix by adding the closing tag
-                        complete_solution += "\n</response>"
                         
                     # Validate complete solution
                     is_valid = True
