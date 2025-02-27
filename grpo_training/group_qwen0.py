@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_1"
-    model_name = "/workspace/AIMO2_initial/models/Qwen"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_type = "group_0"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -168,20 +168,20 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3600,
+        max_seq_length=3400,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.55,
-        max_lora_rank=128)
+        gpu_memory_utilization= 0.4,
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -201,7 +201,7 @@ def main():
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset=formatted_dataset.select(range(200))
+    formatted_dataset=formatted_dataset.select(range(1000))
  
    
     
@@ -228,11 +228,11 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=32,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=2800,
+        max_completion_length=2600,
         num_train_epochs=1,
-        save_steps=30,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

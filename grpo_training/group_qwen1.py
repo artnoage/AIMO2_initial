@@ -17,7 +17,6 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import GroupReward, SolutionSimilarityChecker
 
-
 SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
     First, analyze the problem in depth and outline your approach.\n 
@@ -123,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_2"
-    model_name = "unsloth/Phi-4"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_type = "group_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -134,14 +133,13 @@ def main():
 
     # Initialize config with modified bonus values
     reward_config = RewardConfig(model_type=model_type)
-    reward_config.group_majority_bonus = 0.2  # Increased from 0.2
     reward_config.group_diversity_bonus = 2  # Increased from 1.0
     
     # Setup
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -151,9 +149,7 @@ def main():
             "dataset": dataset_name,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
-            "majority_bonus": 0.2,
-            "similarity_threshold_low": 0.7,
-            "similarity_threshold_high": 0.9
+            "majority_bonus": 0.2
         }
     )
     
@@ -172,20 +168,20 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3200,
+        max_seq_length=3400,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.5,
-        max_lora_rank=256)
+        gpu_memory_utilization= 0.4,
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=256,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=256,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -195,50 +191,20 @@ def main():
     )
     
         
-    def get_questions1(split="train") -> Dataset:
-        data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
-        data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
-                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>"
-                  "<|im_start|>assistant<|im_sep|>",
-        'answer': x['answer']
-    })  # type: ignore
-        return data  # type: ignore
+    def get_questions(split = "train") -> Dataset:
+        data = load_dataset(dataset_name)[split] # type: ignore
+        data = data.map(lambda x: { # type: ignore
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'answer': x['answer']
+        }) # type: ignore
+        return data # type: ignore
 
-    def get_questions2(split="train") -> Dataset:
-        data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
-        data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant<|im_sep|>",
-        'answer': x['answer']
-    })  # type: ignore
-        return data  # type: ignore
-    def get_questions3(split="train") -> Dataset:
-        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
-        data = data.map(lambda x: {
-        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
-        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
-                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
-                  "<|im_start|>assistant<|im_sep|>",
-        'answer': x['answer']
-    })  # type: ignore
-        return data  # type: ignore
-
-    formatted_dataset1 = get_questions1()
-    formatted_dataset1 = formatted_dataset1.shuffle(seed=22)
-    formatted_dataset1 = formatted_dataset1.select(range(330))
-    formatted_dataset2 = get_questions2()
-    formatted_dataset2 = formatted_dataset2.shuffle(seed=22)
-    formatted_dataset2 = formatted_dataset2.select(range(330))
-    formatted_dataset3 = get_questions3()
-    formatted_dataset3 = formatted_dataset3.shuffle(seed=22)
-    formatted_dataset3 = formatted_dataset3.select(range(330))
+    formatted_dataset = get_questions()
+    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset=formatted_dataset.select(range(1000))
+ 
    
-    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
-    formatted_dataset=formatted_dataset.shuffle(seed=22)
+    
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -249,22 +215,22 @@ def main():
 
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=10,
-        learning_rate=5e-6,
+        torch_empty_cache_steps=1,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=10,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=2400,
+        max_completion_length=2600,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

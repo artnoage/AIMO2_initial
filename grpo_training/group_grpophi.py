@@ -1,8 +1,7 @@
 import os
 import wandb
 import logging
-import re
-from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
+from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -17,6 +16,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import GroupReward, SolutionSimilarityChecker
+
 
 SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
@@ -33,13 +33,14 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
+
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('wait_grpo')
+    logger = logging.getLogger('group_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -122,9 +123,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "wait_1"
-    model_name = "/workspace/AIMO2_initial/models/completion/20250227_114156"
-    dataset_name = "/workspace/AIMO2_initial/local_datasets/20250227_142947"
+    model_type = "group_1"
+    model_name = "unsloth/Phi-4"
+    dataset_name = "Metaskepsis/Numina_medium_filtered"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -139,7 +140,7 @@ def main():
     logger = setup_logging(reward_config.model_type)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, MB: {reward_config.group_majority_bonus}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -149,7 +150,9 @@ def main():
             "dataset": dataset_name,
             "base_reward": 3.0,
             "diversity_bonus": 0.3,
-            "majority_bonus": 0.2
+            "majority_bonus": 0.2,
+            "similarity_threshold_low": 0.7,
+            "similarity_threshold_high": 0.9
         }
     )
     
@@ -168,20 +171,20 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=4096,
+        max_seq_length=3200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.55,
-        max_lora_rank=128)
+        gpu_memory_utilization=0.5,
+        max_lora_rank=256)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=256,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=256,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -189,98 +192,78 @@ def main():
         use_rslora=False,
         loftq_config=None
     )
+    
         
-    def get_questions(split = "train") -> Dataset:
-        """
-        Load dataset and modify the thinking section by adding "...no wait a second."
-        Only modify if the solution is incorrect.
-        Uses the is_correct field from benchmark entries.
-        """
-        # Load the dataset
-        data = load_from_disk(dataset_name) # type: ignore
-        
-        # Process each example
-        def process_example(example):
-            # Check if the solution is correct - directly use the is_correct field
-            is_correct = example.get('is_correct', False)
-            
-            # Only modify thinking section if solution is incorrect
-            if not is_correct:
-                # Extract the thinking section from the model solution
-                thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-                thinking_match = thinking_pattern.search(example.get('model_solution', ''))
-                
-                if thinking_match:
-                    thinking_content = thinking_match.group(1)
-                    # Modify the thinking section
-                    modified_thinking = thinking_content + "...no wait a second."
-                    
-                    # Create prompt with the modified thinking section
-                    prompt = (
-                        '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
-                        '<|im_start|>user\n' + example['problem'] + '<|im_end|>\n'
-                        '<|im_start|>assistant\n'
-                        '<thinking>' + modified_thinking )
-                    
-                    return {
-                        'prompt': prompt,
-                        'answer': str(example.get('correct_answer', '')),  # Stringify the answer
-                        'is_modified': True
-                    }
-            
-            # For correct solutions or if no thinking section found, use standard prompt
-            return {
-                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-                'answer': str(example.get('correct_answer', '')),  # Stringify the answer
-                'is_modified': False
-            }
-        
-        # Apply the processing to each example
-        processed_data = data.map(process_example)
-        
-        logger.info(f"Created dataset with {len(processed_data)} examples")
-        return processed_data
+    def get_questions1(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_medium_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>"
+                  "<|im_start|>assistant<|im_sep|>",
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
 
-    formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(600))
- 
+    def get_questions2(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
+                  "<|im_start|>assistant<|im_sep|>",
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+    def get_questions3(split="train") -> Dataset:
+        data = load_dataset("Metaskepsis/Numina_very_hard_filtered")[split]  # type: ignore
+        data = data.map(lambda x: {
+        # Phi‑4 (from Microsoft) typically uses a ChatML‐style format with special tokens.
+        'prompt': "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>\n"
+                  "<|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|>\n"
+                  "<|im_start|>assistant<|im_sep|>",
+        'answer': x['answer']
+    })  # type: ignore
+        return data  # type: ignore
+
+    formatted_dataset1 = get_questions1()
+    formatted_dataset1 = formatted_dataset1.shuffle(seed=22)
+    formatted_dataset1 = formatted_dataset1.select(range(330))
+    formatted_dataset2 = get_questions2()
+    formatted_dataset2 = formatted_dataset2.shuffle(seed=22)
+    formatted_dataset2 = formatted_dataset2.select(range(330))
+    formatted_dataset3 = get_questions3()
+    formatted_dataset3 = formatted_dataset3.shuffle(seed=22)
+    formatted_dataset3 = formatted_dataset3.select(range(330))
+   
+    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
+    formatted_dataset=formatted_dataset.shuffle(seed=22)
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
         print(f"\nEntry {i} verification:")
         print(f"Answer: {entry.get('answer')}")
-        print(f"Is modified: {entry.get('is_modified', False)}")
-        if 'prompt' in entry:
-            # Extract thinking section from prompt to verify modification
-            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-            thinking_match = thinking_pattern.search(entry['prompt'])
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                print(f"Thinking section: {thinking_content[:100]}...")
-                if "...no wait a second." in thinking_content:
-                    print("✓ Contains '...no wait a second.' modification")
-                else:
-                    print("✗ Does NOT contain '...no wait a second.' modification")
+        print(f"Correct answer: {entry.get('correct_answer')}")
     
+
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        torch_empty_cache_steps=10,
+        learning_rate=5e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         gradient_accumulation_steps=4,
-        num_generations=16,
-        max_prompt_length=2048,
-        max_completion_length=2048,
+        num_generations=10,
+        max_prompt_length=800,
+        max_completion_length=2400,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
