@@ -716,6 +716,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'total_steps': [len(split_into_steps(s['solution'])) for s in solutions]
             })
             
+        # Print logs before returning results
+        logger.print()
+        
         # Return results with logs
         return {
             'results': results,
@@ -726,6 +729,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
         import traceback
         logger.append(f"Traceback:\n{traceback.format_exc()}")
+        
+        # Print logs before returning results
+        logger.print()
         
         return {
             'results': [{
@@ -749,11 +755,7 @@ async def main():
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
     
-    # Print all logs at the end
-    print("\n" + "="*80)
-    print("COMPLETE STEP BENCHMARK LOG")
-    print("="*80)
-    all_logs.print()
+    # No need to print all logs at the end since we're printing them with each entry
     
     # The ProgressTracker will handle printing the final statistics
 
