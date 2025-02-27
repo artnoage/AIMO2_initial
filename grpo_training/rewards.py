@@ -786,7 +786,6 @@ class CompletionReward(BaseReward):
             # Combine partial solution with completion response
             # We don't want the response tag in either part
             full_solution = partial_solution + completion_response
-            print(full_solution)
             # Since we're only using the response part in partial solutions,
             # we don't need to check for thinking section
                 
