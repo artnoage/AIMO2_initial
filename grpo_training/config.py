@@ -10,6 +10,9 @@ class RewardConfig:
     max_retries: int = 3
     timeout: int = 300
     
+    # Completion reward parameters
+    step_continuity_reward: float = 1.0
+    
     # Completion agent settings
     completion_port: int = 8004
     completion_temp: float = 0.7
