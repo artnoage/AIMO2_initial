@@ -1,6 +1,7 @@
 import os
 import wandb
 import logging
+import json
 from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
@@ -125,6 +126,13 @@ def main():
     # Setup logging first
     logger = setup_logging(model_type)
     
+    # Check if we have prepared data
+    local_data_path = os.path.join(project_root, "data", "completion_training_data.json")
+    if not os.path.exists(local_data_path):
+        logger.info(f"No prepared completion data found at {local_data_path}")
+        logger.info("You can create training data from benchmark results using:")
+        logger.info("python -m auxilary.prepare_completion_data --input results.json --output data/completion_training_data.json")
+    
     # Initialize config
     reward_config = RewardConfig(model_type=model_type)
     reward_config.step_continuity_reward = 1.0  # Reward for correctly continuing step numbering
@@ -207,17 +215,53 @@ def main():
         return dataset.map(truncate_solution)
     
     def get_questions(split="train") -> Dataset:
-        data = load_dataset(dataset_name)[split]
+        """
+        Load dataset for completion training.
         
+        This function can load data in two ways:
+        1. From a Hugging Face dataset with the expected format
+        2. From a local JSON file created by the prepare_completion_data.py script
+        """
+        # Check if we have a local JSON file first
+        local_data_path = os.path.join(project_root, "data", "completion_training_data.json")
+        
+        if os.path.exists(local_data_path):
+            logger.info(f"Loading completion training data from local file: {local_data_path}")
+            try:
+                # Load from local JSON file
+                with open(local_data_path, 'r', encoding='utf-8') as f:
+                    raw_data = json.load(f)
+                
+                # Convert to Dataset format
+                data = Dataset.from_dict({
+                    'problem': [item['problem'] for item in raw_data],
+                    'partial_solution': [item['partial_solution'] for item in raw_data],
+                    'completion': [item['completion'] for item in raw_data],
+                    'answer': [item['answer'] for item in raw_data]
+                })
+                
+                logger.info(f"Loaded {len(data)} examples from local file")
+                
+            except Exception as e:
+                logger.warning(f"Error loading local data: {str(e)}")
+                logger.info(f"Falling back to HuggingFace dataset: {dataset_name}")
+                data = load_dataset(dataset_name)[split]
+                data = prepare_dataset_from_hf(data)
+        else:
+            logger.info(f"No local data found, loading from HuggingFace dataset: {dataset_name}")
+            data = load_dataset(dataset_name)[split]
+            data = prepare_dataset_from_hf(data)
+        
+        return data
+        
+    def prepare_dataset_from_hf(data):
+        """Prepare dataset from HuggingFace format"""
         # First, extract solutions from the dataset
         def extract_solution(example):
-            # This assumes your dataset has a field with the full solution
-            # Modify this according to your actual dataset structure
             problem = example.get('question', '')
             answer = example.get('answer', '')
             
             # If your dataset doesn't have solutions, you'll need to generate them
-            # This is a placeholder - replace with actual solution extraction
             solution = example.get('solution', '')
             if not solution:
                 # If no solution field exists, create a dummy one for demonstration
