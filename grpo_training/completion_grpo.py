@@ -164,20 +164,20 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=3200,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.42,
-        max_lora_rank=64)
+        gpu_memory_utilization=0.5,
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -287,8 +287,8 @@ def main():
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         num_generations=5,
-        max_prompt_length=800,
-        max_completion_length=2400,
+        max_prompt_length=2048,
+        max_completion_length=2048,
         num_train_epochs=1,
         save_steps=250,
         max_grad_norm=0.1,
