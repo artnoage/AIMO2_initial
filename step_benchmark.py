@@ -327,7 +327,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     try:
         if not isinstance(example, dict) or 'problem' not in example:
             logger.append(f"❌ Error processing example {str(running_id)}: Invalid example format")
-            logger.print()
             return None
             
         # Extract problem and correct answer
@@ -343,7 +342,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
         if correct_answer is None:
             logger.append(f"❌ Warning: Could not determine correct answer for example {str(running_id)}")
-            logger.print()
             return None
 
         # Initialize models and agents
@@ -714,23 +712,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'total_steps': [len(split_into_steps(s['solution'])) for s in solutions]
             })
             
-        # Print all logs at the end
-        logger.print()
-        
-        return results
+        # Return results with logs
+        return {
+            'results': results,
+            'logs': '\n'.join(logger.logs)
+        }
         
     except Exception as e:
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
         import traceback
         logger.append(f"Traceback:\n{traceback.format_exc()}")
-        logger.print()
-        return [{
-            'id': example_id,
-            'data_type': 'statistics',
-            'example_processed_successfully': False,
-            'is_correct': False,
-            'wrong_step_found': False
-        }]
+        
+        return {
+            'results': [{
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': False,
+                'is_correct': False,
+                'wrong_step_found': False
+            }],
+            'logs': '\n'.join(logger.logs)
+        }
 
 async def main():
     """Main function for benchmarking mathematical problem solving with step analysis."""
@@ -739,10 +741,13 @@ async def main():
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
     
-    # Print step benchmark specific statistics
-    print("\n" + "="*80)
-    print("STEP BENCHMARK STATISTICS")
-    print("="*80)
+    # Create a logger for final statistics
+    final_logger = BenchmarkLogger()
+    
+    # Log step benchmark specific statistics
+    final_logger.append("\n" + "="*80)
+    final_logger.append("STEP BENCHMARK STATISTICS")
+    final_logger.append("="*80)
     
     # Collect all step statistics
     step_stats = [r for r in tracker.results if r.get('data_type') == 'step_statistics']
@@ -781,17 +786,20 @@ async def main():
                 for reason, count in s['unsalvageable_reasons'].items():
                     unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + count
         
-        # Print statistics
-        print(f"Total wrong steps identified: {total_wrong_steps}")
-        print(f"Average wrong step position: {avg_position:.2f}")
-        print(f"Position distribution: {dict(position_dist)}")
-        print(f"Average recovery success rate: {avg_recovery_rate:.2f}")
-        print(f"Solutions with thinking extracted: {total_with_thinking}/{total_solutions_analyzed} ({thinking_extraction_rate:.2f})")
-        print(f"Solutions with response extracted: {total_with_response}/{total_solutions_analyzed} ({response_extraction_rate:.2f})")
-        print(f"Unsalvageable solutions: {total_unsalvageable}/{total_solutions_analyzed} ({unsalvageable_rate:.2f})")
-        print(f"Unsalvageable reasons: {unsalvageable_reasons}")
+        # Log statistics
+        final_logger.append(f"Total wrong steps identified: {total_wrong_steps}")
+        final_logger.append(f"Average wrong step position: {avg_position:.2f}")
+        final_logger.append(f"Position distribution: {dict(position_dist)}")
+        final_logger.append(f"Average recovery success rate: {avg_recovery_rate:.2f}")
+        final_logger.append(f"Solutions with thinking extracted: {total_with_thinking}/{total_solutions_analyzed} ({thinking_extraction_rate:.2f})")
+        final_logger.append(f"Solutions with response extracted: {total_with_response}/{total_solutions_analyzed} ({response_extraction_rate:.2f})")
+        final_logger.append(f"Unsalvageable solutions: {total_unsalvageable}/{total_solutions_analyzed} ({unsalvageable_rate:.2f})")
+        final_logger.append(f"Unsalvageable reasons: {unsalvageable_reasons}")
     else:
-        print("No step statistics collected")
+        final_logger.append("No step statistics collected")
+    
+    # Print all logs at the end
+    final_logger.print()
 
 if __name__ == "__main__":
     logger = BenchmarkLogger()

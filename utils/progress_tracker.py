@@ -639,8 +639,6 @@ class ProgressTracker:
                         example_id=example['id'],
                         config=self.config
                     )
-                    if result:
-                        self.add_result(result)
                     return result
 
             tasks = [process_with_semaphore(ex, i) for i, ex in enumerate(example_data)]
@@ -653,10 +651,13 @@ class ProgressTracker:
             for coro in asyncio.as_completed(tasks):
                 try:
                     result = await coro
-                    if result and 'logs' in result:
-                        all_logs.append(result['logs'])
-                    if result and 'total_solution_attempts' in result:
-                        all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
+                    if result:
+                        if 'logs' in result:
+                            all_logs.append(result['logs'])
+                        if 'results' in result:
+                            self.add_result(result['results'])
+                        if 'total_solution_attempts' in result:
+                            all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
                     progress_bar.update(1)
                 except Exception as e:
                     all_logs.append(f"Error processing example: {str(e)}")
