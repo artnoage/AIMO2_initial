@@ -742,8 +742,18 @@ async def main():
     """Main function for benchmarking mathematical problem solving with step analysis."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems with step analysis')
     
+    # Create a logger for collecting all logs
+    all_logs = BenchmarkLogger()
+    
+    # Run the benchmark
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
+    
+    # Print all logs at the end
+    print("\n" + "="*80)
+    print("COMPLETE STEP BENCHMARK LOG")
+    print("="*80)
+    all_logs.print()
     
     # The ProgressTracker will handle printing the final statistics
 
