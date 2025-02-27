@@ -124,8 +124,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "completion"
-    model_name = "Metaskepsis/Elite2"
-    dataset_name = "Metaskepsis/custom219"
+    model_name = "/workspace/AIMO2_initial/models/Qwen"
+    dataset_name = "/workspace/AIMO2_initial/local_datasets/20250227_074232"
     
     # Setup logging first
     logger = setup_logging(model_type)
