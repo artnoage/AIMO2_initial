@@ -745,13 +745,22 @@ class CompletionReward(BaseReward):
             if not all([problem, partial_solution, correct_answer]):
                 self.logger.warning("Missing required inputs for completion reward calculation")
                 return 0.0
+            
+            # Extract the response part from the completion
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if response_match:
+                completion_response = response_match.group(1)
+            else:
+                # If no response tags, use the whole completion
+                completion_response = completion
+                self.logger.debug("No response tags found in completion, using full text")
                 
-            # Combine partial solution with completion
+            # Combine partial solution with completion response
             # Add the response tag if it's not already there
             if not partial_solution.startswith("<response>"):
-                full_solution = "<response>" + partial_solution + completion
+                full_solution = "<response>" + partial_solution + completion_response
             else:
-                full_solution = partial_solution + completion
+                full_solution = partial_solution + completion_response
             
             # Since we're only using the response part in partial solutions,
             # we don't need to check for thinking section

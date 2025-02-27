@@ -21,11 +21,14 @@ from rewards import CompletionReward
 
 SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
+Your response MUST include both a <thinking> section and a <response> section.
+
 <thinking>
 First, analyze the problem and the partial solution carefully.
 Understand what has been done so far and determine the next logical steps.
 Identify the step numbering pattern and continue from there.
 Make sure you understand the mathematical concepts involved.
+Work through the solution mentally to ensure your approach is correct.
 </thinking>
 
 <response>
