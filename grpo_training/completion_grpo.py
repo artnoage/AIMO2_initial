@@ -202,8 +202,8 @@ def main():
             # Format for training
             data = data.map(lambda x: {
                 'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                         f"Problem: {x['question']}\n\nPartial Solution: <response>{x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
-                'problem': x['question'],
+                         f"Problem: {x['problem']}\n\nPartial Solution: {x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
+                'problem': x['problem'],
                 'partial_solution': x['partial_solution'],
                 'answer': x['answer']
             })
@@ -216,7 +216,9 @@ def main():
             raise
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
+    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
