@@ -163,6 +163,12 @@ class BaseReward(ABC):
             self.logger.error(f"Error during batch processing: {str(e)}")
             rewards = [0.0] * len(completions)
         
+        # Check if average reward is negative
+        avg_reward = sum(rewards) / max(1, len(rewards))
+        if avg_reward < 0:
+            self.logger.info(f"Average reward is negative ({avg_reward:.4f}), clipping all rewards to zero")
+            rewards = [max(0.0, r) for r in rewards]
+        
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
         
