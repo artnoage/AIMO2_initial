@@ -33,7 +33,6 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
-
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -245,7 +244,7 @@ def main():
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(200))
+    formatted_dataset = formatted_dataset.select(range(600))
  
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
