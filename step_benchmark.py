@@ -51,6 +51,7 @@ class StepAnalyzer:
         correct_answer: str,
         step_index: int,
         size_threshold: int,
+        num_completions: int,
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
         found_verified = False
@@ -60,10 +61,11 @@ class StepAnalyzer:
         completion_prompt = None
         self._log(f"\nVerifying completions for step {step_index}:")
         self._log(f"Partial solution length: {len(partial_solution)}")
+        self._log(f"Trying {num_completions} completions")
         
         # Generate all completions at once
         completions = []
-        for i in range(self.max_attempts):
+        for i in range(num_completions):
             try:
                 if i == 0 and completion_prompt is None:
                     prompt, completion = await self.completion_agent.generate(
@@ -137,7 +139,8 @@ class StepAnalyzer:
         problem: str,
         correct_answer: str,
         wrong_solution: str,
-        size_threshold: int = 500
+        size_threshold: int = 500,
+        num_completions: int = 10
     ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
         """Binary search to find first wrong step in solution"""
         # Split solution into steps
@@ -171,7 +174,8 @@ class StepAnalyzer:
                     partial_solutions[current_step],
                     correct_answer,
                     current_step,
-                    size_threshold
+                    size_threshold,
+                    num_completions
                 )
 
                 if found_verified and not found_valid:
@@ -266,7 +270,8 @@ class StepAnalyzer:
             'wrong_step_found': wrong_step_index is not None,
             'wrong_step_index': wrong_step_index if wrong_step_index is not None else -1,
             'total_steps': len(wrong_steps),
-            'completion_attempts': self.max_attempts
+            'completion_attempts': self.max_attempts,
+            'num_completions_per_step': self.max_attempts
         }
         
         results.append(stats_result)
@@ -307,9 +312,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
         
-        # Generate solutions (multiple if best_of > 1)
+        # Generate solutions (always generate best_of solutions)
         solutions = []
-        for i in range(max(1, config.best_of)):
+        for i in range(config.best_of):
             solution = await solution_agent.generate(problem)
             is_correct, model_answer = await verifier.verify(solution, correct_answer, problem)
             solutions.append({
@@ -335,21 +340,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'total_attempts': len(solutions)
             })
         
-        # Find the first incorrect solution to analyze (if any)
+        # Analyze each incorrect solution to find wrong steps
         incorrect_solutions = [s for s in solutions if not s['is_correct']]
-        if incorrect_solutions:
-            solution_to_analyze = incorrect_solutions[0]
-            solution = solution_to_analyze['solution']
-            model_answer = solution_to_analyze['answer']
-            is_correct = False
-        else:
-            # If all solutions are correct, just use the first one
-            solution = solutions[0]['solution']
-            model_answer = solutions[0]['answer']
-            is_correct = True
         
-        # If we found an incorrect solution, analyze to find the wrong step
-        if not is_correct and incorrect_solutions:
+        # If we have any incorrect solutions, analyze them
+        if incorrect_solutions:
             logger.append("\n" + "="*80)
             logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
             logger.append("="*80)
@@ -364,7 +359,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 completion_agent=completion_agent,
                 solution_agent=solution_agent,
                 verifier=verifier,
-                max_attempts=max(5, config.best_of),  # Use at least 5 completions or best_of if higher
+                max_attempts=config.completions,  # Use the completions parameter
                 logs=logger.logs
             )
             
@@ -372,42 +367,50 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
                 problem=problem,
                 correct_answer=correct_answer,
-                wrong_solution=solution
+                wrong_solution=solution,
+                num_completions=config.completions
             )
             
-            if wrong_step_index is not None:
-                logger.append(f"\n✓ Found wrong step at index {wrong_step_index}")
+            # Process all analyzed solutions
+            for idx, analysis in enumerate(analyzed_solutions):
+                solution = analysis['solution']
+                wrong_step_index = analysis['wrong_step_index']
+                saved_good_completion = analysis['good_completion']
                 
-                # Get steps from wrong solution
-                wrong_steps = split_into_steps(solution)
-                partial_solutions = get_partial_solutions(wrong_steps)
-                
-                # Create training examples
-                step_examples = await analyzer.create_step_examples(
-                    problem=problem,
-                    wrong_solution=solution,
-                    correct_answer=correct_answer,
-                    wrong_step_index=wrong_step_index,
-                    partial_solutions=partial_solutions,
-                    saved_good_completion=saved_good_completion,
-                    example_id=example_id
-                )
-                
-                # Add step examples to results
-                results.extend(step_examples)
-            else:
-                logger.append(f"\n❌ Could not identify a specific wrong step")
-                
-                # Add statistics for failed analysis
-                results.append({
-                    'id': example_id,
-                    'data_type': 'statistics',
-                    'example_processed_successfully': True,
-                    'wrong_step_found': False,
-                    'wrong_step_index': -1,
-                    'total_steps': len(split_into_steps(solution)),
-                    'completion_attempts': config.best_of
-                })
+                if wrong_step_index is not None:
+                    logger.append(f"\n✓ Found wrong step at index {wrong_step_index} in solution {idx+1}")
+                    
+                    # Get steps from wrong solution
+                    wrong_steps = split_into_steps(solution)
+                    partial_solutions = get_partial_solutions(wrong_steps)
+                    
+                    # Create training examples
+                    step_examples = await analyzer.create_step_examples(
+                        problem=problem,
+                        wrong_solution=solution,
+                        correct_answer=correct_answer,
+                        wrong_step_index=wrong_step_index,
+                        partial_solutions=partial_solutions,
+                        saved_good_completion=saved_good_completion,
+                        example_id=example_id
+                    )
+                    
+                    # Add step examples to results
+                    results.extend(step_examples)
+                else:
+                    logger.append(f"\n❌ Could not identify a specific wrong step in solution {idx+1}")
+                    
+                    # Add statistics for failed analysis
+                    results.append({
+                        'id': example_id,
+                        'data_type': 'statistics',
+                        'example_processed_successfully': True,
+                        'wrong_step_found': False,
+                        'wrong_step_index': -1,
+                        'total_steps': len(split_into_steps(solution)),
+                        'completion_attempts': config.completions,
+                        'solution_index': idx
+                    })
         else:
             logger.append("\n" + "="*80)
             logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
