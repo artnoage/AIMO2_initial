@@ -163,11 +163,21 @@ class BaseReward(ABC):
             self.logger.error(f"Error during batch processing: {str(e)}")
             rewards = [0.0] * len(completions)
         
-        # Check if average reward is negative
-        avg_reward = sum(rewards) / max(1, len(rewards))
-        if avg_reward < 0:
-            self.logger.info(f"Average reward is negative ({avg_reward:.4f}), clipping all rewards to zero")
-            rewards = [max(0.0, r) for r in rewards]
+        # Apply tanh normalization (z-score followed by tanh)
+        if len(rewards) > 1:
+            # Calculate mean and standard deviation
+            mean_reward = sum(rewards) / len(rewards)
+            # Add small epsilon to avoid division by zero
+            std_reward = max(1e-8, (sum((r - mean_reward) ** 2 for r in rewards) / len(rewards)) ** 0.5)
+            
+            # Apply z-score normalization followed by tanh
+            normalized_rewards = [torch.tanh(torch.tensor((r - mean_reward) / std_reward)).item() for r in rewards]
+            
+            self.logger.info(f"Applied tanh normalization - Mean: {mean_reward:.4f}, Std: {std_reward:.4f}")
+            self.logger.info(f"Rewards before: {rewards}")
+            self.logger.info(f"Rewards after: {normalized_rewards}")
+            
+            rewards = normalized_rewards
         
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
