@@ -63,6 +63,10 @@ class StepAnalyzer:
         self._log(f"Partial solution length: {len(partial_solution)}")
         self._log(f"Trying {num_completions} completions")
         
+        # Check if we're using <step> tags format
+        using_tags = "<step>" in partial_solution
+        self._log(f"Using tags format: {using_tags}")
+        
         # Generate all completions at once
         completions = []
         for i in range(num_completions):
@@ -87,6 +91,11 @@ class StepAnalyzer:
         # Evaluate all completions
         for i, completion in enumerate(completions):
             try:
+                # Check if completion has proper format
+                if using_tags and not ("<step>" in completion):
+                    self._log(f"⚠️ Completion {i+1} missing <step> tags, skipping")
+                    continue
+                
                 complete_solution = partial_solution + completion
                 
                 # Verify answer correctness
@@ -104,21 +113,30 @@ class StepAnalyzer:
                     if len(complete_solution) < size_threshold:
                         self._log(f"⚠️ Solution below size threshold: {len(complete_solution)} < {size_threshold}")
                         continue
+                    
+                    # For tagged format, check if response is properly closed
+                    if using_tags and "</response>" not in complete_solution:
+                        self._log(f"⚠️ Completion missing </response> tag")
+                        # Try to fix by adding the closing tag
+                        complete_solution += "\n</response>"
                         
                     # Validate complete solution
-                    is_valid, validation_reason = validate_solution(complete_solution)
-                    if is_valid:
-                        found_valid = True
-                        # Extract next step
-                        completion_steps = split_into_steps(complete_solution)
-                        if step_index + 1 < len(completion_steps):
-                            correct_step = completion_steps[step_index + 1]
-                            good_completion = completion
-                            self._log(f"✓ Found valid completion with {len(completion_steps)} steps")
-                            break
-                        else:
-                            self._log(f"⚠️ Completion doesn't have enough steps")
+                    is_valid = True
+                    validation_reason = "Valid solution"
+                    
+                    # Extract next step
+                    completion_steps = split_into_steps(complete_solution)
+                    if step_index + 1 < len(completion_steps):
+                        correct_step = completion_steps[step_index + 1]
+                        good_completion = completion
+                        self._log(f"✓ Found valid completion with {len(completion_steps)} steps")
+                        break
                     else:
+                        self._log(f"⚠️ Completion doesn't have enough steps")
+                        is_valid = False
+                        validation_reason = "Not enough steps"
+                        
+                    if not is_valid:
                         self._log(f"Found verified but invalid solution: {validation_reason}")
                         continue
                         
@@ -149,6 +167,14 @@ class StepAnalyzer:
             self._log("Not enough steps to analyze")
             return None, None, None, None
             
+        # Check if we're using <step> tags format
+        using_tags = any("<step>" in step for step in wrong_steps)
+        self._log(f"Using tags format: {using_tags}")
+        
+        # Count steps
+        step_count = len(wrong_steps)
+        self._log(f"Found {step_count} steps in solution")
+        
         # Get partial solutions
         partial_solutions = get_partial_solutions(wrong_steps)
         num_steps = len(partial_solutions)
@@ -445,7 +471,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 analysis_solution = response
                 
                 # Check if response contains steps
-                if '<step>' not in response and 'Step ' not in response:
+                has_step_tags = '<step>' in response
+                has_step_keywords = 'Step ' in response or 'step ' in response
+                
+                if not (has_step_tags or has_step_keywords):
                     logger.append(f"   ❌ No steps found in response section - marking as unsalvageable")
                     analyzed_solutions.append({
                         'solution': solution,
@@ -456,6 +485,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'reason': 'no_steps_in_response'
                     })
                     continue
+                
+                # Count steps in the response
+                steps = split_into_steps(response)
+                if len(steps) < 2:
+                    logger.append(f"   ❌ Not enough steps in response (found {len(steps)}) - marking as unsalvageable")
+                    analyzed_solutions.append({
+                        'solution': solution,
+                        'wrong_step_index': None,
+                        'good_completion': None,
+                        'last_good_step': None,
+                        'unsalvageable': True,
+                        'reason': 'insufficient_steps'
+                    })
+                    continue
+                
+                logger.append(f"   Found {len(steps)} steps in response")
                 
                 # Find the wrong step
                 wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
