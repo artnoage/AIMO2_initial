@@ -332,11 +332,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
         
-        # Helper function to extract reasoning section
-        def extract_reasoning_section(solution: str) -> Optional[str]:
+        # Helper functions to extract sections
+        def extract_thinking_section(solution: str) -> Optional[str]:
             """Extract content from <thinking> or <reasoning> tags"""
-            reasoning_pattern = r'<(?:thinking|reasoning)>(.*?)</(?:thinking|reasoning)>'
-            match = re.search(reasoning_pattern, solution, re.DOTALL)
+            thinking_pattern = r'<(?:thinking|reasoning)>(.*?)</(?:thinking|reasoning)>'
+            match = re.search(thinking_pattern, solution, re.DOTALL)
+            if match:
+                return match.group(1).strip()
+            return None
+            
+        def extract_response_section(solution: str) -> Optional[str]:
+            """Extract content from <response> tags"""
+            response_pattern = r'<response>(.*?)</response>'
+            match = re.search(response_pattern, solution, re.DOTALL)
             if match:
                 return match.group(1).strip()
             return None
@@ -347,14 +355,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             solution = await solution_agent.generate(problem)
             is_correct, model_answer = await verifier.verify(solution, correct_answer, problem)
             
-            # Extract reasoning section if present
-            reasoning = extract_reasoning_section(solution)
+            # Extract thinking and response sections if present
+            thinking = extract_thinking_section(solution)
+            response = extract_response_section(solution)
             
             solutions.append({
                 'solution': solution,
                 'answer': model_answer,
                 'is_correct': is_correct,
-                'reasoning': reasoning
+                'thinking': thinking,
+                'response': response
             })
         
         # Initialize results list
@@ -402,23 +412,28 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for idx, sol_data in enumerate(incorrect_solutions[:3]):
                 solution = sol_data['solution']
                 model_answer = sol_data['answer']
-                reasoning = sol_data.get('reasoning')
+                thinking = sol_data.get('thinking')
+                response = sol_data.get('response')
                 
                 logger.append(f"\n🔍 Analyzing incorrect solution {idx+1}/{min(3, len(incorrect_solutions))}")
                 logger.append(f"   Model answer: {model_answer}")
                 
-                # If we have reasoning, log it
-                if reasoning:
-                    logger.append(f"\n📝 Reasoning extracted:")
-                    logger.append(f"{reasoning[:200]}...")
+                # If we have thinking/response sections, log them
+                if thinking:
+                    logger.append(f"\n📝 Thinking section extracted:")
+                    logger.append(f"{thinking[:200]}...")
                 
-                # Use reasoning section for analysis if available, otherwise use full solution
+                if response:
+                    logger.append(f"\n📝 Response section extracted:")
+                    logger.append(f"{response[:200]}...")
+                
+                # Use response section for analysis if available, otherwise use full solution
                 analysis_solution = solution
-                if reasoning and len(reasoning.strip()) > 0:
-                    logger.append(f"   Using extracted reasoning for analysis")
-                    # Check if reasoning contains steps
-                    if '<step>' in reasoning or 'Step ' in reasoning:
-                        analysis_solution = reasoning
+                if response and len(response.strip()) > 0:
+                    logger.append(f"   Using extracted response section for analysis")
+                    # Check if response contains steps
+                    if '<step>' in response or 'Step ' in response:
+                        analysis_solution = response
                 
                 # Find the wrong step
                 wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
@@ -464,8 +479,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         for example in step_examples:
                             if example.get('data_type') == 'training':
                                 example['original_solution'] = solution
-                                if reasoning:
-                                    example['reasoning'] = reasoning
+                                if thinking:
+                                    example['thinking'] = thinking
+                                if response:
+                                    example['response'] = response
                                 break
                     
                     # Add step examples to results
@@ -508,8 +525,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             avg_position = sum(wrong_step_positions) / len(wrong_step_positions) if wrong_step_positions else 0
             avg_completion_score = sum(completion_scores) / len(completion_scores) if completion_scores else 0
             
-            # Count solutions with reasoning
-            solutions_with_reasoning = sum(1 for s in incorrect_solutions[:3] if s.get('reasoning'))
+            # Count solutions with thinking/response sections
+            solutions_with_thinking = sum(1 for s in incorrect_solutions[:3] if s.get('thinking'))
+            solutions_with_response = sum(1 for s in incorrect_solutions[:3] if s.get('response'))
             
             # Add aggregated statistics
             results.append({
@@ -520,8 +538,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'position_distribution': dict(position_counts),
                 'avg_completion_score': avg_completion_score,
                 'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
-                'solutions_with_reasoning': solutions_with_reasoning,
-                'reasoning_extraction_rate': solutions_with_reasoning / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0
+                'solutions_with_thinking': solutions_with_thinking,
+                'solutions_with_response': solutions_with_response,
+                'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0
             })
         else:
             logger.append("\n" + "="*80)
@@ -605,17 +625,20 @@ async def main():
         recovery_rates = [s.get('recovery_success_rate', 0) for s in step_stats]
         avg_recovery_rate = sum(recovery_rates) / len(recovery_rates) if recovery_rates else 0
         
-        # Calculate reasoning extraction statistics
-        total_with_reasoning = sum(s.get('solutions_with_reasoning', 0) for s in step_stats)
+        # Calculate section extraction statistics
+        total_with_thinking = sum(s.get('solutions_with_thinking', 0) for s in step_stats)
+        total_with_response = sum(s.get('solutions_with_response', 0) for s in step_stats)
         total_solutions_analyzed = sum(min(3, s.get('wrong_steps_found', 0) + 1) for s in step_stats)
-        reasoning_extraction_rate = total_with_reasoning / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
+        thinking_extraction_rate = total_with_thinking / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
+        response_extraction_rate = total_with_response / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
         
         # Print statistics
         print(f"Total wrong steps identified: {total_wrong_steps}")
         print(f"Average wrong step position: {avg_position:.2f}")
         print(f"Position distribution: {dict(position_dist)}")
         print(f"Average recovery success rate: {avg_recovery_rate:.2f}")
-        print(f"Solutions with reasoning extracted: {total_with_reasoning}/{total_solutions_analyzed} ({reasoning_extraction_rate:.2f})")
+        print(f"Solutions with thinking extracted: {total_with_thinking}/{total_solutions_analyzed} ({thinking_extraction_rate:.2f})")
+        print(f"Solutions with response extracted: {total_with_response}/{total_solutions_analyzed} ({response_extraction_rate:.2f})")
     else:
         print("No step statistics collected")
 
