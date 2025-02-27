@@ -17,47 +17,11 @@ class RewardStats:
         self.reward_distribution = {}
         self.start_time = datetime.now()
         
-        # Track section-level stats
-        self.section_stats = {
-            'missing_analysis': 0,
-            'missing_verdict': 0,
-            'missing_substitution': 0,
-            'invalid_step_number': 0,
-            'polar_verdict_with_substitution': 0,
-            'step_verdict_without_substitution': 0,
-            'multiple_steps_in_substitution': 0,
-            'polar_verdict_count': 0,
-            'step_verdict_count': 0,
-            'invalid_verdict_format': 0
-        }
-
-        # Track completion validation stats
-        self.validation_stats = {
-            'completion_attempts': 0,
-            'successful_completions': 0,
-            'failed_completions': 0,
-            'completion_timeouts': 0,
-            'completion_errors': 0
-        }
-
         # Track step validation stats
         self.step_stats = {
-            'step_identifications': 0,
-            'valid_step_corrections': 0,
-            'invalid_step_corrections': 0,
-            'step_completion_rate': 0.0
-        }
-
-        # Track analysis quality metrics
-        self.analysis_stats = {
-            'analysis_length_distribution': {},
-            'analysis_with_steps': 0,
-            'analysis_without_steps': 0,
-            'average_analysis_length': 0.0,
-            'total_analysis_length': 0,
-            'step_references': 0,
-            'concept_explanations': 0,
-            'formula_usage': 0
+            'correct_step_numbering': 0,
+            'incorrect_step_numbering': 0,
+            'total_steps_completed': 0
         }
         
         # Track reward components
@@ -102,18 +66,7 @@ class RewardStats:
         
         # Track full reward reasons
         self.full_reward_reasons = {
-            'correct_answer': 0,
-            'wrong_approach': 0,
-            'step_correction': 0,
-            'final_step_correct': 0
-        }
-        
-        # Track accuracy statistics
-        self.accuracy_stats = {
-            'total_predictions': 0,
-            'correct_predictions': 0,
-            'step_predictions': 0,
-            'correct_step_predictions': 0
+            'correct_answer': 0
         }
         
     def update(self, rewards: List[float], **kwargs):
