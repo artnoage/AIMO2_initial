@@ -240,6 +240,20 @@ class StepAnalyzer:
             # Calculate completion score based on remaining steps
             completion_score = wrong_step_index / len(wrong_steps) if len(wrong_steps) > 0 else 0
             
+            # Calculate position category (beginning, middle, end)
+            if len(wrong_steps) <= 2:
+                position_category = "short_solution"
+            elif wrong_step_index == 0:
+                position_category = "beginning"
+            elif wrong_step_index == len(wrong_steps) - 1:
+                position_category = "end"
+            elif wrong_step_index < len(wrong_steps) / 3:
+                position_category = "early"
+            elif wrong_step_index < 2 * len(wrong_steps) / 3:
+                position_category = "middle"
+            else:
+                position_category = "late"
+            
             # Get solver prompt for recovery
             solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
             
@@ -255,14 +269,16 @@ class StepAnalyzer:
                 'wrong_solution': wrong_solution,
                 'corrected_solution': correct_with_completion,
                 'wrong_step_index': wrong_step_index,
-                'total_steps': len(wrong_steps)
+                'total_steps': len(wrong_steps),
+                'position_category': position_category,
+                'completion_score': completion_score
             })
             
         except Exception as e:
             self._log(f"Error creating training entries: {str(e)}")
             return []
 
-        # Add statistics entry
+        # Add statistics entry with enhanced metrics
         stats_result = {
             'data_type': 'statistics',
             'id': example_id,
@@ -271,7 +287,11 @@ class StepAnalyzer:
             'wrong_step_index': wrong_step_index if wrong_step_index is not None else -1,
             'total_steps': len(wrong_steps),
             'completion_attempts': self.max_attempts,
-            'num_completions_per_step': self.max_attempts
+            'num_completions_per_step': self.max_attempts,
+            'position_category': position_category,
+            'completion_score': completion_score,
+            'solution_length': len(wrong_solution),
+            'wrong_step_relative_position': wrong_step_index / len(wrong_steps) if len(wrong_steps) > 0 else 0
         }
         
         results.append(stats_result)
@@ -427,6 +447,40 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'completion_attempts': config.completions,
                         'solution_index': idx
                     })
+            
+            # Calculate step benchmark specific statistics
+            # Collect statistics about wrong steps
+            wrong_step_positions = []
+            position_categories = []
+            completion_scores = []
+            
+            for result in results:
+                if result.get('data_type') == 'statistics' and result.get('wrong_step_found', False):
+                    if 'wrong_step_relative_position' in result:
+                        wrong_step_positions.append(result['wrong_step_relative_position'])
+                    if 'position_category' in result:
+                        position_categories.append(result['position_category'])
+                    if 'completion_score' in result:
+                        completion_scores.append(result['completion_score'])
+            
+            # Count position categories
+            from collections import Counter
+            position_counts = Counter(position_categories)
+            
+            # Calculate average position and completion score
+            avg_position = sum(wrong_step_positions) / len(wrong_step_positions) if wrong_step_positions else 0
+            avg_completion_score = sum(completion_scores) / len(completion_scores) if completion_scores else 0
+            
+            # Add aggregated statistics
+            results.append({
+                'id': example_id,
+                'data_type': 'step_statistics',
+                'wrong_steps_found': len(wrong_step_positions),
+                'avg_wrong_step_position': avg_position,
+                'position_distribution': dict(position_counts),
+                'avg_completion_score': avg_completion_score,
+                'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0
+            })
         else:
             logger.append("\n" + "="*80)
             logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -484,6 +538,38 @@ async def main():
     
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
+    
+    # Print step benchmark specific statistics
+    print("\n" + "="*80)
+    print("STEP BENCHMARK STATISTICS")
+    print("="*80)
+    
+    # Collect all step statistics
+    step_stats = [r for r in tracker.results if r.get('data_type') == 'step_statistics']
+    
+    if step_stats:
+        # Calculate aggregated statistics
+        total_wrong_steps = sum(s.get('wrong_steps_found', 0) for s in step_stats)
+        avg_position = sum(s.get('avg_wrong_step_position', 0) for s in step_stats) / len(step_stats)
+        
+        # Combine position distributions
+        from collections import Counter
+        position_dist = Counter()
+        for s in step_stats:
+            if 'position_distribution' in s:
+                position_dist.update(s['position_distribution'])
+                
+        # Calculate recovery success rate
+        recovery_rates = [s.get('recovery_success_rate', 0) for s in step_stats]
+        avg_recovery_rate = sum(recovery_rates) / len(recovery_rates) if recovery_rates else 0
+        
+        # Print statistics
+        print(f"Total wrong steps identified: {total_wrong_steps}")
+        print(f"Average wrong step position: {avg_position:.2f}")
+        print(f"Position distribution: {dict(position_dist)}")
+        print(f"Average recovery success rate: {avg_recovery_rate:.2f}")
+    else:
+        print("No step statistics collected")
 
 if __name__ == "__main__":
     logger = BenchmarkLogger()
