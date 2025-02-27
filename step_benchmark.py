@@ -427,13 +427,35 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     logger.append(f"\n📝 Response section extracted:")
                     logger.append(f"{response[:200]}...")
                 
-                # Use response section for analysis if available, otherwise use full solution
-                analysis_solution = solution
-                if response and len(response.strip()) > 0:
-                    logger.append(f"   Using extracted response section for analysis")
-                    # Check if response contains steps
-                    if '<step>' in response or 'Step ' in response:
-                        analysis_solution = response
+                # Check if response section exists
+                if not response or len(response.strip()) == 0:
+                    logger.append(f"   ❌ No response section found - marking as unsalvageable")
+                    analyzed_solutions.append({
+                        'solution': solution,
+                        'wrong_step_index': None,
+                        'good_completion': None,
+                        'last_good_step': None,
+                        'unsalvageable': True,
+                        'reason': 'no_response_section'
+                    })
+                    continue
+                
+                # Use response section for analysis
+                logger.append(f"   Using extracted response section for analysis")
+                analysis_solution = response
+                
+                # Check if response contains steps
+                if '<step>' not in response and 'Step ' not in response:
+                    logger.append(f"   ❌ No steps found in response section - marking as unsalvageable")
+                    analyzed_solutions.append({
+                        'solution': solution,
+                        'wrong_step_index': None,
+                        'good_completion': None,
+                        'last_good_step': None,
+                        'unsalvageable': True,
+                        'reason': 'no_steps_in_response'
+                    })
+                    continue
                 
                 # Find the wrong step
                 wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
@@ -456,11 +478,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 wrong_step_index = analysis['wrong_step_index']
                 saved_good_completion = analysis['good_completion']
                 
-                if wrong_step_index is not None:
+                if 'unsalvageable' in analysis and analysis['unsalvageable']:
+                    logger.append(f"\n❌ Solution {idx+1} is unsalvageable: {analysis['reason']}")
+                    
+                    # Add statistics for unsalvageable solution
+                    results.append({
+                        'id': example_id,
+                        'data_type': 'statistics',
+                        'example_processed_successfully': True,
+                        'wrong_step_found': False,
+                        'wrong_step_index': -1,
+                        'total_steps': 0,
+                        'completion_attempts': 0,
+                        'solution_index': idx,
+                        'unsalvageable': True,
+                        'unsalvageable_reason': analysis['reason']
+                    })
+                elif wrong_step_index is not None:
                     logger.append(f"\n✓ Found wrong step at index {wrong_step_index} in solution {idx+1}")
                     
                     # Get steps from wrong solution
-                    wrong_steps = split_into_steps(solution)
+                    wrong_steps = split_into_steps(analysis_solution)
                     partial_solutions = get_partial_solutions(wrong_steps)
                     
                     # Create training examples
@@ -497,9 +535,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'example_processed_successfully': True,
                         'wrong_step_found': False,
                         'wrong_step_index': -1,
-                        'total_steps': len(split_into_steps(solution)),
+                        'total_steps': len(split_into_steps(analysis_solution)),
                         'completion_attempts': config.completions,
-                        'solution_index': idx
+                        'solution_index': idx,
+                        'unsalvageable': False
                     })
             
             # Calculate step benchmark specific statistics
@@ -529,6 +568,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             solutions_with_thinking = sum(1 for s in incorrect_solutions[:3] if s.get('thinking'))
             solutions_with_response = sum(1 for s in incorrect_solutions[:3] if s.get('response'))
             
+            # Count unsalvageable solutions
+            unsalvageable_solutions = sum(1 for r in results if r.get('data_type') == 'statistics' and r.get('unsalvageable', False))
+            unsalvageable_reasons = {}
+            for r in results:
+                if r.get('data_type') == 'statistics' and r.get('unsalvageable', False):
+                    reason = r.get('unsalvageable_reason', 'unknown')
+                    unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + 1
+            
             # Add aggregated statistics
             results.append({
                 'id': example_id,
@@ -541,7 +588,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'solutions_with_thinking': solutions_with_thinking,
                 'solutions_with_response': solutions_with_response,
                 'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0
+                'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                'unsalvageable_solutions': unsalvageable_solutions,
+                'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
+                'unsalvageable_reasons': unsalvageable_reasons
             })
         else:
             logger.append("\n" + "="*80)
@@ -632,6 +682,17 @@ async def main():
         thinking_extraction_rate = total_with_thinking / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
         response_extraction_rate = total_with_response / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
         
+        # Calculate unsalvageable statistics
+        total_unsalvageable = sum(s.get('unsalvageable_solutions', 0) for s in step_stats)
+        unsalvageable_rate = total_unsalvageable / total_solutions_analyzed if total_solutions_analyzed > 0 else 0
+        
+        # Combine unsalvageable reasons
+        unsalvageable_reasons = {}
+        for s in step_stats:
+            if 'unsalvageable_reasons' in s:
+                for reason, count in s['unsalvageable_reasons'].items():
+                    unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + count
+        
         # Print statistics
         print(f"Total wrong steps identified: {total_wrong_steps}")
         print(f"Average wrong step position: {avg_position:.2f}")
@@ -639,6 +700,8 @@ async def main():
         print(f"Average recovery success rate: {avg_recovery_rate:.2f}")
         print(f"Solutions with thinking extracted: {total_with_thinking}/{total_solutions_analyzed} ({thinking_extraction_rate:.2f})")
         print(f"Solutions with response extracted: {total_with_response}/{total_solutions_analyzed} ({response_extraction_rate:.2f})")
+        print(f"Unsalvageable solutions: {total_unsalvageable}/{total_solutions_analyzed} ({unsalvageable_rate:.2f})")
+        print(f"Unsalvageable reasons: {unsalvageable_reasons}")
     else:
         print("No step statistics collected")
 
