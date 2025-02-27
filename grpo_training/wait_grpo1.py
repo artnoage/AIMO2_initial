@@ -206,19 +206,67 @@ def main():
         return text
         
     def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
-        data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x['answer']
-        }) # type: ignore
-        
-        # Modify the prompt to include the first part of the model's response
-        # and stop before </thinking> with "...no wait a second."
-        data = data.map(lambda x: {
-            'prompt': x['prompt'],
-            'answer': x['answer'],
-            'model_solution': modify_thinking_section(x.get('model_solution', ''))
-        })
+        # Load benchmark results
+        try:
+            # Try to load from results directory
+            import json
+            import glob
+            
+            # Find the most recent training results file
+            result_files = glob.glob("results/training_*.json")
+            if not result_files:
+                logger.error("No benchmark results found in results directory")
+                raise FileNotFoundError("No benchmark results found")
+                
+            # Sort by modification time (newest first)
+            result_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            latest_file = result_files[0]
+            
+            logger.info(f"Loading benchmark results from {latest_file}")
+            with open(latest_file, 'r') as f:
+                benchmark_results = json.load(f)
+                
+            # Create dataset from benchmark results
+            data_dict = {
+                'prompt': [],
+                'answer': []
+            }
+            
+            for entry in benchmark_results:
+                if 'problem' in entry and 'model_solution' in entry:
+                    # Extract the thinking section from the model solution
+                    thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+                    thinking_match = thinking_pattern.search(entry['model_solution'])
+                    
+                    if thinking_match:
+                        thinking_content = thinking_match.group(1)
+                        # Modify the thinking section
+                        modified_thinking = thinking_content + "...no wait a second."
+                        
+                        # Create prompt with the modified thinking section
+                        prompt = (
+                            '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
+                            '<|im_start|>user\n' + entry['problem'] + '<|im_end|>\n'
+                            '<|im_start|>assistant\n'
+                            '<thinking>' + modified_thinking + '</thinking>'
+                        )
+                        
+                        data_dict['prompt'].append(prompt)
+                        data_dict['answer'].append(entry.get('correct_answer', ''))
+            
+            logger.info(f"Created dataset with {len(data_dict['prompt'])} examples from benchmark results")
+            return Dataset.from_dict(data_dict)
+            
+        except Exception as e:
+            logger.error(f"Error loading benchmark results: {str(e)}")
+            logger.info("Falling back to standard dataset")
+            
+            # Fallback to standard dataset
+            data = load_dataset(dataset_name)[split] # type: ignore
+            data = data.map(lambda x: { # type: ignore
+                'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                'answer': x['answer']
+            }) # type: ignore
         
         return data # type: ignore
 
