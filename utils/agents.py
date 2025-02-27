@@ -1,7 +1,6 @@
-import logging
-from typing import Dict, List, Union, Tuple, Optional
+from typing import Union, Tuple
 from langchain_core.messages import HumanMessage
-from utils.benchmark_utils import get_model_response
+from utils.model_utils import get_model_response
 
 
 
@@ -111,18 +110,18 @@ class TutorAgent:
                 "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
                 "3. If there's a wrong step, suggest how to correct it\n\n"
                 "Format your response exactly as:\n\n"
-                "</Analysis>\n"
+                "<thinking>\n"
                 "Analyze the solution approach and reasoning here\n"
-                "<Analysis>\n\n"
-                "</Verdict>\n"
+                "</thinking>\n\n"
+                "<verdict>\n"
                 "Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)\n"
                 "Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)\n"
                 "Or: 'The answer is correct' (if no errors are found)\n"
-                "<Verdict>\n\n"
-                "</Substitution>\n"
+                "</verdict>\n\n"
+                "<substitution>\n"
                 "If a specific step is wrong, write 'Step X: ' followed by the correct version of that step\n"
                 "Otherwise leave this section empty\n"
-                "<Substitution>"
+                "</substitution>"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
