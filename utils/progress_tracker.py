@@ -652,7 +652,7 @@ class ProgressTracker:
                 try:
                     result = await coro
                     if result:
-                        if 'logs' in result:
+                        if 'logs' in result and result['logs']:
                             all_logs.append(result['logs'])
                         if 'results' in result:
                             self.add_result(result['results'])
@@ -669,7 +669,8 @@ class ProgressTracker:
             print("COMPLETE LOG OUTPUT")
             print("="*80)
             for log in all_logs:
-                print("\n" + log)
+                if log:  # Only print non-empty logs
+                    print("\n" + log)
             print("\n" + "="*80)
             
             # Force final save of results

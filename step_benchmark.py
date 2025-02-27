@@ -708,7 +708,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Return results with logs
         return {
             'results': results,
-            'logs': '\n'.join(logger.logs)
+            'logs': '\n'.join(logger.logs) if logger.logs else ""
         }
         
     except Exception as e:
@@ -724,7 +724,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'is_correct': False,
                 'wrong_step_found': False
             }],
-            'logs': '\n'.join(logger.logs)
+            'logs': '\n'.join(logger.logs) if logger.logs else ""
         }
 
 async def main():
