@@ -210,7 +210,6 @@ def main():
                 data = Dataset.from_dict({
                     'problem': [item['problem'] for item in raw_data],
                     'partial_solution': [item['partial_solution'] for item in raw_data],
-                    'completion': [item['completion'] for item in raw_data],
                     'answer': [item['answer'] for item in raw_data]
                 })
                 
@@ -235,12 +234,10 @@ def main():
             problem = example.get('question', '')
             answer = example.get('answer', '')
             partial_solution = example.get('partial_solution', '')
-            completion = example.get('completion', '')
             
             return {
                 'problem': problem,
                 'partial_solution': partial_solution,
-                'completion': completion,
                 'answer': answer
             }
         
@@ -251,7 +248,6 @@ def main():
         data = data.map(lambda x: {
             'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
                      f"Problem: {x['problem']}\n\nPartial Solution: {x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
-            'completion': x['completion'],
             'problem': x['problem'],
             'partial_solution': x['partial_solution'],
             'answer': x['answer']
