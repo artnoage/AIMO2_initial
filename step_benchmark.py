@@ -63,7 +63,7 @@ class StepAnalyzer:
         correct_step = None
         good_completion = None
         completion_prompt = None
-        self._log(f"\nVerifying completions for step {step_index}:")
+        self._log(f"\nVerifying completions for step {step_index+1} (index {step_index}):")
         self._log(f"Partial solution length: {len(partial_solution)}")
         self._log(f"Trying {num_completions} completions")
         
@@ -185,7 +185,7 @@ class StepAnalyzer:
         saved_completion_prompt = None
         
         self._log("\n=== Analyzing solution steps ===")
-        self._log(f"Starting analysis at step {current_step}")
+        self._log(f"Starting analysis at step {current_step+1} (index {current_step})")
         
         while True:
             try:
@@ -204,7 +204,7 @@ class StepAnalyzer:
                     return None, None, None, None
                     
                 if found_valid:
-                    self._log(f"✓ Step {current_step} is valid")
+                    self._log(f"✓ Step {current_step+1} (index {current_step}) is valid")
                     last_good_step = correct_step
                     saved_good_completion = good_completion
                     saved_completion_prompt = completion_prompt
@@ -221,7 +221,7 @@ class StepAnalyzer:
                     current_step += 1
                     
                 else:
-                    self._log(f"✗ Step {current_step} cannot be completed correctly")
+                    self._log(f"✗ Step {current_step+1} (index {current_step}) cannot be completed correctly")
                     last_bad_step = current_step
                     
                     if going_up is None:
@@ -266,9 +266,9 @@ class StepAnalyzer:
             if len(wrong_steps) <= 2:
                 position_category = "short_solution"
             elif wrong_step_index == 0:
-                position_category = "beginning"
+                position_category = "beginning"  # First step (Step 1)
             elif wrong_step_index == len(wrong_steps) - 1:
-                position_category = "end"
+                position_category = "end"  # Last step
             elif wrong_step_index < len(wrong_steps) / 3:
                 position_category = "early"
             elif wrong_step_index < 2 * len(wrong_steps) / 3:
@@ -563,7 +563,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'unsalvageable_reason': analysis['reason']
                     })
                 elif wrong_step_index is not None:
-                    logger.append(f"\n✓ Found wrong step at index {wrong_step_index} in solution {idx+1}")
+                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} (index {wrong_step_index}) in solution {idx+1}")
                     
                     # Get steps from wrong solution
                     wrong_steps = split_into_steps(analysis_solution)
