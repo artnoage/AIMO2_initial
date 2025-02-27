@@ -63,9 +63,8 @@ class StepAnalyzer:
         self._log(f"Partial solution length: {len(partial_solution)}")
         self._log(f"Trying {num_completions} completions")
         
-        # Check if we're using <step> tags format
-        using_tags = "<step>" in partial_solution
-        self._log(f"Using tags format: {using_tags}")
+        # We're always using <step> tags format in the response section
+        self._log(f"Using <step> tags format")
         
         # Generate all completions at once
         completions = []
@@ -91,8 +90,8 @@ class StepAnalyzer:
         # Evaluate all completions
         for i, completion in enumerate(completions):
             try:
-                # Check if completion has proper format
-                if using_tags and not ("<step>" in completion):
+                # Check if completion has proper format with <step> tags
+                if not ("<step>" in completion):
                     self._log(f"⚠️ Completion {i+1} missing <step> tags, skipping")
                     continue
                 
@@ -161,15 +160,14 @@ class StepAnalyzer:
         num_completions: int = 10
     ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
         """Binary search to find first wrong step in solution"""
-        # Split solution into steps
+        # Split solution into steps - these should already be just the content inside <step> tags
         wrong_steps = split_into_steps(wrong_solution)
         if not wrong_steps or len(wrong_steps) < 2:
             self._log("Not enough steps to analyze")
             return None, None, None, None
-            
-        # Check if we're using <step> tags format
-        using_tags = any("<step>" in step for step in wrong_steps)
-        self._log(f"Using tags format: {using_tags}")
+        
+        # We're always using <step> tags format in the response section
+        self._log(f"Using <step> tags format")
         
         # Count steps
         step_count = len(wrong_steps)
@@ -260,7 +258,7 @@ class StepAnalyzer:
         results = []
         
         try:
-            # Get steps from wrong solution
+            # Get steps from wrong solution - these should already be just the content inside <step> tags
             wrong_steps = split_into_steps(wrong_solution)
             
             # Calculate completion score based on remaining steps
@@ -470,19 +468,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger.append(f"   Using extracted response section for analysis")
                 analysis_solution = response
                 
-                # Check if response contains steps
+                # Check if response contains steps with proper tags
                 has_step_tags = '<step>' in response
-                has_step_keywords = 'Step ' in response or 'step ' in response
                 
-                if not (has_step_tags or has_step_keywords):
-                    logger.append(f"   ❌ No steps found in response section - marking as unsalvageable")
+                if not has_step_tags:
+                    logger.append(f"   ❌ No <step> tags found in response section - marking as unsalvageable")
                     analyzed_solutions.append({
                         'solution': solution,
                         'wrong_step_index': None,
                         'good_completion': None,
                         'last_good_step': None,
                         'unsalvageable': True,
-                        'reason': 'no_steps_in_response'
+                        'reason': 'no_step_tags_in_response'
                     })
                     continue
                 
@@ -497,6 +494,52 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'last_good_step': None,
                         'unsalvageable': True,
                         'reason': 'insufficient_steps'
+                    })
+                    continue
+                
+                # Verify step numbering is correct and sequential
+                step_numbers = []
+                for i, step in enumerate(steps):
+                    # Find step number
+                    step_num = None
+                    for pattern in STEP_NUMBER_PATTERNS:
+                        match = pattern.search(step)
+                        if match:
+                            try:
+                                step_num = int(match.group(1))
+                                break
+                            except ValueError:
+                                continue
+                    
+                    if step_num is None:
+                        logger.append(f"   ❌ Step {i+1} has no valid step number - marking as unsalvageable")
+                        analyzed_solutions.append({
+                            'solution': solution,
+                            'wrong_step_index': None,
+                            'good_completion': None,
+                            'last_good_step': None,
+                            'unsalvageable': True,
+                            'reason': 'missing_step_numbers'
+                        })
+                        break
+                    
+                    step_numbers.append(step_num)
+                
+                # Check if we broke out of the loop due to missing step numbers
+                if len(step_numbers) != len(steps):
+                    continue
+                
+                # Check if step numbers are sequential
+                expected_numbers = list(range(1, len(steps) + 1))
+                if step_numbers != expected_numbers:
+                    logger.append(f"   ❌ Step numbers are not sequential: {step_numbers} - marking as unsalvageable")
+                    analyzed_solutions.append({
+                        'solution': solution,
+                        'wrong_step_index': None,
+                        'good_completion': None,
+                        'last_good_step': None,
+                        'unsalvageable': True,
+                        'reason': 'non_sequential_step_numbers'
                     })
                     continue
                 
