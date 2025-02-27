@@ -43,11 +43,9 @@ class ProgressTracker:
     def add_result(self, results: List[Dict]) -> None:
         """Add a list of results to the tracker and update progress"""
         if results:
-            print(f"Adding {len(results)} results to tracker. Current total: {len(self.results)}")
             self.results.extend(results)
             # Count only statistics entries for checkpoints
             stats_count = len([r for r in self.results if r.get('data_type') == 'statistics'])
-            print(f"Current statistics count: {stats_count}")
             if stats_count > 0 and stats_count % self.config.stats_update_freq == 0:
                 self.print_progress()
                 self._save_progress_stats(f"Checkpoint at {stats_count} examples")
@@ -424,11 +422,7 @@ class ProgressTracker:
                         json.dump(type_results, f, indent=2)
                     print(f"Successfully saved {len(type_results)} {data_type} results to: {filepath}")
             
-            # Also save all results combined
-            all_results_path = os.path.join("results", f"all_results_{timestamp}.json")
-            with open(all_results_path, 'w') as f:
-                json.dump(self.results, f, indent=2)
-            print(f"Successfully saved {len(self.results)} total results to: {all_results_path}")
+            # Don't save all results combined
 
         except Exception as e:
             print(f"Error saving results: {str(e)}")
@@ -774,14 +768,17 @@ class ProgressTracker:
                 try:
                     result = await coro
                     if result:
-                        if 'logs' in result and result['logs']:
-                            all_logs.append(result['logs'])
-                        if 'results' in result:
-                            # Debug print to see what's being added
-                            print(f"Adding {len(result['results'])} results to tracker")
-                            self.add_result(result['results'])
-                        if 'total_solution_attempts' in result:
-                            all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
+                        # Handle both old format (direct list) and new format (dict with 'results' key)
+                        if isinstance(result, dict):
+                            if 'logs' in result and result['logs']:
+                                all_logs.append(result['logs'])
+                            if 'results' in result:
+                                self.add_result(result['results'])
+                            if 'total_solution_attempts' in result:
+                                all_logs.append(f"\nTotal solution attempts for example {len(self.results)}: {result['total_solution_attempts']}")
+                        else:
+                            # Old format - direct list of results
+                            self.add_result(result)
                     progress_bar.update(1)
                 except Exception as e:
                     all_logs.append(f"Error processing example: {str(e)}")
