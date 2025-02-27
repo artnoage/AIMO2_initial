@@ -101,6 +101,58 @@ class ProgressTracker:
             stats['judge_decisions'] = len(judge_entries)
             stats['avg_judge_accuracy'] = sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)
         
+        # Step benchmark statistics from regular statistics entries
+        step_entries = [r for r in entries if 'wrong_steps_found' in r]
+        if step_entries:
+            # Wrong step statistics
+            wrong_steps_found = sum(r.get('wrong_steps_found', 0) for r in step_entries)
+            stats['wrong_steps_found'] = wrong_steps_found
+            
+            # Position statistics
+            position_values = [r.get('avg_wrong_step_position', 0) for r in step_entries if 'avg_wrong_step_position' in r]
+            if position_values:
+                stats['avg_wrong_step_position'] = sum(position_values) / len(position_values)
+            
+            # Combine position distributions
+            from collections import Counter
+            position_dist = Counter()
+            for r in step_entries:
+                if 'position_distribution' in r:
+                    position_dist.update(r['position_distribution'])
+            stats['position_distribution'] = dict(position_dist)
+            
+            # Recovery statistics
+            recovery_rates = [r.get('recovery_success_rate', 0) for r in step_entries if 'recovery_success_rate' in r]
+            if recovery_rates:
+                stats['recovery_success_rate'] = sum(recovery_rates) / len(recovery_rates)
+            
+            # Completion score statistics
+            completion_scores = [r.get('avg_completion_score', 0) for r in step_entries if 'avg_completion_score' in r]
+            if completion_scores:
+                stats['avg_completion_score'] = sum(completion_scores) / len(completion_scores)
+            
+            # Unsalvageable statistics
+            unsalvageable_counts = [r.get('unsalvageable_solutions', 0) for r in step_entries if 'unsalvageable_solutions' in r]
+            if unsalvageable_counts:
+                stats['unsalvageable_solutions'] = sum(unsalvageable_counts)
+                
+            # Combine unsalvageable reasons
+            unsalvageable_reasons = {}
+            for r in step_entries:
+                if 'unsalvageable_reasons' in r:
+                    for reason, count in r['unsalvageable_reasons'].items():
+                        unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + count
+            stats['unsalvageable_reasons'] = unsalvageable_reasons
+            
+            # Section extraction statistics
+            thinking_rates = [r.get('thinking_extraction_rate', 0) for r in step_entries if 'thinking_extraction_rate' in r]
+            response_rates = [r.get('response_extraction_rate', 0) for r in step_entries if 'response_extraction_rate' in r]
+            
+            if thinking_rates:
+                stats['thinking_extraction_rate'] = sum(thinking_rates) / len(thinking_rates)
+            if response_rates:
+                stats['response_extraction_rate'] = sum(response_rates) / len(response_rates)
+        
         # Joined benchmark statistics
         if any('main_model_correct_count' in r for r in entries):
             main_correct = sum(r.get('main_model_correct_count', 0) for r in entries)
