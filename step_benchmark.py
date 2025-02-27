@@ -344,12 +344,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"❌ Warning: Could not determine correct answer for example {str(running_id)}")
             return None
 
-        # Initialize models and agents
+        # Initialize models and agents - all using main model
         main_model = get_model(config, role="main")
-        completion_model = get_model(config, role="auxiliary")
         
         solution_agent = FullSolutionAgent(main_model)
-        completion_agent = CompletionAgent(completion_model)
+        completion_agent = CompletionAgent(main_model)
         
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
