@@ -148,9 +148,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"└─ Combined models most common answer: {combined_most_common_answer} (Correct: {combined_most_common_correct})")
         logger.append("="*80)
         
-        # Print all logs at the end
-        logger.print()
-        
         results = []
         
         # Add individual entries for each solution
@@ -249,32 +246,42 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'combined_most_common_correct': combined_most_common_correct
         })
         
-        return results
+        # Return results with logs
+        return {
+            'results': results,
+            'logs': '\n'.join(logger.logs) if logger.logs else ""
+        }
         
     except Exception as e:
         logger.append(f"❌ Error processing example {str(running_id)}: {e}")
-        logger.print()
-        return [{
-            'id': example_id,
-            'data_type': 'statistics',
-            'example_processed_successfully': False,
-            'is_correct_list': [],
-            'is_most_common_correct': None,
-            'success_rate': 0,
-            'total_solutions': 0,
-            'correct_solutions': 0,
-            'incorrect_solutions': 0,
-            'judge_accuracy': None,
-            'judge_decisions': 0,
-            'all_solutions_correct': None
-        }]
+        # Return results with logs
+        return {
+            'results': [{
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': False,
+                'is_correct_list': [],
+                'is_most_common_correct': None,
+                'success_rate': 0,
+                'total_solutions': 0,
+                'correct_solutions': 0,
+                'incorrect_solutions': 0,
+                'judge_accuracy': None,
+                'judge_decisions': 0,
+                'all_solutions_correct': None
+            }],
+            'logs': '\n'.join(logger.logs) if logger.logs else ""
+        }
 
 async def main():
     """Main function for benchmarking mathematical problem solving with both main and auxiliary models."""
     config = BenchmarkConfig.from_args('Benchmark main and auxiliary models on mathematical problems')
     
+    # Run the benchmark
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
+    
+    # The ProgressTracker will handle printing the final statistics
 
 if __name__ == "__main__":
     logger = BenchmarkLogger()
@@ -285,4 +292,6 @@ if __name__ == "__main__":
         logger.print()
     except Exception as e:
         logger.append(f"\n❌ Benchmark failed with error: {e}")
+        import traceback
+        logger.append(f"Traceback:\n{traceback.format_exc()}")
         logger.print()
