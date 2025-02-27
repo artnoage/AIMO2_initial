@@ -757,14 +757,12 @@ class CompletionReward(BaseReward):
                 
             # Combine partial solution with completion response
             # We don't want the response tag in either part
-            full_solution = "<response>" + partial_solution + completion_response
-            
+            full_solution = partial_solution + completion_response
+            print(full_solution)
             # Since we're only using the response part in partial solutions,
             # we don't need to check for thinking section
                 
-            if not has_response_section(full_solution):
-                self.logger.info("Missing response section")
-                return 0.0
+            
                 
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(full_solution)
