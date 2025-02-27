@@ -186,35 +186,7 @@ def main():
         loftq_config=None
     )
     
-    def prepare_partial_solutions(dataset):
-        """Create partial solutions by truncating full solutions at random steps"""
-        def truncate_solution(example):
-            solution = example.get('solution', '')
-            if not solution:
-                return example
-                
-            # Find all step markers
-            step_matches = list(re.finditer(r'<step>Step\s+(\d+):', solution, re.IGNORECASE))
-            if len(step_matches) <= 1:
-                return example  # Not enough steps to truncate
-                
-            # Choose a random truncation point (leave at least one step)
-            import random
-            truncate_at = random.randint(1, len(step_matches) - 1)
-            
-            # Get the position to truncate
-            truncate_pos = step_matches[truncate_at].start()
-            
-            # Create partial solution
-            partial_solution = solution[:truncate_pos]
-            remaining_solution = solution[truncate_pos:]
-            
-            # Update example
-            example['partial_solution'] = partial_solution
-            example['completion'] = remaining_solution
-            return example
-            
-        return dataset.map(truncate_solution)
+    # We don't need to prepare partial solutions as they're already in the dataset
     
     def get_questions(split="train") -> Dataset:
         """
@@ -258,41 +230,22 @@ def main():
         
     def prepare_dataset_from_hf(data):
         """Prepare dataset from HuggingFace format"""
-        # First, extract solutions from the dataset
-        def extract_solution(example):
+        # Map fields to expected format
+        def format_example(example):
             problem = example.get('question', '')
             answer = example.get('answer', '')
-            
-            # If your dataset doesn't have solutions, you'll need to generate them
-            solution = example.get('solution', '')
-            if not solution:
-                # If no solution field exists, create a dummy one for demonstration
-                solution = f"""<thinking>
-Analysis of the problem...
-</thinking>
-<response>
-<step>Step 1: First step of solution
-Mathematical work...
-
-<step>Step 2: Second step
-More mathematical work...
-
-<step>Step 3: Final step
-Therefore, the answer is \\boxed{{{answer}}}
-</step>
-</response>"""
+            partial_solution = example.get('partial_solution', '')
+            completion = example.get('completion', '')
             
             return {
                 'problem': problem,
-                'solution': solution,
+                'partial_solution': partial_solution,
+                'completion': completion,
                 'answer': answer
             }
         
-        # Extract solutions
-        data = data.map(extract_solution)
-        
-        # Then create partial solutions
-        data = prepare_partial_solutions(data)
+        # Format the data
+        data = data.map(format_example)
         
         # Format for training
         data = data.map(lambda x: {
