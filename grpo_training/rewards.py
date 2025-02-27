@@ -778,8 +778,21 @@ class CompletionReward(BaseReward):
             partial_steps = re.findall(r'<step>Step\s+(\d+):', partial_solution, re.IGNORECASE)
             last_partial_step = int(partial_steps[-1]) if partial_steps else 0
             
+            # Check if partial solution has properly closed step tags
+            opening_tags_partial = len(re.findall(r'<step>', partial_solution, re.IGNORECASE))
+            closing_tags_partial = len(re.findall(r'</step>', partial_solution, re.IGNORECASE))
+            if opening_tags_partial != closing_tags_partial:
+                self.logger.info(f"Partial solution has mismatched step tags: {opening_tags_partial} opening, {closing_tags_partial} closing")
+            
             # Extract steps from completion
             completion_steps = re.findall(r'<step>Step\s+(\d+):', completion, re.IGNORECASE)
+            
+            # Check if completion has properly closed step tags
+            opening_tags_completion = len(re.findall(r'<step>', completion, re.IGNORECASE))
+            closing_tags_completion = len(re.findall(r'</step>', completion, re.IGNORECASE))
+            if opening_tags_completion != closing_tags_completion:
+                self.logger.info(f"Completion has mismatched step tags: {opening_tags_completion} opening, {closing_tags_completion} closing")
+                # We don't fail here as the model might be learning to close tags properly
             
             # Check if completion continues step numbering correctly
             step_continuity_correct = True

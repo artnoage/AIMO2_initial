@@ -33,6 +33,8 @@ Continue the solution from where it left off, maintaining the same step numberin
 The partial solution will only contain the beginning of the response section with some steps.
 You must continue with the next step number in sequence.
 
+IMPORTANT: Each step must be properly enclosed in <step> and </step> tags.
+
 For example, if the partial solution ends with Step 2, you should start with:
 
 <step>Step 3: [Description of the step]
@@ -48,7 +50,7 @@ Continue with additional steps as needed:
 In your final step, include your answer in a LaTeX boxed environment:
 \\boxed{your final answer}
 
-Make sure all your steps follow logically from the partial solution.
+Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
 </response>
 """
 

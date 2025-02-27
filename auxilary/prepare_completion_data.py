@@ -22,7 +22,7 @@ def has_thinking_response_format(solution: str) -> bool:
     return thinking_pattern is not None and response_pattern is not None
 
 def has_proper_step_numbering(solution: str) -> bool:
-    """Check if solution has properly numbered steps in sequence"""
+    """Check if solution has properly numbered steps in sequence with proper tags"""
     # Extract response section
     response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
     if not response_match:
@@ -30,9 +30,16 @@ def has_proper_step_numbering(solution: str) -> bool:
     
     response = response_match.group(1)
     
-    # Find all step markers
-    step_matches = re.findall(r'<step>Step\s+(\d+):', response, re.IGNORECASE)
+    # Find all step markers with opening and closing tags
+    step_matches = re.findall(r'<step>Step\s+(\d+):.*?</step>', response, re.DOTALL | re.IGNORECASE)
     if not step_matches:
+        return False
+    
+    # Check if there are any unclosed step tags
+    opening_tags = len(re.findall(r'<step>', response, re.IGNORECASE))
+    closing_tags = len(re.findall(r'</step>', response, re.IGNORECASE))
+    if opening_tags != closing_tags:
+        logger.debug(f"Mismatched step tags: {opening_tags} opening, {closing_tags} closing")
         return False
     
     # Convert to integers and check sequence
