@@ -190,20 +190,6 @@ def main():
         use_rslora=False,
         loftq_config=None
     )
-    
-    def modify_thinking_section(text):
-        """
-        Modify the thinking section by stopping before </thinking> and adding "...no wait a second."
-        """
-        thinking_end_pattern = re.compile(r'</thinking>')
-        match = thinking_end_pattern.search(text)
-        
-        if match:
-            # Find the position of </thinking>
-            end_pos = match.start()
-            # Return the text up to that point plus our addition
-            return text[:end_pos] + "...no wait a second.</thinking>" + text[match.end():]
-        return text
         
     def get_questions(split = "train") -> Dataset:
         """
