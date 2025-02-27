@@ -205,17 +205,6 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
         return wrapper
     return decorator
 
-def has_single_term(text: str) -> bool:
-    """Check if text has only a single term (no operators outside brackets)"""
-    bracket_level = 0
-    for char in text:
-        if char == '{':
-            bracket_level += 1
-        elif char == '}':
-            bracket_level -= 1
-        elif bracket_level == 0 and char in '+-*/^':
-            return False
-    return True
 
 def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
     """
