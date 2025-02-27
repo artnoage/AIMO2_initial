@@ -752,7 +752,7 @@ class CompletionReward(BaseReward):
                 completion_response = response_match.group(1)
             else:
                 # If no response tags, give zero reward
-                self.logger.debug("No response tags found in completion, giving zero reward")
+                self.logger.info("No response tags found in completion, giving zero reward")
                 return 0.0
                 
             # Combine partial solution with completion response
@@ -766,20 +766,20 @@ class CompletionReward(BaseReward):
             # we don't need to check for thinking section
                 
             if not has_response_section(full_solution):
-                self.logger.debug("Missing response section")
+                self.logger.info("Missing response section")
                 return 0.0
                 
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(full_solution)
             if model_answer is None:
-                self.logger.debug("No boxed answer found in completion")
+                self.logger.info("No boxed answer found in completion")
                 return 0.0
                 
             # Convert to numeric values
             model_numeric, _ = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(correct_answer)
             if model_numeric is None or correct_numeric is None:
-                self.logger.debug(f"Could not extract numeric values - Model: {model_numeric}, Correct: {correct_numeric}")
+                self.logger.info(f"Could not extract numeric values - Model: {model_numeric}, Correct: {correct_numeric}")
                 return 0.0
                 
             # Check correctness
