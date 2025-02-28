@@ -114,6 +114,7 @@ def main():
     
     # Shuffle and select examples from AIME dataset
     processed_aime = processed_aime.shuffle(seed=seed)
+    processed_aime = processed_aime.select(range(min(500, len(processed_aime))))
 
     
     # Load the fourth dataset: Metaskepsis/custom100bench
@@ -129,6 +130,7 @@ def main():
     
     # Shuffle and select examples from custom100bench dataset
     processed_custom100 = processed_custom100.shuffle(seed=seed)
+    processed_custom100 = processed_custom100.select(range(min(500, len(processed_custom100))))
  
     
     # Load the fifth dataset: Metaskepsis/custom219
@@ -144,9 +146,26 @@ def main():
     
     # Shuffle and select examples from custom219 dataset
     processed_custom219 = processed_custom219.shuffle(seed=seed)
+    processed_custom219 = processed_custom219.select(range(min(500, len(processed_custom219))))
 
 
 
+    # Ensure all datasets have the same schema before concatenation
+    print("Ensuring consistent schema across datasets")
+    
+    # Create a common schema with just the fields we need
+    def normalize_schema(dataset):
+        return dataset.map(lambda x: {
+            'answer': str(x['answer']),
+            'problem': x['problem']
+        })
+    
+    processed_hard = normalize_schema(processed_hard)
+    processed_very_hard = normalize_schema(processed_very_hard)
+    processed_aime = normalize_schema(processed_aime)
+    processed_custom100 = normalize_schema(processed_custom100)
+    processed_custom219 = normalize_schema(processed_custom219)
+    
     # Concatenate the datasets
     print("Concatenating datasets")
     combined_dataset = concatenate_datasets([
