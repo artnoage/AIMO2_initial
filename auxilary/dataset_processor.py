@@ -13,13 +13,9 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+# Simple print function for status updates
+def log_info(message):
+    print(f"[INFO] {message}")
 
 SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
@@ -50,50 +46,17 @@ def load_datasets(dataset_names: List[str], splits: List[str] = ["train"]) -> Di
     datasets = {}
     for dataset_name in dataset_names:
         try:
-            logger.info(f"Loading dataset: {dataset_name}")
+            print(f"Loading dataset: {dataset_name}")
             for split in splits:
                 if split not in datasets:
                     datasets[split] = {}
                 datasets[split][dataset_name] = load_dataset(dataset_name, split=split)
-                logger.info(f"Loaded {len(datasets[split][dataset_name])} examples from {dataset_name} ({split})")
+                print(f"Loaded {len(datasets[split][dataset_name])} examples from {dataset_name} ({split})")
         except Exception as e:
-            logger.error(f"Failed to load dataset {dataset_name}: {str(e)}")
+            print(f"ERROR: Failed to load dataset {dataset_name}: {str(e)}")
     
     return datasets
 
-def process_dataset(dataset: Dataset, format_type: str = "default") -> Dataset:
-    """
-    Process dataset by applying formatting transformations.
-    
-    Args:
-        dataset: The dataset to process
-        format_type: The type of formatting to apply
-        
-    Returns:
-        Processed dataset
-    """
-    logger.info(f"Processing dataset with format type: {format_type}")
-    
-    if format_type == "default":
-        # Default formatting for math problems (matches the format in group_qwen1.py)
-        processed = dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
-        })
-    elif format_type == "group":
-        # Formatting for group training (similar to what's used in group_qwen1.py)
-        processed = dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem']
-        })
-    else:
-        logger.warning(f"Unknown format type: {format_type}, using default")
-        processed = dataset
-        
-    return processed
 
 
 def concatenate_multiple_datasets(datasets: List[Dataset]) -> Dataset:
@@ -109,12 +72,12 @@ def concatenate_multiple_datasets(datasets: List[Dataset]) -> Dataset:
     if not datasets:
         raise ValueError("No datasets provided for concatenation")
     
-    logger.info(f"Concatenating {len(datasets)} datasets")
+    print(f"Concatenating {len(datasets)} datasets")
     total_examples = sum(len(ds) for ds in datasets)
     
     # Concatenate all datasets
     concatenated = concatenate_datasets(datasets)
-    logger.info(f"Created concatenated dataset with {len(concatenated)} examples (from {total_examples} total)")
+    print(f"Created concatenated dataset with {len(concatenated)} examples (from {total_examples} total)")
     
     return concatenated
 
@@ -134,16 +97,16 @@ def push_to_hub(dataset: Dataset, repo_name: str, token: Optional[str] = None) -
         # Login if token is provided
         if token:
             login(token)
-            logger.info("Logged in to Hugging Face Hub")
+            print("Logged in to Hugging Face Hub")
         
         # Push the dataset
-        logger.info(f"Pushing dataset to {repo_name}")
+        print(f"Pushing dataset to {repo_name}")
         dataset.push_to_hub(repo_name)
-        logger.info(f"Successfully pushed dataset to {repo_name}")
+        print(f"Successfully pushed dataset to {repo_name}")
         
         return f"https://huggingface.co/datasets/{repo_name}"
     except Exception as e:
-        logger.error(f"Failed to push dataset to hub: {str(e)}")
+        print(f"ERROR: Failed to push dataset to hub: {str(e)}")
         raise
 
 def main():
@@ -152,8 +115,8 @@ def main():
                         help="List of dataset names to load")
     parser.add_argument("--splits", nargs="+", default=["train"], 
                         help="Dataset splits to use")
-    parser.add_argument("--format", type=str, default="default", choices=["default", "group"],
-                        help="Format type to apply to datasets (default or group)")
+    parser.add_argument("--format", type=str, default="default",
+                        help="Format type to apply to datasets")
     parser.add_argument("--examples", type=int, default=None, 
                         help="Number of examples to select from each dataset (None for all)")
     parser.add_argument("--seed", type=int, default=42, 
@@ -174,17 +137,35 @@ def main():
     for split in args.splits:
         if split in datasets_dict:
             for dataset_name, dataset in datasets_dict[split].items():
-                # Process the dataset
-                processed = process_dataset(dataset, args.format)
+                # Format the dataset directly based on format type
+                if args.format == "default":
+                    # Default formatting for math problems
+                    processed = dataset.map(lambda x: {
+                        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'answer': x.get('answer', x.get('correct_answer', '')),
+                        'problem': x['problem'],
+                        'original_id': x.get('id', str(random.randint(0, 1000000)))
+                    })
+                elif args.format == "group":
+                    # Group training format
+                    processed = dataset.map(lambda x: {
+                        'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'answer': x.get('answer', x.get('correct_answer', '')),
+                        'problem': x['problem']
+                    })
+                else:
+                    # Custom format - just pass through the dataset
+                    print(f"Using custom format: {args.format}")
+                    processed = dataset
                 
                 # Shuffle and select examples if needed
                 processed = processed.shuffle(seed=args.seed)
                 if args.examples is not None and args.examples < len(processed):
-                    logger.info(f"Selecting {args.examples} examples from dataset of size {len(processed)}")
+                    print(f"Selecting {args.examples} examples from dataset of size {len(processed)}")
                     processed = processed.select(range(args.examples))
                 
                 all_processed_datasets.append(processed)
-                logger.info(f"Added {len(processed)} examples from {dataset_name} ({split})")
+                print(f"Added {len(processed)} examples from {dataset_name} ({split})")
     
     # Concatenate all datasets
     if all_processed_datasets:
@@ -192,9 +173,9 @@ def main():
         
         # Push to hub
         hub_url = push_to_hub(final_dataset, args.output_repo, args.token)
-        logger.info(f"Dataset available at: {hub_url}")
+        print(f"Dataset available at: {hub_url}")
     else:
-        logger.error("No datasets were processed successfully")
+        print("ERROR: No datasets were processed successfully")
 
 if __name__ == "__main__":
     main()
