@@ -75,9 +75,9 @@ def main():
     hard_dataset = load_dataset("Metaskepsis/Olympiads_hard", split="train")
     print(f"Loaded {len(hard_dataset)} examples from Metaskepsis/Olympiads_hard (train)")
     
-    # Format the hard dataset
+    # Format the hard dataset - ensure answer is string type
     processed_hard = hard_dataset.map(lambda x: {
-            'answer': x.get('answer', x.get('correct_answer', '')),
+            'answer': str(x.get('answer', x.get('correct_answer', ''))),
             'problem': x.get('problem', x.get('question', ''))
         })
     
@@ -91,9 +91,9 @@ def main():
     very_hard_dataset = load_dataset("Metaskepsis/Numina_very_hard", split="train")
     print(f"Loaded {len(very_hard_dataset)} examples from Metaskepsis/Numina_very_hard (train)")
     
-    # Format the very hard dataset
+    # Format the very hard dataset - ensure answer is string type
     processed_very_hard = very_hard_dataset.map(lambda x: {
-            'answer': x.get('answer', x.get('correct_answer', '')),
+            'answer': str(x.get('answer', x.get('correct_answer', ''))),
             'problem': x.get('problem', x.get('question', ''))
         })
     
@@ -106,9 +106,9 @@ def main():
     aime_dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
     print(f"Loaded {len(aime_dataset)} examples from AI-MO/aimo-validation-aime (train)")
     
-    # Format the AIME dataset
+    # Format the AIME dataset - ensure answer is string type
     processed_aime = aime_dataset.map(lambda x: {
-            'answer': x.get('answer', x.get('correct_answer', '')),
+            'answer': str(x.get('answer', x.get('correct_answer', ''))),
             'problem': x.get('problem', x.get('question', ''))
         })
     
@@ -121,9 +121,9 @@ def main():
     custom100_dataset = load_dataset("Metaskepsis/custom100bench", split="train")
     print(f"Loaded {len(custom100_dataset)} examples from Metaskepsis/custom100bench (train)")
     
-    # Format the custom100bench dataset
+    # Format the custom100bench dataset - ensure answer is string type
     processed_custom100 = custom100_dataset.map(lambda x: {
-            'answer': x.get('answer', x.get('correct_answer', '')),
+            'answer': str(x.get('answer', x.get('correct_answer', ''))),
             'problem': x.get('problem', x.get('question', ''))
         })
     
@@ -136,9 +136,9 @@ def main():
     custom219_dataset = load_dataset("Metaskepsis/custom219", split="train")
     print(f"Loaded {len(custom219_dataset)} examples from Metaskepsis/custom219 (train)")
     
-    # Format the custom219 dataset
+    # Format the custom219 dataset - ensure answer is string type
     processed_custom219 = custom219_dataset.map(lambda x: {
-            'answer': x.get('answer', x.get('correct_answer', '')),
+            'answer': str(x.get('answer', x.get('correct_answer', ''))),
             'problem': x.get('problem', x.get('question', ''))
         })
     
