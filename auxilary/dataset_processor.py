@@ -156,12 +156,25 @@ def main():
     # Collect all examples with the right schema
     all_examples = []
     
-    # Helper function to extract examples with consistent schema
+    # Helper function to extract examples with consistent schema and filter answers
     def extract_examples(dataset):
         examples = []
         for item in dataset:
+            answer = str(item['answer'])
+            
+            # Count occurrences of "="
+            equals_count = answer.count("=")
+            
+            # Skip entries with 2 or more "=" occurrences
+            if equals_count >= 2:
+                continue
+                
+            # If there's exactly one "=", keep only what's on the right
+            if equals_count == 1:
+                answer = answer.split("=")[1].strip()
+                
             examples.append({
-                'answer': str(item['answer']),
+                'answer': answer,
                 'problem': str(item['problem'])
             })
         return examples
@@ -177,9 +190,9 @@ def main():
     print(f"Creating dataset from {len(all_examples)} collected examples")
     combined_dataset = Dataset.from_list(all_examples)
     
-    # Add new IDs to the combined dataset
+    # Add new IDs to the combined dataset (without the word "combined")
     def add_ids(example, idx):
-        example['id'] = f"combined_{idx}"
+        example['id'] = f"val_{idx}"
         return example
     
     combined_dataset = combined_dataset.map(add_ids, with_indices=True)
