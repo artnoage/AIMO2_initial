@@ -192,7 +192,8 @@ def main():
     
         
     def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
+        # Use the combined dataset from Metaskepsis/validation_
+        data = load_dataset("Metaskepsis/validation_", split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
@@ -201,7 +202,8 @@ def main():
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset=formatted_dataset.select(range(1000))
+    # We have more diverse data now, so we can use more examples
+    formatted_dataset = formatted_dataset.select(range(2000))
  
    
     

@@ -150,31 +150,32 @@ def main():
 
 
 
-    # Ensure all datasets have the same schema before concatenation
-    print("Ensuring consistent schema across datasets")
+    # Create a new dataset from scratch with consistent types
+    print("Creating a new dataset with consistent schema")
     
-    # Create a common schema with just the fields we need
-    def normalize_schema(dataset):
-        return dataset.map(lambda x: {
-            'answer': str(x['answer']),
-            'problem': x['problem']
-        })
+    # Collect all examples with the right schema
+    all_examples = []
     
-    processed_hard = normalize_schema(processed_hard)
-    processed_very_hard = normalize_schema(processed_very_hard)
-    processed_aime = normalize_schema(processed_aime)
-    processed_custom100 = normalize_schema(processed_custom100)
-    processed_custom219 = normalize_schema(processed_custom219)
+    # Helper function to extract examples with consistent schema
+    def extract_examples(dataset):
+        examples = []
+        for item in dataset:
+            examples.append({
+                'answer': str(item['answer']),
+                'problem': str(item['problem'])
+            })
+        return examples
     
-    # Concatenate the datasets
-    print("Concatenating datasets")
-    combined_dataset = concatenate_datasets([
-        processed_hard, 
-        processed_very_hard,
-        processed_aime,
-        processed_custom100,
-        processed_custom219
-    ])
+    # Extract examples from each dataset
+    all_examples.extend(extract_examples(processed_hard))
+    all_examples.extend(extract_examples(processed_very_hard))
+    all_examples.extend(extract_examples(processed_aime))
+    all_examples.extend(extract_examples(processed_custom100))
+    all_examples.extend(extract_examples(processed_custom219))
+    
+    # Create a new dataset from the collected examples
+    print(f"Creating dataset from {len(all_examples)} collected examples")
+    combined_dataset = Dataset.from_list(all_examples)
     
     # Add new IDs to the combined dataset
     def add_ids(example, idx):
