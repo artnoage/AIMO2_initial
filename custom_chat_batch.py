@@ -3,12 +3,10 @@ import asyncio
 import logging
 import argparse
 import json
+import aiohttp
 from typing import Optional, Dict, List, Any
 from dotenv import load_dotenv
-from utils.benchmark_config import BenchmarkConfig, ModelOption
-from utils.model_utils import get_model, get_model_response
 from utils.logger import BenchmarkLogger
-from langchain_core.messages import HumanMessage
 from datetime import datetime
 
 # Configure logging
@@ -36,16 +34,19 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
 
-async def send_custom_message(model, problem: str, custom_prompt: Optional[str] = None, 
-                             max_tokens: int = 4096) -> str:
+async def send_custom_message(model_name: str, problem: str, custom_prompt: Optional[str] = None, 
+                             temperature: float = 0.0, max_tokens: int = 4096,
+                             api_base: str = "http://localhost:8000/v1") -> str:
     """
     Send a custom message to the LLM with direct control over the chat template.
     
     Args:
-        model: The initialized model
+        model_name: The model name to use
         problem: The mathematical problem to solve
         custom_prompt: Optional custom prompt template (if None, uses default SYSTEM_PROMPT)
+        temperature: Model temperature setting
         max_tokens: Maximum tokens for model response
+        api_base: Base URL for the API
         
     Returns:
         The model's response as a string
@@ -53,49 +54,106 @@ async def send_custom_message(model, problem: str, custom_prompt: Optional[str] 
     # Use custom prompt if provided, otherwise use default
     prompt_template = custom_prompt if custom_prompt else SYSTEM_PROMPT
     
-    # Construct the full prompt with chat template
-    full_prompt = [
-        HumanMessage(content=(
-            f"<|im_start|>system\n{prompt_template}<|im_end|>\n"
-            f"<|im_start|>user\n{problem}<|im_end|>\n"
-            f"<|im_start|>assistant\n"
-        ))
+    # Construct the chat messages with the custom template
+    messages = [
+        {"role": "system", "content": prompt_template},
+        {"role": "user", "content": problem}
     ]
     
+    # For direct template manipulation (like in wait_grpo.py)
+    # Format the prompt as a single string with the chat template markers
+    formatted_prompt = (
+        f"<|im_start|>system\n{prompt_template}<|im_end|>\n"
+        f"<|im_start|>user\n{problem}<|im_end|>\n"
+        f"<|im_start|>assistant\n"
+    )
+    
+    # Determine if we're using OpenRouter or a local API
+    is_openrouter = "openrouter.ai" in api_base
+    
+    # Prepare the API request
+    if is_openrouter:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY environment variable is not set")
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+    else:
+        # Local API (like vLLM or similar)
+        url = f"{api_base}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.getenv('API_KEY', 'EMPTY')}"
+        }
+        
+        # For APIs that support direct prompt format
+        if "llama" in model_name.lower() or "mistral" in model_name.lower():
+            payload = {
+                "model": model_name,
+                "prompt": formatted_prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+        else:
+            # Standard chat format
+            payload = {
+                "model": model_name,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+    
     try:
-        # Get response from model
-        response = await get_model_response(model, full_prompt, max_tokens=max_tokens)
-        return response
+        # Make the API request
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=payload) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    return f"Error: API returned status {response.status} - {error_text}"
+                
+                result = await response.json()
+                
+                # Extract the response content based on API format
+                if is_openrouter or "choices" in result:
+                    response_text = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    response_text = result.get("output", {}).get("content", "")
+                
+                return response_text
+                
     except Exception as e:
         return f"Error: {str(e)}"
 
-async def process_batch(problems: List[Dict[str, Any]], model_option: str, custom_prompt: Optional[str] = None,
+async def process_batch(problems: List[Dict[str, Any]], model_name: str, custom_prompt: Optional[str] = None,
                        temperature: float = 0.0, max_tokens: int = 4096, 
-                       max_concurrent: int = 3, output_file: Optional[str] = None) -> List[Dict[str, Any]]:
+                       max_concurrent: int = 3, output_file: Optional[str] = None,
+                       api_base: str = "http://localhost:8000/v1") -> List[Dict[str, Any]]:
     """
     Process a batch of problems concurrently.
     
     Args:
         problems: List of problem dictionaries (must contain 'problem' key)
-        model_option: The model to use (from ModelOption enum)
+        model_name: The model name to use
         custom_prompt: Optional custom prompt template
         temperature: Model temperature setting
         max_tokens: Maximum tokens for model response
         max_concurrent: Maximum number of concurrent requests
         output_file: Optional file to save results
+        api_base: Base URL for the API
         
     Returns:
         List of results with model responses
     """
     logger = BenchmarkLogger()
-    
-    # Create a minimal config for model initialization
-    config = BenchmarkConfig()
-    config.main = model_option
-    config.main_temp = temperature
-    
-    # Get the model
-    model = get_model(config, role="main")
     
     # Create semaphore for limiting concurrent requests
     semaphore = asyncio.Semaphore(max_concurrent)
@@ -107,10 +165,12 @@ async def process_batch(problems: List[Dict[str, Any]], model_option: str, custo
             logger.print()
             
             response = await send_custom_message(
-                model=model,
+                model_name=model_name,
                 problem=problem_dict['problem'],
                 custom_prompt=custom_prompt,
-                max_tokens=max_tokens
+                temperature=temperature,
+                max_tokens=max_tokens,
+                api_base=api_base
             )
             
             # Create result dictionary
@@ -152,8 +212,8 @@ async def main():
     parser = argparse.ArgumentParser(description='Batch process custom messages to LLMs')
     
     # Add arguments
-    parser.add_argument('--model', type=str, default='LOCAL_0', 
-                        help='Model option (e.g., LOCAL_0, ANTHROPIC_CLAUDE_3_OPUS)')
+    parser.add_argument('--model', type=str, default='llama3', 
+                        help='Model name (e.g., llama3, mistral, claude-3-opus)')
     parser.add_argument('--input-file', type=str, required=True,
                         help='JSON file containing problems to process')
     parser.add_argument('--output-file', type=str, default=None,
@@ -168,6 +228,10 @@ async def main():
                         help='Maximum tokens for model response')
     parser.add_argument('--max-concurrent', type=int, default=3,
                         help='Maximum number of concurrent requests')
+    parser.add_argument('--api-base', type=str, default="http://localhost:8000/v1",
+                        help='Base URL for API (default: http://localhost:8000/v1)')
+    parser.add_argument('--openrouter', action='store_true',
+                        help='Use OpenRouter API instead of local API')
     
     args = parser.parse_args()
     
@@ -196,15 +260,19 @@ async def main():
         print(f"Error reading input file: {str(e)}")
         return
     
+    # Set API base URL if using OpenRouter
+    api_base = "https://openrouter.ai/api/v1" if args.openrouter else args.api_base
+    
     # Process the batch
     results = await process_batch(
         problems=problems,
-        model_option=args.model,
+        model_name=args.model,
         custom_prompt=custom_prompt,
         temperature=args.temperature,
         max_tokens=args.max_tokens,
         max_concurrent=args.max_concurrent,
-        output_file=args.output_file
+        output_file=args.output_file,
+        api_base=api_base
     )
     
     # Final save to output file
