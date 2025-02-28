@@ -114,7 +114,7 @@ def main():
     
     # Shuffle and select examples from AIME dataset
     processed_aime = processed_aime.shuffle(seed=seed)
-    processed_aime = processed_aime.select(range(500))
+
     
     # Load the fourth dataset: Metaskepsis/custom100bench
     print(f"Loading dataset: Metaskepsis/custom100bench")
@@ -129,7 +129,7 @@ def main():
     
     # Shuffle and select examples from custom100bench dataset
     processed_custom100 = processed_custom100.shuffle(seed=seed)
-    processed_custom100 = processed_custom100.select(range(500))
+ 
     
     # Load the fifth dataset: Metaskepsis/custom219
     print(f"Loading dataset: Metaskepsis/custom219")
@@ -144,7 +144,7 @@ def main():
     
     # Shuffle and select examples from custom219 dataset
     processed_custom219 = processed_custom219.shuffle(seed=seed)
-    processed_custom219 = processed_custom219.select(range(500))
+
 
 
     # Concatenate the datasets
