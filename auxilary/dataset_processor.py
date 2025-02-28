@@ -66,7 +66,7 @@ def push_to_hub(dataset: Dataset, repo_name: str, token: Optional[str] = None) -
 
 def main():
     # Set fixed parameters
-    output_repo = "Metaskepsis/validation_"  # Change this to your desired repo name
+    output_repo = "Metaskepsis/validation_set"  # Change this to your desired repo name
     token = None  # Set your token here or use environment variable
     seed = 100
     
@@ -99,7 +99,7 @@ def main():
     
     # Shuffle and select examples from very hard dataset
     processed_very_hard = processed_very_hard.shuffle(seed=seed)
-    processed_very_hard = processed_very_hard.select(range(500))
+    processed_very_hard = processed_very_hard.select(range(250))
     
     # Load the third dataset: AI-MO/aimo-validation-aime
     print(f"Loading dataset: AI-MO/aimo-validation-aime")
