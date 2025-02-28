@@ -78,8 +78,7 @@ def main():
     # Format the hard dataset
     processed_hard = hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x.get('problem', x.get('question', '')),
-            'id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x.get('problem', x.get('question', ''))
         })
     
     # Shuffle and select examples from hard dataset
@@ -95,8 +94,7 @@ def main():
     # Format the very hard dataset
     processed_very_hard = very_hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x.get('problem', x.get('question', '')),
-            'id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x.get('problem', x.get('question', ''))
         })
     
     # Shuffle and select examples from very hard dataset
@@ -111,8 +109,7 @@ def main():
     # Format the AIME dataset
     processed_aime = aime_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x.get('problem', x.get('question', '')),
-            'id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x.get('problem', x.get('question', ''))
         })
     
     # Shuffle and select examples from AIME dataset
@@ -127,8 +124,7 @@ def main():
     # Format the custom100bench dataset
     processed_custom100 = custom100_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x.get('problem', x.get('question', '')),
-            'id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x.get('problem', x.get('question', ''))
         })
     
     # Shuffle and select examples from custom100bench dataset
@@ -143,8 +139,7 @@ def main():
     # Format the custom219 dataset
     processed_custom219 = custom219_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x.get('problem', x.get('question', '')),
-            'id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x.get('problem', x.get('question', ''))
         })
     
     # Shuffle and select examples from custom219 dataset
@@ -161,7 +156,14 @@ def main():
         processed_custom100,
         processed_custom219
     ])
-    print(f"Created combined dataset with {len(combined_dataset)} examples")
+    
+    # Add new IDs to the combined dataset
+    def add_ids(example, idx):
+        example['id'] = f"combined_{idx}"
+        return example
+    
+    combined_dataset = combined_dataset.map(add_ids, with_indices=True)
+    print(f"Created combined dataset with {len(combined_dataset)} examples, each with a unique ID")
     
     # Push to hub
     if output_repo != "your-username/combined-olympiads":  # Only push if repo name is changed
