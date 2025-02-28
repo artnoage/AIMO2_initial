@@ -78,7 +78,7 @@ def main():
     # Format the hard dataset
     processed_hard = hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
+            'problem': x.get('problem', x.get('question', '')),
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
@@ -95,7 +95,7 @@ def main():
     # Format the very hard dataset
     processed_very_hard = very_hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
+            'problem': x.get('problem', x.get('question', '')),
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
@@ -111,7 +111,7 @@ def main():
     # Format the AIME dataset
     processed_aime = aime_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
+            'problem': x.get('problem', x.get('question', '')),
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
@@ -127,7 +127,7 @@ def main():
     # Format the custom100bench dataset
     processed_custom100 = custom100_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
+            'problem': x.get('problem', x.get('question', '')),
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
@@ -143,7 +143,7 @@ def main():
     # Format the custom219 dataset
     processed_custom219 = custom219_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
+            'problem': x.get('problem', x.get('question', '')),
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
