@@ -96,30 +96,6 @@ def process_dataset(dataset: Dataset, format_type: str = "default") -> Dataset:
         
     return processed
 
-def select_examples(dataset: Dataset, num_examples: int = None, seed: int = 42) -> Dataset:
-    """
-    Select a subset of examples from the dataset.
-    
-    Args:
-        dataset: The dataset to select from
-        num_examples: Number of examples to select (None for all)
-        seed: Random seed for shuffling
-        
-    Returns:
-        Selected subset of the dataset
-    """
-    # Shuffle the dataset
-    shuffled = dataset.shuffle(seed=seed)
-    
-    # Select the specified number of examples
-    if num_examples is not None and num_examples < len(shuffled):
-        logger.info(f"Selecting {num_examples} examples from dataset of size {len(shuffled)}")
-        selected = shuffled.select(range(num_examples))
-    else:
-        logger.info(f"Using all {len(shuffled)} examples from dataset")
-        selected = shuffled
-        
-    return selected
 
 def concatenate_multiple_datasets(datasets: List[Dataset]) -> Dataset:
     """
@@ -202,11 +178,14 @@ def main():
                 # Process the dataset
                 processed = process_dataset(dataset, args.format)
                 
-                # Select examples
-                selected = select_examples(processed, args.examples, args.seed)
+                # Shuffle and select examples if needed
+                processed = processed.shuffle(seed=args.seed)
+                if args.examples is not None and args.examples < len(processed):
+                    logger.info(f"Selecting {args.examples} examples from dataset of size {len(processed)}")
+                    processed = processed.select(range(args.examples))
                 
-                all_processed_datasets.append(selected)
-                logger.info(f"Added {len(selected)} examples from {dataset_name} ({split})")
+                all_processed_datasets.append(processed)
+                logger.info(f"Added {len(processed)} examples from {dataset_name} ({split})")
     
     # Concatenate all datasets
     if all_processed_datasets:
