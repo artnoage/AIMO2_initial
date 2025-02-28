@@ -66,71 +66,47 @@ def push_to_hub(dataset: Dataset, repo_name: str, token: Optional[str] = None) -
 
 def main():
     # Set fixed parameters
-    output_repo = "your-username/combined-olympiads"  # Change this to your desired repo name
+    output_repo = "Metaskepsis/validation_"  # Change this to your desired repo name
     token = None  # Set your token here or use environment variable
-    seed = 42
-    examples_per_dataset = 500  # Set to None to use all examples
-    format_type = "default"  # Options: "default" or "group"
+    seed = 100
     
-    # Load the first dataset: Olympiads_medium
-    print(f"Loading dataset: Metaskepsis/Olympiads_medium")
-    medium_dataset = load_dataset("Metaskepsis/Olympiads_medium", split="train")
-    print(f"Loaded {len(medium_dataset)} examples from Metaskepsis/Olympiads_medium (train)")
-    
-    # Format the medium dataset
-    if format_type == "default":
-        processed_medium = medium_dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem'],
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
-        })
-    elif format_type == "group":
-        processed_medium = medium_dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem']
-        })
-    
-    # Shuffle and select examples from medium dataset
-    processed_medium = processed_medium.shuffle(seed=seed)
-    if examples_per_dataset is not None and examples_per_dataset < len(processed_medium):
-        print(f"Selecting {examples_per_dataset} examples from medium dataset")
-        processed_medium = processed_medium.select(range(examples_per_dataset))
-    
-    print(f"Processed {len(processed_medium)} examples from medium dataset")
-    
-    # Load the second dataset: Olympiads_hard
+    # Load the first dataset: Olympiads_hard
     print(f"Loading dataset: Metaskepsis/Olympiads_hard")
     hard_dataset = load_dataset("Metaskepsis/Olympiads_hard", split="train")
     print(f"Loaded {len(hard_dataset)} examples from Metaskepsis/Olympiads_hard (train)")
     
     # Format the hard dataset
-    if format_type == "default":
-        processed_hard = hard_dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    processed_hard = hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x['problem'],
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
-    elif format_type == "group":
-        processed_hard = hard_dataset.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Shuffle and select examples from medium dataset
+    processed_hard = processed_hard.shuffle(seed=seed)
+    processed_hard = processed_hard.select(range(500))
+    
+    
+    # Load the second dataset: Olympiads_hard
+    print(f"Loading dataset: Metaskepsis/Olympiads_hard")
+    very_hard_dataset = load_dataset("Metaskepsis/Numina_very_hard", split="train")
+    print(f"Loaded {len(very_hard_dataset)} examples from Metaskepsis/Olympiads_hard (train)")
+    
+    # Format the hard dataset
+    processed_very_hard = very_hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'problem': x['problem']
+            'problem': x['problem'],
+            'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
-    # Shuffle and select examples from hard dataset
-    processed_hard = processed_hard.shuffle(seed=seed)
-    if examples_per_dataset is not None and examples_per_dataset < len(processed_hard):
-        print(f"Selecting {examples_per_dataset} examples from hard dataset")
-        processed_hard = processed_hard.select(range(examples_per_dataset))
-    
-    print(f"Processed {len(processed_hard)} examples from hard dataset")
-    
+    # Shuffle and select examples from medium dataset
+    processed_very_hard = processed_very_hard.shuffle(seed=seed)
+    processed_very_hard = processed_very_hard.select(range(500))
+
+
     # Concatenate the datasets
     print("Concatenating datasets")
-    combined_dataset = concatenate_datasets([processed_medium, processed_hard])
+    combined_dataset = concatenate_datasets([processed_hard, processed_very_hard])
     print(f"Created combined dataset with {len(combined_dataset)} examples")
     
     # Push to hub
