@@ -56,20 +56,23 @@ class WaitLogger:
         with open(self.log_file, 'r') as f:
             data = json.load(f)
         
-        # Create new entry
+        # Create new entry with problem and prompt+completion as main entries
         entry = {
             "timestamp": datetime.now().isoformat(),
             "problem": problem,
-            "completion": completion,
+            "prompt_completion": prompt + completion if prompt else completion,
             "correct_answer": correct_answer
         }
         
-        # Add optional fields if provided
-        if prompt:
-            entry["prompt"] = prompt
+        # Store original prompt and completion separately in metadata
+        if not metadata:
+            metadata = {}
+            
+        metadata["original_prompt"] = prompt
+        metadata["original_completion"] = completion
         
-        if metadata:
-            entry["metadata"] = metadata
+        # Add metadata to entry
+        entry["metadata"] = metadata
         
         # Append to data and save
         data.append(entry)

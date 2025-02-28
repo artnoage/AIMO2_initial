@@ -372,10 +372,8 @@ class GroupReward(BaseReward):
                 if "...no wait a second." in prompt and is_correct:
                     self.logger.info("Detected successful 'wait a second' moment - logging to wait.json")
                     try:
-                        # Initialize the wait logger
-                        wait_logger = WaitLogger()
-                        # Log the wait moment
-                        wait_logger.log_wait_moment(
+                        # Log the wait moment using the class instance
+                        self.wait_logger.log_wait_moment(
                             problem=problem,
                             completion=completion,
                             correct_answer=str(correct_answer),
@@ -384,7 +382,8 @@ class GroupReward(BaseReward):
                                 "model_answer": model_answer,
                                 "model_numeric": float(model_numeric) if model_numeric is not None else None,
                                 "correct_numeric": float(correct_numeric) if correct_numeric is not None else None,
-                                "debug_info": debug_info
+                                "debug_info": debug_info,
+                                "is_correct": is_correct
                             }
                         )
                     except Exception as e:
