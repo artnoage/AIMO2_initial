@@ -75,20 +75,19 @@ def process_dataset(dataset: Dataset, format_type: str = "default") -> Dataset:
     logger.info(f"Processing dataset with format type: {format_type}")
     
     if format_type == "default":
-        # Default formatting for math problems
+        # Default formatting for math problems (matches the format in group_qwen1.py)
         processed = dataset.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x['problem'],
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
-    elif format_type == "completion":
-        # Formatting for completion tasks
+    elif format_type == "group":
+        # Formatting for group training (similar to what's used in group_qwen1.py)
         processed = dataset.map(lambda x: {
-            'prompt': x['problem'],
-            'completion': x.get('solution', ''),
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'problem': x['problem']
         })
     else:
         logger.warning(f"Unknown format type: {format_type}, using default")
@@ -153,8 +152,8 @@ def main():
                         help="List of dataset names to load")
     parser.add_argument("--splits", nargs="+", default=["train"], 
                         help="Dataset splits to use")
-    parser.add_argument("--format", type=str, default="default", 
-                        help="Format type to apply to datasets")
+    parser.add_argument("--format", type=str, default="default", choices=["default", "group"],
+                        help="Format type to apply to datasets (default or group)")
     parser.add_argument("--examples", type=int, default=None, 
                         help="Number of examples to select from each dataset (None for all)")
     parser.add_argument("--seed", type=int, default=42, 
