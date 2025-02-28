@@ -237,7 +237,18 @@ def main():
         
         # Apply the processing to each example
         processed_data = data.map(process_example)
-        
+            
+        # Make sure we keep the original problem field for the reward function
+        def add_problem_field(example):
+            if 'problem' not in example:
+                # Find the problem in the prompt
+                match = re.search(r'<\|im_start\|>user\n(.*?)<\|im_end\|>', example['prompt'], re.DOTALL)
+                if match:
+                    example['problem'] = match.group(1)
+            return example
+                
+        processed_data = processed_data.map(add_problem_field)
+            
         logger.info(f"Created dataset with {len(processed_data)} examples")
         return processed_data
 

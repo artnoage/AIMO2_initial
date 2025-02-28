@@ -8,6 +8,7 @@ import os, sys
 from typing import List
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
+from grpo_training.wait_logger import WaitLogger
 from utils.model_utils import *
 from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
@@ -325,6 +326,8 @@ class GroupReward(BaseReward):
     def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker):
         super().__init__(config)
         self.similarity_checker = similarity_checker
+        # Initialize the wait logger for tracking "wait a second" moments
+        self.wait_logger = WaitLogger()
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -335,6 +338,9 @@ class GroupReward(BaseReward):
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
             correct_answer = kwargs.get('answer')
+            prompt = kwargs.get('prompt', '')
+            problem = kwargs.get('problem', '')
+            
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
@@ -361,6 +367,28 @@ class GroupReward(BaseReward):
                 self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
+                
+                # Check if this is a "wait a second" moment and log it
+                if "...no wait a second." in prompt and is_correct:
+                    self.logger.info("Detected successful 'wait a second' moment - logging to wait.json")
+                    try:
+                        # Initialize the wait logger
+                        wait_logger = WaitLogger()
+                        # Log the wait moment
+                        wait_logger.log_wait_moment(
+                            problem=problem,
+                            completion=completion,
+                            correct_answer=str(correct_answer),
+                            prompt=prompt,
+                            metadata={
+                                "model_answer": model_answer,
+                                "model_numeric": float(model_numeric) if model_numeric is not None else None,
+                                "correct_numeric": float(correct_numeric) if correct_numeric is not None else None,
+                                "debug_info": debug_info
+                            }
+                        )
+                    except Exception as e:
+                        self.logger.error(f"Failed to log wait moment: {str(e)}")
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
                 
