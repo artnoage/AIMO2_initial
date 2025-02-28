@@ -32,54 +32,9 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
 
-def load_datasets(dataset_names: List[str], splits: List[str] = ["train"]) -> Dict[str, Dataset]:
-    """
-    Load multiple datasets from Hugging Face.
-    
-    Args:
-        dataset_names: List of dataset names to load
-        splits: List of splits to load for each dataset
-        
-    Returns:
-        Dictionary mapping dataset names to their loaded datasets
-    """
-    datasets = {}
-    for dataset_name in dataset_names:
-        try:
-            print(f"Loading dataset: {dataset_name}")
-            for split in splits:
-                if split not in datasets:
-                    datasets[split] = {}
-                datasets[split][dataset_name] = load_dataset(dataset_name, split=split)
-                print(f"Loaded {len(datasets[split][dataset_name])} examples from {dataset_name} ({split})")
-        except Exception as e:
-            print(f"ERROR: Failed to load dataset {dataset_name}: {str(e)}")
-    
-    return datasets
 
 
 
-def concatenate_multiple_datasets(datasets: List[Dataset]) -> Dataset:
-    """
-    Concatenate multiple datasets into one.
-    
-    Args:
-        datasets: List of datasets to concatenate
-        
-    Returns:
-        Concatenated dataset
-    """
-    if not datasets:
-        raise ValueError("No datasets provided for concatenation")
-    
-    print(f"Concatenating {len(datasets)} datasets")
-    total_examples = sum(len(ds) for ds in datasets)
-    
-    # Concatenate all datasets
-    concatenated = concatenate_datasets(datasets)
-    print(f"Created concatenated dataset with {len(concatenated)} examples (from {total_examples} total)")
-    
-    return concatenated
 
 def push_to_hub(dataset: Dataset, repo_name: str, token: Optional[str] = None) -> str:
     """
@@ -128,15 +83,16 @@ def main():
     
     args = parser.parse_args()
     
-    # Load datasets
-    datasets_dict = load_datasets(args.datasets, args.splits)
-    
     # Process each dataset and concatenate
     all_processed_datasets = []
     
-    for split in args.splits:
-        if split in datasets_dict:
-            for dataset_name, dataset in datasets_dict[split].items():
+    for dataset_name in args.datasets:
+        try:
+            print(f"Loading dataset: {dataset_name}")
+            for split in args.splits:
+                # Load dataset directly
+                dataset = load_dataset(dataset_name, split=split)
+                print(f"Loaded {len(dataset)} examples from {dataset_name} ({split})")
                 # Format the dataset directly based on format type
                 if args.format == "default":
                     # Default formatting for math problems
@@ -166,10 +122,16 @@ def main():
                 
                 all_processed_datasets.append(processed)
                 print(f"Added {len(processed)} examples from {dataset_name} ({split})")
+        except Exception as e:
+            print(f"ERROR: Failed to load dataset {dataset_name}: {str(e)}")
     
     # Concatenate all datasets
     if all_processed_datasets:
-        final_dataset = concatenate_multiple_datasets(all_processed_datasets)
+        print(f"Concatenating {len(all_processed_datasets)} datasets")
+        total_examples = sum(len(ds) for ds in all_processed_datasets)
+        
+        final_dataset = concatenate_datasets(all_processed_datasets)
+        print(f"Created concatenated dataset with {len(final_dataset)} examples (from {total_examples} total)")
         
         # Push to hub
         hub_url = push_to_hub(final_dataset, args.output_repo, args.token)
