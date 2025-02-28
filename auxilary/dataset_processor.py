@@ -190,9 +190,9 @@ def main():
     print(f"Creating dataset from {len(all_examples)} collected examples")
     combined_dataset = Dataset.from_list(all_examples)
     
-    # Add new IDs to the combined dataset (without the word "combined")
+    # Add new IDs to the combined dataset (just the index number)
     def add_ids(example, idx):
-        example['id'] = f"val_{idx}"
+        example['id'] = f"{idx}"
         return example
     
     combined_dataset = combined_dataset.map(add_ids, with_indices=True)
