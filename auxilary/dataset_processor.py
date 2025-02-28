@@ -79,7 +79,7 @@ def main():
     processed_hard = hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x.get('problem', x.get('question', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'id': x.get('id', str(random.randint(0, 1000000)))
         })
     
     # Shuffle and select examples from hard dataset
@@ -96,7 +96,7 @@ def main():
     processed_very_hard = very_hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x.get('problem', x.get('question', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'id': x.get('id', str(random.randint(0, 1000000)))
         })
     
     # Shuffle and select examples from very hard dataset
@@ -112,7 +112,7 @@ def main():
     processed_aime = aime_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x.get('problem', x.get('question', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'id': x.get('id', str(random.randint(0, 1000000)))
         })
     
     # Shuffle and select examples from AIME dataset
@@ -128,7 +128,7 @@ def main():
     processed_custom100 = custom100_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x.get('problem', x.get('question', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'id': x.get('id', str(random.randint(0, 1000000)))
         })
     
     # Shuffle and select examples from custom100bench dataset
@@ -144,7 +144,7 @@ def main():
     processed_custom219 = custom219_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x.get('problem', x.get('question', '')),
-            'original_id': x.get('id', str(random.randint(0, 1000000)))
+            'id': x.get('id', str(random.randint(0, 1000000)))
         })
     
     # Shuffle and select examples from custom219 dataset
