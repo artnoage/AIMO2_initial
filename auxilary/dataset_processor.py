@@ -82,31 +82,85 @@ def main():
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
-    # Shuffle and select examples from medium dataset
+    # Shuffle and select examples from hard dataset
     processed_hard = processed_hard.shuffle(seed=seed)
     processed_hard = processed_hard.select(range(500))
     
     
-    # Load the second dataset: Olympiads_hard
-    print(f"Loading dataset: Metaskepsis/Olympiads_hard")
+    # Load the second dataset: Numina_very_hard
+    print(f"Loading dataset: Metaskepsis/Numina_very_hard")
     very_hard_dataset = load_dataset("Metaskepsis/Numina_very_hard", split="train")
-    print(f"Loaded {len(very_hard_dataset)} examples from Metaskepsis/Olympiads_hard (train)")
+    print(f"Loaded {len(very_hard_dataset)} examples from Metaskepsis/Numina_very_hard (train)")
     
-    # Format the hard dataset
+    # Format the very hard dataset
     processed_very_hard = very_hard_dataset.map(lambda x: {
             'answer': x.get('answer', x.get('correct_answer', '')),
             'problem': x['problem'],
             'original_id': x.get('id', str(random.randint(0, 1000000)))
         })
     
-    # Shuffle and select examples from medium dataset
+    # Shuffle and select examples from very hard dataset
     processed_very_hard = processed_very_hard.shuffle(seed=seed)
     processed_very_hard = processed_very_hard.select(range(500))
+    
+    # Load the third dataset: AI-MO/aimo-validation-aime
+    print(f"Loading dataset: AI-MO/aimo-validation-aime")
+    aime_dataset = load_dataset("AI-MO/aimo-validation-aime", split="train")
+    print(f"Loaded {len(aime_dataset)} examples from AI-MO/aimo-validation-aime (train)")
+    
+    # Format the AIME dataset
+    processed_aime = aime_dataset.map(lambda x: {
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'original_id': x.get('id', str(random.randint(0, 1000000)))
+        })
+    
+    # Shuffle and select examples from AIME dataset
+    processed_aime = processed_aime.shuffle(seed=seed)
+    processed_aime = processed_aime.select(range(500))
+    
+    # Load the fourth dataset: Metaskepsis/custom100bench
+    print(f"Loading dataset: Metaskepsis/custom100bench")
+    custom100_dataset = load_dataset("Metaskepsis/custom100bench", split="train")
+    print(f"Loaded {len(custom100_dataset)} examples from Metaskepsis/custom100bench (train)")
+    
+    # Format the custom100bench dataset
+    processed_custom100 = custom100_dataset.map(lambda x: {
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'original_id': x.get('id', str(random.randint(0, 1000000)))
+        })
+    
+    # Shuffle and select examples from custom100bench dataset
+    processed_custom100 = processed_custom100.shuffle(seed=seed)
+    processed_custom100 = processed_custom100.select(range(500))
+    
+    # Load the fifth dataset: Metaskepsis/custom219
+    print(f"Loading dataset: Metaskepsis/custom219")
+    custom219_dataset = load_dataset("Metaskepsis/custom219", split="train")
+    print(f"Loaded {len(custom219_dataset)} examples from Metaskepsis/custom219 (train)")
+    
+    # Format the custom219 dataset
+    processed_custom219 = custom219_dataset.map(lambda x: {
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'original_id': x.get('id', str(random.randint(0, 1000000)))
+        })
+    
+    # Shuffle and select examples from custom219 dataset
+    processed_custom219 = processed_custom219.shuffle(seed=seed)
+    processed_custom219 = processed_custom219.select(range(500))
 
 
     # Concatenate the datasets
     print("Concatenating datasets")
-    combined_dataset = concatenate_datasets([processed_hard, processed_very_hard])
+    combined_dataset = concatenate_datasets([
+        processed_hard, 
+        processed_very_hard,
+        processed_aime,
+        processed_custom100,
+        processed_custom219
+    ])
     print(f"Created combined dataset with {len(combined_dataset)} examples")
     
     # Push to hub
