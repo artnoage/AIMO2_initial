@@ -40,8 +40,7 @@ class WaitLogger:
                         problem: str, 
                         completion: str, 
                         correct_answer: str, 
-                        prompt: Optional[str] = None,
-                        metadata: Optional[Dict[str, Any]] = None) -> None:
+                        prompt: Optional[str] = None) -> None:
         """
         Log a successful "wait a second" moment where the model corrected itself.
         
@@ -50,29 +49,17 @@ class WaitLogger:
             completion: The model's completion/solution
             correct_answer: The correct answer that the model found
             prompt: The prompt that was given to the model (optional)
-            metadata: Additional metadata to store (optional)
         """
         # Load existing data
         with open(self.log_file, 'r') as f:
             data = json.load(f)
         
-        # Create new entry with problem and prompt+completion as main entries
+        # Create simple entry with just the essential fields
         entry = {
-            "timestamp": datetime.now().isoformat(),
             "problem": problem,
             "prompt_completion": prompt + completion if prompt else completion,
             "correct_answer": correct_answer
         }
-        
-        # Store original prompt and completion separately in metadata
-        if not metadata:
-            metadata = {}
-            
-        metadata["original_prompt"] = prompt
-        metadata["original_completion"] = completion
-        
-        # Add metadata to entry
-        entry["metadata"] = metadata
         
         # Append to data and save
         data.append(entry)
