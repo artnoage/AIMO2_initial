@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "wait_1"
-    model_name = "/workspace/AIMO2_initial/models/completion/20250227_114156"
-    dataset_name = "/workspace/AIMO2_initial/local_datasets/20250227_142947"
+    model_type = "wait_0"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -172,16 +172,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.55,
-        max_lora_rank=128)
+        gpu_memory_utilization= 0.4,
+        max_lora_rank=32)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=32,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -253,8 +253,8 @@ def main():
         return processed_data
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset = formatted_dataset.select(range(600))
+    formatted_dataset = formatted_dataset.shuffle(seed=1)
+    formatted_dataset = formatted_dataset.select(range(2000))
  
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -289,7 +289,7 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=16,
+        num_generations=4,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

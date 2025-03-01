@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -193,7 +193,7 @@ def main():
         
     def get_questions(split = "train") -> Dataset:
         # Use the combined dataset from Metaskepsis/validation_
-        data = load_dataset("Metaskepsis/validation_", split=split) # type: ignore
+        data = load_dataset(dataset_name, split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
@@ -201,7 +201,7 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
+    formatted_dataset = formatted_dataset.shuffle(seed=2)
     # We have more diverse data now, so we can use more examples
     formatted_dataset = formatted_dataset.select(range(2000))
  

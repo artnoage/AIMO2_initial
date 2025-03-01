@@ -56,7 +56,7 @@ Make sure all your steps follow logically from the partial solution and that eac
                 f"Partial Solution: {partial_solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=2048)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -85,7 +85,7 @@ class FullSolutionAgent:
                                     "Put your final answer in \\boxed{}</step>\n"
                                     "</response>\n\n"
                                     f"Here is the problem:\n{problem}\n\n"))]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (prompt[0].content, response) if return_prompt else response
 
 

@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/EliteQwen1",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504",
         max_seq_length=8192,
         load_in_4bit=False)
         
@@ -24,11 +24,11 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
     model,
-    r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+    r = 256, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-    lora_alpha = 128,
+    lora_alpha = 256,
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
@@ -43,22 +43,23 @@ def main():
     def formatting_prompts_func(examples):
         texts = []
         problems = examples['problem']
-        solutions = examples['solution']
-        for problem, solution in zip(problems, solutions):
-            formatted_text = ('<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' +problem + '<|im_end|>\\n<|im_start|>assistant\\n' +solution + '<|im_end|>')
+        prompt_completion = examples['prompt_completion']
+        for problem, prompt_completion in zip(problems, prompt_completion):
+            formatted_text = (prompt_completion + '<|im_end|>')
             texts.append(formatted_text)
         return {"text": texts}
 
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250226_104234")
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_112006")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     formatted_dataset1 = formatted_dataset.shuffle(seed=42)
     formatted_dataset2= formatted_dataset.shuffle(seed=31)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
+    formatted_dataset3= formatted_dataset.shuffle(seed=12)
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
@@ -67,10 +68,10 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=16,
-        learning_rate=3e-6,
-        logging_steps=10,  # More frequent logging
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=4,
+        learning_rate=5e-6,
+        logging_steps=1,  # More frequent logging
         save_strategy="steps",
         save_steps=1000,
         fp16 = not is_bfloat16_supported(),

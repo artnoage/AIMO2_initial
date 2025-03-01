@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -200,8 +200,8 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    formatted_dataset=formatted_dataset.select(range(1000))
+    formatted_dataset = formatted_dataset.shuffle(seed=1)
+    formatted_dataset=formatted_dataset.select(range(2000))
  
    
     
