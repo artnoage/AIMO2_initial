@@ -197,6 +197,45 @@ def main():
     
     def prepare_completion_data(example):
         try:
+            # If example is explicitly marked as correct, consider it valid
+            if example.get('is_correct', False) == True:
+                # Still need to extract data but skip validation checks
+                response = ''
+                steps = []
+                
+                # Try to extract response section if model_solution exists
+                if 'model_solution' in example:
+                    response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
+                    response_match = response_pattern.search(example['model_solution'])
+                    if response_match:
+                        response = response_match.group(1).strip()
+                        step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
+                        steps = step_pattern.findall(response)
+                
+                # Create partial solution with at least one step if available
+                partial_solution = ''
+                full_solution = ''
+                if steps:
+                    split_point = min(1, len(steps) - 1)
+                    partial_steps = steps[:split_point]
+                    partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+                    full_solution = '\n\n'.join([f'<step>{step}</step>' for step in steps])
+                
+                # Get the answer
+                answer = example.get('answer', '')
+                if not answer and 'correct_answer' in example:
+                    answer = example['correct_answer']
+                
+                return {
+                    'valid': True,
+                    'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
+                            f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n",
+                    'problem': example.get('problem', ''),
+                    'partial_solution': partial_solution,
+                    'full_solution': full_solution,
+                    'answer': answer
+                }
+            
             # Skip if no model_solution
             if 'model_solution' not in example:
                 return {
