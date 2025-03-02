@@ -124,7 +124,7 @@ def main():
     # Configuration
     model_type = "group_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/custom219"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -194,14 +194,15 @@ def main():
     def get_questions(split = "train") -> Dataset:
         data = load_dataset(dataset_name)[split] # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'problem': x['question'],
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=1)
-    formatted_dataset=formatted_dataset.select(range(2000))
+    #formatted_dataset=formatted_dataset.select(range(1500))
  
    
     
@@ -222,13 +223,13 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=5,
+        num_generations=6,
         max_prompt_length=800,
         max_completion_length=2600,
         num_train_epochs=1,
