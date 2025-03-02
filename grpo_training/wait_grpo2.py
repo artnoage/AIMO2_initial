@@ -1,7 +1,8 @@
 import os
 import wandb
 import logging
-from datasets import load_dataset, concatenate_datasets, Dataset
+import re
+from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
 from datetime import datetime
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
@@ -32,14 +33,13 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
-
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('group_grpo')
+    logger = logging.getLogger('wait_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -122,9 +122,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "group_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/group_0/20250227_211304"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    model_type = "wait_2"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -168,7 +168,7 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3400,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -189,50 +189,109 @@ def main():
         use_rslora=False,
         loftq_config=None
     )
-    
         
     def get_questions(split = "train") -> Dataset:
-        # Use the combined dataset from Metaskepsis/validation_
-        data = load_dataset(dataset_name, split=split) # type: ignore
-        data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x['answer']
-        }) # type: ignore
-        return data # type: ignore
+        """
+        Load dataset and modify the thinking section by adding "...no wait a second."
+        Only modify if the solution is incorrect.
+        Uses the is_correct field from benchmark entries.
+        """
+        # Load the dataset
+        data = load_from_disk(dataset_name) # type: ignore
+        
+        # Process each example
+        def process_example(example):
+            # Check if the solution is correct - directly use the is_correct field
+            is_correct = example.get('is_correct', False)
+            
+            # Only modify thinking section if solution is incorrect
+            if not is_correct:
+                # Extract the thinking section from the model solution
+                thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+                thinking_match = thinking_pattern.search(example.get('model_solution', ''))
+                
+                if thinking_match:
+                    thinking_content = thinking_match.group(1)
+                    # Modify the thinking section
+                    modified_thinking = thinking_content + "...no wait a second."
+                    
+                    # Create prompt with the modified thinking section
+                    prompt = (
+                        '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
+                        '<|im_start|>user\n' + example['problem'] + '<|im_end|>\n'
+                        '<|im_start|>assistant\n'
+                        '<thinking>' + modified_thinking )
+                    
+                    return {
+                        'prompt': prompt,
+                        'answer': str(example.get('correct_answer', '')),  # Stringify the answer
+                        'is_modified': True
+                    }
+            
+            # For correct solutions or if no thinking section found, use standard prompt
+            return {
+                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
+                'answer': str(example.get('correct_answer', '')),  # Stringify the answer
+                'is_modified': False
+            }
+        
+        # Apply the processing to each example
+        processed_data = data.map(process_example)
+            
+        # Make sure we keep the original problem field for the reward function
+        def add_problem_field(example):
+            if 'problem' not in example:
+                # Find the problem in the prompt
+                match = re.search(r'<\|im_start\|>user\n(.*?)<\|im_end\|>', example['prompt'], re.DOTALL)
+                if match:
+                    example['problem'] = match.group(1)
+            return example
+                
+        processed_data = processed_data.map(add_problem_field)
+            
+        logger.info(f"Created dataset with {len(processed_data)} examples")
+        return processed_data
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=2)
-    # We have more diverse data now, so we can use more examples
-    formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.shuffle(seed=5)
+    formatted_dataset = formatted_dataset.select(range(500))
  
-   
-    
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
         print(f"\nEntry {i} verification:")
         print(f"Answer: {entry.get('answer')}")
-        print(f"Correct answer: {entry.get('correct_answer')}")
+        print(f"Is modified: {entry.get('is_modified', False)}")
+        if 'prompt' in entry:
+            # Extract thinking section from prompt to verify modification
+            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+            thinking_match = thinking_pattern.search(entry['prompt'])
+            if thinking_match:
+                thinking_content = thinking_match.group(1)
+                print(f"Thinking section: {thinking_content[:100]}...")
+                if "...no wait a second." in thinking_content:
+                    print("✓ Contains '...no wait a second.' modification")
+                else:
+                    print("✗ Does NOT contain '...no wait a second.' modification")
     
-
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=8e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         num_generations=5,
-        max_prompt_length=800,
-        max_completion_length=2600,
+        max_prompt_length=2048,
+        max_completion_length=2048,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
