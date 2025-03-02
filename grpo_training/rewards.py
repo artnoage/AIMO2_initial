@@ -167,8 +167,8 @@ class BaseReward(ABC):
             # Calculate mean and standard deviation
             mean_reward = sum(rewards) / len(rewards)
             self.logger.info(f"Rewards before: {rewards}")
-            rewards=rewards-mean_reward
-            self.logger.info(f"Rewards before: {rewards}")
+            rewards = [r - mean_reward for r in rewards]
+            self.logger.info(f"Rewards after mean subtraction: {rewards}")
         
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
