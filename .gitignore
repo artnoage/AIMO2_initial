@@ -35,3 +35,4 @@ experiment.md
 examples/
 .conda/
 .cache/
+wait.json
