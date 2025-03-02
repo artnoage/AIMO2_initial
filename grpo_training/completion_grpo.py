@@ -435,14 +435,24 @@ def main():
     
     # Verify all examples have the required fields
     missing_fields = []
-    for i, example in enumerate(valid_data[:10]):  # Check first 10 examples
-        if not example['prompt'] or not example['problem'] or not example['partial_solution']:
+    for i in range(min(10, len(valid_data))):  # Check first 10 examples
+        example = valid_data[i]
+        if isinstance(example, dict):
+            if not example.get('prompt') or not example.get('problem') or not example.get('partial_solution'):
+                missing_fields.append(i)
+        else:
+            logger.error(f"Example at index {i} is not a dictionary but a {type(example)}")
             missing_fields.append(i)
     
     if missing_fields:
         logger.warning(f"Some examples are missing required fields: {missing_fields}")
         for i in missing_fields:
-            logger.warning(f"Example {i} fields: {valid_data[i]}")
+            if i < len(valid_data):
+                example = valid_data[i]
+                if isinstance(example, dict):
+                    logger.warning(f"Example {i} fields: {list(example.keys())}")
+                else:
+                    logger.warning(f"Example {i} is not a dictionary: {type(example)}")
     
     
     # GRPO specific training arguments
