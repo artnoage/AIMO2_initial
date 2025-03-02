@@ -166,6 +166,13 @@ class BaseReward(ABC):
         if len(rewards) > 1:
             # Calculate mean and standard deviation
             self.logger.info(f"Rewards before: {rewards}")
+            
+            # If mean is negative, clip all rewards from below by zero
+            mean_reward = sum(rewards) / len(rewards)
+            if mean_reward < 0:
+                self.logger.info(f"Mean reward is negative ({mean_reward:.6f}), clipping all rewards to non-negative values")
+                rewards = [max(0.0, r) for r in rewards]
+                self.logger.info(f"Rewards after clipping: {rewards}")
         
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions)
