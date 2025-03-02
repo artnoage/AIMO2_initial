@@ -11,6 +11,7 @@ import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 import re
+from time import time
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -127,8 +128,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "completion"
-    model_name = "/workspace/AIMO2_initial/models/Qwen"
-    dataset_name = "/workspace/AIMO2_initial/local_datasets/20250227_074232"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -172,16 +173,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.5,
-        max_lora_rank=128)
+        gpu_memory_utilization=0.4,
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -192,47 +193,146 @@ def main():
     
     # We don't need to prepare partial solutions as they're already in the dataset
     
-    def get_questions(split="train") -> Dataset:
-        """Load dataset for completion training"""
-        logger.info(f"Loading dataset from: {dataset_name}")
-        
+    def prepare_completion_data(example):
         try:
-            # Load dataset from path (local or HF)
-            if os.path.exists(dataset_name):
-                data = load_from_disk(dataset_name)
-                if hasattr(data, 'keys') and split in data:
-                    data = data[split]
-            else:
-                data = load_dataset(dataset_name)[split]
+            # Skip if no model_solution
+            if 'model_solution' not in example:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
             
-            # Format for training
-            data = data.map(lambda x: {
+            # Extract response section
+            response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
+            response_match = response_pattern.search(example['model_solution'])
+            
+            if not response_match:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
+            
+            response = response_match.group(1).strip()
+            
+            # Check if response has step tags
+            if '<step>' not in response or '</step>' not in response:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
+            
+            # Split into steps
+            step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
+            steps = step_pattern.findall(response)
+            
+            if len(steps) < 2:  # Need at least 2 steps to create a partial solution
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
+            
+            # Verify step numbering
+            step_numbers = []
+            for step in steps:
+                # Look for step numbers like "Step 1:", "Step 2:" etc.
+                number_match = re.search(r'Step\s+(\d+):', step)
+                if not number_match:
+                    return {
+                        'valid': False,
+                        'prompt': '',
+                        'problem': example.get('problem', ''),
+                        'partial_solution': '',
+                        'full_solution': '',
+                        'answer': ''
+                    }
+                
+                try:
+                    step_num = int(number_match.group(1))
+                    step_numbers.append(step_num)
+                except ValueError:
+                    return {
+                        'valid': False,
+                        'prompt': '',
+                        'problem': example.get('problem', ''),
+                        'partial_solution': '',
+                        'full_solution': '',
+                        'answer': ''
+                    }
+            
+            # Check if step numbers are sequential
+            expected_numbers = list(range(1, len(steps) + 1))
+            if step_numbers != expected_numbers:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
+            
+            # Randomly decide how many steps to include in partial solution
+            import random
+            random.seed(hash(example.get('id', 0)) % 10000)  # Deterministic but varied
+            split_point = random.randint(1, len(steps) - 1)  # At least 1 step, leave at least 1 step
+            
+            # Create partial solution with the first 'split_point' steps
+            partial_steps = steps[:split_point]
+            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+            
+            # Create full solution for reference
+            full_solution = '\n\n'.join([f'<step>{step}</step>' for step in steps])
+            
+            # Log partial solution to test.md
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            example_hash = hash(example.get('id', '') or example.get('problem', '')[:50]) % 10000
+            #append_to_test_md(f"### Example Hash: {example_hash} - Timestamp: {timestamp}\n\n**Problem:**\n```\n{example['problem'][:200]}...\n```\n\n**Partial Solution:**\n```\n{partial_solution}\n```")
+            
+            # Get the answer from the example or extract from solution
+            answer = example.get('answer', '')
+            if not answer and 'correct_answer' in example:
+                answer = example['correct_answer']
+            
+            return {
+                'valid': True,
                 'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                         f"Problem: {x['problem']}\n\nPartial Solution: {x['partial_solution']}<|im_end|>\n<|im_start|>assistant\n",
-                'problem': x['problem'],
-                'partial_solution': x['partial_solution'],
-                'answer': x['answer']
-            })
-            
-            logger.info(f"Loaded {len(data)} examples from dataset")
-            return data
-            
+                        f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n",
+                'problem': example['problem'],
+                'partial_solution': partial_solution,
+                'full_solution': full_solution,
+                'answer': answer
+            }
         except Exception as e:
-            logger.error(f"Error loading dataset: {str(e)}")
-            raise
+            logger.warning(f"Error processing example: {str(e)}")
+            return {
+                'valid': False,
+                'prompt': '',
+                'problem': example.get('problem', ''),
+                'partial_solution': '',
+                'full_solution': '',
+                'answer': ''
+            }
     
-    formatted_dataset = get_questions()
-    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
-    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
-    
-    # Verify first few entries
-    for i in range(min(3, len(formatted_dataset))):
-        entry = formatted_dataset[i]
-        print(f"\nEntry {i} verification:")
-        print(f"Problem: {entry.get('problem')[:100]}...")
-        print(f"Partial solution: {entry.get('partial_solution')[:100]}...")
-        print(f"Answer: {entry.get('answer')}")
+    # Apply the transformation and filter out invalid results
+    data = load_from_disk(dataset_name)
+    processed_data = data.map(prepare_completion_data)
+    valid_data = processed_data.filter(lambda x: x['valid'])
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
@@ -243,13 +343,13 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=12,
+        num_generations=6,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
@@ -265,7 +365,7 @@ def main():
         processing_class=tokenizer,
         reward_funcs=[reward_func],
         args=training_args,
-        train_dataset=formatted_dataset,
+        train_dataset=valid_data,
         callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
     )
     
