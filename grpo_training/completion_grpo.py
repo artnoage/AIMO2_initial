@@ -341,6 +341,10 @@ def main():
     logger.info(f"Dataset columns: {valid_data.column_names}")
     logger.info(f"First example prompt length: {len(valid_data[0]['prompt']) if len(valid_data) > 0 else 'N/A'}")
     
+    # Add length attribute to dataset to avoid dataloader length error
+    valid_data = valid_data.train_test_split(test_size=0.1)['train']
+    logger.info(f"Training on {len(valid_data)} examples after train/test split")
+    
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
@@ -359,8 +363,7 @@ def main():
         num_generations=6,
         max_prompt_length=2048,
         max_completion_length=2048,
-        num_train_epochs=1,
-        max_steps=1000,  # Set a positive value for max_steps
+        num_train_epochs=3,  # Increase epochs instead of using max_steps
         save_steps=250,
         max_grad_norm=0.1,
         report_to="wandb",
