@@ -65,6 +65,10 @@ class LoggingCallback(TrainerCallback):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Log loss with higher precision if present
+            if 'loss' in logs:
+                self.logger.info(f"Step {self.step} - Loss: {logs['loss']:.10f}")
+                
             # Key group performance metrics for wandb
             wandb_stats = {
                 'group_reward': logs['rewards/0'],
@@ -72,6 +76,10 @@ class LoggingCallback(TrainerCallback):
                 'solution_diversity': self.reward_func.stats.group_stats.get('solution_diversity', 0.0),
                 'unanimous_correct_ratio': self.reward_func.stats.group_stats.get('unanimous_correct', 0) / max(1, self.reward_func.stats.total_batches)
             }
+            
+            # Add high precision loss to wandb if present
+            if 'loss' in logs:
+                wandb_stats['loss_high_precision'] = logs['loss']
             
             # Detailed stats for local logging only
             local_stats = {
@@ -237,6 +245,7 @@ def main():
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
+        log_level="debug",  # Set to debug for more detailed logging
     )
     
     # Initialize trainer with reward function
