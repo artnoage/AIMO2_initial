@@ -197,6 +197,17 @@ def main():
     
     def prepare_completion_data(example):
         try:
+            # First, check if we have the required problem field
+            if 'problem' not in example or not example['problem']:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': '',
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
+                
             # If example is explicitly marked as correct, consider it valid
             if example.get('is_correct', False) == True:
                 # Still need to extract data but skip validation checks
@@ -204,7 +215,7 @@ def main():
                 steps = []
                 
                 # Try to extract response section if model_solution exists
-                if 'model_solution' in example:
+                if 'model_solution' in example and example['model_solution']:
                     response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
                     response_match = response_pattern.search(example['model_solution'])
                     if response_match:
@@ -226,18 +237,21 @@ def main():
                 if not answer and 'correct_answer' in example:
                     answer = example['correct_answer']
                 
+                # Create the prompt with the data we have
+                prompt = '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + \
+                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n"
+                
                 return {
                     'valid': True,
-                    'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                            f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n",
+                    'prompt': prompt,
                     'problem': example.get('problem', ''),
                     'partial_solution': partial_solution,
                     'full_solution': full_solution,
                     'answer': answer
                 }
             
-            # Skip if no model_solution
-            if 'model_solution' not in example:
+            # Skip if no model_solution or if it's empty
+            if 'model_solution' not in example or not example['model_solution']:
                 return {
                     'valid': False,
                     'prompt': '',
@@ -343,17 +357,34 @@ def main():
             if not answer and 'correct_answer' in example:
                 answer = example['correct_answer']
             
+            # Create the prompt with all required fields
+            prompt = '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + \
+                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n"
+            
             return {
                 'valid': True,
-                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + 
-                        f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n",
+                'prompt': prompt,
                 'problem': example['problem'],
                 'partial_solution': partial_solution,
                 'full_solution': full_solution,
                 'answer': answer
             }
         except Exception as e:
-            logger.warning(f"Error processing example: {str(e)}")
+            logger.warning(f"Error processing example: {str(e)}, example ID: {example.get('id', 'unknown')}")
+            # Create a more detailed error log for debugging
+            try:
+                error_details = {
+                    'error': str(e),
+                    'has_problem': 'problem' in example and bool(example.get('problem')),
+                    'has_model_solution': 'model_solution' in example and bool(example.get('model_solution')),
+                    'has_answer': 'answer' in example and bool(example.get('answer')) or 
+                                'correct_answer' in example and bool(example.get('correct_answer')),
+                    'example_keys': list(example.keys())
+                }
+                logger.warning(f"Error details: {json.dumps(error_details)}")
+            except:
+                pass  # If we can't log details, just continue
+                
             return {
                 'valid': False,
                 'prompt': '',
@@ -365,15 +396,53 @@ def main():
     
     # Apply the transformation and filter out invalid results
     data = load_from_disk(dataset_name)
+    
+    # Log dataset structure before processing
+    logger.info(f"Original dataset columns: {data.column_names}")
+    logger.info(f"Sample example keys: {list(data[0].keys()) if len(data) > 0 else 'No examples'}")
+    
+    # Process the data
     processed_data = data.map(prepare_completion_data)
+    
+    # Filter valid examples and check if we have enough
     valid_data = processed_data.filter(lambda x: x['valid'])
-    valid_data = valid_data.shuffle(seed=11)
-    valid_data = valid_data.select(range(2000))
-    # Debug information
+    
+    # Log validation results
     logger.info(f"Total examples in dataset: {len(data)}")
     logger.info(f"Valid examples after processing: {len(valid_data)}")
+    
+    # Check if we have enough valid examples
+    if len(valid_data) < 10:
+        logger.error(f"Not enough valid examples found! Only {len(valid_data)} valid examples.")
+        # Log some invalid examples to help diagnose the issue
+        invalid_data = processed_data.filter(lambda x: not x['valid']).select(range(min(5, len(processed_data))))
+        for i, example in enumerate(invalid_data):
+            logger.error(f"Invalid example {i}:")
+            logger.error(f"  Keys: {list(example.keys())}")
+            logger.error(f"  Problem exists: {'problem' in example and bool(example['problem'])}")
+            logger.error(f"  Original keys: {list(data[i].keys()) if i < len(data) else 'unknown'}")
+        raise ValueError(f"Not enough valid examples found! Only {len(valid_data)} valid examples.")
+    
+    # Shuffle and select examples
+    valid_data = valid_data.shuffle(seed=11)
+    max_examples = min(2000, len(valid_data))
+    valid_data = valid_data.select(range(max_examples))
+    
+    # More debug information
+    logger.info(f"Using {len(valid_data)} examples for training")
     logger.info(f"Dataset columns: {valid_data.column_names}")
     logger.info(f"First example prompt length: {len(valid_data[0]['prompt']) if len(valid_data) > 0 else 'N/A'}")
+    
+    # Verify all examples have the required fields
+    missing_fields = []
+    for i, example in enumerate(valid_data[:10]):  # Check first 10 examples
+        if not example['prompt'] or not example['problem'] or not example['partial_solution']:
+            missing_fields.append(i)
+    
+    if missing_fields:
+        logger.warning(f"Some examples are missing required fields: {missing_fields}")
+        for i in missing_fields:
+            logger.warning(f"Example {i} fields: {valid_data[i]}")
     
     
     # GRPO specific training arguments
