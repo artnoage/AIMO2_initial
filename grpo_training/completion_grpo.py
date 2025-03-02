@@ -175,7 +175,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.4,
+        gpu_memory_utilization= 0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -367,7 +367,8 @@ def main():
     data = load_from_disk(dataset_name)
     processed_data = data.map(prepare_completion_data)
     valid_data = processed_data.filter(lambda x: x['valid'])
-    
+    valid_data = valid_data.shuffle(seed=11)
+    valid_data = valid_data.select(range(2000))
     # Debug information
     logger.info(f"Total examples in dataset: {len(data)}")
     logger.info(f"Valid examples after processing: {len(valid_data)}")
@@ -388,9 +389,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
+        per_device_train_batch_size=12,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=12,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
