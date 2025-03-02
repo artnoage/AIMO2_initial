@@ -1,5 +1,5 @@
 from typing import Union, Tuple
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
 
 
@@ -69,24 +69,30 @@ class FullSolutionAgent:
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
+        system_prompt = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+
+<thinking>
+First, analyze the problem in depth and outline your approach.
+This section should capture your reasoning, including any abstract thoughts or potential strategies.
+Feel free to refine or correct your ideas as you work toward the solution.
+</thinking>
+<response>
+<step>Step 1: Begin with the first calculation or operation
+Show your work clearly using LaTeX notation</step>
+
+<step>Step 2: Continue with the next logical step
+Each step should be numbered and self-contained</step>
+
+<step>Step N: In your final step, state your conclusion
+Put your final answer in \\boxed{}</step>
+</response>
+"""
         prompt = [
-            HumanMessage(content=("You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n"
-                                    "<thinking>"
-                                    "First, analyze the problem in depth and outline your approach.\n" 
-                                    "This section should capture your reasoning, including any abstract thoughts or potential strategies.\n " 
-                                    "Feel free to refine or correct your ideas as you work toward the solution.\n  "
-                                    "</thinking>"
-                                    "<response>\n"
-                                    "<step>Step 1: Begin with the first calculation or operation\n"
-                                    "Show your work clearly using LaTeX notation</step>\n\n"
-                                    "<step>Step 2: Continue with the next logical step\n"
-                                    "Each step should be numbered and self-contained</step>\n\n"
-                                    "<step>Step N: In your final step, state your conclusion\n"
-                                    "Put your final answer in \\boxed{}</step>\n"
-                                    "</response>\n\n"
-                                    f"Here is the problem:\n{problem}\n\n"))]
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
         response = await get_model_response(self.model, prompt, max_tokens=16384)
-        return (prompt[0].content, response) if return_prompt else response
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
 class TutorAgent:
