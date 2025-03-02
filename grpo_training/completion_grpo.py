@@ -13,6 +13,7 @@ from transformers import TrainerCallback
 import re
 import time
 from time import time
+import random
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -289,21 +290,14 @@ def main():
                 }
             
             # Randomly decide how many steps to include in partial solution
-            import random
             random.seed(hash(example.get('id', 0)) % 10000)  # Deterministic but varied
             split_point = random.randint(1, len(steps) - 1)  # At least 1 step, leave at least 1 step
             
             # Create partial solution with the first 'split_point' steps
             partial_steps = steps[:split_point]
             partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-            
             # Create full solution for reference
             full_solution = '\n\n'.join([f'<step>{step}</step>' for step in steps])
-            
-            # Log partial solution to test.md
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            example_hash = hash(example.get('id', '') or example.get('problem', '')[:50]) % 10000
-            #append_to_test_md(f"### Example Hash: {example_hash} - Timestamp: {timestamp}\n\n**Problem:**\n```\n{example['problem'][:200]}...\n```\n\n**Partial Solution:**\n```\n{partial_solution}\n```")
             
             # Get the answer from the example or extract from solution
             answer = example.get('answer', '')
@@ -341,30 +335,27 @@ def main():
     logger.info(f"Dataset columns: {valid_data.column_names}")
     logger.info(f"First example prompt length: {len(valid_data[0]['prompt']) if len(valid_data) > 0 else 'N/A'}")
     
-    # Add length attribute to dataset to avoid dataloader length error
-    valid_data = valid_data.train_test_split(test_size=0.1)['train']
-    logger.info(f"Training on {len(valid_data)} examples after train/test split")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=4e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=6,
         gradient_accumulation_steps=4,
         num_generations=6,
         max_prompt_length=2048,
         max_completion_length=2048,
-        num_train_epochs=3,  # Increase epochs instead of using max_steps
-        save_steps=250,
+        num_train_epochs=1,
+        save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
