@@ -335,6 +335,12 @@ def main():
     processed_data = data.map(prepare_completion_data)
     valid_data = processed_data.filter(lambda x: x['valid'])
     
+    # Debug information
+    logger.info(f"Total examples in dataset: {len(data)}")
+    logger.info(f"Valid examples after processing: {len(valid_data)}")
+    logger.info(f"Dataset columns: {valid_data.column_names}")
+    logger.info(f"First example prompt length: {len(valid_data[0]['prompt']) if len(valid_data) > 0 else 'N/A'}")
+    
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
@@ -354,6 +360,7 @@ def main():
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,
+        max_steps=1000,  # Set a positive value for max_steps
         save_steps=250,
         max_grad_norm=0.1,
         report_to="wandb",
