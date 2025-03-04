@@ -92,7 +92,8 @@ class CustomChat:
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to chat completion endpoint using OpenAI client"""
         max_tokens = kwargs.get("max_tokens", None)
-        
+        print(prompt)
+        exit()
         try:
             completion_params = {
                 "model": self.model,
@@ -104,6 +105,8 @@ class CustomChat:
                 completion_params["max_tokens"] = max_tokens
                 
             completion = await self.client.chat.completions.create(**completion_params)
+            print(completion)
+            exit()
             return type('Response', (), {
                 'content': completion.choices[0].message.content
             })()
