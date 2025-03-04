@@ -17,9 +17,11 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/phi_sft/20250225_162045"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/phi_sft/20250226_101318"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/waitA"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/waitB"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250302_203326"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250302_211638"
+    LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
@@ -47,7 +49,7 @@ class BenchmarkConfig:
     seed: int = 42  # Seed for dataset operations
     
     # Execution settings
-    max_concurrent: int = 256
+    max_concurrent: int = 1
     best_of: int = 1
     completions: int = 2
     
