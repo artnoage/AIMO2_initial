@@ -41,7 +41,7 @@ class BenchmarkConfig:
     auxiliary2_temp: float = 0.0
     
     # Enable "wait a second" pattern for main model
-    use_wait_pattern: bool = True
+    use_wait_pattern: bool = True  # Default to True
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -130,4 +130,6 @@ class BenchmarkConfig:
                           help='Upload the created dataset to HuggingFace Hub')
         
         args = parser.parse_args()
-        return cls(**vars(args))
+        config = cls(**vars(args))
+        print(f"use_wait_pattern set to: {config.use_wait_pattern}")
+        return config

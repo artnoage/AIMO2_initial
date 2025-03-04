@@ -386,13 +386,15 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
         }.get(role, config.main_port)
         
         # Use CustomChat2 for main model to implement the "wait a second" pattern
-        if role == "main" and getattr(config, "use_wait_pattern", False):
+        if role == "main" and config.use_wait_pattern:
+            print(f"Using CustomChat2 for {role} model with wait pattern")
             return CustomChat2(
                 model=name,
                 temperature=temp,
                 api_key="EMPTY",
                 base_url=f"http://localhost:{port}/v1")
         else:
+            print(f"Using CustomChat for {role} model")
             return CustomChat(
                 model=name,
                 temperature=temp,
