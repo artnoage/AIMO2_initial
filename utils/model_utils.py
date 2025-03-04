@@ -73,7 +73,7 @@ class OpenRouterChat:
 
 
 class CustomChat:
-    """Chat model that makes requests using OpenAI client library"""
+    """Chat model that makes requests using OpenAI client library with manual prompt formatting"""
     
     def __init__(
         self,
@@ -89,26 +89,53 @@ class CustomChat:
             api_key=api_key
         )
 
+    def _format_prompt(self, messages):
+        """Format messages using the Llama chat template format"""
+        formatted_prompt = ""
+        
+        for message in messages:
+            role = message.get("role", "").lower()
+            content = message.get("content", "")
+            
+            if role == "system":
+                formatted_prompt += f"<|im_start|>system\n{content}<|im_end|>\n"
+            elif role == "user":
+                formatted_prompt += f"<|im_start|>user\n{content}<|im_end|>\n"
+            elif role == "assistant":
+                formatted_prompt += f"<|im_start|>assistant\n{content}<|im_end|>\n"
+            else:
+                # Handle other roles or fallback
+                formatted_prompt += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+                
+        # Add the assistant prefix for the model to continue from
+        if not formatted_prompt.endswith("<|im_start|>assistant\n"):
+            formatted_prompt += "<|im_start|>assistant\n"
+            
+        return formatted_prompt
+
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to chat completion endpoint using OpenAI client"""
+        """Async call to chat completion endpoint with manual prompt formatting"""
         max_tokens = kwargs.get("max_tokens", None)
-        print(prompt)
-        exit()
+        
         try:
+            # Format the prompt using our chat template
+            formatted_prompt = self._format_prompt(prompt)
+            
+            # Create completion parameters
             completion_params = {
                 "model": self.model,
-                "messages": prompt,
+                "prompt": formatted_prompt,
                 "temperature": self.temperature
             }
             
             if max_tokens:
                 completion_params["max_tokens"] = max_tokens
-                
-            completion = await self.client.chat.completions.create(**completion_params)
-            print(completion)
-            exit()
+            
+            # Use the completions endpoint instead of chat.completions
+            completion = await self.client.completions.create(**completion_params)
+            
             return type('Response', (), {
-                'content': completion.choices[0].message.content
+                'content': completion.choices[0].text
             })()
         except Exception as e:
             print(f"Exception in CustomChat.ainvoke: {str(e)}")
