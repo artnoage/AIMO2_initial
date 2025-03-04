@@ -3,6 +3,7 @@ import os
 import asyncio
 import signal
 import aiohttp
+from openai import AsyncOpenAI
 from functools import wraps
 from contextlib import contextmanager
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
@@ -72,7 +73,7 @@ class OpenRouterChat:
 
 
 class CustomChat:
-    """Chat model that makes requests using OpenAI chat format"""
+    """Chat model that makes requests using OpenAI client library"""
     
     def __init__(
         self,
@@ -81,51 +82,48 @@ class CustomChat:
         temperature: float = 0,
         api_key: str = "EMPTY"
     ):
-        self.base_url = base_url
         self.model = model
         self.temperature = temperature
-        self.api_key = api_key
+        self.client = AsyncOpenAI(
+            base_url=base_url,
+            api_key=api_key
+        )
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to chat completion endpoint"""
+        """Async call to chat completion endpoint using OpenAI client"""
         max_tokens = kwargs.get("max_tokens", None)
         
         # Convert prompt to messages format
         if hasattr(prompt, 'content'):  # LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
         elif isinstance(prompt, list):  # List of messages
-            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
+            # Handle LangChain message objects in a list
+            messages = []
+            for msg in prompt:
+                if hasattr(msg, 'content'):
+                    role = "system" if hasattr(msg, 'type') and msg.type == 'system' else "user"
+                    messages.append({"role": role, "content": msg.content})
+            if not messages and prompt:  # Fallback if no proper messages found
+                messages = [{"role": "user", "content": str(prompt[-1])}]
         else:  # String or other
             messages = [{"role": "user", "content": str(prompt)}]
-            
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature
-        }
-        if max_tokens:
-            payload["max_tokens"] = max_tokens
-
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(
-                    f"{self.base_url}/chat/completions",
-                    json=payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self.api_key}"
-                    }
-                ) as response:
-                    if response.status != 200:
-                        raise ValueError(f"Error from API: {await response.text()}")
-                    
-                    result = await response.json()
-                    return type('Response', (), {
-                        'content': result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    })()
-            except Exception as e:
-                print(f"Exception in CustomChat.ainvoke: {str(e)}")
-                raise
+        
+        try:
+            params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": self.temperature
+            }
+            if max_tokens:
+                params["max_tokens"] = max_tokens
+                
+            completion = await self.client.chat.completions.create(**params)
+            return type('Response', (), {
+                'content': completion.choices[0].message.content
+            })()
+        except Exception as e:
+            print(f"Exception in CustomChat.ainvoke: {str(e)}")
+            raise
 
 @contextmanager
 def time_limit(seconds):
