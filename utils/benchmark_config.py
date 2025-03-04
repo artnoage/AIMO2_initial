@@ -41,7 +41,7 @@ class BenchmarkConfig:
     auxiliary2_temp: float = 0.0
     
     # Enable "wait a second" pattern for main model
-    use_wait_pattern: bool = False
+    use_wait_pattern: bool = True
     
     # Dataset settings
     dataset: str = 'filtered'
