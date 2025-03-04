@@ -93,25 +93,12 @@ class CustomChat:
         """Async call to chat completion endpoint using OpenAI client"""
         max_tokens = kwargs.get("max_tokens", None)
         
-        # Convert prompt to messages format
-        if hasattr(prompt, 'content'):  # LangChain message object
-            messages = [{"role": "user", "content": prompt.content}]
-        elif isinstance(prompt, list):  # List of messages
-            # Handle LangChain message objects in a list
-            messages = []
-            for msg in prompt:
-                if hasattr(msg, 'content'):
-                    role = "system" if hasattr(msg, 'type') and msg.type == 'system' else "user"
-                    messages.append({"role": role, "content": msg.content})
-            if not messages and prompt:  # Fallback if no proper messages found
-                messages = [{"role": "user", "content": str(prompt[-1])}]
-        else:  # String or other
-            messages = [{"role": "user", "content": str(prompt)}]
-        
+        # Use the prompt directly as messages if it's a list of message objects
+        # This assumes the messages are already in the correct format for the OpenAI API
         try:
             params = {
                 "model": self.model,
-                "messages": messages,
+                "messages": prompt,
                 "temperature": self.temperature
             }
             if max_tokens:
