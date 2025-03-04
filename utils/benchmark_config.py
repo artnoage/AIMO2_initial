@@ -40,8 +40,6 @@ class BenchmarkConfig:
     auxiliary_temp: float = 0.7
     auxiliary2_temp: float = 0.0
     
-    # Enable "wait a second" pattern for main model
-    use_wait_pattern: bool = True  # Default to False
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -79,8 +77,6 @@ class BenchmarkConfig:
         parser.add_argument('--auxiliary2', type=str,
                           choices=[model.name for model in ModelOption],
                           default='LOCAL_2', help='Second auxiliary model (optional)')
-        parser.add_argument('--use-wait-pattern', action='store_true',
-                          help='Enable "wait a second" pattern for main model')
         parser.add_argument('--main-port', type=int, default=8000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
