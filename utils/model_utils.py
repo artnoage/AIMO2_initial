@@ -4,7 +4,7 @@ import asyncio
 import signal
 import aiohttp
 import logging
-from openai import AsyncOpenAI
+import json
 from functools import wraps
 from contextlib import contextmanager
 from typing import Optional, Dict, List, Callable, Tuple, TypeVar, Any
@@ -74,7 +74,7 @@ class OpenRouterChat:
 
 
 class CustomChat:
-    """Chat model that makes requests using OpenAI client library with manual prompt formatting"""
+    """Chat model that makes direct API requests to local endpoints"""
     
     def __init__(
         self,
@@ -83,15 +83,10 @@ class CustomChat:
         temperature: float = 0,
         api_key: str = "EMPTY"
     ):
-        # Set OpenAI's logger to only show warnings and errors
-        logging.getLogger("openai").setLevel(logging.WARNING)
-        
+        self.base_url = base_url
         self.model = model
         self.temperature = temperature
-        self.client = AsyncOpenAI(
-            base_url=base_url,
-            api_key=api_key
-        )
+        self.api_key = api_key
 
     def _format_prompt(self, messages):
         """Format messages using the Llama chat template format"""
@@ -129,7 +124,7 @@ class CustomChat:
         return formatted_prompt
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
-        """Async call to chat completion endpoint with manual prompt formatting"""
+        """Async call to completion endpoint with direct API request"""
         max_tokens = kwargs.get("max_tokens", None)
         
         try:
@@ -137,21 +132,35 @@ class CustomChat:
             formatted_prompt = self._format_prompt(prompt)
             
             # Create completion parameters
-            completion_params = {
+            payload = {
                 "model": self.model,
                 "prompt": formatted_prompt,
                 "temperature": self.temperature
             }
             
             if max_tokens:
-                completion_params["max_tokens"] = max_tokens
+                payload["max_tokens"] = max_tokens
             
-            # Use the completions endpoint instead of chat.completions
-            completion = await self.client.completions.create(**completion_params)
-            
-            return type('Response', (), {
-                'content': completion.choices[0].text
-            })()
+            # Make direct API request using aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/completions",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise ValueError(f"Error from API: {error_text}")
+                    
+                    result = await response.json()
+                    
+                    # Create a response object with the same interface
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("text", "")
+                    })()
         except Exception as e:
             print(f"Exception in CustomChat.ainvoke: {str(e)}")
             raise
