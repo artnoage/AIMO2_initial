@@ -130,7 +130,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "completion"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
     # Setup logging first
@@ -468,9 +468,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
+        per_device_train_batch_size=9,
         gradient_accumulation_steps=4,
-        num_generations=12,
+        num_generations=9,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

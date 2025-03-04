@@ -193,7 +193,7 @@ def main():
         
     def get_questions(split = "train") -> Dataset:
         # Use the combined dataset from Metaskepsis/validation_
-        data = load_dataset(dataset_name) # type: ignore
+        data = load_dataset(dataset_name,split) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
@@ -229,7 +229,7 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=10,
         gradient_accumulation_steps=4,
         num_generations=10,
         max_prompt_length=800,
