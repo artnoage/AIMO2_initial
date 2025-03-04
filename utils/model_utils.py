@@ -3,6 +3,7 @@ import os
 import asyncio
 import signal
 import aiohttp
+import logging
 from openai import AsyncOpenAI
 from functools import wraps
 from contextlib import contextmanager
@@ -82,6 +83,9 @@ class CustomChat:
         temperature: float = 0,
         api_key: str = "EMPTY"
     ):
+        # Set OpenAI's logger to only show warnings and errors
+        logging.getLogger("openai").setLevel(logging.WARNING)
+        
         self.model = model
         self.temperature = temperature
         self.client = AsyncOpenAI(
