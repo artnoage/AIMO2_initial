@@ -122,7 +122,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "wait_2"
+    model_type = "wait_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
@@ -172,7 +172,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.4,
+        gpu_memory_utilization= 0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -253,8 +253,8 @@ def main():
         return processed_data
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=5)
-    formatted_dataset = formatted_dataset.select(range(500))
+    formatted_dataset = formatted_dataset.shuffle(seed=11)
+    formatted_dataset = formatted_dataset.select(range(1500))
  
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -277,19 +277,19 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=8e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=12,
         gradient_accumulation_steps=4,
-        num_generations=5,
+        num_generations=12,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

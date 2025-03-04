@@ -65,10 +65,6 @@ class LoggingCallback(TrainerCallback):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
-            # Log loss with higher precision if present
-            if 'loss' in logs:
-                self.logger.info(f"Step {self.step} - Loss: {logs['loss']:.10f}")
-                
             # Key group performance metrics for wandb
             wandb_stats = {
                 'group_reward': logs['rewards/0'],
@@ -76,10 +72,6 @@ class LoggingCallback(TrainerCallback):
                 'solution_diversity': self.reward_func.stats.group_stats.get('solution_diversity', 0.0),
                 'unanimous_correct_ratio': self.reward_func.stats.group_stats.get('unanimous_correct', 0) / max(1, self.reward_func.stats.total_batches)
             }
-            
-            # Add high precision loss to wandb if present
-            if 'loss' in logs:
-                wandb_stats['loss_high_precision'] = logs['loss']
             
             # Detailed stats for local logging only
             local_stats = {
@@ -131,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
-    dataset_name = "Metaskepsis/custom219"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -176,11 +168,11 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3400,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.4,
+        gpu_memory_utilization= 0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -200,17 +192,18 @@ def main():
     
         
     def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
+        # Use the combined dataset from Metaskepsis/validation_
+        data = load_dataset(dataset_name, split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['question'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'problem': x['question'],
+            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
         }) # type: ignore
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=1)
-    #formatted_dataset=formatted_dataset.select(range(1500))
+    formatted_dataset = formatted_dataset.shuffle(seed=20)
+    # We have more diverse data now, so we can use more examples
+    formatted_dataset = formatted_dataset.select(range(2000))
  
    
     
@@ -231,21 +224,20 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=6,
+        num_generations=10,
         max_prompt_length=800,
-        max_completion_length=2600,
+        max_completion_length=3296,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
-        log_level="debug",  # Set to debug for more detailed logging
     )
     
     # Initialize trainer with reward function

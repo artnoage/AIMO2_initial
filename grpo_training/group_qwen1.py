@@ -123,7 +123,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/group_0/20250227_211304"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -168,11 +168,11 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3400,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.4,
+        gpu_memory_utilization= 0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -201,7 +201,7 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=2)
+    formatted_dataset = formatted_dataset.shuffle(seed=21)
     # We have more diverse data now, so we can use more examples
     formatted_dataset = formatted_dataset.select(range(2000))
  
@@ -230,9 +230,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=5,
+        num_generations=10,
         max_prompt_length=800,
-        max_completion_length=2600,
+        max_completion_length=3296,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

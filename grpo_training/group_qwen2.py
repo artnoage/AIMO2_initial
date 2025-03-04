@@ -123,8 +123,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "group_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
+    dataset_name = "Metaskepsis/validation_set"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -168,11 +168,11 @@ def main():
    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,  # Use the model_name variable defined at the start
-        max_seq_length=3400,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.4,
+        gpu_memory_utilization= 0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -192,7 +192,8 @@ def main():
     
         
     def get_questions(split = "train") -> Dataset:
-        data = load_dataset(dataset_name)[split] # type: ignore
+        # Use the combined dataset from Metaskepsis/validation_
+        data = load_dataset(dataset_name) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
@@ -200,8 +201,10 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=3)
-    formatted_dataset=formatted_dataset.select(range(2000))
+    formatted_dataset1 = formatted_dataset.shuffle(seed=21)
+    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
+    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2])
+    # We have more diverse data now, so we can use more examples
  
    
     
@@ -228,9 +231,9 @@ def main():
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
-        num_generations=5,
+        num_generations=10,
         max_prompt_length=800,
-        max_completion_length=2600,
+        max_completion_length=3296,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

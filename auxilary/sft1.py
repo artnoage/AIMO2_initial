@@ -16,7 +16,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/waitA",
         max_seq_length=8192,
         load_in_4bit=False)
         
@@ -52,7 +52,7 @@ def main():
 
     # Load dataset and get second half
     #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_112006")
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250303_180821")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)

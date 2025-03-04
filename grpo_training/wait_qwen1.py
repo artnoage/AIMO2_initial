@@ -172,16 +172,16 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization= 0.4,
-        max_lora_rank=32)
+        gpu_memory_utilization= 0.6,
+        max_lora_rank=64)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=32,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=32,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -253,8 +253,8 @@ def main():
         return processed_data
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=2)
-    formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.shuffle(seed=11)
+    formatted_dataset = formatted_dataset.select(range(1500))
  
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -277,7 +277,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=5e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -287,9 +287,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=4,
-        num_generations=4,
+        per_device_train_batch_size=12,
+        gradient_accumulation_steps=16,
+        num_generations=12,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

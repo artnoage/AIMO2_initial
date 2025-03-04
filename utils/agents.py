@@ -49,9 +49,8 @@ In your final step, include your answer in a LaTeX boxed environment:
 Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
 </response>"""
 
-        prompt = [
+        prompt = [SystemMessage(content=system_prompt),
             HumanMessage(content=(
-                f"{system_prompt}\n\n"
                 f"Problem: {problem}\n\n"
                 f"Partial Solution: {partial_solution}"
             ))
@@ -91,7 +90,7 @@ Put your final answer in \\boxed{}</step>
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        response = await get_model_response(self.model, prompt, max_tokens=24384)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
