@@ -94,8 +94,19 @@ class CustomChat:
         formatted_prompt = ""
         
         for message in messages:
-            role = message.get("role", "").lower()
-            content = message.get("content", "")
+            # Handle both dict-like messages and LangChain message objects
+            if hasattr(message, 'type') and hasattr(message, 'content'):
+                # LangChain message object
+                role = message.type if hasattr(message, 'type') else "user"
+                content = message.content
+            elif isinstance(message, dict):
+                # Dictionary message format
+                role = message.get("role", "").lower()
+                content = message.get("content", "")
+            else:
+                # Fallback for other formats
+                role = "user"
+                content = str(message)
             
             if role == "system":
                 formatted_prompt += f"<|im_start|>system\n{content}<|im_end|>\n"
