@@ -93,18 +93,21 @@ class CustomChat:
         """Async call to chat completion endpoint using OpenAI client"""
         max_tokens = kwargs.get("max_tokens", None)
         
-        # Use the prompt directly as messages if it's a list of message objects
-        # This assumes the messages are already in the correct format for the OpenAI API
+        # Use the prompt directly as messages
+        # Model and temperature are set when initializing the client
         try:
             params = {
-                "model": self.model,
-                "messages": prompt,
-                "temperature": self.temperature
+                "messages": prompt
             }
             if max_tokens:
                 params["max_tokens"] = max_tokens
                 
-            completion = await self.client.chat.completions.create(**params)
+            # Pass the model name here as it's required for each request
+            completion = await self.client.chat.completions.create(
+                model=self.model,
+                temperature=self.temperature,
+                **params
+            )
             return type('Response', (), {
                 'content': completion.choices[0].message.content
             })()
