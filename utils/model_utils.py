@@ -184,7 +184,8 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     else:
         temp=config.auxiliary2_temp
 
-    if (model == ModelOption.LOCAL_0) or (model == ModelOption.LOCAL_1) or (model == ModelOption.LOCAL_2):
+    # Check if the model name starts with "LOCAL_" to handle any LOCAL_number pattern
+    if str(model).startswith("ModelOption.LOCAL_"):
         port = {
             "main": config.main_port,
             "auxiliary": config.auxiliary_port,
