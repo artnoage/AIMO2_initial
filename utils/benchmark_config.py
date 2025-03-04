@@ -41,7 +41,7 @@ class BenchmarkConfig:
     auxiliary2_temp: float = 0.0
     
     # Enable "wait a second" pattern for main model
-    use_wait_pattern: bool =False  # Default to True
+    use_wait_pattern: bool = True  # Default to False
     
     # Dataset settings
     dataset: str = 'filtered'
@@ -79,8 +79,8 @@ class BenchmarkConfig:
         parser.add_argument('--auxiliary2', type=str,
                           choices=[model.name for model in ModelOption],
                           default='LOCAL_2', help='Second auxiliary model (optional)')
-        parser.add_argument('--use-wait-pattern', action='store_true', default=True,
-                          help='Enable "wait a second" pattern for main model (default: True)')
+        parser.add_argument('--use-wait-pattern', action='store_true',
+                          help='Enable "wait a second" pattern for main model')
         parser.add_argument('--main-port', type=int, default=8000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
@@ -130,6 +130,13 @@ class BenchmarkConfig:
                           help='Upload the created dataset to HuggingFace Hub')
         
         args = parser.parse_args()
-        config = cls(**vars(args))
-        print(f"use_wait_pattern set to: {config.use_wait_pattern}")
+        # Convert args to dictionary
+        args_dict = vars(args)
+        
+        # Create config instance
+        config = cls(**args_dict)
+        
+        # Print debug info
+        print(f"use_wait_pattern set to: {config.use_wait_pattern} (type: {type(config.use_wait_pattern)})")
+        
         return config
