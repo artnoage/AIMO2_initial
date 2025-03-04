@@ -136,7 +136,5 @@ class BenchmarkConfig:
         # Create config instance
         config = cls(**args_dict)
         
-        # Print debug info
-        print(f"use_wait_pattern set to: {config.use_wait_pattern} (type: {type(config.use_wait_pattern)})")
         
         return config
