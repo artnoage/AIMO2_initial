@@ -645,7 +645,7 @@ class DynamicReward(BaseReward):
     
     def _select_reward_type(self, batch_kwargs: Dict) -> str:
         """
-        Select which reward type to use for the entire batch based on prompt content
+        Select which reward type to use for the entire batch based on example_type
         
         Args:
             batch_kwargs: Keyword arguments for the batch
@@ -653,29 +653,6 @@ class DynamicReward(BaseReward):
         Returns:
             String indicating which reward to use: 'solution' or 'completion'
         """
-        # Get the prompts from the batch
-        prompts = batch_kwargs.get('prompts', [])
-        if not prompts:
-            self.logger.warning("No prompts found in batch, defaulting to solution reward")
-            return 'solution'
-            
-        # Check the first prompt to determine the type (all prompts in a batch should be the same type)
-        first_prompt = prompts[0]
-        
-        # Check for completion prompt indicators
-        completion_indicators = [
-            "continue the solution from where it left off",
-            "Continue from here",
-            "maintaining the same step numbering",
-            "Partial Solution:",
-            "continue with the next step number in sequence"
-        ]
-        
-        for indicator in completion_indicators:
-            if indicator in first_prompt:
-                self.logger.info(f"Selected completion reward based on prompt content: '{indicator}'")
-                return 'completion'
-        
         # Check for example_type in batch_kwargs if available
         example_types = batch_kwargs.get('example_type', [])
         if example_types and len(example_types) > 0:
@@ -684,8 +661,8 @@ class DynamicReward(BaseReward):
                 self.logger.info("Selected completion reward based on example_type")
                 return 'completion'
         
-        # Default to solution reward if no completion indicators found
-        self.logger.info("Selected solution reward (no completion indicators in prompt)")
+        # Default to solution reward if no completion type found
+        self.logger.info("Selected solution reward (no completion type in example_type)")
         return 'solution'
     
     async def calculate_reward(self, completion: str, **kwargs) -> float:
