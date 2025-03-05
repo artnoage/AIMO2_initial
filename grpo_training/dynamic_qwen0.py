@@ -133,7 +133,7 @@ def main():
     # Configuration
     model_type = "dynamic_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/completion"
     
     # Setup logging first
     logger = setup_logging(model_type)
