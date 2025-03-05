@@ -401,11 +401,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger.append(f"\n🔍 Analyzing incorrect solution {idx+1}/{min(3, len(incorrect_solutions))}")
                 logger.append(f"   Model answer: {model_answer}")
                 
-                # If we have thinking/response sections, log them
-                if thinking:
-                    logger.append(f"\n📝 Thinking section extracted:")
-                    logger.append(f"{thinking[:200]}...")
-                
+                # If we have response section, log it
                 if response:
                     logger.append(f"\n📝 Response section extracted:")
                     logger.append(f"{response[:200]}...")
