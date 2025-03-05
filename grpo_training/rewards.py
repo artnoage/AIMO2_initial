@@ -2,10 +2,11 @@ import re
 import asyncio
 import torch
 import logging
+import random
 from datetime import datetime
 from pathlib import Path
 import os, sys
-from typing import List
+from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from grpo_training.wait_logger import WaitLogger
@@ -633,4 +634,179 @@ class CompletionReward(BaseReward):
         except Exception as e:
             self.logger.error(f"Error calculating completion reward: {str(e)}")
             return 0.0
+
+
+class DynamicReward(BaseReward):
+    """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
+    
+    __name__ = "dynamic_reward"
+    
+    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker = None):
+        """
+        Initialize with configuration and similarity checker
+        
+        Args:
+            config: RewardConfig for rewards
+            similarity_checker: Optional similarity checker for rewards that need it
+        """
+        super().__init__(config)
+        self.similarity_checker = similarity_checker
+        
+        # Create instances of all possible reward functions
+        self.solution_reward = SolutionReward(config, similarity_checker)
+        self.completion_reward = CompletionReward(config, similarity_checker)
+        
+        # Collect relevant stats from all possible rewards
+        self.relevant_stats = {}
+        for reward in [self.solution_reward, self.completion_reward]:
+            if hasattr(reward, 'relevant_stats'):
+                for category, stats in reward.relevant_stats.items():
+                    if category not in self.relevant_stats:
+                        self.relevant_stats[category] = []
+                    self.relevant_stats[category].extend(stats)
+        
+        # Add dynamic reward specific stats
+        if 'reward_components' not in self.relevant_stats:
+            self.relevant_stats['reward_components'] = []
+        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'completion_reward_uses', 'random_selections'])
+    
+    def _select_reward_type(self, batch_kwargs: Dict) -> str:
+        """
+        Select which reward type to use for the entire batch
+        
+        Args:
+            batch_kwargs: Keyword arguments for the batch
+            
+        Returns:
+            String indicating which reward to use: 'solution' or 'completion'
+        """
+        # Check if partial_solution exists in the batch
+        partial_solutions = batch_kwargs.get('partial_solution', [])
+        
+        # If no partial solutions or they're all empty, use solution reward
+        if not partial_solutions or all(not ps for ps in partial_solutions):
+            self.logger.info("Selected solution reward (no partial solutions)")
+            return 'solution'
+            
+        # If partial solutions exist, randomly choose between solution and completion rewards
+        if random.random() < 0.5:
+            self.logger.info("Randomly selected solution reward")
+            self.stats.reward_components['random_selections'] = self.stats.reward_components.get('random_selections', 0) + 1
+            return 'solution'
+        else:
+            self.logger.info("Randomly selected completion reward")
+            self.stats.reward_components['random_selections'] = self.stats.reward_components.get('random_selections', 0) + 1
+            return 'completion'
+    
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward using the selected reward function"""
+        try:
+            # Get the reward type from kwargs (set by __call__)
+            reward_type = kwargs.get('reward_type', 'solution')
+            
+            # Check if answer exists
+            answer = kwargs.get('answer') or kwargs.get('correct_answer')
+            if not answer:
+                self.logger.warning("Missing answer in example, returning zero reward")
+                return 0.0
+            
+            # Select the appropriate reward function
+            if reward_type == 'completion':
+                reward_func = self.completion_reward
+                self.stats.reward_components['completion_reward_uses'] = self.stats.reward_components.get('completion_reward_uses', 0) + 1
+            else:
+                reward_func = self.solution_reward
+                self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
+            
+            # Calculate the reward using the selected function
+            reward = await reward_func.calculate_reward(completion, **kwargs)
+            
+            # Log which reward function was used
+            self.logger.info(f"Used {reward_func.__name__} with result: {reward:.4f}")
+            
+            return reward
+            
+        except Exception as e:
+            self.logger.error(f"Error in dynamic reward calculation: {str(e)}")
+            return 0.0
+    
+    def __call__(self, completions: List[str], **kwargs) -> List[float]:
+        """Override to handle batch processing with consistent reward selection"""
+        # Validate inputs
+        prompts = kwargs.get('prompts', [])
+        answers = kwargs.get('answer') or kwargs.get('correct_answer', [])
+        
+        if len(completions) != len(prompts) or len(completions) != len(answers):
+            self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
+            return [0.0] * len(completions)
+        
+        # Select which reward type to use for the entire batch
+        reward_type = self._select_reward_type(kwargs)
+        self.logger.info(f"Using {reward_type} reward for entire batch of {len(completions)} examples")
+            
+        # Process each completion with the selected reward type
+        async def process_batch():
+            tasks = []
+            
+            # Extract problems, solutions, and partial solutions from kwargs if present
+            problems = kwargs.get('problem', [''] * len(prompts))
+            solutions = kwargs.get('model_solution', [''] * len(prompts))
+            partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
+            
+            for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
+                # Create kwargs with this specific example
+                task_kwargs = {
+                    **kwargs,  # Base kwargs first
+                    'prompt': prompt,
+                    'problem': problems[idx],
+                    'solution': solutions[idx],
+                    'partial_solution': partial_solutions[idx],
+                    'answer': str(ans),
+                    'reward_index': idx,
+                    'reward_type': reward_type  # Pass the selected reward type
+                }
+                
+                # Add group context if available
+                if 'group_completions' in kwargs:
+                    task_kwargs['group_idx'] = idx % len(kwargs['group_completions'])
+                
+                task = self.calculate_reward(completion, **task_kwargs)
+                tasks.append(task)
+                    
+            return await asyncio.gather(*tasks)
+            
+        # Run async code in event loop
+        try:
+            loop = asyncio.get_event_loop()
+            self.logger.debug("Using existing event loop")
+        except RuntimeError:
+            self.logger.debug("No event loop found - creating new one")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        try:
+            rewards = loop.run_until_complete(process_batch())
+        except Exception as e:
+            self.logger.error(f"Error during batch processing: {str(e)}")
+            rewards = [0.0] * len(completions)
+        
+        # Apply normalization if needed (same as in BaseReward)
+        if len(rewards) > 1:
+            self.logger.info(f"Rewards before: {rewards}")
+            
+            # If mean is negative, clip all rewards from below by zero
+            mean_reward = sum(rewards) / len(rewards)
+            if mean_reward < 0:
+                self.logger.info(f"Mean reward is negative ({mean_reward:.6f}), clipping all rewards to non-negative values")
+                rewards = [max(0.0, r) for r in rewards]
+                self.logger.info(f"Rewards after clipping: {rewards}")
+        
+        # Update stats and print batch summary
+        self.stats.update(rewards, reward_type=reward_type)
+        
+        # Print reward-specific statistics summary every batch
+        self.logger.info("\nReward Statistics Summary:")
+        self.logger.info(self.stats.get_summary(self.relevant_stats))
+        
+        return rewards
 
