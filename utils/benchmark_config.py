@@ -19,7 +19,7 @@ class ModelOption(Enum):
     MASTER_MINI="openai/o1-mini"
     LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/A"
     LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/B"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250302_203326"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/C"
     LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
