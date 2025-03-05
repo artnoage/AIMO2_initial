@@ -1,6 +1,7 @@
 from typing import Union, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
+import asyncio
 
 
 
@@ -131,5 +132,60 @@ class TutorAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (response, prompt[0].content) if return_prompt else response
+
+
+class ProgrammingAgent:
+    """Agent that generates Python code to solve mathematical problems"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate Python code that solves the mathematical problem"""
+        system_prompt = """You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+
+<thinking>
+First, analyze the problem carefully and determine the mathematical concepts involved.
+Break down the problem into steps that can be implemented in code.
+Consider edge cases and potential numerical issues.
+Plan your approach before writing any code.
+</thinking>
+
+<response>
+Write a complete, self-contained Python program that solves the problem.
+Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed)
+2. Include clear comments explaining your approach
+3. Print the final answer as a single float value (or integer if appropriate)
+4. Handle potential errors gracefully
+5. Be efficient and not use excessive resources
+
+DO NOT include explanations outside of code comments. Your response should ONLY contain valid Python code.
+
+Example format:
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [explanation comment]
+...
+
+# Step 2: Solve using appropriate method
+# [explanation comment]
+...
+
+# Calculate and print the final answer
+result = ...
+print(result)  # Just the number, no text
+```
+</response>"""
+
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 

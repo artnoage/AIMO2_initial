@@ -28,7 +28,7 @@ class ModelOption(Enum):
     QWEN="qwen/qwq-32b-preview"
 @dataclass
 class BenchmarkConfig:
-    """Unified configuration for benchmarking with optional numeric verification"""
+    """Unified configuration for benchmarking with optional numeric verification and code execution"""
     # Model settings
     main: str = "LOCAL_0"
     auxiliary: str = "LOCAL_1"  # If None, uses same as main
@@ -62,6 +62,9 @@ class BenchmarkConfig:
     stats_update_freq: int = 100  # How often to update statistics (number of examples)
     create_dataset: bool = False  # Whether to create a HuggingFace dataset
     upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
+    
+    # Code execution settings
+    timeout: int = 10  # Timeout in seconds for code execution
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
@@ -124,6 +127,10 @@ class BenchmarkConfig:
                           help='Create a HuggingFace dataset from results')
         parser.add_argument('--upload-dataset', action='store_true',
                           help='Upload the created dataset to HuggingFace Hub')
+        
+        # Code execution settings
+        parser.add_argument('--timeout', type=int, default=10,
+                          help='Timeout in seconds for code execution (default: 10)')
         
         args = parser.parse_args()
         # Convert args to dictionary
