@@ -69,6 +69,16 @@ class RewardStats:
             'timeout_errors': 0
         }
         
+        # Initialize programming-specific reward components
+        self.reward_components.update({
+            'structure_rewards': 0,
+            'syntax_rewards': 0,
+            'execution_rewards': 0,
+            'correctness_rewards': 0,
+            'syntax_valid_solutions': 0,
+            'execution_valid_solutions': 0
+        })
+        
         # Create a logger for this instance
         self.logger = logging.getLogger(f'reward_stats_{config.model_type}')
         

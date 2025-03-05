@@ -13,8 +13,7 @@ from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
 from config import RewardConfig
 from reward_stats import RewardStats
-from rewards import BaseReward, SolutionReward, CompletionReward
-from programming_reward import ProgrammingReward
+from rewards import BaseReward, SolutionReward, CompletionReward, ProgrammingReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
