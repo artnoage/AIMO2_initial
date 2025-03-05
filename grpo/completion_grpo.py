@@ -404,12 +404,30 @@ def main():
     # Process the data
     processed_data = data.map(prepare_completion_data)
     
-    # Filter valid examples and check if we have enough
-    valid_data = processed_data.filter(lambda x: x['valid'])
+    # Add token count to each example
+    def count_tokens(example):
+        if not example['valid'] or not example['prompt']:
+            return {'token_count': 0}
+        return {'token_count': len(tokenizer.encode(example['prompt']))}
+    
+    processed_data = processed_data.map(count_tokens)
+    
+    # Log token count statistics
+    token_counts = [ex['token_count'] for ex in processed_data if ex['valid']]
+    if token_counts:
+        logger.info(f"Token count statistics:")
+        logger.info(f"  Min: {min(token_counts)}")
+        logger.info(f"  Max: {max(token_counts)}")
+        logger.info(f"  Mean: {sum(token_counts)/len(token_counts):.2f}")
+        logger.info(f"  Examples > 2000 tokens: {sum(1 for t in token_counts if t > 2000)}")
+    
+    # Filter valid examples and those with token count <= 2000
+    valid_data = processed_data.filter(lambda x: x['valid'] and x['token_count'] <= 2000)
     
     # Log validation results
     logger.info(f"Total examples in dataset: {len(data)}")
-    logger.info(f"Valid examples after processing: {len(valid_data)}")
+    logger.info(f"Valid examples after processing: {len(processed_data.filter(lambda x: x['valid']))}")
+    logger.info(f"Valid examples with ≤ 2000 tokens: {len(valid_data)}")
     
     # Check if we have enough valid examples
     if len(valid_data) < 10:
