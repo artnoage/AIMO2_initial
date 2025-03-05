@@ -1,8 +1,9 @@
 import json
 import logging
+import numpy as np
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Tuple
 import os
 import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,13 +11,17 @@ sys.path.append(project_root)
 
 class RewardStats:
     """Base class for tracking reward statistics"""
-    def __init__(self, config):
+    def __init__(self, config, num_bins=10):
         self.config = config
         self.total_batches = 0
         self.total_examples = 0
         self.total_rewards = 0
         self.reward_distribution = {}
         self.start_time = datetime.now()
+        self.num_bins = num_bins
+        self.min_reward = float('inf')
+        self.max_reward = float('-inf')
+        self.all_rewards = []  # Store all rewards for dynamic binning
         
         # Track step validation stats
         self.step_stats = {
@@ -84,6 +89,54 @@ class RewardStats:
         # Create a logger for this instance
         self.logger = logging.getLogger(f'reward_stats_{config.model_type}')
         
+    def _create_bins(self) -> Tuple[List[float], List[str]]:
+        """Create dynamic bins based on the range of observed rewards
+        
+        Returns:
+            Tuple containing:
+            - List of bin edges
+            - List of bin labels
+        """
+        if not self.all_rewards:
+            return [0], ["0.0"]
+            
+        # Use min and max with a small buffer to ensure all values fit in bins
+        min_val = min(self.all_rewards) - 0.001
+        max_val = max(self.all_rewards) + 0.001
+        
+        # If min and max are very close, create a small range around them
+        if abs(max_val - min_val) < 0.01:
+            min_val = min_val - 0.1
+            max_val = max_val + 0.1
+            
+        # Create bin edges
+        bin_edges = np.linspace(min_val, max_val, self.num_bins + 1)
+        
+        # Create bin labels (use the lower edge of each bin)
+        bin_labels = [f"{edge:.2f}" for edge in bin_edges[:-1]]
+        
+        return bin_edges, bin_labels
+        
+    def _update_reward_distribution(self):
+        """Update the reward distribution using dynamic binning"""
+        if not self.all_rewards:
+            return
+            
+        # Create bins
+        bin_edges, bin_labels = self._create_bins()
+        
+        # Reset distribution
+        self.reward_distribution = {label: 0 for label in bin_labels}
+        
+        # Count rewards in each bin
+        for r in self.all_rewards:
+            # Find the bin index
+            bin_idx = np.digitize([r], bin_edges)[0] - 1
+            # Ensure the index is valid (should be, but just in case)
+            if 0 <= bin_idx < len(bin_labels):
+                bin_label = bin_labels[bin_idx]
+                self.reward_distribution[bin_label] += 1
+    
     def update(self, rewards: List[float], **kwargs):
         """Update statistics with new rewards"""
         self.total_batches += 1
@@ -93,10 +146,14 @@ class RewardStats:
         if rewards:
             for r in rewards:
                 self.total_rewards += r
-                r_rounded = round(r, 6)
-                # Convert to string to ensure it works as a dictionary key
-                r_key = str(r_rounded)
-                self.reward_distribution[r_key] = self.reward_distribution.get(r_key, 0) + 1
+                # Store the reward for dynamic binning
+                self.all_rewards.append(r)
+                # Update min and max
+                self.min_reward = min(self.min_reward, r)
+                self.max_reward = max(self.max_reward, r)
+                
+            # Update the reward distribution
+            self._update_reward_distribution()
                 
             # Update the total_rewards in reward_components as well
             self.reward_components['total_rewards'] += sum(rewards)
@@ -185,16 +242,30 @@ class RewardStats:
             stats_dir = Path(output_dir) / self.config.stats_dir
             stats_dir.mkdir(exist_ok=True)
             
+            # Update the distribution one last time before saving
+            self._update_reward_distribution()
+            
             stats = {
                 'total_batches': self.total_batches,
+                'total_examples': self.total_examples,
                 'total_rewards': self.total_rewards,
-                'reward_distribution': {str(k): v for k, v in self.reward_distribution.items()},
+                'min_reward': self.min_reward if self.min_reward != float('inf') else 0,
+                'max_reward': self.max_reward if self.max_reward != float('-inf') else 0,
+                'reward_distribution': self.reward_distribution,
                 'training_duration': str(datetime.now() - self.start_time),
-                'section_stats': self.section_stats,
                 'reward_components': self.reward_components,
                 'group_stats': self.group_stats,
-                'full_reward_reasons': self.full_reward_reasons
             }
+            
+            # Add other stats if they exist
+            if hasattr(self, 'section_stats'):
+                stats['section_stats'] = self.section_stats
+            if hasattr(self, 'full_reward_reasons'):
+                stats['full_reward_reasons'] = self.full_reward_reasons
+            if hasattr(self, 'example_types'):
+                stats['example_types'] = self.example_types
+            if hasattr(self, 'reward_type_usage'):
+                stats['reward_type_usage'] = self.reward_type_usage
             
             stats_file = stats_dir / f"stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
             with open(stats_file, 'w') as f:
@@ -220,16 +291,30 @@ class RewardStats:
         summary = [
             f"Training time: {elapsed}",
             f"Processed {self.total_batches} batches ({total_samples} examples)",
-            f"Average reward: {avg_reward:.6f}"
+            f"Average reward: {avg_reward:.6f}",
+            f"Reward range: [{self.min_reward:.4f}, {self.max_reward:.4f}]"
         ]
         
         # Add reward distribution
         if self.reward_distribution:
             summary.append("\nReward Distribution:")
-            # Sort by reward value
+            # Sort by bin value
             sorted_rewards = sorted(self.reward_distribution.items(), key=lambda x: float(x[0]))
-            for reward, count in sorted_rewards:
-                summary.append(f"  {reward}: {count} examples")
+            
+            # Calculate the maximum count for scaling the histogram
+            max_count = max(self.reward_distribution.values()) if self.reward_distribution else 0
+            
+            for bin_label, count in sorted_rewards:
+                # Create a simple ASCII histogram
+                bar_length = 40  # Maximum bar length
+                if max_count > 0:
+                    scaled_count = int((count / max_count) * bar_length)
+                    bar = '█' * scaled_count
+                else:
+                    bar = ''
+                
+                # Format as "bin_range: count |histogram_bar|"
+                summary.append(f"  {bin_label}: {count:4d} |{bar}")
         
         # If no relevant stats specified, use default categories
         if not relevant_stats:
