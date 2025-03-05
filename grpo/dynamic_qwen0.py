@@ -213,6 +213,10 @@ class LoggingCallback(TrainerCallback):
             # Add similarity stats
             for key, value in self.reward_func.stats.similarity_stats.items():
                 wandb_stats[f'similarity_stats/{key}'] = value
+                
+            # Add programming stats
+            for key, value in self.reward_func.stats.programming_stats.items():
+                wandb_stats[f'programming_stats/{key}'] = value
             
             # Update logs with our metrics
             logs.update(wandb_stats)

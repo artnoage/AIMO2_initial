@@ -200,9 +200,9 @@ class DynamicReward(BaseReward):
         
         # Update stats with example types
         if hasattr(self, 'stats'):
-            self.stats.update([], example_type=example_types, reward_type=reward_type)
+            self.stats.update([], example_type=example_types)
             
-            # Also update the reward type usage
+            # Update the reward type usage
             if reward_type == 'solution':
                 self.stats.reward_components['solution_reward_uses'] += 1
             elif reward_type == 'completion':
@@ -298,7 +298,7 @@ class DynamicReward(BaseReward):
                 self.logger.info(f"Rewards after clipping: {rewards}")
         
         # Update stats and print batch summary
-        self.stats.update(rewards, reward_type=reward_type, completions=completions, example_type=example_types)
+        self.stats.update(rewards, completions=completions, example_type=example_types)
         
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")

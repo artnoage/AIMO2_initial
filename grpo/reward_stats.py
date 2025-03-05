@@ -87,10 +87,19 @@ class RewardStats:
         self.total_batches += 1
         self.total_examples += len(rewards)
         
-        for r in rewards:
-            self.total_rewards += r
-            r_rounded = round(r, 6)
-            self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+        # Only process rewards if they're provided (non-empty list)
+        if rewards:
+            for r in rewards:
+                self.total_rewards += r
+                r_rounded = round(r, 6)
+                self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+                
+            # Update the total_rewards in reward_components as well
+            self.reward_components['total_rewards'] += sum(rewards)
+            
+            # Update average reward
+            if self.total_examples > 0:
+                self.reward_components['average_reward'] = self.total_rewards / self.total_examples
         
         # Update reward type usage stats
         reward_type = kwargs.get('reward_type')
