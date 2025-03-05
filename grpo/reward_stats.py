@@ -99,6 +99,8 @@ class RewardStats:
                 self.reward_components['solution_reward_uses'] += 1
             elif reward_type == 'completion':
                 self.reward_components['completion_reward_uses'] += 1
+            elif reward_type == 'programming':
+                self.reward_components['programming_reward_uses'] += 1
         
         # Initialize example type tracking if not already present
         if not hasattr(self, 'example_types'):

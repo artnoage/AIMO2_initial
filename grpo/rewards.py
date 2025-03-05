@@ -566,6 +566,10 @@ class ProgrammingReward(BaseReward):
             else:
                 self.logger.info(f"Code quality check failed: {quality_message}")
                 self.stats.programming_stats['syntax_errors'] += 1
+                # Update total rewards and average before returning
+                self.stats.reward_components['total_rewards'] += reward
+                total_samples = self.stats.total_batches
+                self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
                 return reward  # Return early if syntax is invalid
             
             # 3. Run the code and check if it produces a valid output (execution reward)
@@ -582,6 +586,10 @@ class ProgrammingReward(BaseReward):
                     self.stats.programming_stats['timeout_errors'] += 1
                 else:
                     self.stats.programming_stats['execution_errors'] += 1
+                # Update total rewards and average before returning
+                self.stats.reward_components['total_rewards'] += reward
+                total_samples = self.stats.total_batches
+                self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
                 return reward  # Return early if execution fails
             
             # 4. Check if the result matches the correct answer (correctness reward)
@@ -827,11 +835,11 @@ class CompletionReward(BaseReward):
                 
                 # Update similarity stats
                 if avg_similarity < self.config.group_similarity_threshold:
-                    self.stats.similarity_stats['unique_completions'] = self.stats.similarity_stats.get('unique_completions', 0) + 1
+                    self.stats.similarity_stats['unique_completions'] += 1
                 else:
-                    self.stats.similarity_stats['similar_completions'] = self.stats.similarity_stats.get('similar_completions', 0) + 1
+                    self.stats.similarity_stats['similar_completions'] += 1
                 
-                self.stats.similarity_stats['total_similarity'] = self.stats.similarity_stats.get('total_similarity', 0.0) + avg_similarity
+                self.stats.similarity_stats['total_similarity'] += avg_similarity
             
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
