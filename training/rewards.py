@@ -2,14 +2,12 @@ import re
 import asyncio
 import torch
 import logging
-import random
 from datetime import datetime
 from pathlib import Path
 import os, sys
 from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from grpo_training.wait_logger import WaitLogger
 from utils.model_utils import *
 from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
@@ -202,7 +200,6 @@ class SolutionReward(BaseReward):
         super().__init__(config)
         self.similarity_checker = similarity_checker
         # Initialize the wait logger for tracking "wait a second" moments
-        self.wait_logger = WaitLogger()
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -243,19 +240,6 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
                 
-                # Check if this is a "wait a second" moment and log it
-                if "...no wait a second." in prompt and is_correct:
-                    self.logger.info("Detected successful 'wait a second' moment - logging to wait.json")
-                    try:
-                        # Log the wait moment using the class instance with simplified parameters
-                        self.wait_logger.log_wait_moment(
-                            problem=problem,
-                            completion=completion,
-                            correct_answer=str(correct_answer),
-                            prompt=prompt
-                        )
-                    except Exception as e:
-                        self.logger.error(f"Failed to log wait moment: {str(e)}")
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
                 
