@@ -36,6 +36,11 @@ class DynamicReward(BaseReward):
         self.completion_reward = CompletionReward(config, similarity_checker)
         self.programming_reward = ProgrammingReward(config)
         
+        # Share the same stats object across all reward functions
+        self.solution_reward.stats = self.stats
+        self.completion_reward.stats = self.stats
+        self.programming_reward.stats = self.stats
+        
         # Collect relevant stats from all possible rewards
         self.relevant_stats = {}
         for reward in [self.solution_reward, self.completion_reward, self.programming_reward]:
