@@ -1,4 +1,5 @@
 import os
+import re
 import asyncio
 import logging
 from typing import Optional, Dict, List, Tuple, Any
@@ -95,7 +96,19 @@ class StepAnalyzer:
                     self._log(f"⚠️ Completion {i+1} missing <step> tags, skipping")
                     continue
                 
-                complete_solution = partial_solution + completion
+                # Extract content from response tags if present
+                response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
+                response_match = response_pattern.search(completion)
+                
+                if response_match:
+                    # Use only the content inside response tags
+                    completion_content = response_match.group(1).strip()
+                    self._log(f"Extracted content from <response> tags in completion")
+                else:
+                    # Use the completion as is if no response tags
+                    completion_content = completion
+                    
+                complete_solution = partial_solution + completion_content
                 
                 # Verify answer correctness
                 is_correct, _ = await self.verifier.verify(
