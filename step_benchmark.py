@@ -1,5 +1,4 @@
 import os
-import re
 import asyncio
 import logging
 from typing import Optional, Dict, List, Tuple, Any
