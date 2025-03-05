@@ -20,7 +20,8 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from rewards import DynamicReward, SolutionSimilarityChecker
+from dynamic_reward import DynamicReward
+from utils.similarity_checker import SolutionSimilarityChecker
 
 # System prompt for full solution tasks
 SOLVER_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
