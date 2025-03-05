@@ -217,25 +217,6 @@ class SolutionReward(BaseReward):
 
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
             
-            # Special handling for wait examples
-            if example_type == 'wait':
-                self.logger.info(f"Processing wait example")
-                # Check if the completion contains "wait a second" or similar phrases
-                wait_phrases = ["wait a second", "hold on", "actually", "let me reconsider", "I made a mistake"]
-                has_wait_phrase = any(phrase in completion.lower() for phrase in wait_phrases)
-                
-                # Check if the completion has a thinking section with a correction
-                thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
-                has_thinking_correction = thinking_match and any(phrase in thinking_match.group(1).lower() for phrase in wait_phrases)
-                
-                if has_wait_phrase or has_thinking_correction:
-                    # Reward for recognizing the need to reconsider
-                    self.logger.info(f"Wait example detected with correction phrase, applying base reward")
-                    reward = self.config.base_reward
-                    self.stats.reward_components['base_rewards'] += 1
-                    return reward
-                else:
-                    self.logger.info(f"Wait example without correction phrases, continuing with normal processing")
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)

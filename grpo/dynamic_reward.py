@@ -147,6 +147,29 @@ class DynamicReward(BaseReward):
             # Get the example type for this specific completion
             example_type = kwargs.get('example_type', '')
             
+            # Special handling for wait examples
+            if example_type == 'wait':
+                self.logger.info(f"Processing wait example")
+                # Check if the completion contains "wait a second" or similar phrases
+                wait_phrases = ["wait a second", "hold on", "actually", "let me reconsider", "I made a mistake"]
+                has_wait_phrase = any(phrase in completion.lower() for phrase in wait_phrases)
+                
+                # Check if the completion has a thinking section with a correction
+                thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
+                has_thinking_correction = thinking_match and any(phrase in thinking_match.group(1).lower() for phrase in wait_phrases)
+                
+                if has_wait_phrase or has_thinking_correction:
+                    # Reward for recognizing the need to reconsider
+                    self.logger.info(f"Wait example detected with correction phrase, applying base reward")
+                    reward = self.config.base_reward
+                    self.stats.reward_components['base_rewards'] += 1
+                    self.stats.reward_components['wait_examples_rewarded'] = self.stats.reward_components.get('wait_examples_rewarded', 0) + 1
+                    return reward
+                else:
+                    self.logger.info(f"Wait example without correction phrases, continuing with normal processing")
+                    # Track that we processed a wait example even if not rewarded
+                    self.stats.reward_components['wait_examples_processed'] = self.stats.reward_components.get('wait_examples_processed', 0) + 1
+            
             # Select the appropriate reward function
             if reward_type == 'completion':
                 reward_func = self.completion_reward
