@@ -1,6 +1,7 @@
 import os
 import wandb
 import logging
+import re
 from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
@@ -201,7 +202,7 @@ def main():
         # Load the base dataset
         data = load_dataset(dataset_name, split=split)
         
-        # Create full solution examples (50% of data)
+        # Create full solution examples (2/3 of data)
         full_solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer'],
@@ -209,42 +210,109 @@ def main():
             'example_type': 'solution'  # Add type for tracking
         })
         
-        # Create completion examples (50% of data)
+        # Create completion examples (1/3 of data)
         def create_partial_solution(example):
-            # Create a basic partial solution with 1-2 steps
-            import random
-            num_steps = random.randint(1, 2)
-            
-            partial = "<step>Step 1: Let's analyze the problem.\n"
-            partial += "We need to solve " + example['problem'][:50] + "...</step>\n\n"
-            
-            if num_steps > 1:
-                partial += "<step>Step 2: Let's set up the equations.\n"
-                partial += "Based on the problem, we can write...</step>\n\n"
-            
-            # Calculate the next step number for the completion
-            next_step = num_steps + 1
-            
-            # Format the completion prompt with the partial solution
-            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
-                partial_solution=partial,
-                next_step=next_step
-            ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
-            
-            return {
-                'prompt': formatted_prompt,
-                'answer': example['answer'],
-                'partial_solution': partial,
-                'example_type': 'completion'  # Add type for tracking
-            }
+            try:
+                # If the example has a model_solution, extract steps from it
+                if 'model_solution' in example and example['model_solution']:
+                    # Extract response section
+                    response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
+                    if response_match:
+                        response = response_match.group(1).strip()
+                        
+                        # Extract steps
+                        step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
+                        steps = step_pattern.findall(response)
+                        
+                        if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
+                            # Randomly decide how many steps to include (at least 1, leave at least 1)
+                            import random
+                            random.seed(hash(example.get('id', 0)) % 10000)  # Deterministic but varied
+                            split_point = random.randint(1, len(steps) - 1)
+                            
+                            # Create partial solution with the first 'split_point' steps
+                            partial_steps = steps[:split_point]
+                            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+                            
+                            # Calculate the next step number
+                            # Look for step numbers like "Step 1:", "Step 2:" etc.
+                            last_step_match = re.search(r'Step\s+(\d+):', partial_steps[-1])
+                            if last_step_match:
+                                next_step = int(last_step_match.group(1)) + 1
+                            else:
+                                next_step = split_point + 1
+                            
+                            # Format the completion prompt with the partial solution
+                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                                partial_solution=partial_solution,
+                                next_step=next_step
+                            ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                            
+                            return {
+                                'prompt': formatted_prompt,
+                                'answer': example['answer'],
+                                'partial_solution': partial_solution,
+                                'example_type': 'completion'
+                            }
+                
+                # Fallback: Create a synthetic partial solution if no model_solution or extraction failed
+                import random
+                num_steps = random.randint(1, 2)
+                
+                partial = "<step>Step 1: Let's analyze the problem.\n"
+                partial += "We need to solve " + example['problem'][:50] + "...</step>\n\n"
+                
+                if num_steps > 1:
+                    partial += "<step>Step 2: Let's set up the equations.\n"
+                    partial += "Based on the problem, we can write...</step>\n\n"
+                
+                # Calculate the next step number for the completion
+                next_step = num_steps + 1
+                
+                # Format the completion prompt with the partial solution
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                    partial_solution=partial,
+                    next_step=next_step
+                ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                
+                return {
+                    'prompt': formatted_prompt,
+                    'answer': example['answer'],
+                    'partial_solution': partial,
+                    'example_type': 'completion'
+                }
+                
+            except Exception as e:
+                logger.warning(f"Error creating partial solution: {str(e)}")
+                # Return a default partial solution on error
+                partial = "<step>Step 1: Let's analyze the problem.\n"
+                partial += "We need to solve this problem carefully...</step>\n\n"
+                
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                    partial_solution=partial,
+                    next_step=2
+                ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                
+                return {
+                    'prompt': formatted_prompt,
+                    'answer': example['answer'],
+                    'partial_solution': partial,
+                    'example_type': 'completion'
+                }
         
         completion_data = data.map(create_partial_solution)
         
-        # Combine datasets (50% full solution, 50% completion)
-        # Make sure we have equal numbers of each type
-        dataset_size = min(len(full_solution_data), len(completion_data))
-        full_solution_data = full_solution_data.select(range(dataset_size))
-        completion_data = completion_data.select(range(dataset_size))
+        # Combine datasets (2/3 full solution, 1/3 completion)
+        # First, determine how many examples of each type to include
+        total_examples = len(data)
+        completion_count = total_examples // 3  # 1/3 of the data
+        solution_count = total_examples - completion_count  # 2/3 of the data
+        
+        # Select the appropriate number of examples
+        full_solution_data = full_solution_data.select(range(min(solution_count, len(full_solution_data))))
+        completion_data = completion_data.select(range(min(completion_count, len(completion_data))))
+        
+        logger.info(f"Created {len(full_solution_data)} full solution examples and {len(completion_data)} completion examples")
         
         combined_data = concatenate_datasets([full_solution_data, completion_data])
         return combined_data
@@ -256,14 +324,36 @@ def main():
     formatted_dataset = formatted_dataset.select(range(2000))
    
     # Verify first few entries
-    for i in range(min(3, len(formatted_dataset))):
+    solution_count = 0
+    completion_count = 0
+    
+    for i in range(min(5, len(formatted_dataset))):
         entry = formatted_dataset[i]
+        example_type = entry.get('example_type', 'unknown')
+        
+        if example_type == 'solution':
+            solution_count += 1
+        elif example_type == 'completion':
+            completion_count += 1
+            
         print(f"\nEntry {i} verification:")
-        print(f"Type: {entry.get('example_type')}")
+        print(f"Type: {example_type}")
         print(f"Answer: {entry.get('answer')}")
+        
         if entry.get('partial_solution'):
-            print(f"Partial solution: {entry.get('partial_solution')[:100]}...")
-        print(f"Prompt contains 'continue': {'continue' in entry.get('prompt', '').lower()}")
+            partial = entry.get('partial_solution')
+            print(f"Partial solution: {partial[:100]}..." + ("" if len(partial) <= 100 else f" ({len(partial)} chars)"))
+            # Count steps in partial solution
+            step_count = len(re.findall(r'<step>', partial))
+            print(f"Steps in partial solution: {step_count}")
+            
+        # Check for completion indicators in prompt
+        prompt = entry.get('prompt', '')
+        has_continue = 'continue' in prompt.lower()
+        has_next_step = 'next step' in prompt.lower()
+        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
+    
+    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
