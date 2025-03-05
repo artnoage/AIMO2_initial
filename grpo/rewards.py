@@ -778,23 +778,11 @@ class DynamicReward(BaseReward):
         else:
             self.logger.warning("No example_type found in kwargs")
         
-        # Get example_types from kwargs
-        example_types = kwargs.get('example_type', [])
-        
-        # Count the different example types in the batch
-        type_counts = {}
-        if isinstance(example_types, list):
-            for et in example_types:
-                if isinstance(et, list) and len(et) > 0:
-                    et = et[0]  # Handle nested lists
-                type_counts[et] = type_counts.get(et, 0) + 1
-        elif isinstance(example_types, str):
-            type_counts[example_types] = 1
-            
-        self.logger.info(f"Example types in batch: {type_counts}")
+        # Extract and normalize example_types
+        example_types = self._extract_example_types(kwargs)
         
         # Select which reward type to use for the entire batch
-        reward_type = self._select_reward_type(kwargs)
+        reward_type = self._select_reward_type(example_types)
         self.logger.info(f"Using {reward_type} reward for entire batch of {len(completions)} examples")
         
         # Group completions by prompt for group context
