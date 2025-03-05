@@ -34,7 +34,7 @@ SOLVER_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully an
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
-# System prompt for completion tasks (with partial solution)
+# System prompt for completion tasks
 COMPLETION_SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.
@@ -56,20 +56,18 @@ IMPORTANT: Each step must be properly enclosed in <step> and </step> tags.
 
 For example, if the partial solution ends with Step 2, you should start with:
 
-{partial_solution}
-
-<step>Step {next_step}: [Description of the step]
+<step>Step 3: [Description of the step]
 [Mathematical work for this step]
 </step>
 
 Continue with additional steps as needed:
 
-<step>Step {next_step+1}: [Description of the step]
+<step>Step 4: [Description of the step]
 [Mathematical work for this step]
 </step>
 
 In your final step, include your answer in a LaTeX boxed environment:
-\\boxed{{your final answer}}
+\\boxed{your final answer}
 
 Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
 </response>
@@ -266,11 +264,9 @@ def main():
                             else:
                                 next_step = split_point + 1
                             
-                            # Format the completion prompt with the partial solution
-                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
-                                partial_solution=partial_solution,
-                                next_step=next_step
-                            ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                            # Format the completion prompt with the partial solution in the user section
+                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
                             
                             return {
                                 'prompt': formatted_prompt,
@@ -293,11 +289,9 @@ def main():
                 # Calculate the next step number for the completion
                 next_step = num_steps + 1
                 
-                # Format the completion prompt with the partial solution
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
-                    partial_solution=partial,
-                    next_step=next_step
-                ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                # Format the completion prompt with the partial solution in the user section
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                    f"Problem: {example['problem']}\n\nPartial Solution: {partial}<|im_end|>\\n<|im_start|>assistant\\n"
                 
                 return {
                     'prompt': formatted_prompt,
@@ -312,10 +306,8 @@ def main():
                 partial = "<step>Step 1: Let's analyze the problem.\n"
                 partial += "We need to solve this problem carefully...</step>\n\n"
                 
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
-                    partial_solution=partial,
-                    next_step=2
-                ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                    f"Problem: {example['problem']}\n\nPartial Solution: {partial}<|im_end|>\\n<|im_start|>assistant\\n"
                 
                 return {
                     'prompt': formatted_prompt,
