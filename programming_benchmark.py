@@ -173,10 +173,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         for attempt in range(config.best_of):
             try:
-                prompt, current_solution = await programming_agent.generate(example["problem"], return_prompt=True)
+                prompt, full_solution = await programming_agent.generate(example["problem"], return_prompt=True)
                 
-                # Extract code from the response
-                code = extract_code_from_response(current_solution)
+                # Store the full solution but extract code for execution
+                code = extract_code_from_response(full_solution)
                 
                 # Check code quality first to save time
                 code_quality_passed, quality_message = check_code_quality(code)
@@ -184,7 +184,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if not code_quality_passed:
                     logger.append(f"❌ Code quality check failed for attempt {attempt+1}: {quality_message}")
                     solutions.append({
-                        'solution': current_solution,
+                        'solution': full_solution,
                         'code': code,
                         'answer': None,
                         'is_correct': False,
@@ -198,7 +198,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if not execution_success:
                     logger.append(f"❌ Code execution failed for attempt {attempt+1}: {error_message}")
                     solutions.append({
-                        'solution': current_solution,
+                        'solution': full_solution,
                         'code': code,
                         'answer': None,
                         'is_correct': False,
@@ -216,7 +216,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     is_correct = str(correct_answer).strip() == str(result).strip()
                 
                 solutions.append({
-                    'solution': current_solution,
+                    'solution': full_solution,
                     'code': code,
                     'answer': result,
                     'is_correct': is_correct,
@@ -227,7 +227,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if is_correct:
                     correct_count += 1
                     if best_solution is None:
-                        best_solution = current_solution
+                        best_solution = full_solution
                 
             except Exception as e:
                 logger.append(f"❌ Error in attempt {str(attempt + 1)} for example {str(running_id)}:")
