@@ -10,7 +10,7 @@ PatchFastRL("GRPO", FastLanguageModel)
 import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
-
+import random
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
@@ -248,7 +248,6 @@ def main():
                         
                         if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
                             # Randomly decide how many steps to include (at least 1, leave at least 1)
-                            import random
                             random.seed(hash(example.get('id', 0)) % 10000)  # Deterministic but varied
                             split_point = random.randint(1, len(steps) - 1)
                             
