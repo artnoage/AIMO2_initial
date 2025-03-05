@@ -425,6 +425,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Check if response contains steps with proper tags and has enough steps
                 steps = split_into_steps(response)
+                step_count = len(steps) if steps else 0
+                
+                # Make step count very visible with a special format
+                logger.append(f"\n   🔢 STEP COUNT: {step_count} {'✅' if step_count >= 2 else '❌'}")
+                logger.append(f"   {'=' * 30}")
                 
                 if not steps or '<step>' not in response:
                     logger.append(f"   ❌ No <step> tags found in response section - marking as unsalvageable")
@@ -438,8 +443,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                if len(steps) < 2:
-                    logger.append(f"   ❌ Not enough steps in response (found {len(steps)}) - marking as unsalvageable")
+                if step_count < 2:
+                    logger.append(f"   ❌ Not enough steps in response (found {step_count}) - marking as unsalvageable")
                     analyzed_solutions.append({
                         'solution': solution,
                         'wrong_step_index': None,
@@ -497,7 +502,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                logger.append(f"   Found {len(steps)} steps in response")
+                logger.append(f"   📊 Found {len(steps)} steps in response")
+                # Print step numbers for visibility
+                step_numbers_str = ", ".join([f"Step {i+1}" for i in range(len(steps))])
+                logger.append(f"   📋 Steps: {step_numbers_str}")
                 
                 # Find the wrong step
                 wrong_step_index, last_good_step, saved_good_completion, saved_completion_prompt = await analyzer.find_wrong_step(
@@ -541,6 +549,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     
                     # Get steps from wrong solution
                     wrong_steps = split_into_steps(analysis_solution)
+                    step_count = len(wrong_steps)
+                    
+                    # Make step count very visible in the log
+                    logger.append(f"\n   🔢 TOTAL STEPS IN SOLUTION: {step_count}")
+                    logger.append(f"   🔍 WRONG STEP: {wrong_step_index+1} of {step_count}")
+                    logger.append(f"   📊 PROGRESS: {'▓' * wrong_step_index}{'░' * (step_count - wrong_step_index)}")
+                    
                     partial_solutions = get_partial_solutions(wrong_steps)
                     
                     # Create training examples
