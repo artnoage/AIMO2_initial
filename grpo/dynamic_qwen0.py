@@ -39,6 +39,46 @@ SOLVER_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully an
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
+# System prompt for programming tasks
+PROGRAMMING_SYSTEM_PROMPT = """You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+
+<thinking>
+First, analyze the problem carefully and determine the mathematical concepts involved.
+Break down the problem into steps that can be implemented in code.
+Consider edge cases and potential numerical issues.
+Plan your approach before writing any code.
+</thinking>
+
+<response>
+Write a complete, self-contained Python program that solves the problem.
+Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed)
+2. Include clear comments explaining your approach
+3. Print the final answer as a single float value (or integer if appropriate)
+4. Handle potential errors gracefully
+5. Be efficient and not use excessive resources
+
+DO NOT include explanations outside of code comments. Your response should ONLY contain valid Python code.
+
+Example format:
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [explanation comment]
+...
+
+# Step 2: Solve using appropriate method
+# [explanation comment]
+...
+
+# Calculate and print the final answer
+result = ...
+print(result)  # Just the number, no text
+```
+</response>"""
+    
 # System prompt for completion tasks
 COMPLETION_SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
@@ -265,11 +305,11 @@ def main():
     )
     
     def get_questions(split="train") -> Dataset:
-        """Load and format dataset with full solution, completion, and wait examples"""
+        """Load and format dataset with full solution, completion, programming, and wait examples"""
         # Load the base dataset
         data = load_dataset(dataset_name, split=split)
         
-        # Create full solution examples (50% of data)
+        # Create full solution examples (40% of data)
         full_solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
@@ -277,18 +317,58 @@ def main():
             'example_type': 'solution'  # Add type for tracking
         })
         
-        # Create completion examples (30% of data)
-        def create_partial_solution(example):
+        # Create programming examples (10% of data)
+        def create_programming_example(example):
             try:
-                # Force some examples to be completion type for testing
                 # Use a deterministic approach based on example ID
                 example_id = example.get('id', hash(example.get('problem', '')))
                 if isinstance(example_id, str):
                     example_id = hash(example_id)
                 
-                # Force 30% of examples to be completion type
-                if example_id % 100 < 30:
-                    logger.info(f"Forcing example {example_id} to be completion type")
+                # Force 10% of examples to be programming type
+                if example_id % 100 < 10:
+                    logger.info(f"Creating programming example for {example_id}")
+                    
+                    return {
+                        'prompt': '<|im_start|>system\\n' + PROGRAMMING_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'answer': example.get('answer', example.get('correct_answer', '')),
+                        'partial_solution': '',
+                        'example_type': 'programming'
+                    }
+                
+                # If not selected for programming, return as a regular solution example
+                return {
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'answer': example.get('answer', example.get('correct_answer', '')),
+                    'partial_solution': '',
+                    'example_type': 'solution'
+                }
+                
+            except Exception as e:
+                logger.warning(f"Error creating programming example: {str(e)}")
+                # Return as a regular solution example on error
+                return {
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'answer': example.get('answer', example.get('correct_answer', '')),
+                    'partial_solution': '',
+                    'example_type': 'solution'
+                }
+        
+        # Create programming examples
+        programming_data = data.map(create_programming_example)
+        # Filter to only keep actual programming examples
+        programming_data = programming_data.filter(lambda x: x['example_type'] == 'programming')
+        
+        # Create completion examples (30% of data)
+        def create_partial_solution(example):
+            try:
+                # Process all examples as potential completion candidates
+                # We'll filter later to get the desired percentage
+                
+                # Use a deterministic approach based on example ID for reproducibility
+                example_id = example.get('id', hash(example.get('problem', '')))
+                if isinstance(example_id, str):
+                    example_id = hash(example_id)
                     
                     # If the example has a model_solution, extract steps from it
                     if 'model_solution' in example and example['model_solution']:
@@ -420,23 +500,39 @@ def main():
         # Filter out any wait examples that didn't actually get the wait modification
         wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
         
-        # Calculate the number of examples for each type
+        # Process all examples for each type first
+        completion_data = data.map(create_partial_solution)
+        wait_data = data.map(create_wait_example)
+        
+        # Filter to only keep actual completion and wait examples
+        completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
+        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait')
+        
+        # Calculate the target number of examples for each type
         total_examples = len(data)
-        wait_count = int(total_examples * 0.2)  # 20% wait examples
-        completion_count = int(total_examples * 0.3)  # 30% completion examples
-        solution_count = total_examples - wait_count - completion_count  # 50% solution examples
+        wait_target = int(total_examples * 0.2)  # 20% wait examples
+        completion_target = int(total_examples * 0.3)  # 30% completion examples
+        programming_target = int(total_examples * 0.1)  # 10% programming examples
+        solution_target = total_examples - wait_target - completion_target - programming_target  # 40% solution examples
+        
+        # Shuffle datasets for random selection
+        full_solution_data = full_solution_data.shuffle(seed=42)
+        completion_data = completion_data.shuffle(seed=42)
+        wait_data = wait_data.shuffle(seed=42)
+        programming_data = programming_data.shuffle(seed=42)
         
         # Select the appropriate number of examples for each type
-        full_solution_data = full_solution_data.select(range(min(solution_count, len(full_solution_data))))
-        completion_data = completion_data.select(range(min(completion_count, len(completion_data))))
-        wait_data = wait_data.select(range(min(wait_count, len(wait_data))))
-        
-       
+        # If we don't have enough of a particular type, take what we have
+        full_solution_data = full_solution_data.select(range(min(solution_target, len(full_solution_data))))
+        completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
+        wait_data = wait_data.select(range(min(wait_target, len(wait_data))))
+        programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
         
         # Log the counts
-        logger.info(f"Created {len(full_solution_data)} full solution examples")
-        logger.info(f"Created {len(completion_data)} completion examples")
-        logger.info(f"Created {len(wait_data)} wait examples")
+        logger.info(f"Created {len(full_solution_data)} full solution examples (target: {solution_target})")
+        logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
+        logger.info(f"Created {len(wait_data)} wait examples (target: {wait_target})")
+        logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
         
         # Count the actual types in each dataset before combining
         def count_types(dataset):
@@ -456,7 +552,7 @@ def main():
         logger.info(f"Wait dataset: {wait_types}")
         
         # Combine all datasets
-        combined_data = concatenate_datasets([full_solution_data, completion_data, wait_data])
+        combined_data = concatenate_datasets([full_solution_data, completion_data, wait_data, programming_data])
         
         # Count types in the combined dataset
         combined_types = count_types(combined_data)
@@ -479,6 +575,7 @@ def main():
     solution_count = 0
     completion_count = 0
     wait_count = 0
+    programming_count = 0
     
     for i in range(min(12, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -490,6 +587,8 @@ def main():
             completion_count += 1
         elif example_type == 'wait':
             wait_count += 1
+        elif example_type == 'programming':
+            programming_count += 1
             
         print(f"\nEntry {i} verification:")
         print(f"Type: {example_type}")
@@ -517,7 +616,7 @@ def main():
         has_wait = 'wait a second' in prompt.lower()
         print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}, wait={has_wait}")
     
-    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {wait_count} wait examples")
+    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {wait_count} wait examples, {programming_count} programming examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
