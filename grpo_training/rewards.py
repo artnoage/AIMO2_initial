@@ -266,13 +266,22 @@ class SolutionReward(BaseReward):
                     closing_tags = len(re.findall(r'</step>', response_parts[0], re.IGNORECASE))
                     steps_properly_closed = opening_tags == closing_tags
                     
+                    # Extract properly formatted steps (each in its own tag)
+                    proper_steps = re.findall(r'<step>.*?Step\s+\d+:.*?</step>', response_parts[0], re.DOTALL)
+                    proper_step_count = len(proper_steps)
+                    
+                    # Check if each step is in its own tag
+                    steps_properly_tagged = proper_step_count == step_count
+                    
                     # Check if steps are in order and each appears exactly once
                     if all(count == 1 for count in step_counts.values()) and all(
                         response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
                         for i in range(1, step_count)
-                    ) and steps_properly_closed:
+                    ) and steps_properly_closed and steps_properly_tagged:
                         validation_reward += self.config.solution_ordered_steps_reward
                         self.logger.info(f"Steps are in correct order, unique, and properly closed (+{self.config.solution_ordered_steps_reward})")
+                    elif not steps_properly_tagged:
+                        self.logger.info(f"Steps are not properly tagged: found {proper_step_count} properly tagged steps out of {step_count} total steps")
                     else:
                         # Log which steps are duplicated
                         duplicates = [i for i, count in step_counts.items() if count > 1]
@@ -400,13 +409,22 @@ class GroupReward(BaseReward):
                     closing_tags = len(re.findall(r'</step>', response_parts[0], re.IGNORECASE))
                     steps_properly_closed = opening_tags == closing_tags
                     
+                    # Extract properly formatted steps (each in its own tag)
+                    proper_steps = re.findall(r'<step>.*?Step\s+\d+:.*?</step>', response_parts[0], re.DOTALL)
+                    proper_step_count = len(proper_steps)
+                    
+                    # Check if each step is in its own tag
+                    steps_properly_tagged = proper_step_count == step_count
+                    
                     # Check if steps are in order and each appears exactly once
                     if all(count == 1 for count in step_counts.values()) and all(
                         response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
                         for i in range(1, step_count)
-                    ) and steps_properly_closed:
+                    ) and steps_properly_closed and steps_properly_tagged:
                         validation_reward += self.config.solution_ordered_steps_reward
                         self.logger.info(f"Steps are in correct order, unique, and properly closed (+{self.config.solution_ordered_steps_reward})")
+                    elif not steps_properly_tagged:
+                        self.logger.info(f"Steps are not properly tagged: found {proper_step_count} properly tagged steps out of {step_count} total steps")
                     else:
                         # Log which steps are duplicated
                         duplicates = [i for i, count in step_counts.items() if count > 1]
@@ -621,9 +639,21 @@ class CompletionReward(BaseReward):
             # Check if completion has properly closed step tags
             opening_tags_completion = len(re.findall(r'<step>', completion, re.IGNORECASE))
             closing_tags_completion = len(re.findall(r'</step>', completion, re.IGNORECASE))
+            
+            # Extract properly formatted steps (each in its own tag)
+            proper_steps = re.findall(r'<step>.*?Step\s+\d+:.*?</step>', completion, re.DOTALL)
+            proper_step_count = len(proper_steps)
+            
+            # Check if each step is in its own tag
+            steps_properly_tagged = proper_step_count == len(completion_steps)
+            
             if opening_tags_completion != closing_tags_completion:
                 self.logger.info(f"Completion has mismatched step tags: {opening_tags_completion} opening, {closing_tags_completion} closing")
                 # We don't fail here as the model might be learning to close tags properly
+            
+            if not steps_properly_tagged:
+                self.logger.info(f"Steps are not properly tagged: found {proper_step_count} properly tagged steps out of {len(completion_steps)} total steps")
+                # We don't fail here but this will affect the step continuity reward
             
             # Check if completion continues step numbering correctly
             step_continuity_correct = True
