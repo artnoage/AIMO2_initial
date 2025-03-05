@@ -79,6 +79,16 @@ class DynamicReward(BaseReward):
         elif isinstance(raw_types, str):
             # Handle string case
             example_types.append(raw_types)
+        
+        # Check prompts for wait examples
+        prompts = batch_kwargs.get('prompts', [])
+        if prompts and len(prompts) == len(example_types):
+            for i, prompt in enumerate(prompts):
+                # If the prompt contains wait indicators but the example_type isn't 'wait',
+                # update the example_type to 'wait'
+                if isinstance(prompt, str) and 'wait a second' in prompt.lower() and example_types[i] != 'wait':
+                    self.logger.info(f"Detected 'wait' example from prompt content (was '{example_types[i]}')")
+                    example_types[i] = 'wait'
             
         # Count the different types
         type_counts = {}
@@ -148,10 +158,17 @@ class DynamicReward(BaseReward):
             example_type = kwargs.get('example_type', '')
             
             # Special handling for wait examples
-            if example_type == 'wait':
-                self.logger.info(f"Processing wait example")
+            # Check if it's explicitly marked as wait or if the prompt contains wait phrases
+            prompt = kwargs.get('prompt', '')
+            wait_phrases = ["wait a second", "hold on", "actually", "let me reconsider", "I made a mistake"]
+            
+            is_wait_example = example_type == 'wait' or (
+                isinstance(prompt, str) and any(phrase in prompt.lower() for phrase in wait_phrases)
+            )
+            
+            if is_wait_example:
+                self.logger.info(f"Processing wait example (type={example_type}, detected_from_prompt={is_wait_example and example_type != 'wait'})")
                 # Check if the completion contains "wait a second" or similar phrases
-                wait_phrases = ["wait a second", "hold on", "actually", "let me reconsider", "I made a mistake"]
                 has_wait_phrase = any(phrase in completion.lower() for phrase in wait_phrases)
                 
                 # Check if the completion has a thinking section with a correction
@@ -221,7 +238,7 @@ class DynamicReward(BaseReward):
         else:
             self.logger.warning("No example_type found in kwargs")
         
-        # Extract and normalize example_types
+        # Extract and normalize example_types (this now also checks prompts for wait examples)
         example_types = self._extract_example_types(kwargs)
         
         # Select which reward type to use for the entire batch
