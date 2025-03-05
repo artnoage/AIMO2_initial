@@ -360,7 +360,6 @@ def main():
             # Create the prompt with all required fields
             prompt = '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + \
                     f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n"
-            
             return {
                 'valid': True,
                 'prompt': prompt,
