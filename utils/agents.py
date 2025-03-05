@@ -185,7 +185,7 @@ print(result)  # Just the number, no text
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=2048)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 

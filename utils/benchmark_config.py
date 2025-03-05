@@ -21,7 +21,7 @@ class ModelOption(Enum):
     LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/B"
     LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/C"
     LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion"
-    LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
+    LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250304_160952"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
