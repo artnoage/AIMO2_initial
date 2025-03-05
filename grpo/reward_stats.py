@@ -38,7 +38,8 @@ class RewardStats:
             'total_rewards': 0.0,
             'average_reward': 0.0,
             'solution_reward_uses': 0,
-            'completion_reward_uses': 0
+            'completion_reward_uses': 0,
+            'programming_reward_uses': 0
         }
         
         # Track group-specific stats
@@ -57,6 +58,15 @@ class RewardStats:
             'unique_completions': 0,
             'similar_completions': 0,
             'total_similarity': 0.0
+        }
+        
+        # Track programming stats
+        self.programming_stats = {
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0
         }
         
         # Create a logger for this instance
@@ -93,7 +103,8 @@ class RewardStats:
         if not hasattr(self, 'reward_type_usage'):
             self.reward_type_usage = {
                 'solution': 0,
-                'completion': 0
+                'completion': 0,
+                'programming': 0
             }
         
         # Track the reward type that was used
@@ -193,7 +204,8 @@ class RewardStats:
                 'reward_components': list(self.reward_components.keys()),
                 'group_stats': list(self.group_stats.keys()),
                 'step_stats': list(self.step_stats.keys()),
-                'similarity_stats': list(self.similarity_stats.keys())
+                'similarity_stats': list(self.similarity_stats.keys()),
+                'programming_stats': list(self.programming_stats.keys())
             }
             
             # Add example_types and reward_type_usage if available
@@ -217,6 +229,8 @@ class RewardStats:
                 stats_dict = self.step_stats
             elif category == 'similarity_stats':
                 stats_dict = self.similarity_stats
+            elif category == 'programming_stats':
+                stats_dict = self.programming_stats
             elif category == 'example_types' and hasattr(self, 'example_types'):
                 stats_dict = self.example_types
             elif category == 'reward_type_usage' and hasattr(self, 'reward_type_usage'):
