@@ -114,7 +114,10 @@ class StepAnalyzer:
                         # We found a valid completion, no need to try more
                         break
                     else:
-                        self._log(f"⚠️ Completion doesn't have enough steps")
+                        # Calculate how many steps we have vs. how many we need
+                        current_steps = len(completion_steps)
+                        needed_steps = step_index + 2  # We need at least step_index + 2 steps
+                        self._log(f"⚠️ Completion doesn't add enough new steps: has {current_steps} total steps, need at least {needed_steps}")
                         # Continue trying to find a completion with enough steps
                         
             except Exception as e:
@@ -258,8 +261,11 @@ class StepAnalyzer:
             # Get solver prompt for recovery
             solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
             
+            # Extract content from response tags in the completion if present
+            completion_content = extract_response_section(saved_good_completion) or saved_good_completion
+            
             # Create correct solution with completion
-            correct_with_completion = partial_solutions[wrong_step_index-1] + saved_good_completion if wrong_step_index > 0 else saved_good_completion
+            correct_with_completion = partial_solutions[wrong_step_index-1] + completion_content if wrong_step_index > 0 else completion_content
             
             # Add recovery entry (training data)
             results.append({
