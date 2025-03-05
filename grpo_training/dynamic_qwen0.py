@@ -377,6 +377,9 @@ def main():
         completion_data = data.map(create_partial_solution)
         wait_data = data.map(create_wait_example)
         
+        # Filter out any wait examples that didn't actually get the wait modification
+        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
+        
         # Calculate the number of examples for each type
         total_examples = len(data)
         wait_count = int(total_examples * 0.2)  # 20% wait examples
@@ -388,8 +391,7 @@ def main():
         completion_data = completion_data.select(range(min(completion_count, len(completion_data))))
         wait_data = wait_data.select(range(min(wait_count, len(wait_data))))
         
-        # Filter out any wait examples that didn't actually get the wait modification
-        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
+       
         
         # Log the counts
         logger.info(f"Created {len(full_solution_data)} full solution examples")
@@ -433,7 +435,6 @@ def main():
         
         if example_type == 'completion' and entry.get('partial_solution'):
             partial = entry.get('partial_solution')
-            print(f"Partial solution: {partial[:100]}..." + ("" if len(partial) <= 100 else f" ({len(partial)} chars)"))
             # Count steps in partial solution
             step_count = len(re.findall(r'<step>', partial))
             print(f"Steps in partial solution: {step_count}")
@@ -442,14 +443,7 @@ def main():
             # Extract thinking section to verify wait modification
             thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
             thinking_match = thinking_pattern.search(prompt)
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                print(f"Thinking section: {thinking_content[-50:]}") # Show the end where "wait" should be
-                if "...no wait a second." in thinking_content:
-                    print("✓ Contains '...no wait a second.' modification")
-                else:
-                    print("✗ Does NOT contain '...no wait a second.' modification")
-            
+        
         # Check for prompt indicators
         has_continue = 'continue' in prompt.lower()
         has_next_step = 'next step' in prompt.lower()

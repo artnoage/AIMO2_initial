@@ -16,7 +16,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from rewards import GroupReward, SolutionSimilarityChecker
+from rewards import SolutionReward, SolutionSimilarityChecker
 
 SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
@@ -157,7 +157,7 @@ def main():
     similarity_checker = SolutionSimilarityChecker(reward_config)
     
     # Initialize reward function with existing config and similarity checker
-    reward_func = GroupReward(reward_config, similarity_checker)
+    reward_func = SolutionReward(reward_config, similarity_checker)
     logger.info("\nInitialized GroupReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     if hasattr(reward_func, 'stats'):
