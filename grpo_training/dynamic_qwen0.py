@@ -18,7 +18,8 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import DynamicReward, SolutionSimilarityChecker
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
+# System prompt for full solution tasks
+SOLVER_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
     First, analyze the problem in depth and outline your approach.\n 
     This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
@@ -33,8 +34,8 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     Put your final answer in \\boxed{}</step>\n
     </response>\n\n"""
     
-# Prompt for completion tasks (with partial solution)
-COMPLETION_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
+# System prompt for completion tasks (with partial solution)
+COMPLETION_SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.
 
@@ -227,7 +228,7 @@ def main():
         
         # Create full solution examples (2/3 of data)
         full_solution_data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer'],
             'partial_solution': '',  # Empty partial solution indicates full solution task
             'example_type': 'solution'  # Add type for tracking
@@ -266,7 +267,7 @@ def main():
                                 next_step = split_point + 1
                             
                             # Format the completion prompt with the partial solution
-                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
                                 partial_solution=partial_solution,
                                 next_step=next_step
                             ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
@@ -293,7 +294,7 @@ def main():
                 next_step = num_steps + 1
                 
                 # Format the completion prompt with the partial solution
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
                     partial_solution=partial,
                     next_step=next_step
                 ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
@@ -311,7 +312,7 @@ def main():
                 partial = "<step>Step 1: Let's analyze the problem.\n"
                 partial += "We need to solve this problem carefully...</step>\n\n"
                 
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_PROMPT.format(
+                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT.format(
                     partial_solution=partial,
                     next_step=2
                 ) + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
