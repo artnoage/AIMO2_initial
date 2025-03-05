@@ -114,10 +114,21 @@ class LoggingCallback(TrainerCallback):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Print detailed stats to console/log file
+            self.logger.info("\n" + "="*50)
+            self.logger.info(f"Step {self.step} - Reward Stats Summary:")
+            
+            # Get and log the stats summary
+            stats_summary = self.reward_func.stats.get_summary()
+            self.logger.info(stats_summary)
+            self.logger.info("="*50 + "\n")
+            
             # Key performance metrics for wandb
             wandb_stats = {
                 'reward': logs['rewards/0'],
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
+                'total_batches': self.reward_func.stats.total_batches,
+                'total_examples': self.reward_func.stats.total_examples
             }
             
             # Add dynamic reward specific metrics
@@ -146,19 +157,21 @@ class LoggingCallback(TrainerCallback):
                 except Exception as e:
                     self.logger.warning(f"Could not track example types: {str(e)}")
             
-            # Add solution-specific metrics if available
-            if hasattr(self.reward_func.solution_reward, 'stats'):
-                solution_stats = self.reward_func.solution_reward.stats
-                if hasattr(solution_stats, 'group_stats'):
-                    wandb_stats['solution_diversity'] = solution_stats.group_stats.get('solution_diversity', 0.0)
-                    wandb_stats['correct_answers'] = solution_stats.group_stats.get('correct_answers', 0)
-            
-            # Add completion-specific metrics if available
-            if hasattr(self.reward_func.completion_reward, 'stats'):
-                completion_stats = self.reward_func.completion_reward.stats
-                if hasattr(completion_stats, 'step_stats'):
-                    wandb_stats['correct_step_numbering'] = completion_stats.step_stats.get('correct_step_numbering', 0)
-                    wandb_stats['total_steps_completed'] = completion_stats.step_stats.get('total_steps_completed', 0)
+            # Add all stats from reward_components to wandb
+            for key, value in self.reward_func.stats.reward_components.items():
+                wandb_stats[f'reward_components/{key}'] = value
+                
+            # Add group stats
+            for key, value in self.reward_func.stats.group_stats.items():
+                wandb_stats[f'group_stats/{key}'] = value
+                
+            # Add step stats
+            for key, value in self.reward_func.stats.step_stats.items():
+                wandb_stats[f'step_stats/{key}'] = value
+                
+            # Add similarity stats
+            for key, value in self.reward_func.stats.similarity_stats.items():
+                wandb_stats[f'similarity_stats/{key}'] = value
             
             # Update logs with our metrics
             logs.update(wandb_stats)
@@ -201,9 +214,16 @@ def main():
     reward_func = DynamicReward(reward_config, similarity_checker)
     logger.info("\nInitialized DynamicReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    
+    # Print initial stats configuration
     if hasattr(reward_func, 'stats'):
-        logger.info(f"Stats total_batches: {reward_func.stats.total_batches}")
-        logger.info(f"Stats reward_components: {reward_func.stats.reward_components}")
+        logger.info("Initial stats configuration:")
+        for category in ['reward_components', 'group_stats', 'step_stats', 'similarity_stats']:
+            if hasattr(reward_func.stats, category):
+                stats_dict = getattr(reward_func.stats, category)
+                logger.info(f"{category}: {stats_dict}")
+    else:
+        logger.warning("No stats object found in reward_func!")
     
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(

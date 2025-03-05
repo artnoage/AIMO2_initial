@@ -803,11 +803,12 @@ class DynamicReward(BaseReward):
                 self.logger.info(f"Rewards after clipping: {rewards}")
         
         # Update stats and print batch summary
-        self.stats.update(rewards, reward_type=reward_type)
+        self.stats.update(rewards, reward_type=reward_type, completions=completions)
         
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
-        self.logger.info(self.stats.get_summary(self.relevant_stats))
+        stats_summary = self.stats.get_summary(self.relevant_stats)
+        self.logger.info(stats_summary)
         
         return rewards
 

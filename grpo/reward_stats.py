@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Optional, Any
 import os
 import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +13,7 @@ class RewardStats:
     def __init__(self, config):
         self.config = config
         self.total_batches = 0
+        self.total_examples = 0
         self.total_rewards = 0
         self.reward_distribution = {}
         self.start_time = datetime.now()
@@ -27,14 +28,17 @@ class RewardStats:
         # Track reward components
         self.reward_components = {
             'base_rewards': 0,
+            'step_continuity_rewards': 0,
+            'diversity_bonuses': 0,
+            'similarity_penalties': 0,
             'validation_rewards': 0,
             'total_length_penalty': 0.0,
             'correct_answers': 0,
             'incorrect_answers': 0,
             'total_rewards': 0.0,
             'average_reward': 0.0,
-            'step_count': 0,
-            'ordered_steps': 0
+            'solution_reward_uses': 0,
+            'completion_reward_uses': 0
         }
         
         # Track group-specific stats
@@ -45,16 +49,7 @@ class RewardStats:
             'incorrect_answers': 0,
             'total_similarity': 0.0,
             'diversity_bonuses': 0,
-            # Length and content penalties
-            'total_length_penalty': 0.0,
-            'total_length': 0,
-            'total_analysis_length_penalty': 0.0,
-            'total_substitution_length_penalty': 0.0,
-            # Additional group metrics
-            'group_size_distribution': {},
-            'solution_diversity': 0.0,
-            'average_similarity_score': 0.0,
-            'unique_approaches': 0
+            'similarity_penalties': 0
         }
         
         # Track similarity stats
@@ -64,37 +59,31 @@ class RewardStats:
             'total_similarity': 0.0
         }
         
-        # Track full reward reasons
-        self.full_reward_reasons = {
-            'correct_answer': 0
-        }
+        # Create a logger for this instance
+        self.logger = logging.getLogger(f'reward_stats_{config.model_type}')
         
     def update(self, rewards: List[float], **kwargs):
         """Update statistics with new rewards"""
         self.total_batches += 1
+        self.total_examples += len(rewards)
+        
         for r in rewards:
             self.total_rewards += r
             r_rounded = round(r, 6)
             self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+        
+        # Update reward type usage stats
+        reward_type = kwargs.get('reward_type')
+        if reward_type:
+            if reward_type == 'solution':
+                self.reward_components['solution_reward_uses'] += 1
+            elif reward_type == 'completion':
+                self.reward_components['completion_reward_uses'] += 1
             
-        # Update section stats if provided
-        completion = kwargs.get('completion')
-        if completion:
-            if 'analysis' not in completion.lower():
-                self.section_stats['missing_analysis'] += 1
-            if 'verdict' not in completion.lower():
-                self.section_stats['missing_verdict'] += 1
-            if 'substitution' not in completion.lower():
-                self.section_stats['missing_substitution'] += 1
-                
-        # Update group stats if provided
-        similarity = kwargs.get('similarity')
-        if similarity is not None:
-            self.group_stats['total_similarity'] += float(similarity)
-            if similarity < 0.7:
-                self.group_stats['unique_solutions'] += 1
-            elif similarity > 0.9:
-                self.group_stats['similar_solutions'] += 1
+        # Update completions if provided
+        completions = kwargs.get('completions', [])
+        if completions:
+            self.logger.info(f"Processing {len(completions)} completions for stats")
             
     def save_statistics(self, output_dir: str) -> None:
         """Save current statistics to JSON
@@ -137,72 +126,45 @@ class RewardStats:
         Args:
             relevant_stats: Dictionary mapping stat categories to lists of relevant stat names
         """
-        total_samples = sum(self.reward_distribution.values())
+        total_samples = self.total_examples
         if total_samples == 0:
             return "No samples processed yet"
             
         elapsed = datetime.now() - self.start_time
         avg_reward = self.total_rewards / total_samples if total_samples > 0 else 0
         
-        # Dynamic binning for rewards
-        rewards = sorted(self.reward_distribution.keys())
-        if rewards:
-            min_reward = min(rewards)
-            max_reward = max(rewards)
-            # Create 10 bins or less if we have fewer unique rewards
-            num_bins = min(10, len(rewards))
-            if num_bins > 1:
-                bin_size = (max_reward - min_reward) / num_bins
-                bins = {}
-                for reward, count in self.reward_distribution.items():
-                    if bin_size == 0:  # Handle case where all rewards are the same
-                        bin_idx = 0
-                    else:
-                        bin_idx = min(int((reward - min_reward) / bin_size), num_bins - 1)
-                    bin_start = min_reward + bin_idx * bin_size
-                    bin_end = min_reward + (bin_idx + 1) * bin_size
-                    bin_key = f"{bin_start:.3f} to {bin_end:.3f}"
-                    bins[bin_key] = bins.get(bin_key, 0) + count
-                
-                # Format reward distribution with bins
-                reward_dist_str = "\n".join(
-                    f"  {bin_range}: {count} samples ({count/total_samples*100:.1f}%)" 
-                    for bin_range, count in sorted(bins.items())
-                )
-            else:
-                # If only one unique reward, show it directly
-                reward_dist_str = f"  {rewards[0]:.6f}: {total_samples} samples (100%)"
-        else:
-            reward_dist_str = "No rewards recorded"
-
         # Always show basic stats
         summary = [
             f"Training time: {elapsed}",
-            f"Processed {self.total_batches} batches",
-            f"Average reward: {avg_reward:.6f}",
-            f"Total samples: {total_samples}",
-            f"\nReward Distribution:\n{reward_dist_str}"
+            f"Processed {self.total_batches} batches ({total_samples} examples)",
+            f"Average reward: {avg_reward:.6f}"
         ]
         
+        # If no relevant stats specified, use default categories
         if not relevant_stats:
-            # If no relevant stats specified, show everything
             relevant_stats = {
-                'section_stats': list(self.section_stats.keys()),
-                'validation_stats': list(self.validation_stats.keys()),
-                'step_stats': list(self.step_stats.keys()),
-                'analysis_stats': list(self.analysis_stats.keys()),
                 'reward_components': list(self.reward_components.keys()),
                 'group_stats': list(self.group_stats.keys()),
-                'full_reward_reasons': list(self.full_reward_reasons.keys())
+                'step_stats': list(self.step_stats.keys()),
+                'similarity_stats': list(self.similarity_stats.keys())
             }
         
         # Build sections based on relevant stats
         for category, stat_names in relevant_stats.items():
             if not stat_names:
                 continue
-                
-            stats_dict = getattr(self, category)
-            if not stats_dict:
+            
+            # Get the stats dictionary for this category
+            if category == 'reward_components':
+                stats_dict = self.reward_components
+            elif category == 'group_stats':
+                stats_dict = self.group_stats
+            elif category == 'step_stats':
+                stats_dict = self.step_stats
+            elif category == 'similarity_stats':
+                stats_dict = self.similarity_stats
+            else:
+                # Skip if category doesn't exist
                 continue
                 
             # Add section header
@@ -217,25 +179,10 @@ class RewardStats:
                 value = stats_dict[stat_name]
                 # Format special cases
                 if isinstance(value, float):
-                    if 'penalty' in stat_name or 'reward' in stat_name:
+                    if 'penalty' in stat_name or 'reward' in stat_name or 'total' in stat_name:
                         formatted_value = f"{value:.6f}"
                     else:
                         formatted_value = f"{value:.3f}"
-                elif isinstance(value, dict):
-                    if stat_name == 'improvement_bonuses':
-                        # Special formatting for improvement bonuses
-                        bonus_counts = []
-                        for bonus, count in value.items():
-                            if bonus != 'total':
-                                bonus_counts.append(f"+{bonus} bonus: {count}x")
-                        formatted_value = f"Total: {value.get('total', 0)}\n    " + "\n    ".join(bonus_counts)
-                    else:
-                        formatted_value = str(value)
-                elif isinstance(value, list):
-                    if value:
-                        formatted_value = f"avg: {sum(value)/len(value):.3f}, count: {len(value)}"
-                    else:
-                        formatted_value = "empty"
                 else:
                     formatted_value = str(value)
                 
