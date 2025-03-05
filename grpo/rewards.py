@@ -16,17 +16,6 @@ from config import RewardConfig
 from reward_stats import RewardStats
 
 class BaseReward(ABC):
-    """Base class for reward calculation"""
-    
-    __name__ = "base_reward"
-    
-    def __init__(self, config: RewardConfig):
-        self.config = config
-        self.stats = RewardStats(config)
-        self.logger = self._setup_logger()
-
-
-class BaseReward(ABC):
     """Base class for reward calculation
     
     All reward classes handle batches of completions with their corresponding metadata.
@@ -677,12 +666,22 @@ class DynamicReward(BaseReward):
         completion_indicators = [
             "continue the solution from where it left off",
             "Continue from here",
-            "maintaining the same step numbering"
+            "maintaining the same step numbering",
+            "Partial Solution:",
+            "continue with the next step number in sequence"
         ]
         
         for indicator in completion_indicators:
             if indicator in first_prompt:
                 self.logger.info(f"Selected completion reward based on prompt content: '{indicator}'")
+                return 'completion'
+        
+        # Check for example_type in batch_kwargs if available
+        example_types = batch_kwargs.get('example_type', [])
+        if example_types and len(example_types) > 0:
+            first_type = example_types[0]
+            if first_type == 'completion':
+                self.logger.info("Selected completion reward based on example_type")
                 return 'completion'
         
         # Default to solution reward if no completion indicators found
@@ -700,6 +699,15 @@ class DynamicReward(BaseReward):
             if not answer:
                 self.logger.warning("Missing answer in example, returning zero reward")
                 return 0.0
+            
+            # Verify group context is available
+            group_completions = kwargs.get('group_completions', [])
+            group_answers = kwargs.get('group_answers', [])
+            group_indices = kwargs.get('group_indices', [])
+            
+            if not all([group_completions, group_answers, group_indices]):
+                self.logger.warning(f"Missing group context in DynamicReward - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
+                # We'll continue anyway as the underlying reward functions should handle this
             
             # Select the appropriate reward function
             if reward_type == 'completion':
@@ -734,6 +742,19 @@ class DynamicReward(BaseReward):
         # Select which reward type to use for the entire batch
         reward_type = self._select_reward_type(kwargs)
         self.logger.info(f"Using {reward_type} reward for entire batch of {len(completions)} examples")
+        
+        # Group completions by prompt for group context
+        prompt_groups = {}
+        for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
+            if prompt not in prompt_groups:
+                prompt_groups[prompt] = {
+                    'completions': [],
+                    'answers': [],
+                    'indices': []
+                }
+            prompt_groups[prompt]['completions'].append(completion)
+            prompt_groups[prompt]['answers'].append(str(ans))
+            prompt_groups[prompt]['indices'].append(idx)
             
         # Process each completion with the selected reward type
         async def process_batch():
@@ -744,25 +765,31 @@ class DynamicReward(BaseReward):
             solutions = kwargs.get('model_solution', [''] * len(prompts))
             partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
             
-            for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
-                # Create kwargs with this specific example
-                task_kwargs = {
-                    **kwargs,  # Base kwargs first
-                    'prompt': prompt,
-                    'problem': problems[idx],
-                    'solution': solutions[idx],
-                    'partial_solution': partial_solutions[idx],
-                    'answer': str(ans),
-                    'reward_index': idx,
-                    'reward_type': reward_type  # Pass the selected reward type
-                }
-                
-                # Add group context if available
-                if 'group_completions' in kwargs:
-                    task_kwargs['group_idx'] = idx % len(kwargs['group_completions'])
-                
-                task = self.calculate_reward(completion, **task_kwargs)
-                tasks.append(task)
+            for prompt, group in prompt_groups.items():
+                # Process each completion in group
+                for group_idx, (completion, ans, idx) in enumerate(zip(
+                    group['completions'], 
+                    group['answers'], 
+                    group['indices']
+                )):
+                    # Create kwargs with group context and original kwargs
+                    task_kwargs = {
+                        **kwargs,  # Base kwargs first
+                        'prompt': prompt,
+                        'problem': problems[idx],
+                        'solution': solutions[idx],
+                        'partial_solution': partial_solutions[idx],
+                        'answer': str(ans),
+                        'reward_index': idx,
+                        'reward_type': reward_type,  # Pass the selected reward type
+                        'group_idx': group_idx,
+                        'group_completions': group['completions'],
+                        'group_answers': group['answers'], 
+                        'group_indices': group['indices']
+                    }
+                    
+                    task = self.calculate_reward(completion, **task_kwargs)
+                    tasks.append(task)
                     
             return await asyncio.gather(*tasks)
             

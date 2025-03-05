@@ -487,7 +487,9 @@ def main():
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
+        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)],
+        # Pass example_type to the reward function
+        reward_kwargs={"example_type": formatted_dataset["example_type"]}
     )
     
     # Train
