@@ -437,8 +437,35 @@ def main():
         logger.info(f"Created {len(completion_data)} completion examples")
         logger.info(f"Created {len(wait_data)} wait examples")
         
+        # Count the actual types in each dataset before combining
+        def count_types(dataset):
+            type_counts = {}
+            for example in dataset:
+                example_type = example.get('example_type', 'unknown')
+                type_counts[example_type] = type_counts.get(example_type, 0) + 1
+            return type_counts
+            
+        solution_types = count_types(full_solution_data)
+        completion_types = count_types(completion_data)
+        wait_types = count_types(wait_data)
+        
+        logger.info("Dataset type distribution before combining:")
+        logger.info(f"Solution dataset: {solution_types}")
+        logger.info(f"Completion dataset: {completion_types}")
+        logger.info(f"Wait dataset: {wait_types}")
+        
         # Combine all datasets
         combined_data = concatenate_datasets([full_solution_data, completion_data, wait_data])
+        
+        # Count types in the combined dataset
+        combined_types = count_types(combined_data)
+        logger.info(f"Combined dataset types: {combined_types}")
+        
+        # Calculate percentages
+        total = sum(combined_types.values())
+        percentages = {k: f"{v/total*100:.1f}%" for k, v in combined_types.items()}
+        logger.info(f"Type percentages: {percentages}")
+        
         return combined_data
 
     # Get the formatted dataset with both types of examples

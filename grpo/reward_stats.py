@@ -79,6 +79,37 @@ class RewardStats:
                 self.reward_components['solution_reward_uses'] += 1
             elif reward_type == 'completion':
                 self.reward_components['completion_reward_uses'] += 1
+        
+        # Track example types if provided
+        example_types = kwargs.get('example_type', [])
+        if example_types:
+            # Initialize example type tracking if not already present
+            if 'example_types' not in self.__dict__:
+                self.example_types = {
+                    'solution': 0,
+                    'completion': 0,
+                    'wait': 0,
+                    'unknown': 0
+                }
+                
+            # Count the different types
+            if isinstance(example_types, list):
+                for et in example_types:
+                    if isinstance(et, list) and len(et) > 0:
+                        et = et[0]  # Handle nested lists
+                    
+                    if et in self.example_types:
+                        self.example_types[et] += 1
+                    else:
+                        self.example_types['unknown'] += 1
+            elif isinstance(example_types, str):
+                if example_types in self.example_types:
+                    self.example_types[example_types] += 1
+                else:
+                    self.example_types['unknown'] += 1
+            
+            # Log the current distribution
+            self.logger.info(f"Example type distribution: {self.example_types}")
             
         # Update completions if provided
         completions = kwargs.get('completions', [])
@@ -148,6 +179,10 @@ class RewardStats:
                 'step_stats': list(self.step_stats.keys()),
                 'similarity_stats': list(self.similarity_stats.keys())
             }
+            
+            # Add example_types if available
+            if hasattr(self, 'example_types'):
+                relevant_stats['example_types'] = list(self.example_types.keys())
         
         # Build sections based on relevant stats
         for category, stat_names in relevant_stats.items():
@@ -163,6 +198,8 @@ class RewardStats:
                 stats_dict = self.step_stats
             elif category == 'similarity_stats':
                 stats_dict = self.similarity_stats
+            elif category == 'example_types' and hasattr(self, 'example_types'):
+                stats_dict = self.example_types
             else:
                 # Skip if category doesn't exist
                 continue

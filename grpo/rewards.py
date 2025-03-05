@@ -662,30 +662,48 @@ class DynamicReward(BaseReward):
         # Check for example_type in batch_kwargs if available
         example_types = batch_kwargs.get('example_type', [])
         
-        # Debug the example_types content
-        self.logger.info(f"Example types in batch: {example_types}")
+        # Count the different types in the batch
+        completion_count = 0
+        solution_count = 0
+        wait_count = 0
         
-        # Handle both list and string formats
-        if isinstance(example_types, list) and len(example_types) > 0:
-            # If it's a list, check the first element
-            first_type = example_types[0]
-            if isinstance(first_type, list) and len(first_type) > 0:
-                # Handle nested list case
-                first_type = first_type[0]
-            
-            self.logger.info(f"First example type: {first_type}")
-            
-            if first_type == 'completion':
-                self.logger.info("Selected completion reward based on example_type")
-                return 'completion'
-        elif isinstance(example_types, str) and example_types == 'completion':
+        # Handle different formats of example_types
+        if isinstance(example_types, list):
+            for et in example_types:
+                if isinstance(et, list) and len(et) > 0:
+                    # Handle nested list case
+                    et = et[0]
+                
+                if et == 'completion':
+                    completion_count += 1
+                elif et == 'solution':
+                    solution_count += 1
+                elif et == 'wait':
+                    wait_count += 1
+                    
+        elif isinstance(example_types, str):
             # Handle string case
-            self.logger.info("Selected completion reward based on example_type string")
-            return 'completion'
+            if example_types == 'completion':
+                completion_count = 1
+            elif example_types == 'solution':
+                solution_count = 1
+            elif example_types == 'wait':
+                wait_count = 1
         
-        # Default to solution reward if no completion type found
-        self.logger.info("Selected solution reward (no completion type in example_type)")
-        return 'solution'
+        self.logger.info(f"Type counts in batch: completion={completion_count}, solution={solution_count}, wait={wait_count}")
+        
+        # Determine the majority type
+        if completion_count > solution_count and completion_count > wait_count:
+            self.logger.info("Selected completion reward (majority type)")
+            return 'completion'
+        elif wait_count > solution_count and wait_count > completion_count:
+            # For wait examples, we still use solution reward
+            self.logger.info("Selected solution reward for wait examples (majority type)")
+            return 'solution'
+        else:
+            # Default to solution reward
+            self.logger.info("Selected solution reward (majority type or default)")
+            return 'solution'
     
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward using the selected reward function"""
@@ -752,6 +770,21 @@ class DynamicReward(BaseReward):
                     self.logger.info(f"First element: {example_type_value[0]} (type: {type(example_type_value[0])})")
         else:
             self.logger.warning("No example_type found in kwargs")
+        
+        # Get example_types from kwargs
+        example_types = kwargs.get('example_type', [])
+        
+        # Count the different example types in the batch
+        type_counts = {}
+        if isinstance(example_types, list):
+            for et in example_types:
+                if isinstance(et, list) and len(et) > 0:
+                    et = et[0]  # Handle nested lists
+                type_counts[et] = type_counts.get(et, 0) + 1
+        elif isinstance(example_types, str):
+            type_counts[example_types] = 1
+            
+        self.logger.info(f"Example types in batch: {type_counts}")
         
         # Select which reward type to use for the entire batch
         reward_type = self._select_reward_type(kwargs)
