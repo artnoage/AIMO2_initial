@@ -769,13 +769,13 @@ class CompletionReward(BaseReward):
                 continuity_reward = self.config.step_continuity_reward
                 reward += continuity_reward
                 self.stats.reward_components['step_continuity_rewards'] = self.stats.reward_components.get('step_continuity_rewards', 0) + 1
-                self.stats.step_stats['correct_step_numbering'] = self.stats.step_stats.get('correct_step_numbering', 0) + 1
+                self.stats.step_stats['correct_step_numbering'] += 1
                 self.logger.info(f"Applied step continuity reward: +{continuity_reward:.3f}")
             else:
-                self.stats.step_stats['incorrect_step_numbering'] = self.stats.step_stats.get('incorrect_step_numbering', 0) + 1
+                self.stats.step_stats['incorrect_step_numbering'] += 1
             
             # Track total steps completed
-            self.stats.step_stats['total_steps_completed'] = self.stats.step_stats.get('total_steps_completed', 0) + len(completion_steps)
+            self.stats.step_stats['total_steps_completed'] += len(completion_steps)
             
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
