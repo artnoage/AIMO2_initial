@@ -34,22 +34,45 @@ SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze i
     </response>\n\n"""
     
 # Prompt for completion tasks (with partial solution)
-COMPLETION_PROMPT = """You will be given a mathematical problem with a partial solution. Your task is to continue the solution from where it left off.\n\n
-    <thinking>
-    First, analyze the problem and the partial solution provided.\n
-    Understand what has been done so far and determine the next steps needed.\n
-    Make sure your continuation maintains the same approach and style.\n
-    </thinking>
-    <response>\n
-    {partial_solution}
-    
-    Continue from here, maintaining the same step numbering and format:
-    
-    <step>Step {next_step}: Continue with the next logical step\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
+COMPLETION_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
+
+Your response MUST include both a <thinking> section and a <response> section.
+
+<thinking>
+First, analyze the problem and the partial solution carefully.
+Understand what has been done so far and determine the next logical steps.
+Identify the step numbering pattern and continue from there.
+Make sure you understand the mathematical concepts involved.
+Work through the solution mentally to ensure your approach is correct.
+</thinking>
+
+<response>
+Continue the solution from where it left off, maintaining the same step numbering and style.
+The partial solution will only contain the beginning of the response section with some steps.
+You must continue with the next step number in sequence.
+
+IMPORTANT: Each step must be properly enclosed in <step> and </step> tags.
+
+For example, if the partial solution ends with Step 2, you should start with:
+
+{partial_solution}
+
+<step>Step {next_step}: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+Continue with additional steps as needed:
+
+<step>Step {next_step+1}: [Description of the step]
+[Mathematical work for this step]
+</step>
+
+In your final step, include your answer in a LaTeX boxed environment:
+\\boxed{{your final answer}}
+
+Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
+</response>
+"""
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
