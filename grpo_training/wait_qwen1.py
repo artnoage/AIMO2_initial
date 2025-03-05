@@ -122,8 +122,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "wait_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250228_212504"
+    model_type = "wait_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
     # Setup logging first
@@ -253,7 +253,7 @@ def main():
         return processed_data
 
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=11)
+    formatted_dataset = formatted_dataset.shuffle(seed=1311)
     formatted_dataset = formatted_dataset.select(range(1500))
  
     # Verify first few entries
@@ -287,9 +287,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
+        per_device_train_batch_size=10,
         gradient_accumulation_steps=16,
-        num_generations=12,
+        num_generations=10,
         max_prompt_length=2048,
         max_completion_length=2048,
         num_train_epochs=1,

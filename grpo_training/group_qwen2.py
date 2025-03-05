@@ -124,7 +124,7 @@ def main():
     # Configuration
     model_type = "group_2"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
-    dataset_name = "Metaskepsis/validation_set"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -193,7 +193,7 @@ def main():
         
     def get_questions(split = "train") -> Dataset:
         # Use the combined dataset from Metaskepsis/validation_
-        data = load_dataset(dataset_name,split) # type: ignore
+        data = load_dataset(dataset_name, split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer']
@@ -201,10 +201,9 @@ def main():
         return data # type: ignore
 
     formatted_dataset = get_questions()
-    formatted_dataset1 = formatted_dataset.shuffle(seed=21)
-    formatted_dataset2 = formatted_dataset.shuffle(seed=12)
-    formatted_dataset=concatenate_datasets([formatted_dataset1,formatted_dataset2])
+    formatted_dataset = formatted_dataset.shuffle(seed=1121)
     # We have more diverse data now, so we can use more examples
+    formatted_dataset = formatted_dataset.select(range(1500))
  
    
     
@@ -229,7 +228,7 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
+        per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         num_generations=10,
         max_prompt_length=800,

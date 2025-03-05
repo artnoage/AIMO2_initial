@@ -17,10 +17,10 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/waitA"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/waitB"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/A"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/B"
     LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250302_203326"
-    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250302_211638"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
@@ -52,7 +52,7 @@ class BenchmarkConfig:
     # Execution settings
     max_concurrent: int = 1
     best_of: int = 1
-    completions: int = 2
+    completions: int = 20
     
     # Verification settings
     tolerance: float = 1e-6  # Tolerance for numeric answer comparison
@@ -108,7 +108,7 @@ class BenchmarkConfig:
                           help='Maximum number of concurrent problems (default: 64)')
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
-        parser.add_argument('--completions', type=int, default=3,
+        parser.add_argument('--completions', type=int, default=20,
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments
