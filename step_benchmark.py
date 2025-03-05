@@ -139,7 +139,15 @@ class StepAnalyzer:
         wrong_solution: str,
         num_completions: int = 10
     ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
-        """Binary search to find first wrong step in solution"""
+        """
+        Binary search to find first wrong step in solution
+        
+        Returns:
+            - wrong_step_index: 0-based index of the first wrong step (0 = Step 1, 1 = Step 2, etc.)
+            - last_good_step: The content of the last good step
+            - saved_good_completion: The completion that correctly continues from the last good step
+            - saved_completion_prompt: The prompt used for the good completion
+        """
         # Split solution into steps - these should already be just the content inside <step> tags
         wrong_steps = split_into_steps(wrong_solution)
         if not wrong_steps or len(wrong_steps) < 2:
@@ -229,12 +237,17 @@ class StepAnalyzer:
         problem: str,
         wrong_solution: str,
         correct_answer: str,
-        wrong_step_index: int,
+        wrong_step_index: int,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
         partial_solutions: List[str],
         saved_good_completion: str,
         example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
-        """Create training examples from identified wrong step"""
+        """
+        Create training examples from identified wrong step
+        
+        Args:
+            wrong_step_index: 0-based index of the first wrong step (0 = Step 1, 1 = Step 2, etc.)
+        """
         results = []
         
         try:
@@ -551,7 +564,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'unsalvageable_reason': analysis['reason']
                     })
                 elif wrong_step_index is not None:
-                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} in solution {idx+1}")
+                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} (Step {wrong_step_index+1}) in solution {idx+1}")
                     
                     # Get steps from wrong solution
                     wrong_steps = split_into_steps(analysis_solution)
@@ -559,7 +572,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     
                     # Make step count very visible in the log
                     logger.append(f"\n   🔢 TOTAL STEPS IN SOLUTION: {step_count}")
-                    logger.append(f"   🔍 WRONG STEP: {wrong_step_index+1} of {step_count}")
+                    logger.append(f"   🔍 WRONG STEP: Step {wrong_step_index+1} of {step_count}")
                     logger.append(f"   📊 PROGRESS: {'▓' * wrong_step_index}{'░' * (step_count - wrong_step_index)}")
                     
                     partial_solutions = get_partial_solutions(wrong_steps)
@@ -569,7 +582,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         problem=problem,
                         wrong_solution=analysis_solution,
                         correct_answer=correct_answer,
-                        wrong_step_index=wrong_step_index,
+                        wrong_step_index=wrong_step_index,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
                         partial_solutions=partial_solutions,
                         saved_good_completion=saved_good_completion,
                         example_id=example_id
