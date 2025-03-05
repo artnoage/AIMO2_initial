@@ -82,34 +82,48 @@ class RewardStats:
         
         # Track example types if provided
         example_types = kwargs.get('example_type', [])
-        if example_types:
-            # Initialize example type tracking if not already present
-            if 'example_types' not in self.__dict__:
-                self.example_types = {
+        
+        # Initialize example type tracking if not already present
+        if not hasattr(self, 'example_types'):
+            self.example_types = {
+                'solution': 0,
+                'completion': 0,
+                'wait': 0,
+                'unknown': 0
+            }
+        
+        # Track the reward type that was used
+        reward_type = kwargs.get('reward_type')
+        if reward_type:
+            if not hasattr(self, 'reward_type_usage'):
+                self.reward_type_usage = {
                     'solution': 0,
-                    'completion': 0,
-                    'wait': 0,
-                    'unknown': 0
+                    'completion': 0
                 }
+            
+            if reward_type in self.reward_type_usage:
+                self.reward_type_usage[reward_type] += 1
                 
-            # Count the different types
-            if isinstance(example_types, list):
-                for et in example_types:
-                    if isinstance(et, list) and len(et) > 0:
-                        et = et[0]  # Handle nested lists
-                    
-                    if et in self.example_types:
-                        self.example_types[et] += 1
-                    else:
-                        self.example_types['unknown'] += 1
-            elif isinstance(example_types, str):
-                if example_types in self.example_types:
-                    self.example_types[example_types] += 1
+        # Count the different example types
+        if isinstance(example_types, list):
+            for et in example_types:
+                if isinstance(et, list) and len(et) > 0:
+                    et = et[0]  # Handle nested lists
+                
+                if et in self.example_types:
+                    self.example_types[et] += 1
                 else:
                     self.example_types['unknown'] += 1
-            
-            # Log the current distribution
-            self.logger.info(f"Example type distribution: {self.example_types}")
+        elif isinstance(example_types, str):
+            if example_types in self.example_types:
+                self.example_types[example_types] += 1
+            else:
+                self.example_types['unknown'] += 1
+        
+        # Log the current distribution
+        self.logger.info(f"Example type distribution: {self.example_types}")
+        if hasattr(self, 'reward_type_usage'):
+            self.logger.info(f"Reward type usage: {self.reward_type_usage}")
             
         # Update completions if provided
         completions = kwargs.get('completions', [])
@@ -180,9 +194,12 @@ class RewardStats:
                 'similarity_stats': list(self.similarity_stats.keys())
             }
             
-            # Add example_types if available
+            # Add example_types and reward_type_usage if available
             if hasattr(self, 'example_types'):
                 relevant_stats['example_types'] = list(self.example_types.keys())
+            
+            if hasattr(self, 'reward_type_usage'):
+                relevant_stats['reward_type_usage'] = list(self.reward_type_usage.keys())
         
         # Build sections based on relevant stats
         for category, stat_names in relevant_stats.items():
@@ -200,6 +217,8 @@ class RewardStats:
                 stats_dict = self.similarity_stats
             elif category == 'example_types' and hasattr(self, 'example_types'):
                 stats_dict = self.example_types
+            elif category == 'reward_type_usage' and hasattr(self, 'reward_type_usage'):
+                stats_dict = self.reward_type_usage
             else:
                 # Skip if category doesn't exist
                 continue

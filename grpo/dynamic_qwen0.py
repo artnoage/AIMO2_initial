@@ -559,22 +559,29 @@ def main():
         callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
     )
     
-    # Monkey patch the trainer's get_train_dataloader to add logging
-    original_get_train_dataloader = trainer.get_train_dataloader
+    # Log dataset information before training
+    logger.info("Dataset information before training:")
+    logger.info(f"Total examples: {len(formatted_dataset)}")
     
-    def patched_get_train_dataloader():
-        dataloader = original_get_train_dataloader()
-        logger.info("Inspecting first batch from dataloader:")
-        for batch in dataloader:
-            if isinstance(batch, dict):
-                for key, value in batch.items():
-                    logger.info(f"  {key}: {type(value)}")
-                    if key == 'example_type':
-                        logger.info(f"  example_type content: {value}")
-            break  # Just inspect the first batch
-        return dataloader
+    # Count example types in the dataset
+    example_types = {}
+    for example in formatted_dataset:
+        et = example.get('example_type', 'unknown')
+        example_types[et] = example_types.get(et, 0) + 1
     
-    trainer.get_train_dataloader = patched_get_train_dataloader
+    logger.info(f"Example types in dataset: {example_types}")
+    
+    # Log a sample batch structure
+    sample_batch = {
+        'prompt': [formatted_dataset[i]['prompt'] for i in range(min(3, len(formatted_dataset)))],
+        'answer': [formatted_dataset[i]['answer'] for i in range(min(3, len(formatted_dataset)))],
+        'example_type': [formatted_dataset[i]['example_type'] for i in range(min(3, len(formatted_dataset)))]
+    }
+    
+    logger.info("Sample batch structure:")
+    for key, value in sample_batch.items():
+        if key != 'prompt':  # Skip logging the full prompts
+            logger.info(f"  {key}: {value}")
     
     # We need to modify the dataset to include example_type in the input
     # This will be passed to the reward function during training

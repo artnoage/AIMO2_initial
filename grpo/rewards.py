@@ -649,46 +649,53 @@ class DynamicReward(BaseReward):
             self.relevant_stats['reward_components'] = []
         self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'completion_reward_uses'])
     
-    def _select_reward_type(self, batch_kwargs: Dict) -> str:
+    def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
         """
-        Select which reward type to use for the entire batch based on example_type
+        Extract and normalize example types from batch kwargs
         
         Args:
             batch_kwargs: Keyword arguments for the batch
             
         Returns:
-            String indicating which reward to use: 'solution' or 'completion'
+            List of normalized example type strings
         """
-        # Check for example_type in batch_kwargs if available
-        example_types = batch_kwargs.get('example_type', [])
-        
-        # Count the different types in the batch
-        completion_count = 0
-        solution_count = 0
-        wait_count = 0
+        example_types = []
+        raw_types = batch_kwargs.get('example_type', [])
         
         # Handle different formats of example_types
-        if isinstance(example_types, list):
-            for et in example_types:
+        if isinstance(raw_types, list):
+            for et in raw_types:
                 if isinstance(et, list) and len(et) > 0:
                     # Handle nested list case
-                    et = et[0]
-                
-                if et == 'completion':
-                    completion_count += 1
-                elif et == 'solution':
-                    solution_count += 1
-                elif et == 'wait':
-                    wait_count += 1
-                    
-        elif isinstance(example_types, str):
+                    example_types.append(et[0])
+                elif isinstance(et, str):
+                    example_types.append(et)
+        elif isinstance(raw_types, str):
             # Handle string case
-            if example_types == 'completion':
-                completion_count = 1
-            elif example_types == 'solution':
-                solution_count = 1
-            elif example_types == 'wait':
-                wait_count = 1
+            example_types.append(raw_types)
+            
+        # Count the different types
+        type_counts = {}
+        for et in example_types:
+            type_counts[et] = type_counts.get(et, 0) + 1
+            
+        self.logger.info(f"Extracted example types: {type_counts}")
+        return example_types
+        
+    def _select_reward_type(self, example_types: List[str]) -> str:
+        """
+        Select which reward type to use for the entire batch based on example_type
+        
+        Args:
+            example_types: List of normalized example type strings
+            
+        Returns:
+            String indicating which reward to use: 'solution' or 'completion'
+        """
+        # Count the different types in the batch
+        completion_count = sum(1 for et in example_types if et == 'completion')
+        solution_count = sum(1 for et in example_types if et == 'solution')
+        wait_count = sum(1 for et in example_types if et == 'wait')
         
         self.logger.info(f"Type counts in batch: completion={completion_count}, solution={solution_count}, wait={wait_count}")
         
@@ -811,6 +818,13 @@ class DynamicReward(BaseReward):
             problems = kwargs.get('problem', [''] * len(prompts))
             solutions = kwargs.get('model_solution', [''] * len(prompts))
             partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
+            example_types_list = self._extract_example_types(kwargs)
+            
+            # Ensure example_types_list has the right length
+            if len(example_types_list) != len(completions):
+                self.logger.warning(f"Example types list length ({len(example_types_list)}) doesn't match completions length ({len(completions)})")
+                # Fill with the selected reward_type if lengths don't match
+                example_types_list = [reward_type] * len(completions)
             
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
@@ -819,16 +833,20 @@ class DynamicReward(BaseReward):
                     group['answers'], 
                     group['indices']
                 )):
+                    # Get the example type for this specific completion
+                    example_type = example_types_list[idx] if idx < len(example_types_list) else reward_type
+                    
                     # Create kwargs with group context and original kwargs
                     task_kwargs = {
                         **kwargs,  # Base kwargs first
                         'prompt': prompt,
-                        'problem': problems[idx],
-                        'solution': solutions[idx],
-                        'partial_solution': partial_solutions[idx],
+                        'problem': problems[idx] if idx < len(problems) else '',
+                        'solution': solutions[idx] if idx < len(solutions) else '',
+                        'partial_solution': partial_solutions[idx] if idx < len(partial_solutions) else '',
                         'answer': str(ans),
                         'reward_index': idx,
-                        'reward_type': reward_type,  # Pass the selected reward type
+                        'reward_type': reward_type,  # Batch-level reward type
+                        'example_type': example_type,  # Individual example type
                         'group_idx': group_idx,
                         'group_completions': group['completions'],
                         'group_answers': group['answers'], 
