@@ -416,7 +416,7 @@ def main():
     completion_count = 0
     wait_count = 0
     
-    for i in range(min(6, len(formatted_dataset))):
+    for i in range(min(12, len(formatted_dataset))):
         entry = formatted_dataset[i]
         example_type = entry.get('example_type', 'unknown')
         
