@@ -845,5 +845,5 @@ class CompletionReward(BaseReward):
             return 0.0
 
 
-# DynamicReward class has been moved to dynamic_reward.py
+
 
