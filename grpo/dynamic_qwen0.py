@@ -369,52 +369,52 @@ def main():
                 example_id = example.get('id', hash(example.get('problem', '')))
                 if isinstance(example_id, str):
                     example_id = hash(example_id)
-                    
-                    # If the example has a model_solution, extract steps from it
-                    if 'model_solution' in example and example['model_solution']:
-                        # Extract response section
-                        response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-                        if response_match:
-                            response = response_match.group(1).strip()
+                
+                # If the example has a model_solution, extract steps from it
+                if 'model_solution' in example and example['model_solution']:
+                    # Extract response section
+                    response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
+                    if response_match:
+                        response = response_match.group(1).strip()
+                        
+                        # Extract steps
+                        step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
+                        steps = step_pattern.findall(response)
+                        
+                        if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
+                            # Randomly decide how many steps to include (at least 1, leave at least 1)
+                            random.seed(example_id % 10000)  # Deterministic but varied
+                            split_point = random.randint(1, len(steps) - 1)
                             
-                            # Extract steps
-                            step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-                            steps = step_pattern.findall(response)
+                            # Create partial solution with the first 'split_point' steps
+                            partial_steps = steps[:split_point]
+                            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
                             
-                            if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
-                                # Randomly decide how many steps to include (at least 1, leave at least 1)
-                                random.seed(example_id % 10000)  # Deterministic but varied
-                                split_point = random.randint(1, len(steps) - 1)
-                                
-                                # Create partial solution with the first 'split_point' steps
-                                partial_steps = steps[:split_point]
-                                partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-                                
-                                # Check token count for the completion prompt
-                                completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                                total_tokens = completion_prompt_tokens + count_tokens(completion_text)
-                                
-                                # If token count is too high, return as full solution instead
-                                if total_tokens >= MAX_PROMPT_TOKENS:
-                                    logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
-                                    return {
-                                        'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                                        'answer': example.get('answer', example.get('correct_answer', '')),
-                                        'partial_solution': '',
-                                        'example_type': 'solution'
-                                    }
-                                
-                                # Format the completion prompt with the partial solution in the user section
-                                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
-                                
-                                logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
+                            # Check token count for the completion prompt
+                            completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                            total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                            
+                            # If token count is too high, return as full solution instead
+                            if total_tokens >= MAX_PROMPT_TOKENS:
+                                logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
                                 return {
-                                    'prompt': formatted_prompt,
+                                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                                     'answer': example.get('answer', example.get('correct_answer', '')),
-                                    'partial_solution': partial_solution,
-                                    'example_type': 'completion'
+                                    'partial_solution': '',
+                                    'example_type': 'solution'
                                 }
+                            
+                            # Format the completion prompt with the partial solution in the user section
+                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
+                            
+                            logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
+                            return {
+                                'prompt': formatted_prompt,
+                                'answer': example.get('answer', example.get('correct_answer', '')),
+                                'partial_solution': partial_solution,
+                                'example_type': 'completion'
+                            }
                 
                 # If we couldn't create a valid partial solution, return it as a full solution example instead
                 return {
@@ -493,20 +493,37 @@ def main():
                     'example_type': 'solution'
                 }
         
-        # Map the functions to create the different types of examples
+        # Process all examples for each type
         completion_data = data.map(create_partial_solution)
         wait_data = data.map(create_wait_example)
         
         # Filter out any wait examples that didn't actually get the wait modification
         wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
         
-        # Process all examples for each type first
-        completion_data = data.map(create_partial_solution)
-        wait_data = data.map(create_wait_example)
-        
         # Filter to only keep actual completion and wait examples
         completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
         wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait')
+        
+        # Log completion data details
+        completion_count = len(completion_data)
+        logger.info(f"Found {completion_count} completion examples after filtering")
+        
+        # Check if we have model_solutions in the dataset
+        has_model_solutions = sum(1 for x in data if 'model_solution' in x and x['model_solution'])
+        logger.info(f"Dataset has {has_model_solutions} examples with model_solutions")
+        
+        # Check how many model solutions have valid steps
+        valid_steps = 0
+        for example in data:
+            if 'model_solution' in example and example['model_solution']:
+                response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
+                if response_match:
+                    response = response_match.group(1).strip()
+                    steps = re.findall(r'<step>(.*?)</step>', response, re.DOTALL)
+                    if len(steps) >= 2:
+                        valid_steps += 1
+        
+        logger.info(f"Found {valid_steps} examples with valid steps (2+ steps)")
         
         # Calculate the target number of examples for each type
         total_examples = len(data)
@@ -514,6 +531,54 @@ def main():
         completion_target = int(total_examples * 0.3)  # 30% completion examples
         programming_target = int(total_examples * 0.1)  # 10% programming examples
         solution_target = total_examples - wait_target - completion_target - programming_target  # 40% solution examples
+        
+        # If we don't have enough completion examples, create synthetic ones from solution examples
+        if len(completion_data) < completion_target:
+            logger.info(f"Not enough completion examples ({len(completion_data)}), creating synthetic ones")
+            
+            # Take some solution examples and convert them to completion examples
+            needed_synthetic = completion_target - len(completion_data)
+            
+            # Create a function to convert solution examples to completion examples
+            def convert_to_completion(example, idx):
+                try:
+                    # Only process solution examples
+                    if example['example_type'] != 'solution':
+                        return example
+                    
+                    # Create a synthetic partial solution with a single step
+                    partial_solution = "<step>Step 1: Let's start by understanding the problem.\nI'll analyze what we're asked to find and identify the key information.</step>"
+                    
+                    # Format the completion prompt
+                    formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                        f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
+                    
+                    return {
+                        'prompt': formatted_prompt,
+                        'answer': example.get('answer', example.get('correct_answer', '')),
+                        'partial_solution': partial_solution,
+                        'example_type': 'completion'
+                    }
+                except Exception as e:
+                    logger.warning(f"Error creating synthetic completion: {str(e)}")
+                    return example
+            
+            # Take some solution examples and convert them
+            synthetic_candidates = full_solution_data.select(range(min(needed_synthetic * 2, len(full_solution_data))))
+            synthetic_completions = synthetic_candidates.map(convert_to_completion, with_indices=True)
+            
+            # Filter to only keep the converted ones
+            synthetic_completions = synthetic_completions.filter(lambda x: x['example_type'] == 'completion')
+            
+            # Take only what we need
+            synthetic_completions = synthetic_completions.select(range(min(needed_synthetic, len(synthetic_completions))))
+            
+            logger.info(f"Created {len(synthetic_completions)} synthetic completion examples")
+            
+            # Combine with real completion examples
+            if len(synthetic_completions) > 0:
+                completion_data = concatenate_datasets([completion_data, synthetic_completions])
+                logger.info(f"Combined completion dataset now has {len(completion_data)} examples")
         
         # Shuffle datasets for random selection
         full_solution_data = full_solution_data.shuffle(seed=42)
