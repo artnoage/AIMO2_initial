@@ -171,7 +171,7 @@ class BaseReward(ABC):
                 self.logger.info(f"Rewards after clipping: {rewards}")
         
         # Update stats and print batch summary
-        self.stats.update(rewards, completions=completions)
+        self.stats.update(rewards, completions=completions, example_type=kwargs.get('example_type', []))
         
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
@@ -376,6 +376,7 @@ class SolutionReward(BaseReward):
                 
             # Initialize variables if they don't exist in the context
             avg_similarity = 0.0
+            diversity_bonus_applied = 0.0
             
             # Check if we have similarity information (only available for groups > 1)
             if len(group_completions) > 1:
@@ -384,17 +385,19 @@ class SolutionReward(BaseReward):
                 similarities[group_idx] = 0  # Remove self-similarity
                 avg_similarity = similarities.mean().item()
                 
-            if diversity_bonus_applied > 0:
-                self.stats.group_stats['diversity_bonuses'] = self.stats.group_stats.get('diversity_bonuses', 0) + 1
-            elif diversity_bonus_applied < 0:
-                self.stats.group_stats['similarity_penalties'] = self.stats.group_stats.get('similarity_penalties', 0) + 1
+                # Update similarity stats
+                if avg_similarity < self.config.group_similarity_threshold:
+                    self.stats.group_stats['unique_solutions'] += 1
+                else:
+                    self.stats.group_stats['similar_solutions'] += 1
                 
-            if avg_similarity < self.config.group_similarity_threshold:
-                self.stats.group_stats['unique_solutions'] += 1
-            elif avg_similarity > self.config.group_similarity_threshold:
-                self.stats.group_stats['similar_solutions'] += 1
+                self.stats.group_stats['total_similarity'] += avg_similarity
                 
-            self.stats.group_stats['total_similarity'] += avg_similarity
+                # Update diversity bonus/penalty stats
+                if hasattr(self.stats.group_stats, 'diversity_bonuses') and diversity_bonus_applied > 0:
+                    self.stats.group_stats['diversity_bonuses'] += 1
+                elif hasattr(self.stats.group_stats, 'similarity_penalties') and diversity_bonus_applied < 0:
+                    self.stats.group_stats['similarity_penalties'] += 1
             
             return reward
             
