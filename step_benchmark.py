@@ -96,17 +96,7 @@ class StepAnalyzer:
                     continue
                 
                 # Extract content from response tags if present
-                response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
-                response_match = response_pattern.search(completion)
-                
-                if response_match:
-                    # Use only the content inside response tags
-                    completion_content = response_match.group(1).strip()
-                    self._log(f"Extracted content from <response> tags in completion")
-                else:
-                    # Use the completion as is if no response tags
-                    completion_content = completion
-                    
+                completion_content = extract_response_section(completion) or completion
                 complete_solution = partial_solution + completion_content
                 
                 # Verify answer correctness
@@ -449,10 +439,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger.append(f"   Using extracted response section for analysis")
                 analysis_solution = response
                 
-                # Check if response contains steps with proper tags
-                has_step_tags = '<step>' in response
+                # Check if response contains steps with proper tags and has enough steps
+                steps = split_into_steps(response)
                 
-                if not has_step_tags:
+                if not steps or '<step>' not in response:
                     logger.append(f"   ❌ No <step> tags found in response section - marking as unsalvageable")
                     analyzed_solutions.append({
                         'solution': solution,
@@ -464,8 +454,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                # Count steps in the response
-                steps = split_into_steps(response)
                 if len(steps) < 2:
                     logger.append(f"   ❌ Not enough steps in response (found {len(steps)}) - marking as unsalvageable")
                     analyzed_solutions.append({
@@ -478,10 +466,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                # Verify step numbering is correct and sequential
+                # Extract and validate step numbers
                 step_numbers = []
+                valid_step_numbers = True
+                
                 for i, step in enumerate(steps):
-                    # Find step number
                     step_num = None
                     for pattern in STEP_NUMBER_PATTERNS:
                         match = pattern.search(step)
@@ -494,20 +483,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     
                     if step_num is None:
                         logger.append(f"   ❌ Step {i+1} has no valid step number - marking as unsalvageable")
-                        analyzed_solutions.append({
-                            'solution': solution,
-                            'wrong_step_index': None,
-                            'good_completion': None,
-                            'last_good_step': None,
-                            'unsalvageable': True,
-                            'reason': 'missing_step_numbers'
-                        })
+                        valid_step_numbers = False
                         break
                     
                     step_numbers.append(step_num)
                 
-                # Check if we broke out of the loop due to missing step numbers
-                if len(step_numbers) != len(steps):
+                if not valid_step_numbers:
+                    analyzed_solutions.append({
+                        'solution': solution,
+                        'wrong_step_index': None,
+                        'good_completion': None,
+                        'last_good_step': None,
+                        'unsalvageable': True,
+                        'reason': 'missing_step_numbers'
+                    })
                     continue
                 
                 # Check if step numbers are sequential
