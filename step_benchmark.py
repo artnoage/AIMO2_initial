@@ -192,6 +192,7 @@ class StepAnalyzer:
                 )
 
                 if found_verified and not found_valid:
+                    self._log(f"✗ Found verified but invalid solution at step {current_step+1}")
                     return None, None, None, None
                     
                 if found_valid:
