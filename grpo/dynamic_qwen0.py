@@ -246,7 +246,7 @@ def main():
         # Create full solution examples (50% of data)
         full_solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x['answer'],
+            'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
             'partial_solution': '',  # Empty partial solution indicates full solution task
             'example_type': 'solution'  # Add type for tracking
         })
@@ -294,7 +294,7 @@ def main():
                             
                             return {
                                 'prompt': formatted_prompt,
-                                'answer': example['answer'],
+                                'answer': example.get('answer', example.get('correct_answer', '')),
                                 'partial_solution': partial_solution,
                                 'example_type': 'completion'
                             }
@@ -302,7 +302,7 @@ def main():
                 # If we couldn't create a valid partial solution, return it as a full solution example instead
                 return {
                     'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example['answer'],
+                    'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',  # Empty partial solution indicates full solution task
                     'example_type': 'solution'  # This is now a solution example
                 }
@@ -312,7 +312,7 @@ def main():
                 # Return as a full solution example on error
                 return {
                     'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example['answer'],
+                    'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
                 }
@@ -329,7 +329,7 @@ def main():
                     if is_correct == True:
                         return {
                             'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                            'answer': example['answer'],
+                            'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
                         }
@@ -353,7 +353,7 @@ def main():
                         
                         return {
                             'prompt': prompt,
-                            'answer': example['answer'],
+                            'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'wait'
                         }
@@ -361,7 +361,7 @@ def main():
                 # If we couldn't create a wait example, return as regular solution
                 return {
                     'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example['answer'],
+                    'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
                 }
@@ -371,7 +371,7 @@ def main():
                 # Return as a regular solution example on error
                 return {
                     'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example['answer'],
+                    'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
                 }

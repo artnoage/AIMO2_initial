@@ -196,7 +196,7 @@ def main():
         data = load_dataset(dataset_name, split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x['answer']
+            'answer': x.get('answer', x.get('correct_answer', ''))
         }) # type: ignore
         return data # type: ignore
 
