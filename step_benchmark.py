@@ -545,7 +545,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'unsalvageable_reason': analysis['reason']
                     })
                 elif wrong_step_index is not None:
-                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} (index {wrong_step_index}) in solution {idx+1}")
+                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} in solution {idx+1}")
                     
                     # Get steps from wrong solution
                     wrong_steps = split_into_steps(analysis_solution)
