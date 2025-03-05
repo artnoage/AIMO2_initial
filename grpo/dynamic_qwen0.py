@@ -217,6 +217,18 @@ class LoggingCallback(TrainerCallback):
             # Add programming stats
             for key, value in self.reward_func.stats.programming_stats.items():
                 wandb_stats[f'programming_stats/{key}'] = value
+                
+            # Add reward distribution
+            if hasattr(self.reward_func.stats, 'reward_distribution') and self.reward_func.stats.reward_distribution:
+                # Only log the top 10 most common rewards to avoid cluttering wandb
+                sorted_rewards = sorted(
+                    self.reward_func.stats.reward_distribution.items(), 
+                    key=lambda x: self.reward_func.stats.reward_distribution[x[0]], 
+                    reverse=True
+                )[:10]
+                
+                for reward, count in sorted_rewards:
+                    wandb_stats[f'reward_distribution/{reward}'] = count
             
             # Update logs with our metrics
             logs.update(wandb_stats)

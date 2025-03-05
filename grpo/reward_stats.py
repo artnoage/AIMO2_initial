@@ -92,7 +92,9 @@ class RewardStats:
             for r in rewards:
                 self.total_rewards += r
                 r_rounded = round(r, 6)
-                self.reward_distribution[r_rounded] = self.reward_distribution.get(r_rounded, 0) + 1
+                # Convert to string to ensure it works as a dictionary key
+                r_key = str(r_rounded)
+                self.reward_distribution[r_key] = self.reward_distribution.get(r_key, 0) + 1
                 
             # Update the total_rewards in reward_components as well
             self.reward_components['total_rewards'] += sum(rewards)
@@ -218,6 +220,14 @@ class RewardStats:
             f"Processed {self.total_batches} batches ({total_samples} examples)",
             f"Average reward: {avg_reward:.6f}"
         ]
+        
+        # Add reward distribution
+        if self.reward_distribution:
+            summary.append("\nReward Distribution:")
+            # Sort by reward value
+            sorted_rewards = sorted(self.reward_distribution.items(), key=lambda x: float(x[0]))
+            for reward, count in sorted_rewards:
+                summary.append(f"  {reward}: {count} examples")
         
         # If no relevant stats specified, use default categories
         if not relevant_stats:
