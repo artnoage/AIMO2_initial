@@ -11,7 +11,7 @@ sys.path.append(project_root)
 
 class RewardStats:
     """Base class for tracking reward statistics"""
-    def __init__(self, config, num_bins=10):
+    def __init__(self, config, num_bins=5):
         self.config = config
         self.total_batches = 0
         self.total_examples = 0
