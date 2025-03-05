@@ -785,6 +785,10 @@ class DynamicReward(BaseReward):
         reward_type = self._select_reward_type(example_types)
         self.logger.info(f"Using {reward_type} reward for entire batch of {len(completions)} examples")
         
+        # Update stats with example types
+        if hasattr(self, 'stats'):
+            self.stats.update([], example_type=example_types, reward_type=reward_type)
+        
         # Group completions by prompt for group context
         prompt_groups = {}
         for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):

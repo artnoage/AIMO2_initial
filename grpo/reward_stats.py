@@ -80,9 +80,6 @@ class RewardStats:
             elif reward_type == 'completion':
                 self.reward_components['completion_reward_uses'] += 1
         
-        # Track example types if provided
-        example_types = kwargs.get('example_type', [])
-        
         # Initialize example type tracking if not already present
         if not hasattr(self, 'example_types'):
             self.example_types = {
@@ -92,24 +89,29 @@ class RewardStats:
                 'unknown': 0
             }
         
+        # Initialize reward type usage tracking if not already present
+        if not hasattr(self, 'reward_type_usage'):
+            self.reward_type_usage = {
+                'solution': 0,
+                'completion': 0
+            }
+        
         # Track the reward type that was used
         reward_type = kwargs.get('reward_type')
-        if reward_type:
-            if not hasattr(self, 'reward_type_usage'):
-                self.reward_type_usage = {
-                    'solution': 0,
-                    'completion': 0
-                }
-            
-            if reward_type in self.reward_type_usage:
-                self.reward_type_usage[reward_type] += 1
+        if reward_type and reward_type in self.reward_type_usage:
+            self.reward_type_usage[reward_type] += 1
                 
+        # Track example types if provided
+        example_types = kwargs.get('example_type', [])
+        
         # Count the different example types
         if isinstance(example_types, list):
             for et in example_types:
                 if isinstance(et, list) and len(et) > 0:
                     et = et[0]  # Handle nested lists
-                
+                elif not isinstance(et, str):
+                    continue
+                    
                 if et in self.example_types:
                     self.example_types[et] += 1
                 else:

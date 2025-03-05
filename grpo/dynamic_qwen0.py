@@ -583,15 +583,13 @@ def main():
         if key != 'prompt':  # Skip logging the full prompts
             logger.info(f"  {key}: {value}")
     
-    # We need to modify the dataset to include example_type in the input
-    # This will be passed to the reward function during training
-    def add_example_type_to_input(example):
-        return {
-            **example,
-            "example_type": example["example_type"]  # Keep as string, will be batched automatically
-        }
-    
-    formatted_dataset = formatted_dataset.map(add_example_type_to_input)
+    # The example_type is already in the dataset, no need to add it again
+    # Just verify that it's present in all examples
+    example_type_missing = sum(1 for example in formatted_dataset if "example_type" not in example)
+    if example_type_missing > 0:
+        logger.warning(f"Found {example_type_missing} examples without example_type field")
+    else:
+        logger.info("All examples have example_type field correctly set")
     
     # Print a few examples to verify example_type is set correctly
     for i in range(min(5, len(formatted_dataset))):
