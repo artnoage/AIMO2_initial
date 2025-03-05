@@ -2,7 +2,7 @@ import os
 import wandb
 import logging
 import re
-from datasets import load_dataset, concatenate_datasets, Dataset
+from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
 from datetime import datetime
 import torch
 from unsloth import is_bfloat16_supported
@@ -130,9 +130,11 @@ class LoggingCallback(TrainerCallback):
                         example_types = current_batch['example_type']
                         solution_count = sum(1 for t in example_types if t == 'solution')
                         completion_count = sum(1 for t in example_types if t == 'completion')
+                        wait_count = sum(1 for t in example_types if t == 'wait')
                         
                         wandb_stats['solution_examples'] = solution_count
                         wandb_stats['completion_examples'] = completion_count
+                        wandb_stats['wait_examples'] = wait_count
                 except Exception as e:
                     self.logger.warning(f"Could not track example types: {str(e)}")
             
@@ -234,11 +236,11 @@ def main():
     )
     
     def get_questions(split="train") -> Dataset:
-        """Load and format dataset with both full solution and completion examples"""
+        """Load and format dataset with full solution, completion, and wait examples"""
         # Load the base dataset
         data = load_dataset(dataset_name, split=split)
         
-        # Create full solution examples (2/3 of data)
+        # Create full solution examples (50% of data)
         full_solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer'],
@@ -246,7 +248,7 @@ def main():
             'example_type': 'solution'  # Add type for tracking
         })
         
-        # Create completion examples (1/3 of data)
+        # Create completion examples (30% of data)
         def create_partial_solution(example):
             try:
                 # If the example has a model_solution, extract steps from it
@@ -312,21 +314,90 @@ def main():
                     'example_type': 'solution'
                 }
         
+        # Create wait examples (20% of data) - for incorrect solutions
+        def create_wait_example(example):
+            try:
+                # Only create wait examples for examples with model_solution
+                if 'model_solution' in example and example['model_solution']:
+                    # Check if the solution is incorrect (if is_correct field exists)
+                    is_correct = example.get('is_correct', None)
+                    
+                    # If is_correct is explicitly True, return as regular solution
+                    if is_correct == True:
+                        return {
+                            'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                            'answer': example['answer'],
+                            'partial_solution': '',
+                            'example_type': 'solution'
+                        }
+                    
+                    # Extract the thinking section from the model solution
+                    thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+                    thinking_match = thinking_pattern.search(example['model_solution'])
+                    
+                    if thinking_match:
+                        thinking_content = thinking_match.group(1)
+                        # Modify the thinking section with "wait a second"
+                        modified_thinking = thinking_content + "...no wait a second."
+                        
+                        # Create prompt with the modified thinking section
+                        prompt = (
+                            '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n'
+                            '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
+                            '<|im_start|>assistant\\n'
+                            '<thinking>' + modified_thinking
+                        )
+                        
+                        return {
+                            'prompt': prompt,
+                            'answer': example['answer'],
+                            'partial_solution': '',
+                            'example_type': 'wait'
+                        }
+                
+                # If we couldn't create a wait example, return as regular solution
+                return {
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'answer': example['answer'],
+                    'partial_solution': '',
+                    'example_type': 'solution'
+                }
+                
+            except Exception as e:
+                logger.warning(f"Error creating wait example: {str(e)}")
+                # Return as a regular solution example on error
+                return {
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'answer': example['answer'],
+                    'partial_solution': '',
+                    'example_type': 'solution'
+                }
+        
+        # Map the functions to create the different types of examples
         completion_data = data.map(create_partial_solution)
+        wait_data = data.map(create_wait_example)
         
-        # Combine datasets (2/3 full solution, 1/3 completion)
-        # First, determine how many examples of each type to include
+        # Calculate the number of examples for each type
         total_examples = len(data)
-        completion_count = total_examples // 3  # 1/3 of the data
-        solution_count = total_examples - completion_count  # 2/3 of the data
+        wait_count = int(total_examples * 0.2)  # 20% wait examples
+        completion_count = int(total_examples * 0.3)  # 30% completion examples
+        solution_count = total_examples - wait_count - completion_count  # 50% solution examples
         
-        # Select the appropriate number of examples
+        # Select the appropriate number of examples for each type
         full_solution_data = full_solution_data.select(range(min(solution_count, len(full_solution_data))))
         completion_data = completion_data.select(range(min(completion_count, len(completion_data))))
+        wait_data = wait_data.select(range(min(wait_count, len(wait_data))))
         
-        logger.info(f"Created {len(full_solution_data)} full solution examples and {len(completion_data)} completion examples")
+        # Filter out any wait examples that didn't actually get the wait modification
+        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
         
-        combined_data = concatenate_datasets([full_solution_data, completion_data])
+        # Log the counts
+        logger.info(f"Created {len(full_solution_data)} full solution examples")
+        logger.info(f"Created {len(completion_data)} completion examples")
+        logger.info(f"Created {len(wait_data)} wait examples")
+        
+        # Combine all datasets
+        combined_data = concatenate_datasets([full_solution_data, completion_data, wait_data])
         return combined_data
 
     # Get the formatted dataset with both types of examples
@@ -338,8 +409,9 @@ def main():
     # Verify first few entries
     solution_count = 0
     completion_count = 0
+    wait_count = 0
     
-    for i in range(min(5, len(formatted_dataset))):
+    for i in range(min(6, len(formatted_dataset))):
         entry = formatted_dataset[i]
         example_type = entry.get('example_type', 'unknown')
         
@@ -347,6 +419,8 @@ def main():
             solution_count += 1
         elif example_type == 'completion':
             completion_count += 1
+        elif example_type == 'wait':
+            wait_count += 1
             
         print(f"\nEntry {i} verification:")
         print(f"Type: {example_type}")
@@ -357,19 +431,32 @@ def main():
         prompt_tokens = count_tokens(prompt)
         print(f"Prompt tokens: {prompt_tokens}")
         
-        if entry.get('partial_solution'):
+        if example_type == 'completion' and entry.get('partial_solution'):
             partial = entry.get('partial_solution')
             print(f"Partial solution: {partial[:100]}..." + ("" if len(partial) <= 100 else f" ({len(partial)} chars)"))
             # Count steps in partial solution
             step_count = len(re.findall(r'<step>', partial))
             print(f"Steps in partial solution: {step_count}")
             
-        # Check for completion indicators in prompt
+        elif example_type == 'wait':
+            # Extract thinking section to verify wait modification
+            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
+            thinking_match = thinking_pattern.search(prompt)
+            if thinking_match:
+                thinking_content = thinking_match.group(1)
+                print(f"Thinking section: {thinking_content[-50:]}") # Show the end where "wait" should be
+                if "...no wait a second." in thinking_content:
+                    print("✓ Contains '...no wait a second.' modification")
+                else:
+                    print("✗ Does NOT contain '...no wait a second.' modification")
+            
+        # Check for prompt indicators
         has_continue = 'continue' in prompt.lower()
         has_next_step = 'next step' in prompt.lower()
-        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
+        has_wait = 'wait a second' in prompt.lower()
+        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}, wait={has_wait}")
     
-    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples")
+    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {wait_count} wait examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
