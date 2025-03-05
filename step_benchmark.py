@@ -51,7 +51,6 @@ class StepAnalyzer:
         partial_solution: str,
         correct_answer: str,
         step_index: int,
-        size_threshold: int,
         num_completions: int,
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
         """Try multiple completions of a partial solution to check if any are correct"""
@@ -121,11 +120,6 @@ class StepAnalyzer:
                     found_verified = True
                     self._log(f"✓ Found correct completion on attempt {i+1}")
                         
-                    # Check solution size
-                    if len(complete_solution) < size_threshold:
-                        self._log(f"⚠️ Solution below size threshold: {len(complete_solution)} < {size_threshold}")
-                        continue
-                        
                     # Validate complete solution
                     is_valid = True
                     validation_reason = "Valid solution"
@@ -163,7 +157,6 @@ class StepAnalyzer:
         problem: str,
         correct_answer: str,
         wrong_solution: str,
-        size_threshold: int = 500,
         num_completions: int = 10
     ) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
         """Binary search to find first wrong step in solution"""
@@ -205,7 +198,6 @@ class StepAnalyzer:
                     partial_solutions[current_step],
                     correct_answer,
                     current_step,
-                    size_threshold,
                     num_completions
                 )
 
