@@ -304,34 +304,32 @@ def main():
         loftq_config=None
     )
     
-    def get_questions(split="train") -> Dataset:
-        """Load and format dataset with full solution, completion, programming, and wait examples
-        with the following distribution:
-        - 35% solution examples
-        - 35% programming examples
-        - 15% completion examples
-        - 15% wait examples
-        """
-        # Load the base dataset
-        data = load_dataset(dataset_name, split=split)
-        
-        # Create full solution examples
-        full_solution_data = data.map(lambda x: {
+    def create_solution_examples(data: Dataset) -> Dataset:
+        """Create examples for full solution tasks"""
+        logger.info("Creating solution examples...")
+        solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
             'partial_solution': '',  # Empty partial solution indicates full solution task
             'example_type': 'solution'  # Add type for tracking
         })
+        return solution_data
         
-        # Create programming examples (35% of data)
+    def create_programming_examples(data: Dataset) -> Dataset:
+        """Create examples for programming tasks"""
+        logger.info("Creating programming examples...")
         programming_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + PROGRAMMING_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),
             'partial_solution': '',
             'example_type': 'programming'
         })
+        return programming_data
         
-        # Create completion examples (15% of data)
+    def create_completion_examples(data: Dataset) -> Dataset:
+        """Create examples for completion tasks"""
+        logger.info("Creating completion examples...")
+        
         def create_partial_solution(example):
             try:
                 # Only process examples that have model_solutions with proper steps
@@ -424,7 +422,22 @@ def main():
                     'example_type': 'solution'
                 }
         
-        # Create wait examples (15% of data) - for incorrect solutions
+        # Process all examples for completion tasks
+        completion_data = data.map(create_partial_solution)
+        
+        # Filter to only keep actual completion examples
+        completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
+        
+        # Log completion data details
+        completion_count = len(completion_data)
+        logger.info(f"Found {completion_count} completion examples after filtering")
+        
+        return completion_data
+    
+    def create_wait_examples(data: Dataset) -> Dataset:
+        """Create examples for wait-a-second tasks"""
+        logger.info("Creating wait examples...")
+        
         def create_wait_example(example):
             try:
                 # Only create wait examples for examples with model_solution
@@ -483,20 +496,26 @@ def main():
                     'example_type': 'solution'
                 }
         
-        # Process all examples for each type
-        completion_data = data.map(create_partial_solution)
+        # Process all examples for wait tasks
         wait_data = data.map(create_wait_example)
         
         # Filter out any wait examples that didn't actually get the wait modification
         wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
         
-        # Filter to only keep actual completion and wait examples
-        completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
-        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait')
+        logger.info(f"Found {len(wait_data)} wait examples after filtering")
         
-        # Log completion data details
-        completion_count = len(completion_data)
-        logger.info(f"Found {completion_count} completion examples after filtering")
+        return wait_data
+        
+    def get_questions(split="train") -> Dataset:
+        """Load and format dataset with full solution, completion, programming, and wait examples
+        with the following distribution:
+        - 35% solution examples
+        - 35% programming examples
+        - 15% completion examples
+        - 15% wait examples
+        """
+        # Load the base dataset
+        data = load_dataset(dataset_name, split=split)
         
         # Check if we have model_solutions in the dataset
         has_model_solutions = sum(1 for x in data if 'model_solution' in x and x['model_solution'])
@@ -515,6 +534,12 @@ def main():
         
         logger.info(f"Found {valid_steps} examples with valid steps (2+ steps)")
         
+        # Create examples for each type using the separate methods
+        solution_data = create_solution_examples(data)
+        programming_data = create_programming_examples(data)
+        completion_data = create_completion_examples(data)
+        wait_data = create_wait_examples(data)
+        
         # Calculate the target number of examples for each type
         total_examples = len(data)
         solution_target = int(total_examples * 0.35)  # 35% solution examples
@@ -522,139 +547,113 @@ def main():
         completion_target = int(total_examples * 0.15)  # 15% completion examples
         wait_target = int(total_examples * 0.15)  # 15% wait examples
         
-        # If we don't have enough completion examples, try to create more from the original dataset
-        if len(completion_data) < completion_target:
-            logger.info(f"Not enough completion examples ({len(completion_data)}), trying to create more")
+        # Handle case where we don't have enough completion examples
+        def ensure_enough_examples(dataset, target_count, example_type):
+            """Make sure we have enough examples of a given type"""
+            if len(dataset) < target_count:
+                logger.info(f"Not enough {example_type} examples ({len(dataset)}), creating synthetic ones")
                 
-            # Process more examples from the original dataset
-            # First, identify examples with model_solutions that have proper steps
-            valid_examples = []
-            for i, example in enumerate(data):
-                if 'model_solution' in example and example['model_solution']:
-                    response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-                    if response_match:
-                        response = response_match.group(1).strip()
-                        steps = re.findall(r'<step>(.*?)</step>', response, re.DOTALL)
-                        if len(steps) >= 2:
-                            valid_examples.append(i)
-                
-            logger.info(f"Found {len(valid_examples)} examples with valid steps for potential completion tasks")
-                
-            # If we have valid examples, process them
-            if valid_examples:
-                # Select examples we haven't processed yet
-                additional_examples = data.select(valid_examples)
-                additional_completions = additional_examples.map(create_partial_solution)
-                additional_completions = additional_completions.filter(lambda x: x['example_type'] == 'completion')
-                    
-                logger.info(f"Created {len(additional_completions)} additional completion examples")
-                    
-                # Combine with existing completion examples
-                if len(additional_completions) > 0:
-                    completion_data = concatenate_datasets([completion_data, additional_completions])
-                    logger.info(f"Combined completion dataset now has {len(completion_data)} examples")
-                
-            # If we still don't have enough, create synthetic ones as a last resort
-            if len(completion_data) < completion_target:
-                logger.info(f"Still need {completion_target - len(completion_data)} more completion examples, creating synthetic ones")
-                    
-                # Create a function to convert solution examples to completion examples
-                def convert_to_completion(example, idx):
+                # Create synthetic examples from solution examples
+                def convert_to_type(example, idx):
                     try:
-                        # Only process solution examples
-                        if example['example_type'] != 'solution':
+                        if example_type == 'completion':
+                            # Create a synthetic partial solution
+                            partial_solution = (
+                                "<step>Step 1: Let's understand the problem.\n"
+                                "I'll carefully analyze what we're asked to find and identify the key information.\n"
+                                f"The problem asks: {example['problem'][:100]}...\n"
+                                "To solve this, I'll need to apply appropriate mathematical concepts and techniques.</step>"
+                            )
+                                
+                            # Format the completion prompt
+                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
+                                
+                            return {
+                                'prompt': formatted_prompt,
+                                'answer': example.get('answer', example.get('correct_answer', '')),
+                                'partial_solution': partial_solution,
+                                'example_type': 'completion'
+                            }
+                        elif example_type == 'wait':
+                            # Create a synthetic wait example
+                            prompt = (
+                                '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n'
+                                '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
+                                '<|im_start|>assistant\\n'
+                                '<thinking>Let me analyze this problem...no wait a second.</thinking>'
+                            )
+                            
+                            return {
+                                'prompt': prompt,
+                                'answer': example.get('answer', example.get('correct_answer', '')),
+                                'partial_solution': '',
+                                'example_type': 'wait'
+                            }
+                        else:
                             return example
-                            
-                        # Create a more meaningful synthetic partial solution
-                        partial_solution = (
-                            "<step>Step 1: Let's understand the problem.\n"
-                            "I'll carefully analyze what we're asked to find and identify the key information.\n"
-                            f"The problem asks: {example['problem'][:100]}...\n"
-                            "To solve this, I'll need to apply appropriate mathematical concepts and techniques.</step>"
-                        )
-                            
-                        # Format the completion prompt
-                        formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                            f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
-                            
-                        return {
-                            'prompt': formatted_prompt,
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': partial_solution,
-                            'example_type': 'completion'
-                        }
                     except Exception as e:
-                        logger.warning(f"Error creating synthetic completion: {str(e)}")
+                        logger.warning(f"Error creating synthetic {example_type}: {str(e)}")
                         return example
-                    
-                # Take some solution examples and convert them
-                needed_synthetic = completion_target - len(completion_data)
-                synthetic_candidates = full_solution_data.select(range(min(needed_synthetic * 2, len(full_solution_data))))
-                synthetic_completions = synthetic_candidates.map(convert_to_completion, with_indices=True)
-                    
+                
+                # Take solution examples and convert them
+                needed = target_count - len(dataset)
+                synthetic_candidates = solution_data.select(range(min(needed * 2, len(solution_data))))
+                synthetic_examples = synthetic_candidates.map(convert_to_type, with_indices=True)
+                
                 # Filter to only keep the converted ones
-                synthetic_completions = synthetic_completions.filter(lambda x: x['example_type'] == 'completion')
-                    
+                synthetic_examples = synthetic_examples.filter(lambda x: x['example_type'] == example_type)
+                
                 # Take only what we need
-                synthetic_completions = synthetic_completions.select(range(min(needed_synthetic, len(synthetic_completions))))
-                    
-                logger.info(f"Created {len(synthetic_completions)} synthetic completion examples")
-                    
-                # Combine with real completion examples
-                if len(synthetic_completions) > 0:
-                    completion_data = concatenate_datasets([completion_data, synthetic_completions])
-                    logger.info(f"Combined completion dataset now has {len(completion_data)} examples")
+                synthetic_examples = synthetic_examples.select(range(min(needed, len(synthetic_examples))))
+                
+                logger.info(f"Created {len(synthetic_examples)} synthetic {example_type} examples")
+                
+                # Combine with existing examples
+                if len(synthetic_examples) > 0:
+                    dataset = concatenate_datasets([dataset, synthetic_examples])
+                    logger.info(f"Combined {example_type} dataset now has {len(dataset)} examples")
+            
+            return dataset
         
-        # Shuffle datasets for random selection
-        full_solution_data = full_solution_data.shuffle(seed=42)
-        completion_data = completion_data.shuffle(seed=42)
-        wait_data = wait_data.shuffle(seed=42)
-        programming_data = programming_data.shuffle(seed=42)
+        # Ensure we have enough examples of each type
+        completion_data = ensure_enough_examples(completion_data, completion_target, 'completion')
+        wait_data = ensure_enough_examples(wait_data, wait_target, 'wait')
         
-        # Select the appropriate number of examples for each type
-        # If we don't have enough of a particular type, take what we have
-        full_solution_data = full_solution_data.select(range(min(solution_target, len(full_solution_data))))
-        completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
-        wait_data = wait_data.select(range(min(wait_target, len(wait_data))))
-        programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
-        
-        # Log the counts
-        logger.info(f"Created {len(full_solution_data)} full solution examples (target: {solution_target})")
-        logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
-        logger.info(f"Created {len(wait_data)} wait examples (target: {wait_target})")
-        logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
-        
-        # Count the actual types in each dataset before combining
+        # Function to count example types in a dataset
         def count_types(dataset):
             type_counts = {}
             for example in dataset:
                 example_type = example.get('example_type', 'unknown')
                 type_counts[example_type] = type_counts.get(example_type, 0) + 1
             return type_counts
-            
-        solution_types = count_types(full_solution_data)
-        completion_types = count_types(completion_data)
-        wait_types = count_types(wait_data)
         
-        logger.info("Dataset type distribution before combining:")
-        logger.info(f"Solution dataset: {solution_types}")
-        logger.info(f"Completion dataset: {completion_types}")
-        logger.info(f"Wait dataset: {wait_types}")
+        # Log the counts before shuffling
+        logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
+        logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
+        logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
+        logger.info(f"Created {len(wait_data)} wait examples (target: {wait_target})")
         
-        # Shuffle each dataset individually
-        full_solution_data = full_solution_data.shuffle(seed=42)
+        # Shuffle and select examples for each type
+        solution_data = solution_data.shuffle(seed=42)
         programming_data = programming_data.shuffle(seed=43)
         completion_data = completion_data.shuffle(seed=44)
         wait_data = wait_data.shuffle(seed=45)
         
-        # Select the target number of examples from each dataset
-        full_solution_data = full_solution_data.select(range(min(solution_target, len(full_solution_data))))
+        solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
         programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
         completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
         wait_data = wait_data.select(range(min(wait_target, len(wait_data))))
         
+        # Log type distribution before combining
+        logger.info("Dataset type distribution before combining:")
+        logger.info(f"Solution dataset: {count_types(solution_data)}")
+        logger.info(f"Programming dataset: {count_types(programming_data)}")
+        logger.info(f"Completion dataset: {count_types(completion_data)}")
+        logger.info(f"Wait dataset: {count_types(wait_data)}")
+        
         # Combine all datasets
-        combined_data = concatenate_datasets([full_solution_data, programming_data, completion_data, wait_data])
+        combined_data = concatenate_datasets([solution_data, programming_data, completion_data, wait_data])
         
         # Count types in the combined dataset
         combined_types = count_types(combined_data)
