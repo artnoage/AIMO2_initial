@@ -661,11 +661,27 @@ class DynamicReward(BaseReward):
         """
         # Check for example_type in batch_kwargs if available
         example_types = batch_kwargs.get('example_type', [])
-        if example_types and len(example_types) > 0:
+        
+        # Debug the example_types content
+        self.logger.info(f"Example types in batch: {example_types}")
+        
+        # Handle both list and string formats
+        if isinstance(example_types, list) and len(example_types) > 0:
+            # If it's a list, check the first element
             first_type = example_types[0]
+            if isinstance(first_type, list) and len(first_type) > 0:
+                # Handle nested list case
+                first_type = first_type[0]
+            
+            self.logger.info(f"First example type: {first_type}")
+            
             if first_type == 'completion':
                 self.logger.info("Selected completion reward based on example_type")
                 return 'completion'
+        elif isinstance(example_types, str) and example_types == 'completion':
+            # Handle string case
+            self.logger.info("Selected completion reward based on example_type string")
+            return 'completion'
         
         # Default to solution reward if no completion type found
         self.logger.info("Selected solution reward (no completion type in example_type)")
@@ -720,7 +736,22 @@ class DynamicReward(BaseReward):
         
         if len(completions) != len(prompts) or len(completions) != len(answers):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
+            self.logger.error(f"kwargs keys: {list(kwargs.keys())}")
             return [0.0] * len(completions)
+        
+        # Log all kwargs keys for debugging
+        self.logger.info(f"Available kwargs: {list(kwargs.keys())}")
+        
+        # Check if example_type exists and log its format
+        if 'example_type' in kwargs:
+            example_type_value = kwargs['example_type']
+            self.logger.info(f"example_type found: {example_type_value} (type: {type(example_type_value)})")
+            if isinstance(example_type_value, list):
+                self.logger.info(f"example_type list length: {len(example_type_value)}")
+                if len(example_type_value) > 0:
+                    self.logger.info(f"First element: {example_type_value[0]} (type: {type(example_type_value[0])})")
+        else:
+            self.logger.warning("No example_type found in kwargs")
         
         # Select which reward type to use for the entire batch
         reward_type = self._select_reward_type(kwargs)

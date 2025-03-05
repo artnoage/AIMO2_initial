@@ -279,50 +279,61 @@ def main():
         # Create completion examples (30% of data)
         def create_partial_solution(example):
             try:
-                # If the example has a model_solution, extract steps from it
-                if 'model_solution' in example and example['model_solution']:
-                    # Extract response section
-                    response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-                    if response_match:
-                        response = response_match.group(1).strip()
-                        
-                        # Extract steps
-                        step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-                        steps = step_pattern.findall(response)
-                        
-                        if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
-                            # Randomly decide how many steps to include (at least 1, leave at least 1)
-                            random.seed(hash(example.get('id', 0)) % 10000)  # Deterministic but varied
-                            split_point = random.randint(1, len(steps) - 1)
+                # Force some examples to be completion type for testing
+                # Use a deterministic approach based on example ID
+                example_id = example.get('id', hash(example.get('problem', '')))
+                if isinstance(example_id, str):
+                    example_id = hash(example_id)
+                
+                # Force 30% of examples to be completion type
+                if example_id % 100 < 30:
+                    logger.info(f"Forcing example {example_id} to be completion type")
+                    
+                    # If the example has a model_solution, extract steps from it
+                    if 'model_solution' in example and example['model_solution']:
+                        # Extract response section
+                        response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
+                        if response_match:
+                            response = response_match.group(1).strip()
                             
-                            # Create partial solution with the first 'split_point' steps
-                            partial_steps = steps[:split_point]
-                            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+                            # Extract steps
+                            step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
+                            steps = step_pattern.findall(response)
                             
-                            # Check token count for the completion prompt
-                            completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                            total_tokens = completion_prompt_tokens + count_tokens(completion_text)
-                            
-                            # If token count is too high, return as full solution instead
-                            if total_tokens >= MAX_PROMPT_TOKENS:
-                                logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
+                            if len(steps) >= 2:  # Need at least 2 steps to create a partial solution
+                                # Randomly decide how many steps to include (at least 1, leave at least 1)
+                                random.seed(example_id % 10000)  # Deterministic but varied
+                                split_point = random.randint(1, len(steps) - 1)
+                                
+                                # Create partial solution with the first 'split_point' steps
+                                partial_steps = steps[:split_point]
+                                partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+                                
+                                # Check token count for the completion prompt
+                                completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                                total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                                
+                                # If token count is too high, return as full solution instead
+                                if total_tokens >= MAX_PROMPT_TOKENS:
+                                    logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
+                                    return {
+                                        'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                                        'answer': example.get('answer', example.get('correct_answer', '')),
+                                        'partial_solution': '',
+                                        'example_type': 'solution'
+                                    }
+                                
+                                # Format the completion prompt with the partial solution in the user section
+                                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
+                                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
+                                
+                                logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
                                 return {
-                                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                                    'answer': example['answer'],
-                                    'partial_solution': '',
-                                    'example_type': 'solution'
+                                    'prompt': formatted_prompt,
+                                    'answer': example.get('answer', example.get('correct_answer', '')),
+                                    'partial_solution': partial_solution,
+                                    'example_type': 'completion'
                                 }
-                            
-                            # Format the completion prompt with the partial solution in the user section
-                            formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
-                            
-                            return {
-                                'prompt': formatted_prompt,
-                                'answer': example.get('answer', example.get('correct_answer', '')),
-                                'partial_solution': partial_solution,
-                                'example_type': 'completion'
-                            }
                 
                 # If we couldn't create a valid partial solution, return it as a full solution example instead
                 return {
@@ -505,6 +516,12 @@ def main():
         output_dir=output_dir,
     )
     
+    # Log the dataset structure before training
+    logger.info("Dataset structure before training:")
+    sample_example = formatted_dataset[0]
+    for key, value in sample_example.items():
+        logger.info(f"  {key}: {type(value)} - {value}")
+    
     # Initialize trainer with reward function
     trainer = GRPOTrainer(
         model=model,
@@ -515,15 +532,36 @@ def main():
         callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
     )
     
+    # Monkey patch the trainer's get_train_dataloader to add logging
+    original_get_train_dataloader = trainer.get_train_dataloader
+    
+    def patched_get_train_dataloader():
+        dataloader = original_get_train_dataloader()
+        logger.info("Inspecting first batch from dataloader:")
+        for batch in dataloader:
+            if isinstance(batch, dict):
+                for key, value in batch.items():
+                    logger.info(f"  {key}: {type(value)}")
+                    if key == 'example_type':
+                        logger.info(f"  example_type content: {value}")
+            break  # Just inspect the first batch
+        return dataloader
+    
+    trainer.get_train_dataloader = patched_get_train_dataloader
+    
     # We need to modify the dataset to include example_type in the input
     # This will be passed to the reward function during training
     def add_example_type_to_input(example):
         return {
             **example,
-            "example_type": [example["example_type"]]  # Make it a list to match batch format
+            "example_type": example["example_type"]  # Keep as string, will be batched automatically
         }
     
     formatted_dataset = formatted_dataset.map(add_example_type_to_input)
+    
+    # Print a few examples to verify example_type is set correctly
+    for i in range(min(5, len(formatted_dataset))):
+        logger.info(f"Example {i} type: {formatted_dataset[i]['example_type']}")
     
     # Train
     try:
