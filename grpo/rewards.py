@@ -61,7 +61,13 @@ class BaseReward(ABC):
         log_dir = Path(self.config.logging_dir) / self.config.model_type
         log_dir.mkdir(exist_ok=True)
         
-        logger = logging.getLogger(f'reward_{self.config.model_type}')
+        logger_name = f'reward_{self.config.model_type}'
+        logger = logging.getLogger(logger_name)
+        
+        # Clear any existing handlers to prevent duplicate logging
+        if logger.handlers:
+            logger.handlers.clear()
+            
         logger.setLevel(logging.INFO)
         
         file_handler = logging.FileHandler(

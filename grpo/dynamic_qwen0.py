@@ -84,6 +84,11 @@ def setup_logging(model_type: str) -> logging.Logger:
     os.makedirs(log_dir, exist_ok=True)
     
     logger = logging.getLogger('dynamic_grpo')
+    
+    # Clear any existing handlers to prevent duplicate logging
+    if logger.handlers:
+        logger.handlers.clear()
+        
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
