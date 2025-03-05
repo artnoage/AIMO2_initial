@@ -479,6 +479,7 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
     Handles both traditional steps and <step> tag format.
+    Does NOT wrap in <response> tags to match completion_grpo.py behavior.
     """
     if not steps:
         return []
@@ -489,27 +490,15 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     # Check if we're using <step> tags format
     using_tags = any("<step>" in step or "</step>" in step for step in steps)
     
-    # Start with <response> tag for tagged format
-    if using_tags:
-        current = "<response>"
-        partial_solutions.append(current)
-        current += "\n\n"
-    
-    # Process remaining steps
+    # Process steps
     for step in steps:
         # For tagged format, wrap step in tags if not already wrapped
         if using_tags and not (step.strip().startswith("<step>") and step.strip().endswith("</step>")):
             step = f"<step>{step}</step>"
             
+        if current:
+            current += "\n\n"  # Add spacing between steps
         current += step
         partial_solutions.append(current)
-        current += "\n\n"  # Add spacing between steps
-    
-    # For tagged format, add closing </response> tag if needed
-    if using_tags and "</response>" not in current:
-        current = current.rstrip() + "\n</response>"
-        # Update the last partial solution to include the closing tag
-        if partial_solutions:
-            partial_solutions[-1] = current
         
     return partial_solutions
