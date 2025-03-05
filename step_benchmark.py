@@ -59,7 +59,7 @@ class StepAnalyzer:
         good_completion = None
         completion_prompt = None
         completions_tried = 0
-        self._log(f"\nVerifying completions for step {step_index+1} (index {step_index}):")
+        self._log(f"\nVerifying completions for step {step_index+1}:")
         self._log(f"Partial solution length: {len(partial_solution)}")
         self._log(f"Will try up to {num_completions} completions")
         
@@ -125,7 +125,7 @@ class StepAnalyzer:
         if step_index == 0:
             self._log(f"Analysis section: Verified={found_verified}, Valid={found_valid}, Completions tried: {completions_tried}/{num_completions}")
         else:
-            self._log(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}, Completions tried: {completions_tried}/{num_completions}")
+            self._log(f"Step {step_index+1}: Verified={found_verified}, Valid={found_valid}, Completions tried: {completions_tried}/{num_completions}")
             
         return found_verified, found_valid, correct_step, good_completion, completion_prompt
 
@@ -183,7 +183,7 @@ class StepAnalyzer:
                     return None, None, None, None
                     
                 if found_valid:
-                    self._log(f"✓ Step {current_step+1} (index {current_step}) is valid")
+                    self._log(f"✓ Step {current_step+1} is valid")
                     last_good_step = correct_step
                     saved_good_completion = good_completion
                     saved_completion_prompt = completion_prompt
@@ -200,7 +200,7 @@ class StepAnalyzer:
                     current_step += 1
                     
                 else:
-                    self._log(f"✗ Step {current_step+1} (index {current_step}) cannot be completed correctly")
+                    self._log(f"✗ Step {current_step+1} cannot be completed correctly")
                     last_bad_step = current_step
                     
                     if going_up is None:
