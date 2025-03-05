@@ -668,11 +668,11 @@ class DynamicReward(BaseReward):
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
             self.relevant_stats['reward_components'] = []
-        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'completion_reward_uses', 'random_selections'])
+        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'completion_reward_uses'])
     
     def _select_reward_type(self, batch_kwargs: Dict) -> str:
         """
-        Select which reward type to use for the entire batch
+        Select which reward type to use for the entire batch based on prompt content
         
         Args:
             batch_kwargs: Keyword arguments for the batch
@@ -680,23 +680,30 @@ class DynamicReward(BaseReward):
         Returns:
             String indicating which reward to use: 'solution' or 'completion'
         """
-        # Check if partial_solution exists in the batch
-        partial_solutions = batch_kwargs.get('partial_solution', [])
-        
-        # If no partial solutions or they're all empty, use solution reward
-        if not partial_solutions or all(not ps for ps in partial_solutions):
-            self.logger.info("Selected solution reward (no partial solutions)")
+        # Get the prompts from the batch
+        prompts = batch_kwargs.get('prompts', [])
+        if not prompts:
+            self.logger.warning("No prompts found in batch, defaulting to solution reward")
             return 'solution'
             
-        # If partial solutions exist, randomly choose between solution and completion rewards
-        if random.random() < 0.5:
-            self.logger.info("Randomly selected solution reward")
-            self.stats.reward_components['random_selections'] = self.stats.reward_components.get('random_selections', 0) + 1
-            return 'solution'
-        else:
-            self.logger.info("Randomly selected completion reward")
-            self.stats.reward_components['random_selections'] = self.stats.reward_components.get('random_selections', 0) + 1
-            return 'completion'
+        # Check the first prompt to determine the type (all prompts in a batch should be the same type)
+        first_prompt = prompts[0]
+        
+        # Check for completion prompt indicators
+        completion_indicators = [
+            "continue the solution from where it left off",
+            "Continue from here",
+            "maintaining the same step numbering"
+        ]
+        
+        for indicator in completion_indicators:
+            if indicator in first_prompt:
+                self.logger.info(f"Selected completion reward based on prompt content: '{indicator}'")
+                return 'completion'
+        
+        # Default to solution reward if no completion indicators found
+        self.logger.info("Selected solution reward (no completion indicators in prompt)")
+        return 'solution'
     
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward using the selected reward function"""

@@ -93,8 +93,24 @@ class LoggingCallback(TrainerCallback):
                 wandb_stats['solution_reward_uses'] = self.reward_func.stats.reward_components['solution_reward_uses']
             if 'completion_reward_uses' in self.reward_func.stats.reward_components:
                 wandb_stats['completion_reward_uses'] = self.reward_func.stats.reward_components['completion_reward_uses']
-            if 'random_selections' in self.reward_func.stats.reward_components:
-                wandb_stats['random_selections'] = self.reward_func.stats.reward_components['random_selections']
+                
+            # Track example types in the batch
+            if hasattr(state, 'train_dataloader') and state.train_dataloader is not None:
+                try:
+                    # Get current batch
+                    batch_idx = (state.global_step - 1) % len(state.train_dataloader)
+                    current_batch = list(state.train_dataloader)[batch_idx]
+                    
+                    # Count example types if available
+                    if 'example_type' in current_batch:
+                        example_types = current_batch['example_type']
+                        solution_count = sum(1 for t in example_types if t == 'solution')
+                        completion_count = sum(1 for t in example_types if t == 'completion')
+                        
+                        wandb_stats['solution_examples'] = solution_count
+                        wandb_stats['completion_examples'] = completion_count
+                except Exception as e:
+                    self.logger.warning(f"Could not track example types: {str(e)}")
             
             # Add solution-specific metrics if available
             if hasattr(self.reward_func.solution_reward, 'stats'):
@@ -189,19 +205,12 @@ def main():
         full_solution_data = data.map(lambda x: {
             'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x['answer'],
-            'partial_solution': ''  # Empty partial solution indicates full solution task
+            'partial_solution': '',  # Empty partial solution indicates full solution task
+            'example_type': 'solution'  # Add type for tracking
         })
         
         # Create completion examples (50% of data)
-        # For completion examples, we'll simulate partial solutions by:
-        # 1. Taking the first half of steps from existing solutions, or
-        # 2. Creating synthetic partial solutions with placeholder steps
-        
         def create_partial_solution(example):
-            # For simplicity, we'll create a synthetic partial solution
-            # In a real implementation, you might want to use actual solutions
-            # and split them at random points
-            
             # Create a basic partial solution with 1-2 steps
             import random
             num_steps = random.randint(1, 2)
@@ -225,14 +234,17 @@ def main():
             return {
                 'prompt': formatted_prompt,
                 'answer': example['answer'],
-                'partial_solution': partial
+                'partial_solution': partial,
+                'example_type': 'completion'  # Add type for tracking
             }
         
         completion_data = data.map(create_partial_solution)
         
         # Combine datasets (50% full solution, 50% completion)
-        full_solution_data = full_solution_data.select(range(len(full_solution_data) // 2))
-        completion_data = completion_data.select(range(len(completion_data) // 2))
+        # Make sure we have equal numbers of each type
+        dataset_size = min(len(full_solution_data), len(completion_data))
+        full_solution_data = full_solution_data.select(range(dataset_size))
+        completion_data = completion_data.select(range(dataset_size))
         
         combined_data = concatenate_datasets([full_solution_data, completion_data])
         return combined_data
@@ -247,8 +259,11 @@ def main():
     for i in range(min(3, len(formatted_dataset))):
         entry = formatted_dataset[i]
         print(f"\nEntry {i} verification:")
+        print(f"Type: {entry.get('example_type')}")
         print(f"Answer: {entry.get('answer')}")
-        print(f"Partial solution: {entry.get('partial_solution')[:100]}...")
+        if entry.get('partial_solution'):
+            print(f"Partial solution: {entry.get('partial_solution')[:100]}...")
+        print(f"Prompt contains 'continue': {'continue' in entry.get('prompt', '').lower()}")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
