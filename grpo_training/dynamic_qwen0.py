@@ -4,6 +4,7 @@ import logging
 import re
 from datasets import load_dataset, concatenate_datasets, Dataset
 from datetime import datetime
+import torch
 from unsloth import is_bfloat16_supported
 from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
@@ -203,6 +204,19 @@ def main():
         use_gradient_checkpointing="unsloth",
         gpu_memory_utilization=0.6,
         max_lora_rank=64)
+        
+    # Function to count tokens in a string
+    def count_tokens(text):
+        return len(tokenizer.encode(text))
+        
+    # Calculate token counts for system prompts
+    solver_prompt_tokens = count_tokens(SOLVER_SYSTEM_PROMPT)
+    completion_prompt_tokens = count_tokens(COMPLETION_SYSTEM_PROMPT)
+    logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
+    logger.info(f"Completion system prompt: {completion_prompt_tokens} tokens")
+    
+    # Maximum allowed tokens for prompt (leaving room for completion)
+    MAX_PROMPT_TOKENS = 2000
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -254,6 +268,20 @@ def main():
                             # Create partial solution with the first 'split_point' steps
                             partial_steps = steps[:split_point]
                             partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+                            
+                            # Check token count for the completion prompt
+                            completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                            total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                            
+                            # If token count is too high, return as full solution instead
+                            if total_tokens >= MAX_PROMPT_TOKENS:
+                                logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
+                                return {
+                                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                                    'answer': example['answer'],
+                                    'partial_solution': '',
+                                    'example_type': 'solution'
+                                }
                             
                             # Format the completion prompt with the partial solution in the user section
                             formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
@@ -324,6 +352,11 @@ def main():
         print(f"Type: {example_type}")
         print(f"Answer: {entry.get('answer')}")
         
+        # Get token count for the prompt
+        prompt = entry.get('prompt', '')
+        prompt_tokens = count_tokens(prompt)
+        print(f"Prompt tokens: {prompt_tokens}")
+        
         if entry.get('partial_solution'):
             partial = entry.get('partial_solution')
             print(f"Partial solution: {partial[:100]}..." + ("" if len(partial) <= 100 else f" ({len(partial)} chars)"))
@@ -332,7 +365,6 @@ def main():
             print(f"Steps in partial solution: {step_count}")
             
         # Check for completion indicators in prompt
-        prompt = entry.get('prompt', '')
         has_continue = 'continue' in prompt.lower()
         has_next_step = 'next step' in prompt.lower()
         print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
@@ -355,7 +387,7 @@ def main():
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         num_generations=10,
-        max_prompt_length=2048,
+        max_prompt_length=MAX_PROMPT_TOKENS,
         max_completion_length=2048,
         num_train_epochs=1,
         save_steps=50,
