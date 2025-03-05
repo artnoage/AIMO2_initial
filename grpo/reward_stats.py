@@ -39,7 +39,9 @@ class RewardStats:
             'average_reward': 0.0,
             'solution_reward_uses': 0,
             'completion_reward_uses': 0,
-            'programming_reward_uses': 0
+            'programming_reward_uses': 0,
+            'wait_examples_processed': 0,
+            'wait_examples_rewarded': 0
         }
         
         # Track group-specific stats

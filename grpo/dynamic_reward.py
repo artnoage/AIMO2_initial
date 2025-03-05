@@ -106,17 +106,18 @@ class DynamicReward(BaseReward):
         
         self.logger.info(f"Type counts in batch: completion={completion_count}, solution={solution_count}, wait={wait_count}, programming={programming_count}")
         
-        # Determine the majority type
-        if programming_count > 0 and programming_count >= completion_count and programming_count >= solution_count and programming_count >= wait_count:
+        # Always use solution reward if there are any wait examples in the batch
+        if wait_count > 0:
+            self.logger.info("Selected solution reward because batch contains wait examples")
+            return 'solution'
+        
+        # Determine the majority type for other cases
+        if programming_count > 0 and programming_count >= completion_count and programming_count >= solution_count:
             self.logger.info("Selected programming reward (majority type)")
             return 'programming'
-        elif completion_count > solution_count and completion_count > wait_count:
+        elif completion_count > solution_count:
             self.logger.info("Selected completion reward (majority type)")
             return 'completion'
-        elif wait_count > solution_count and wait_count > completion_count:
-            # For wait examples, we still use solution reward
-            self.logger.info("Selected solution reward for wait examples (majority type)")
-            return 'solution'
         else:
             # Default to solution reward
             self.logger.info("Selected solution reward (majority type or default)")
@@ -143,6 +144,9 @@ class DynamicReward(BaseReward):
                 self.logger.warning(f"Missing group context in DynamicReward - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 # We'll continue anyway as the underlying reward functions should handle this
             
+            # Get the example type for this specific completion
+            example_type = kwargs.get('example_type', '')
+            
             # Select the appropriate reward function
             if reward_type == 'completion':
                 reward_func = self.completion_reward
@@ -153,6 +157,9 @@ class DynamicReward(BaseReward):
             else:
                 reward_func = self.solution_reward
                 self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
+            
+            # Log the example type being processed
+            self.logger.info(f"Processing example type: {example_type} with {reward_func.__name__}")
             
             # Calculate the reward using the selected function
             reward = await reward_func.calculate_reward(completion, **kwargs)
