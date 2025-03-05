@@ -255,14 +255,6 @@ def main():
                             partial_steps = steps[:split_point]
                             partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
                             
-                            # Calculate the next step number
-                            # Look for step numbers like "Step 1:", "Step 2:" etc.
-                            last_step_match = re.search(r'Step\s+(\d+):', partial_steps[-1])
-                            if last_step_match:
-                                next_step = int(last_step_match.group(1)) + 1
-                            else:
-                                next_step = split_point + 1
-                            
                             # Format the completion prompt with the partial solution in the user section
                             formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
                                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
