@@ -5,11 +5,11 @@ import re
 from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
 from datetime import datetime
 import torch
-from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-PatchFastRL("GRPO", FastLanguageModel)
 import sys
 from trl import GRPOConfig, GRPOTrainer
+# Import unsloth after trl to avoid patching conflicts
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel
 from transformers import TrainerCallback
 import random
 # Ensure the project root is in sys.path for imports
