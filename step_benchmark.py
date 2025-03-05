@@ -53,43 +53,38 @@ class StepAnalyzer:
         step_index: int,
         num_completions: int,
     ) -> Tuple[bool, bool, Optional[str], Optional[str], Optional[str]]:
-        """Try multiple completions of a partial solution to check if any are correct"""
+        """Try completions of a partial solution until we find a valid one or exhaust attempts"""
         found_verified = False
         found_valid = False
         correct_step = None
         good_completion = None
         completion_prompt = None
+        completions_tried = 0
         self._log(f"\nVerifying completions for step {step_index+1} (index {step_index}):")
         self._log(f"Partial solution length: {len(partial_solution)}")
-        self._log(f"Trying {num_completions} completions")
+        self._log(f"Will try up to {num_completions} completions")
         
         # We're always using <step> tags format in the response section
         self._log(f"Using <step> tags format")
         
-        # Generate all completions at once
-        completions = []
+        # Try completions one at a time until we find a valid one
         for i in range(num_completions):
+            completions_tried += 1
             try:
-                if i == 0 and completion_prompt is None:
+                # Generate completion
+                if i == 0:
                     prompt, completion = await self.completion_agent.generate(
                         problem,
                         partial_solution,
                         return_prompt=True
                     )
                     completion_prompt = prompt
-                    completions.append(completion)
                 else:
                     completion = await self.completion_agent.generate(
                         problem,
                         partial_solution
                     )
-                    completions.append(completion)
-            except Exception as e:
-                self._log(f"Error generating completion {i+1}: {str(e)}")
                 
-        # Evaluate all completions
-        for i, completion in enumerate(completions):
-            try:
                 # Check if completion has proper format with <step> tags
                 if not ("<step>" in completion):
                     self._log(f"⚠️ Completion {i+1} missing <step> tags, skipping")
@@ -109,26 +104,19 @@ class StepAnalyzer:
                 if is_correct:
                     found_verified = True
                     self._log(f"✓ Found correct completion on attempt {i+1}")
-                        
-                    # Validate complete solution
-                    is_valid = True
-                    validation_reason = "Valid solution"
                     
                     # Extract next step
                     completion_steps = split_into_steps(complete_solution)
                     if step_index + 1 < len(completion_steps):
+                        found_valid = True
                         correct_step = completion_steps[step_index + 1]
                         good_completion = completion
                         self._log(f"✓ Found valid completion with {len(completion_steps)} steps")
+                        # We found a valid completion, no need to try more
                         break
                     else:
                         self._log(f"⚠️ Completion doesn't have enough steps")
-                        is_valid = False
-                        validation_reason = "Not enough steps"
-                        
-                    if not is_valid:
-                        self._log(f"Found verified but invalid solution: {validation_reason}")
-                        continue
+                        # Continue trying to find a completion with enough steps
                         
             except Exception as e:
                 self._log(f"Error in completion attempt {i+1}: {str(e)}")
@@ -136,9 +124,9 @@ class StepAnalyzer:
                 
         # Log verification results
         if step_index == 0:
-            self._log(f"Analysis section: Verified={found_verified}, Valid={found_valid}")
+            self._log(f"Analysis section: Verified={found_verified}, Valid={found_valid}, Completions tried: {completions_tried}/{num_completions}")
         else:
-            self._log(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}")
+            self._log(f"Step {step_index}: Verified={found_verified}, Valid={found_valid}, Completions tried: {completions_tried}/{num_completions}")
             
         return found_verified, found_valid, correct_step, good_completion, completion_prompt
 
