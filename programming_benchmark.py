@@ -178,23 +178,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Extract code from the response
                 code = extract_code_from_response(current_solution)
                 
-                # Check code quality
+                # Check code quality first to save time
                 code_quality_passed, quality_message = check_code_quality(code)
                 
                 if not code_quality_passed:
+                    logger.append(f"❌ Code quality check failed for attempt {attempt+1}: {quality_message}")
                     solutions.append({
                         'solution': current_solution,
                         'code': code,
                         'answer': None,
                         'is_correct': False,
-                        'error_message': quality_message
+                        'error_message': f"Code quality check failed: {quality_message}"
                     })
                     continue
                 
-                # Run the code
+                # Only run code if it passes quality checks
                 execution_success, result, error_message = run_code_safely(code, timeout=config.timeout)
                 
                 if not execution_success:
+                    logger.append(f"❌ Code execution failed for attempt {attempt+1}: {error_message}")
                     solutions.append({
                         'solution': current_solution,
                         'code': code,
@@ -271,6 +273,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"\n📝 Solution {i+1}:")
             if s['error_message']:
                 logger.append(f"❌ Error: {s['error_message']}")
+                # Categorize the error
+                if "Code quality check failed" in s['error_message']:
+                    logger.append(f"   └─ Quality issue detected - skipped execution")
+                elif "Execution error" in s['error_message'] or "timed out" in s['error_message']:
+                    logger.append(f"   └─ Runtime error - code failed during execution")
             else:
                 logger.append(f"✓ Answer: {s['answer']}")
                 logger.append(f"✓ Correct: {'Yes' if s['is_correct'] else 'No'}")
