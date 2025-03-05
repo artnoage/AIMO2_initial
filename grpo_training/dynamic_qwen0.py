@@ -274,45 +274,22 @@ def main():
                                 'example_type': 'completion'
                             }
                 
-                # Fallback: Create a synthetic partial solution if no model_solution or extraction failed
-                import random
-                num_steps = random.randint(1, 2)
-                
-                partial = "<step>Step 1: Let's analyze the problem.\n"
-                partial += "We need to solve " + example['problem'][:50] + "...</step>\n\n"
-                
-                if num_steps > 1:
-                    partial += "<step>Step 2: Let's set up the equations.\n"
-                    partial += "Based on the problem, we can write...</step>\n\n"
-                
-                # Calculate the next step number for the completion
-                next_step = num_steps + 1
-                
-                # Format the completion prompt with the partial solution in the user section
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                    f"Problem: {example['problem']}\n\nPartial Solution: {partial}<|im_end|>\\n<|im_start|>assistant\\n"
-                
+                # If we couldn't create a valid partial solution, return it as a full solution example instead
                 return {
-                    'prompt': formatted_prompt,
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example['answer'],
-                    'partial_solution': partial,
-                    'example_type': 'completion'
+                    'partial_solution': '',  # Empty partial solution indicates full solution task
+                    'example_type': 'solution'  # This is now a solution example
                 }
-                
+                    
             except Exception as e:
                 logger.warning(f"Error creating partial solution: {str(e)}")
-                # Return a default partial solution on error
-                partial = "<step>Step 1: Let's analyze the problem.\n"
-                partial += "We need to solve this problem carefully...</step>\n\n"
-                
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                    f"Problem: {example['problem']}\n\nPartial Solution: {partial}<|im_end|>\\n<|im_start|>assistant\\n"
-                
+                # Return as a full solution example on error
                 return {
-                    'prompt': formatted_prompt,
+                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example['answer'],
-                    'partial_solution': partial,
-                    'example_type': 'completion'
+                    'partial_solution': '',
+                    'example_type': 'solution'
                 }
         
         completion_data = data.map(create_partial_solution)
