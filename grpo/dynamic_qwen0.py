@@ -238,10 +238,10 @@ def main():
         
         # Define the distribution
         distribution = {
-            'solution': 0.35,
-            'programming': 0.35,
-            'completion': 0.15,
-            'wait': 0.15
+            'solution': 0.05,
+            'programming': 0.8,
+            'completion': 0.1,
+            'wait': 0.05
         }
         
         # Use the prepare_combined_data function

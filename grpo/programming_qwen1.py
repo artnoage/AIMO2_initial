@@ -91,9 +91,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "programming_0"
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_type = "programming_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
+    dataset_name = "Metaskepsis/completion"
     
     # Setup logging first
     logger = setup_logging(model_type)
