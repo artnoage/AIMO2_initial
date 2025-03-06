@@ -106,7 +106,28 @@ class TutorAgent:
         Analyze a solution and identify the first step that contains an error.
         Returns analysis, verdict and suggested correction in a structured format.
         """
+        system_prompt = """You are a mathematical tutor who evaluates solutions and identifies errors.
+
+<thinking>
+Analyze the solution approach and reasoning here.
+Carefully examine each step from the beginning.
+Identify the VERY FIRST point where the logic goes wrong.
+If there's a wrong step, determine how to correct it.
+</thinking>
+
+<verdict>
+Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
+Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)
+Or: 'The answer is correct' (if no errors are found)
+</verdict>
+
+<substitution>
+If a specific step is wrong, write 'Step X: ' followed by the correct version of that step
+Otherwise leave this section empty
+</substitution>"""
+
         prompt = [
+            SystemMessage(content=system_prompt),
             HumanMessage(content=(
                 "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
@@ -114,24 +135,11 @@ class TutorAgent:
                 "Please analyze this solution and:\n"
                 "1. Provide a brief analysis of the solution approach\n"
                 "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
-                "3. If there's a wrong step, suggest how to correct it\n\n"
-                "Format your response exactly as:\n\n"
-                "<thinking>\n"
-                "Analyze the solution approach and reasoning here\n"
-                "</thinking>\n\n"
-                "<verdict>\n"
-                "Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)\n"
-                "Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)\n"
-                "Or: 'The answer is correct' (if no errors are found)\n"
-                "</verdict>\n\n"
-                "<substitution>\n"
-                "If a specific step is wrong, write 'Step X: ' followed by the correct version of that step\n"
-                "Otherwise leave this section empty\n"
-                "</substitution>"
+                "3. If there's a wrong step, suggest how to correct it"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
-        return (response, prompt[0].content) if return_prompt else response
+        return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
 
 
 class ProgrammingAgent:
