@@ -87,43 +87,44 @@ If a specific step is wrong, write 'Step X: ' followed by the correct version of
 Otherwise leave this section empty
 </substitution>
 </response>"""
-PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-First, analyze the problem carefully and determine the mathematical concepts involved.
-Break down the problem into steps that can be implemented in code.
-Consider edge cases and potential numerical issues.
-Plan your approach before writing any code.
+In this section, explicitly detail your thought process step-by-step:
+- Carefully analyze the problem and identify the mathematical concepts involved.
+- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
+- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
+- Clearly state your intended method before beginning any code implementation.
+Do not provide any Python code in this section, only your reasoning and approach.
 </thinking>
 
 <response>
-Write a complete, self-contained Python program that solves the problem.
-Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed)
-2. Include clear comments explaining your approach
-3. Print the final answer as a single float value (or integer if appropriate)
-4. Handle potential errors gracefully
-5. Be efficient and not use excessive resources
+In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
+2. Include clear comments explaining each step of your approach within the code itself.
+3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+4. Gracefully handle potential errors or edge cases.
+5. Be efficient and avoid excessive resource usage.
 
-DO NOT include explanations outside of code comments. Your response should ONLY contain valid Python code.
+Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
 
 Example format:
+
 ```python
 # Solution for the problem
 import math
 
 # Step 1: Parse the problem
-# [explanation comment]
+# [brief explanation comment]
 ...
 
 # Step 2: Solve using appropriate method
-# [explanation comment]
+# [brief explanation comment]
 ...
 
 # Calculate and print the final answer
 result = ...
 print(result)  # Just the number, no text
-```
 </response>"""
 
 class CompletionAgent:
@@ -200,8 +201,7 @@ class ProgrammingAgent:
         system_prompt = PROGRAMMER_SYSTEM_PROMPT
 
         prompt = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Problem:\n{problem}\n\n")
+            HumanMessage(content=system_prompt+f"Problem:\n{problem}\n\n")
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response

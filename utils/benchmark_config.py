@@ -19,14 +19,14 @@ class ModelOption(Enum):
     MASTER_MINI="openai/o1-mini"
     LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/E"
     LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/D"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/programming_0/20250305_223555"
+    LOCAL_2="unsloth/Phi-4"
     LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
-    
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250304_160952"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
-    QWEN="qwen/qwq-32b-preview"
+    QWEN="deepseek/deepseek-r1"
+
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification and code execution"""
