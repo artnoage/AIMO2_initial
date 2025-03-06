@@ -26,9 +26,6 @@ from utils.solution_utils import extract_numeric_answer
 from utils.model_utils import time_limit
 
 # Import system prompts from agents.py
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 from utils.agents import PROGRAMMER_SYSTEM_PROMPT
 
 # Use the system prompt from agents.py
