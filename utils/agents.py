@@ -61,6 +61,8 @@ Put your final answer in \\boxed{}</step>
 
 TUTOR_SYSTEM_PROMPT="""You are a mathematical tutor who evaluates solutions and identifies errors.
 
+You will be given a mathematical problem and a proposed solution to analyze.
+
 <thinking>
 Analyze the solution approach and reasoning here.
 Carefully examine each step from the beginning.
@@ -172,6 +174,7 @@ class TutorAgent:
         prompt = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
+                "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Proposed Solution:\n{solution}\n\n"
                 "Please analyze this solution and:\n"
