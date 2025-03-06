@@ -44,7 +44,10 @@ def time_limit(seconds):
         signal.alarm(0)
 
 def extract_code_from_response(response: str) -> str:
-    """Extract code from the model's response"""
+    """
+    Extract code from the model's response.
+    This function only extracts the code for execution and does not modify the original response.
+    """
     # First try to extract code from ```python blocks
     code_blocks = re.findall(r'```python\s*(.*?)\s*```', response, re.DOTALL)
     if code_blocks:
@@ -176,6 +179,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 prompt, full_solution = await programming_agent.generate(example["problem"], return_prompt=True)
                 
                 # Store the full solution but extract code for execution
+                # The full_solution contains the complete model output
                 code = extract_code_from_response(full_solution)
                 
                 # Check code quality first to save time
@@ -184,7 +188,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 if not code_quality_passed:
                     logger.append(f"❌ Code quality check failed for attempt {attempt+1}: {quality_message}")
                     solutions.append({
-                        'solution': full_solution,
+                        'solution': full_solution,  # Store the complete model output
                         'code': code,
                         'answer': None,
                         'is_correct': False,
@@ -216,8 +220,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     is_correct = str(correct_answer).strip() == str(result).strip()
                 
                 solutions.append({
-                    'solution': full_solution,
-                    'code': code,
+                    'solution': full_solution,  # This is the complete model output
+                    'code': code,               # This is just the extracted code for execution
                     'answer': result,
                     'is_correct': is_correct,
                     'error_message': None
@@ -236,8 +240,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 import traceback
                 logger.append(f"Traceback:\n{traceback.format_exc()}")
                 
+                # In case of error, we should still try to save any partial solution
+                error_message = f"Error occurred: {type(e).__name__} - {str(e)}"
                 solutions.append({
-                    'solution': f"Error occurred: {type(e).__name__} - {str(e)}",
+                    'solution': full_solution if 'full_solution' in locals() else error_message,
                     'code': "",
                     'answer': None,
                     'is_correct': False,
