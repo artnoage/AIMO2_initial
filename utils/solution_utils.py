@@ -314,6 +314,48 @@ def has_boxed_answer(solution: str) -> bool:
     """Check if solution has a boxed answer"""
     return "\\boxed{" in solution
 
+def validate_step(step: str, expected_step: int = None) -> Tuple[bool, str]:
+    """
+    Validate if a step has proper formatting and content.
+    
+    Args:
+        step: The step content to validate
+        expected_step: The expected step number, if known
+        
+    Returns:
+        Tuple[bool, str]: (is_valid, reason)
+    """
+    # Check if step is empty
+    if not step.strip():
+        return False, "Step is empty"
+    
+    # Check if step has a number indicator
+    step_match = None
+    for pattern in STEP_NUMBER_PATTERNS:
+        match = pattern.search(step)
+        if match:
+            step_match = match
+            break
+    
+    if not step_match:
+        return False, "Step does not have a valid step number format"
+    
+    # If expected step is provided, check if it matches
+    if expected_step is not None:
+        try:
+            actual_step = int(step_match.group(1))
+            if actual_step != expected_step:
+                return False, f"Expected step {expected_step}, found step {actual_step}"
+        except (ValueError, IndexError):
+            return False, "Could not parse step number"
+    
+    # Check if step has meaningful content (more than just the step indicator)
+    content_after_number = step[step_match.end():].strip()
+    if len(content_after_number) < 10:  # Arbitrary minimum length
+        return False, "Step has insufficient content"
+    
+    return True, "Valid step"
+
 def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
     """
     Validate if a completion properly continues from a partial solution.
