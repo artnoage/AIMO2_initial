@@ -63,6 +63,11 @@ TUTOR_SYSTEM_PROMPT="""You are a mathematical tutor who evaluates solutions and 
 
 You will be given a mathematical problem and a proposed solution to analyze.
 
+Please analyze this solution and:
+1. Provide a brief analysis of the solution approach
+2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong
+3. If there's a wrong step, suggest how to correct it
+
 <thinking>
 Analyze the solution approach and reasoning here.
 Carefully examine each step from the beginning.
@@ -176,11 +181,7 @@ class TutorAgent:
             HumanMessage(content=(
                 "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
-                f"Proposed Solution:\n{solution}\n\n"
-                "Please analyze this solution and:\n"
-                "1. Provide a brief analysis of the solution approach\n"
-                "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
-                "3. If there's a wrong step, suggest how to correct it"
+                f"Proposed Solution:\n{solution}"
             ))
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
