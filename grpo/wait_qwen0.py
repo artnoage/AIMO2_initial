@@ -17,11 +17,6 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import SolutionReward, SolutionSimilarityChecker
-
-# Import system prompts from agents.py
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
 
 # Use the system prompt from agents.py

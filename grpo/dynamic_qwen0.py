@@ -11,9 +11,7 @@ import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 import re
-import time
-from time import time
-import random
+
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,12 +25,8 @@ from utils.similarity_checker import SolutionSimilarityChecker
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT, PROGRAMMER_SYSTEM_PROMPT, COMPLETION_SYSTEM_PROMPT
+from utils.agents import *
 
-# Use the system prompts from agents.py
-SOLVER_SYSTEM_PROMPT = FULLSOLUTION_SYSTEM_PROMPT
-PROGRAMMING_SYSTEM_PROMPT = PROGRAMMER_SYSTEM_PROMPT
-# COMPLETION_SYSTEM_PROMPT is already imported from agents.py
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -213,7 +207,7 @@ def main():
         return len(tokenizer.encode(text))
         
     # Calculate token counts for system prompts
-    solver_prompt_tokens = count_tokens(SOLVER_SYSTEM_PROMPT)
+    solver_prompt_tokens = count_tokens(FULLSOLUTION_SYSTEM_PROMPT)
     completion_prompt_tokens = count_tokens(COMPLETION_SYSTEM_PROMPT)
     logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
     logger.info(f"Completion system prompt: {completion_prompt_tokens} tokens")
@@ -240,7 +234,7 @@ def main():
         """Create examples for full solution tasks"""
         logger.info("Creating solution examples...")
         solution_data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
             'partial_solution': '',  # Empty partial solution indicates full solution task
             'example_type': 'solution'  # Add type for tracking
@@ -251,7 +245,7 @@ def main():
         """Create examples for programming tasks"""
         logger.info("Creating programming examples...")
         programming_data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + PROGRAMMING_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + PROGRAMMER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),
             'partial_solution': '',
             'example_type': 'programming'
@@ -267,7 +261,7 @@ def main():
                 # Only process examples that have model_solutions with proper steps
                 if 'model_solution' not in example or not example['model_solution']:
                     return {
-                        'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'prompt': '<|im_start|>system\\n' +FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                         'answer': example.get('answer', example.get('correct_answer', '')),
                         'partial_solution': '',
                         'example_type': 'solution'
@@ -277,7 +271,7 @@ def main():
                 response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
                 if not response_match:
                     return {
-                        'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                         'answer': example.get('answer', example.get('correct_answer', '')),
                         'partial_solution': '',
                         'example_type': 'solution'
@@ -292,7 +286,7 @@ def main():
                 # Need at least 2 steps to create a partial solution
                 if len(steps) < 2:
                     return {
-                        'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                         'answer': example.get('answer', example.get('correct_answer', '')),
                         'partial_solution': '',
                         'example_type': 'solution'
@@ -326,7 +320,7 @@ def main():
                     if total_tokens >= MAX_PROMPT_TOKENS:
                         logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
                         return {
-                            'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
@@ -348,7 +342,7 @@ def main():
                 logger.warning(f"Error creating partial solution: {str(e)}")
                 # Return as a full solution example on error
                 return {
-                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -380,7 +374,7 @@ def main():
                     # If is_correct is explicitly True, return as regular solution
                     if is_correct == True:
                         return {
-                            'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
