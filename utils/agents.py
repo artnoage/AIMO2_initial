@@ -172,7 +172,6 @@ class TutorAgent:
         prompt = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=(
-                "Here is a mathematical problem and a proposed solution:\n\n"
                 f"Problem:\n{problem}\n\n"
                 f"Proposed Solution:\n{solution}\n\n"
                 "Please analyze this solution and:\n"
