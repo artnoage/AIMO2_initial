@@ -1,6 +1,10 @@
 import re
 import sympy
 import asyncio
+import tempfile
+import subprocess
+import os
+import sys
 from contextlib import contextmanager
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
@@ -189,6 +193,99 @@ def has_response_section(solution: str) -> bool:
     """Check if solution has a response section"""
     response_parts = re.findall(r'<response>(.*?)</response>', solution, re.DOTALL)
     return bool(response_parts)
+
+def extract_code_from_response(response: str) -> str:
+    """Extract code from the model's response"""
+    # First try to extract code from ```python blocks
+    code_blocks = re.findall(r'```python\s*(.*?)\s*```', response, re.DOTALL)
+    if code_blocks:
+        return code_blocks[0]
+    
+    # If no code blocks, try to extract from <response> section
+    response_match = re.search(r'<response>\s*(.*?)\s*</response>', response, re.DOTALL)
+    if response_match:
+        response_content = response_match.group(1)
+        # Check if there are code blocks within the response section
+        code_blocks = re.findall(r'```python\s*(.*?)\s*```', response_content, re.DOTALL)
+        if code_blocks:
+            return code_blocks[0]
+        # If no code blocks in response section, assume the entire response section is code
+        return response_content
+    
+    # If no structured format, assume the entire response is code
+    return response
+
+def check_code_quality(code: str) -> Tuple[bool, str]:
+    """Check code for syntax errors and basic linting issues"""
+    # First check for syntax errors
+    try:
+        compile(code, '<string>', 'exec')
+    except SyntaxError as e:
+        return False, f"Syntax error: {str(e)}"
+    
+    # Check for basic issues without requiring pylint
+    issues = []
+    
+    # Check for potentially dangerous operations
+    dangerous_patterns = [
+        (r'os\.system', 'Contains potentially unsafe system call'),
+        (r'subprocess\.', 'Contains potentially unsafe subprocess call'),
+        (r'exec\s*\(', 'Contains potentially unsafe exec call'),
+        (r'eval\s*\(', 'Contains potentially unsafe eval call'),
+        (r'__import__', 'Contains potentially unsafe dynamic import'),
+        (r'open\s*\(.+,\s*[\'"]w', 'Contains file write operation'),
+        (r'import\s+requests', 'Contains network request library'),
+    ]
+    
+    for pattern, message in dangerous_patterns:
+        if re.search(pattern, code):
+            issues.append(message)
+    
+    # If there are issues, return them
+    if issues:
+        return False, "Linting issues: " + "; ".join(issues)
+    
+    return True, "Code passed quality checks"
+
+def run_code_safely(code: str, timeout: int = 5) -> Tuple[bool, Optional[float], str]:
+    """Run the code in a safe environment with timeout and capture the output"""
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
+        temp_file_path = temp_file.name
+        temp_file.write(code.encode('utf-8'))
+    
+    try:
+        # Run the code with timeout
+        with time_limit(timeout):
+            # Use subprocess to run the code
+            result = subprocess.run(
+                [sys.executable, temp_file_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+            
+            if result.returncode != 0:
+                return False, None, f"Execution error: {result.stderr}"
+            
+            # Try to parse the output as a float
+            output = result.stdout.strip()
+            try:
+                answer = float(output)
+                return True, answer, "Success"
+            except ValueError:
+                return False, None, f"Output is not a valid number: '{output}'"
+    
+    except TimeoutException:
+        return False, None, "Code execution timed out"
+    except Exception as e:
+        return False, None, f"Error running code: {str(e)}"
+    finally:
+        # Clean up the temporary file
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass
 
 def check_steps_status(solution: str) -> Tuple[bool, bool]:
     """
