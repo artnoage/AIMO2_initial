@@ -26,7 +26,7 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
     return solution_data
 
 def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
-    """Create examples for programming tasks"""
+    """Create examples for programming tasks using the programming-specific system prompt"""
     logger.info("Creating programming examples...")
     programming_data = data.map(lambda x: {
         'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
@@ -465,7 +465,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
     return valid_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
-                         tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
+                         tokenizer=None, distribution: Dict[str, float] = None,
+                         programming_system_prompt: str = None) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
@@ -482,6 +483,10 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
             'completion': 0.15,
             'wait': 0.15
         }
+    
+    # If no programming system prompt is provided, use the general system prompt
+    if programming_system_prompt is None:
+        programming_system_prompt = system_prompt
     
     # Check if we have model_solutions in the dataset
     has_model_solutions = sum(1 for x in data if 'model_solution' in x and x['model_solution'])
@@ -502,7 +507,7 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     
     # Create examples for each type using the separate methods
     solution_data = prepare_solution_data(data, system_prompt)
-    programming_data = prepare_programming_data(data, system_prompt)
+    programming_data = prepare_programming_data(data, programming_system_prompt)
     completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer)
     wait_data = prepare_wait_data(data, system_prompt)
     
