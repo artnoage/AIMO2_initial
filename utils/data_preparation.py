@@ -4,6 +4,10 @@ import random
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
+from utils.solution_utils import (
+    extract_response_section, split_into_steps, get_partial_solutions,
+    has_thinking_section, extract_thinking_section, has_response_section
+)
 
 # Setup logging
 logger = logging.getLogger('data_preparation')
@@ -58,9 +62,9 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                     'example_type': 'solution'
                 }
             
-            # Extract response section
-            response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-            if not response_match:
+            # Extract response section using solution_utils
+            response = extract_response_section(example['model_solution'])
+            if not response:
                 return {
                     'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
@@ -68,11 +72,8 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                     'example_type': 'solution'
                 }
             
-            response = response_match.group(1).strip()
-            
-            # Extract steps
-            step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-            steps = step_pattern.findall(response)
+            # Extract steps using solution_utils
+            steps = split_into_steps(response)
             
             # Need at least 2 steps to create a partial solution
             if len(steps) < 2:
@@ -91,9 +92,18 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             # Always use exactly half of the steps for consistency
             split_point = max(1, len(steps) // 2)
             
-            # Create partial solution with the first 'split_point' steps
+            # Create partial solutions using solution_utils
             partial_steps = steps[:split_point]
-            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
+            partial_solutions = get_partial_solutions(partial_steps)
+            if not partial_solutions:
+                return {
+                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'answer': example.get('answer', example.get('correct_answer', '')),
+                    'partial_solution': '',
+                    'example_type': 'solution'
+                }
+            
+            partial_solution = partial_solutions[-1]  # Get the last partial solution (with all steps)
             
             # Check token count for the completion prompt if tokenizer is provided
             if tokenizer:
@@ -103,10 +113,12 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                 # If token count is too high, reduce the number of steps
                 if total_tokens >= max_prompt_tokens:
                     # Try with just one step
-                    partial_steps = steps[:1]
-                    partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-                    completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                    total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                    if len(steps) > 0:
+                        one_step_solutions = get_partial_solutions(steps[:1])
+                        if one_step_solutions:
+                            partial_solution = one_step_solutions[-1]
+                            completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                            total_tokens = completion_prompt_tokens + count_tokens(completion_text)
                     
                     # If still too long, return as full solution
                     if total_tokens >= max_prompt_tokens:
@@ -122,7 +134,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             formatted_prompt = '<|im_start|>system\\n' + completion_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
             
-            logger.info(f"Created completion example with {len(partial_steps)} steps out of {len(steps)}")
+            logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
@@ -172,29 +184,28 @@ def prepare_wait_data(data: Dataset, system_prompt: str, split: str = "train") -
                         'example_type': 'solution'
                     }
                 
-                # Extract the thinking section from the model solution
-                thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-                thinking_match = thinking_pattern.search(example['model_solution'])
-                
-                if thinking_match:
-                    thinking_content = thinking_match.group(1)
-                    # Modify the thinking section with "wait a second"
-                    modified_thinking = thinking_content + "...no wait a second."
-                    
-                    # Create prompt with the modified thinking section
-                    prompt = (
-                        '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n'
-                        '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
-                        '<|im_start|>assistant\\n'
-                        '<thinking>' + modified_thinking
-                    )
-                    
-                    return {
-                        'prompt': prompt,
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'example_type': 'wait'
-                    }
+                # Check if solution has a thinking section using solution_utils
+                if has_thinking_section(example['model_solution']):
+                    # Extract the thinking section using solution_utils
+                    thinking_content = extract_thinking_section(example['model_solution'])
+                    if thinking_content:
+                        # Modify the thinking section with "wait a second"
+                        modified_thinking = thinking_content + "...no wait a second."
+                        
+                        # Create prompt with the modified thinking section
+                        prompt = (
+                            '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n'
+                            '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
+                            '<|im_start|>assistant\\n'
+                            '<thinking>' + modified_thinking
+                        )
+                        
+                        return {
+                            'prompt': prompt,
+                            'answer': example.get('answer', example.get('correct_answer', '')),
+                            'partial_solution': '',
+                            'example_type': 'wait'
+                        }
             
             # If we couldn't create a wait example, return as regular solution
             return {
@@ -249,21 +260,22 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                 
                 # Try to extract response section if model_solution exists
                 if 'model_solution' in example and example['model_solution']:
-                    response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
-                    response_match = response_pattern.search(example['model_solution'])
-                    if response_match:
-                        response = response_match.group(1).strip()
-                        step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-                        steps = step_pattern.findall(response)
+                    response = extract_response_section(example['model_solution'])
+                    if response:
+                        steps = split_into_steps(response)
                 
                 # Create partial solution with at least one step if available
                 partial_solution = ''
                 full_solution = ''
                 if steps:
                     split_point = min(1, len(steps) - 1)
-                    partial_steps = steps[:split_point]
-                    partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-                    full_solution = '\n\n'.join([f'<step>{step}</step>' for step in steps])
+                    partial_solutions = get_partial_solutions(steps[:split_point])
+                    full_solutions = get_partial_solutions(steps)
+                    
+                    if partial_solutions:
+                        partial_solution = partial_solutions[-1]
+                    if full_solutions:
+                        full_solution = full_solutions[-1]
                 
                 # Get the answer
                 answer = example.get('answer', '')
@@ -294,11 +306,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                     'answer': ''
                 }
             
-            # Extract response section
-            response_pattern = re.compile(r'<response>(.*?)</response>', re.DOTALL)
-            response_match = response_pattern.search(example['model_solution'])
-            
-            if not response_match:
+            # Check if solution has a response section
+            if not has_response_section(example['model_solution']):
                 return {
                     'valid': False,
                     'prompt': '',
@@ -308,7 +317,17 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                     'answer': ''
                 }
             
-            response = response_match.group(1).strip()
+            # Extract response section
+            response = extract_response_section(example['model_solution'])
+            if not response:
+                return {
+                    'valid': False,
+                    'prompt': '',
+                    'problem': example.get('problem', ''),
+                    'partial_solution': '',
+                    'full_solution': '',
+                    'answer': ''
+                }
             
             # Check if response has step tags
             if '<step>' not in response or '</step>' not in response:
@@ -322,8 +341,7 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                 }
             
             # Split into steps
-            step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-            steps = step_pattern.findall(response)
+            steps = split_into_steps(response)
             
             if len(steps) < 2:  # Need at least 2 steps to create a partial solution
                 return {
@@ -380,10 +398,11 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
             split_point = random.randint(1, len(steps) - 1)  # At least 1 step, leave at least 1 step
             
             # Create partial solution with the first 'split_point' steps
-            partial_steps = steps[:split_point]
-            partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-            # Create full solution for reference
-            full_solution = '\n\n'.join([f'<step>{step}</step>' for step in steps])
+            partial_solutions = get_partial_solutions(steps[:split_point])
+            full_solutions = get_partial_solutions(steps)
+            
+            partial_solution = partial_solutions[-1] if partial_solutions else ''
+            full_solution = full_solutions[-1] if full_solutions else ''
             
             # Get the answer from the example or extract from solution
             answer = example.get('answer', '')
