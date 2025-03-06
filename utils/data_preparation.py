@@ -133,7 +133,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             formatted_prompt = '<|im_start|>system\\n' + completion_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
             
-            logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
+            #logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
@@ -282,8 +282,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                     answer = example['correct_answer']
                 
                 # Create the prompt with the data we have
-                prompt = '<|im_start|>system\n' + system_prompt + '<|im_end|>\n<|im_start|>user\n' + \
-                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n"
+                prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
                 
                 return {
                     'valid': True,
@@ -409,8 +409,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                 answer = example['correct_answer']
             
             # Create the prompt with all required fields
-            prompt = '<|im_start|>system\n' + system_prompt + '<|im_end|>\n<|im_start|>user\n' + \
-                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\n<|im_start|>assistant\n"
+            prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
             return {
                 'valid': True,
                 'prompt': prompt,

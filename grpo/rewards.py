@@ -468,10 +468,10 @@ class ProgrammingReward(BaseReward):
             if not has_response:
                 self.logger.info("No response section found in completion")
                 # We can still try to extract code from the whole completion
-                #code = extract_code_from_response(completion)
-                #if not code:
-                #self.logger.info("No code found in completion")
-                return reward
+                code = extract_code_from_response(completion)
+                if not code:
+                    self.logger.info("No code found in completion")
+                    return reward
             else:
                 # Extract code from the response section
                 response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)

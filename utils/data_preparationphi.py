@@ -149,7 +149,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}" + \
                 '<|im_end|>' + '<|im_start|>assistant<|im_sep|>'
             
-            logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
+            #logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
