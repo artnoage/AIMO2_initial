@@ -43,7 +43,6 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
-from utils.solution_utils import extract_code_from_response, check_code_quality, run_code_safely
 
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
