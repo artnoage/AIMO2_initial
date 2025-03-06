@@ -464,10 +464,26 @@ class ProgrammingReward(BaseReward):
                 self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
             
             # Extract code from the completion
-            code = extract_code_from_response(completion)
-            if not code:
-                self.logger.info("No code found in completion")
-                return reward
+            # First check if response section exists
+            if not has_response:
+                self.logger.info("No response section found in completion")
+                # We can still try to extract code from the whole completion
+                code = extract_code_from_response(completion)
+                if not code:
+                    self.logger.info("No code found in completion")
+                    return reward
+            else:
+                # Extract code from the response section
+                response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+                response_content = response_match.group(1)
+                code = extract_code_from_response(response_content)
+                if not code:
+                    # If no code in response section, try the whole completion
+                    self.logger.info("No code found in response section, trying whole completion")
+                    code = extract_code_from_response(completion)
+                    if not code:
+                        self.logger.info("No code found in completion")
+                        return reward
             
             # 2. Check code quality (syntax reward)
             code_quality_passed, quality_message = check_code_quality(code)

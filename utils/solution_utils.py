@@ -192,25 +192,54 @@ def has_response_section(solution: str) -> bool:
     return bool(response_parts)
 
 def extract_code_from_response(response: str) -> str:
-    """Extract code from the model's response"""
-    # First try to extract code from ```python blocks
+    """
+    Extract code from the model's response.
+    Handles various formats including code blocks, response tags, and raw code.
+    
+    Args:
+        response: The text to extract code from
+        
+    Returns:
+        str: The extracted code or empty string if no code found
+    """
+    if not response or not response.strip():
+        return ""
+        
+    # First try to extract code from ```python blocks (most reliable)
     code_blocks = re.findall(r'```python\s*(.*?)\s*```', response, re.DOTALL)
     if code_blocks:
         return code_blocks[0]
     
-    # If no code blocks, try to extract from <response> section
-    response_match = re.search(r'<response>\s*(.*?)\s*</response>', response, re.DOTALL)
-    if response_match:
-        response_content = response_match.group(1)
-        # Check if there are code blocks within the response section
-        code_blocks = re.findall(r'```python\s*(.*?)\s*```', response_content, re.DOTALL)
-        if code_blocks:
-            return code_blocks[0]
-        # If no code blocks in response section, assume the entire response section is code
-        return response_content
+    # Also try other code block formats
+    code_blocks = re.findall(r'```\s*(.*?)\s*```', response, re.DOTALL)
+    if code_blocks:
+        return code_blocks[0]
+    
+    # If we're already inside a response section, don't look for nested ones
+    if not re.search(r'<response>', response):
+        # If no code blocks, try to extract from <response> section
+        response_match = re.search(r'<response>\s*(.*?)\s*</response>', response, re.DOTALL)
+        if response_match:
+            response_content = response_match.group(1)
+            # Check if there are code blocks within the response section
+            code_blocks = re.findall(r'```python\s*(.*?)\s*```', response_content, re.DOTALL)
+            if code_blocks:
+                return code_blocks[0]
+            # Also try other code block formats
+            code_blocks = re.findall(r'```\s*(.*?)\s*```', response_content, re.DOTALL)
+            if code_blocks:
+                return code_blocks[0]
+            # If no code blocks in response section, assume the entire response section is code
+            return response_content
     
     # If no structured format, assume the entire response is code
-    return response
+    # But first check if it looks like Python code (contains def, import, print, etc.)
+    python_indicators = ['def ', 'import ', 'print(', 'return ', 'if ', 'for ', 'while ', '# ']
+    if any(indicator in response for indicator in python_indicators):
+        return response
+    
+    # If it doesn't look like Python code, return empty string
+    return ""
 
 def check_code_quality(code: str) -> Tuple[bool, str]:
     """Check code for syntax errors and basic linting issues"""
