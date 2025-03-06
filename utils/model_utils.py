@@ -106,20 +106,19 @@ class CustomChat:
                 # Fallback for other formats
                 role = "user"
                 content = str(message)
-            
             if role == "system":
-                formatted_prompt += f"<|im_start|>system<|im_sep|>{content}<|im_end|>"
+                formatted_prompt += f"<|im_start|>system\\n{content}<|im_end|>\\n"
             elif role == "user":
-                formatted_prompt += f"<|im_start|>user<|im_sep|>{content}<|im_end|>"
+                formatted_prompt += f"<|im_start|>user\\n{content}<|im_end|>\\n"
             elif role == "assistant":
-                formatted_prompt += f"<|im_start|>assistant<|im_sep|>{content}<|im_end|>"
+                formatted_prompt += f"<|im_start|>assistant\\n{content}<|im_end|>"
             else:
                 # Handle other roles or fallback
-                formatted_prompt += f"<|im_start|>{role}<|im_sep|>{content}<|im_end|>"
+                formatted_prompt += f"<|im_start|>{role}\\n{content}<|im_end|>"
                 
         # Add the assistant prefix for the model to continue from
-        if not formatted_prompt.endswith("<|im_start|>assistant<|im_sep|>"):
-            formatted_prompt += "<|im_start|>assistant<|im_sep|>"
+        if not formatted_prompt.endswith("<|im_start|>assistan\\n"):
+            formatted_prompt += "<|im_start|>assistant\\n"
             
         return formatted_prompt
 
