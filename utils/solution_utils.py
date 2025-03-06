@@ -233,13 +233,8 @@ def extract_code_from_response(response: str) -> str:
             return response_content
     
     # If no structured format, assume the entire response is code
-    # But first check if it looks like Python code (contains def, import, print, etc.)
-    python_indicators = ['def ', 'import ', 'print(', 'return ', 'if ', 'for ', 'while ', '# ']
-    if any(indicator in response for indicator in python_indicators):
-        return response
-    
-    # If it doesn't look like Python code, return empty string
-    return ""
+    # Remove the Python indicator check to be more permissive and consistent with benchmark
+    return response
 
 def check_code_quality(code: str) -> Tuple[bool, str]:
     """Check code for syntax errors and basic linting issues"""
