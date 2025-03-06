@@ -25,44 +25,14 @@ from reward_stats import RewardStats
 from utils.solution_utils import extract_numeric_answer
 from utils.model_utils import time_limit
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+# Import system prompts from agents.py
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from utils.agents import PROGRAMMER_SYSTEM_PROMPT
 
-<thinking>
-First, analyze the problem carefully and determine the mathematical concepts involved.
-Break down the problem into steps that can be implemented in code.
-Consider edge cases and potential numerical issues.
-Plan your approach before writing any code.
-</thinking>
-
-<response>
-Write a complete, self-contained Python program that solves the problem.
-Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed)
-2. Include clear comments explaining your approach
-3. Print the final answer as a single float value (or integer if appropriate)
-4. Handle potential errors gracefully
-5. Be efficient and not use excessive resources
-
-DO NOT include explanations outside of code comments. Your response should ONLY contain valid Python code.
-
-Example format:
-```python
-# Solution for the problem
-import math
-
-# Step 1: Parse the problem
-# [explanation comment]
-...
-
-# Step 2: Solve using appropriate method
-# [explanation comment]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
-```
-</response>"""
+# Use the system prompt from agents.py
+SYSTEM_PROMPT = PROGRAMMER_SYSTEM_PROMPT
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""

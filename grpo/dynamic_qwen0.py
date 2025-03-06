@@ -23,100 +23,16 @@ from config import RewardConfig
 from dynamic_reward import DynamicReward
 from utils.similarity_checker import SolutionSimilarityChecker
 
-# System prompt for full solution tasks
-SOLVER_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
-    
-# System prompt for programming tasks
-PROGRAMMING_SYSTEM_PROMPT = """You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+# Import system prompts from agents.py
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT, PROGRAMMER_SYSTEM_PROMPT, COMPLETION_SYSTEM_PROMPT
 
-<thinking>
-First, analyze the problem carefully and determine the mathematical concepts involved.
-Break down the problem into steps that can be implemented in code.
-Consider edge cases and potential numerical issues.
-Plan your approach before writing any code.
-</thinking>
-
-<response>
-Write a complete, self-contained Python program that solves the problem.
-Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed)
-2. Include clear comments explaining your approach
-3. Print the final answer as a single float value (or integer if appropriate)
-4. Handle potential errors gracefully
-5. Be efficient and not use excessive resources
-
-DO NOT include explanations outside of code comments. Your response should ONLY contain valid Python code.
-
-Example format:
-```python
-# Solution for the problem
-import math
-
-# Step 1: Parse the problem
-# [explanation comment]
-...
-
-# Step 2: Solve using appropriate method
-# [explanation comment]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
-```
-</response>"""
-    
-# System prompt for completion tasks
-COMPLETION_SYSTEM_PROMPT = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
-
-Your response MUST include both a <thinking> section and a <response> section.
-
-<thinking>
-First, analyze the problem and the partial solution carefully.
-Understand what has been done so far and determine the next logical steps.
-Identify the step numbering pattern and continue from there.
-Make sure you understand the mathematical concepts involved.
-Work through the solution mentally to ensure your approach is correct.
-</thinking>
-
-<response>
-Continue the solution from where it left off, maintaining the same step numbering and style.
-The partial solution will only contain the beginning of the response section with some steps.
-You must continue with the next step number in sequence.
-
-IMPORTANT: Each step must be properly enclosed in <step> and </step> tags.
-
-For example, if the partial solution ends with Step 2, you should start with:
-
-<step>Step 3: [Description of the step]
-[Mathematical work for this step]
-</step>
-
-Continue with additional steps as needed:
-
-<step>Step 4: [Description of the step]
-[Mathematical work for this step]
-</step>
-
-In your final step, include your answer in a LaTeX boxed environment:
-\\boxed{your final answer}
-
-Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
-</response>
-"""
+# Use the system prompts from agents.py
+SOLVER_SYSTEM_PROMPT = FULLSOLUTION_SYSTEM_PROMPT
+PROGRAMMING_SYSTEM_PROMPT = PROGRAMMER_SYSTEM_PROMPT
+# COMPLETION_SYSTEM_PROMPT is already imported from agents.py
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""

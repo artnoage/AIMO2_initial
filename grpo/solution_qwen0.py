@@ -17,20 +17,14 @@ if project_root not in sys.path:
 from config import RewardConfig
 from rewards import SolutionReward, SolutionSimilarityChecker
 
-SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
-    <thinking>
-    First, analyze the problem in depth and outline your approach.\n 
-    This section should capture your reasoning, including any abstract thoughts or potential strategies.\n  
-    Feel free to refine or correct your ideas as you work toward the solution.\n  
-    </thinking>
-    <response>\n
-    <step>Step 1: Begin with the first calculation or operation\n
-    Show your work clearly using LaTeX notation</step>\n\n
-    <step>Step 2: Continue with the next logical step\n
-    Each step should be numbered and self-contained</step>\n\n
-    <step>Step N: In your final step, state your conclusion\n
-    Put your final answer in \\boxed{}</step>\n
-    </response>\n\n"""
+# Import system prompts from agents.py
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+
+# Use the system prompt from agents.py
+SYSTEM_PROMPT = FULLSOLUTION_SYSTEM_PROMPT
     
 
 def setup_logging(model_type: str) -> logging.Logger:
