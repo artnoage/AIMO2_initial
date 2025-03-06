@@ -1,14 +1,11 @@
 import re
 import sympy
-import asyncio
 import tempfile
 import subprocess
 import os
 import sys
-from contextlib import contextmanager
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
-
 from utils.model_utils import TimeoutException, time_limit
 
 def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
@@ -247,7 +244,7 @@ def check_code_quality(code: str) -> Tuple[bool, str]:
     
     return True, "Code passed quality checks"
 
-def run_code_safely(code: str, timeout: int = 5) -> Tuple[bool, Optional[float], str]:
+def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float], str]:
     """Run the code in a safe environment with timeout and capture the output"""
     # Create a temporary file
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:

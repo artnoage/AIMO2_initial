@@ -20,11 +20,7 @@ if project_root not in sys.path:
 from config import RewardConfig
 from dynamic_reward import DynamicReward
 from utils.similarity_checker import SolutionSimilarityChecker
-
-# Import system prompts from agents.py
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+from utils.data_preparation import prepare_combined_data
 from utils.agents import *
 
 
@@ -212,9 +208,6 @@ def main():
     logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
     logger.info(f"Completion system prompt: {completion_prompt_tokens} tokens")
     
-    # Maximum allowed tokens for prompt (leaving room for completion)
-    MAX_PROMPT_TOKENS = 2000
-    
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
@@ -229,208 +222,6 @@ def main():
         use_rslora=False,
         loftq_config=None
     )
-    
-    def create_solution_examples(data: Dataset) -> Dataset:
-        """Create examples for full solution tasks"""
-        logger.info("Creating solution examples...")
-        solution_data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
-            'partial_solution': '',  # Empty partial solution indicates full solution task
-            'example_type': 'solution'  # Add type for tracking
-        })
-        return solution_data
-        
-    def create_programming_examples(data: Dataset) -> Dataset:
-        """Create examples for programming tasks"""
-        logger.info("Creating programming examples...")
-        programming_data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + PROGRAMMER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', '')),
-            'partial_solution': '',
-            'example_type': 'programming'
-        })
-        return programming_data
-        
-    def create_completion_examples(data: Dataset) -> Dataset:
-        """Create examples for completion tasks"""
-        logger.info("Creating completion examples...")
-        
-        def create_partial_solution(example):
-            try:
-                # Only process examples that have model_solutions with proper steps
-                if 'model_solution' not in example or not example['model_solution']:
-                    return {
-                        'prompt': '<|im_start|>system\\n' +FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'example_type': 'solution'
-                    }
-                
-                # Extract response section
-                response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-                if not response_match:
-                    return {
-                        'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'example_type': 'solution'
-                    }
-                
-                response = response_match.group(1).strip()
-                
-                # Extract steps
-                step_pattern = re.compile(r'<step>(.*?)</step>', re.DOTALL)
-                steps = step_pattern.findall(response)
-                
-                # Need at least 2 steps to create a partial solution
-                if len(steps) < 2:
-                    return {
-                        'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'example_type': 'solution'
-                    }
-                
-                # Use a deterministic approach based on example ID
-                example_id = example.get('id', hash(example.get('problem', '')))
-                if isinstance(example_id, str):
-                    example_id = hash(example_id)
-                
-                # Always use exactly half of the steps for consistency
-                split_point = max(1, len(steps) // 2)
-                
-                # Create partial solution with the first 'split_point' steps
-                partial_steps = steps[:split_point]
-                partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-                
-                # Check token count for the completion prompt
-                completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                total_tokens = completion_prompt_tokens + count_tokens(completion_text)
-                
-                # If token count is too high, reduce the number of steps
-                if total_tokens >= MAX_PROMPT_TOKENS:
-                    # Try with just one step
-                    partial_steps = steps[:1]
-                    partial_solution = '\n\n'.join([f'<step>{step}</step>' for step in partial_steps])
-                    completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                    total_tokens = completion_prompt_tokens + count_tokens(completion_text)
-                    
-                    # If still too long, return as full solution
-                    if total_tokens >= MAX_PROMPT_TOKENS:
-                        logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
-                        return {
-                            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': '',
-                            'example_type': 'solution'
-                        }
-                
-                # Format the completion prompt with the partial solution in the user section
-                formatted_prompt = '<|im_start|>system\\n' + COMPLETION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + \
-                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
-                
-                logger.info(f"Created completion example with {len(partial_steps)} steps out of {len(steps)}")
-                return {
-                    'prompt': formatted_prompt,
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': partial_solution,
-                    'example_type': 'completion'
-                }
-                    
-            except Exception as e:
-                logger.warning(f"Error creating partial solution: {str(e)}")
-                # Return as a full solution example on error
-                return {
-                    'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'example_type': 'solution'
-                }
-        
-        # Process all examples for completion tasks
-        completion_data = data.map(create_partial_solution)
-        
-        # Filter to only keep actual completion examples
-        completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
-        
-        # Log completion data details
-        completion_count = len(completion_data)
-        logger.info(f"Found {completion_count} completion examples after filtering")
-        
-        return completion_data
-    
-    def create_wait_examples(data: Dataset) -> Dataset:
-        """Create examples for wait-a-second tasks"""
-        logger.info("Creating wait examples...")
-        
-        def create_wait_example(example):
-            try:
-                # Only create wait examples for examples with model_solution
-                if 'model_solution' in example and example['model_solution']:
-                    # Check if the solution is incorrect (if is_correct field exists)
-                    is_correct = example.get('is_correct', None)
-                    
-                    # If is_correct is explicitly True, return as regular solution
-                    if is_correct == True:
-                        return {
-                            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': '',
-                            'example_type': 'solution'
-                        }
-                    
-                    # Extract the thinking section from the model solution
-                    thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-                    thinking_match = thinking_pattern.search(example['model_solution'])
-                    
-                    if thinking_match:
-                        thinking_content = thinking_match.group(1)
-                        # Modify the thinking section with "wait a second"
-                        modified_thinking = thinking_content + "...no wait a second."
-                        
-                        # Create prompt with the modified thinking section
-                        prompt = (
-                            '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n'
-                            '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
-                            '<|im_start|>assistant\\n'
-                            '<thinking>' + modified_thinking
-                        )
-                        
-                        return {
-                            'prompt': prompt,
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': '',
-                            'example_type': 'wait'
-                        }
-                
-                # If we couldn't create a wait example, return as regular solution
-                return {
-                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'example_type': 'solution'
-                }
-                
-            except Exception as e:
-                logger.warning(f"Error creating wait example: {str(e)}")
-                # Return as a regular solution example on error
-                return {
-                    'prompt': '<|im_start|>system\\n' + SOLVER_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'example_type': 'solution'
-                }
-        
-        # Process all examples for wait tasks
-        wait_data = data.map(create_wait_example)
-        
-        # Filter out any wait examples that didn't actually get the wait modification
-        wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
-        
-        logger.info(f"Found {len(wait_data)} wait examples after filtering")
-        
-        return wait_data
         
     def get_questions(split="train") -> Dataset:
         """Load and format dataset with full solution, completion, programming, and wait examples
@@ -440,8 +231,7 @@ def main():
         - 15% completion examples
         - 15% wait examples
         """
-        # Import the data preparation function
-        from utils.data_preparation import prepare_combined_data
+        
         
         # Load the base dataset
         data = load_dataset(dataset_name, split=split)
@@ -457,7 +247,7 @@ def main():
         # Use the prepare_combined_data function
         return prepare_combined_data(
             data, 
-            SOLVER_SYSTEM_PROMPT, 
+            FULLSOLUTION_SYSTEM_PROMPT, 
             COMPLETION_SYSTEM_PROMPT, 
             tokenizer, 
             distribution

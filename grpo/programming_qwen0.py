@@ -1,9 +1,6 @@
 import os
 import wandb
 import logging
-import torch
-import re
-import asyncio
 import sys
 from datasets import load_dataset, Dataset
 from datetime import datetime
@@ -12,24 +9,14 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
-from contextlib import contextmanager
-from typing import List, Dict, Tuple, Optional, Any, Union
-
-# Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from rewards import BaseReward
-from reward_stats import RewardStats
-from utils.solution_utils import extract_numeric_answer
-from utils.model_utils import time_limit
-
+from utils.data_preparation import prepare_programming_data
 # Import system prompts from agents.py
 from utils.agents import PROGRAMMER_SYSTEM_PROMPT
-
-# Use the system prompt from agents.py
-SYSTEM_PROMPT = PROGRAMMER_SYSTEM_PROMPT
+from rewards import ProgrammingReward
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""
@@ -97,11 +84,10 @@ class LoggingCallback(TrainerCallback):
             # Update logs with our metrics
             logs.update(wandb_stats)
 
-# These functions are now imported from rewards.py
-from rewards import extract_code_from_response, check_code_quality, run_code_safely
+
 
 # Use the ProgrammingReward class from rewards.py
-from rewards import ProgrammingReward
+
 
 def main():
     # Configuration
@@ -166,11 +152,10 @@ def main():
     
     def get_questions(split="train") -> Dataset:
         # Import the data preparation function
-        from utils.data_preparation import prepare_programming_data
         
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_programming_data(data, SYSTEM_PROMPT, split)
+        return prepare_programming_data(data, PROGRAMMER_SYSTEM_PROMPT, split)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)

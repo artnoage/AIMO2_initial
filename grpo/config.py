@@ -48,14 +48,4 @@ class RewardConfig:
     group_base_reward: float = 3
     group_diversity_bonus: float = 1
     group_similarity_threshold: float = 0.8
-    
-    # Tutor-specific settings
-    tutor_structure_base_reward: float = 0.2
-    tutor_analysis_reward: float = 0.2
-    tutor_substitution_reward: float = 0.4
-    tutor_single_step_bonus: float = 0.2
-    tutor_multiple_step_penalty: float = 0.4
-    tutor_full_reward: float = 5.0
-    tutor_analysis_length_cost: float = 0.0001
-    tutor_substitution_length_cost: float = 0.0001
-    tutor_redundant_substitution_penalty: float = 0.1
+

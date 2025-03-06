@@ -16,17 +16,9 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from rewards import SolutionReward, SolutionSimilarityChecker
-
-# Import system prompts from agents.py
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
 
-# Use the system prompt from agents.py
-SYSTEM_PROMPT = FULLSOLUTION_SYSTEM_PROMPT
     
-
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -189,7 +181,7 @@ def main():
         # Use the combined dataset from Metaskepsis/validation_
         data = load_dataset(dataset_name, split=split) # type: ignore
         data = data.map(lambda x: { # type: ignore
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', ''))
         }) # type: ignore
         return data # type: ignore

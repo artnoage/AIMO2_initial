@@ -10,7 +10,6 @@ PatchFastRL("GRPO", FastLanguageModel)
 import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
-
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
@@ -19,8 +18,7 @@ from config import RewardConfig
 from rewards import SolutionReward, SolutionSimilarityChecker
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
 
-# Use the system prompt from agents.py
-SYSTEM_PROMPT = FULLSOLUTION_SYSTEM_PROMPT
+
     
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -192,7 +190,7 @@ def main():
         data = load_from_disk(dataset_name) # type: ignore
         
         # Use the prepare_wait_data function
-        return prepare_wait_data(data, SYSTEM_PROMPT)
+        return prepare_wait_data(data,  FULLSOLUTION_SYSTEM_PROMPT)
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=11)

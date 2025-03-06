@@ -12,8 +12,7 @@ from utils.model_utils import *
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution, 
     extract_code_from_response, check_code_quality, run_code_safely,
-    count_manual_steps, has_response_section
-)
+    count_manual_steps)
 from utils.similarity_checker import SolutionSimilarityChecker
 from abc import ABC, abstractmethod
 from config import RewardConfig
