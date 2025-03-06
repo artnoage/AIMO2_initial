@@ -89,7 +89,7 @@ class CustomChat:
         self.api_key = api_key
 
     def _format_prompt(self, messages):
-        """Format messages using the Llama chat template format"""
+        """Format messages using the Phi chat template format"""
         formatted_prompt = ""
         
         for message in messages:
@@ -108,18 +108,18 @@ class CustomChat:
                 content = str(message)
             
             if role == "system":
-                formatted_prompt += f"<|im_start|>system\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>system<|im_sep|>{content}<|im_end|>"
             elif role == "user":
-                formatted_prompt += f"<|im_start|>user\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>user<|im_sep|>{content}<|im_end|>"
             elif role == "assistant":
-                formatted_prompt += f"<|im_start|>assistant\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>assistant<|im_sep|>{content}<|im_end|>"
             else:
                 # Handle other roles or fallback
-                formatted_prompt += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>{role}<|im_sep|>{content}<|im_end|>"
                 
         # Add the assistant prefix for the model to continue from
-        if not formatted_prompt.endswith("<|im_start|>assistant\n"):
-            formatted_prompt += "<|im_start|>assistant\n"
+        if not formatted_prompt.endswith("<|im_start|>assistant<|im_sep|>"):
+            formatted_prompt += "<|im_start|>assistant<|im_sep|>"
             
         return formatted_prompt
 
@@ -182,7 +182,7 @@ class CustomChat2:
         self.api_key = api_key
 
     def _format_prompt(self, messages):
-        """Format messages using the Llama chat template format"""
+        """Format messages using the Phi chat template format"""
         formatted_prompt = ""
         
         for message in messages:
@@ -201,18 +201,18 @@ class CustomChat2:
                 content = str(message)
             
             if role == "system":
-                formatted_prompt += f"<|im_start|>system\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>system<|im_sep|>{content}<|im_end|>"
             elif role == "user":
-                formatted_prompt += f"<|im_start|>user\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>user<|im_sep|>{content}<|im_end|>"
             elif role == "assistant":
-                formatted_prompt += f"<|im_start|>assistant\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>assistant<|im_sep|>{content}<|im_end|>"
             else:
                 # Handle other roles or fallback
-                formatted_prompt += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+                formatted_prompt += f"<|im_start|>{role}<|im_sep|>{content}<|im_end|>"
                 
         # Add the assistant prefix for the model to continue from
-        if not formatted_prompt.endswith("<|im_start|>assistant\n"):
-            formatted_prompt += "<|im_start|>assistant\n"
+        if not formatted_prompt.endswith("<|im_start|>assistant<|im_sep|>"):
+            formatted_prompt += "<|im_start|>assistant<|im_sep|>"
             
         return formatted_prompt
     
@@ -251,9 +251,9 @@ class CustomChat2:
         
         # Create the modified prompt with the "wait a second" thinking
         modified_prompt = (
-            f"<|im_start|>system\n{system_content}<|im_end|>\n"
-            f"<|im_start|>user\n{user_content}<|im_end|>\n"
-            f"<|im_start|>assistant\n"
+            f"<|im_start|>system<|im_sep|>{system_content}<|im_end|>"
+            f"<|im_start|>user<|im_sep|>{user_content}<|im_end|>"
+            f"<|im_start|>assistant<|im_sep|>"
             f"<thinking>{modified_thinking}</thinking>"
         )
         
