@@ -3,17 +3,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
 import asyncio
 
-
-
-class CompletionAgent:
-    """Agent that completes partial solutions"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Complete a partial solution"""
-        system_prompt = """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
+COMPLETION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to complete the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.
 
@@ -50,26 +40,7 @@ In your final step, include your answer in a LaTeX boxed environment:
 Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
 </response>"""
 
-        prompt = [SystemMessage(content=system_prompt),
-            HumanMessage(content=(
-                f"Problem: {problem}\n\n"
-                f"Partial Solution: {partial_solution}"
-            ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
-        return (prompt[0].content, response) if return_prompt else response
-
-
-
-class FullSolutionAgent:
-    """Agent that provides complete solutions with analysis and steps"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Generate a complete solution with analysis and steps"""
-        system_prompt = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
 
 <thinking>
 First, analyze the problem in depth and outline your approach.
@@ -87,26 +58,8 @@ Each step should be numbered and self-contained</step>
 Put your final answer in \\boxed{}</step>
 </response>
 """
-        prompt = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=f"{problem}")
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
-        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
-
-class TutorAgent:
-    """Agent that evaluates mathematical solutions and identifies the first wrong step"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def find_first_wrong_step(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """
-        Analyze a solution and identify the first step that contains an error.
-        Returns analysis, verdict and suggested correction in a structured format.
-        """
-        system_prompt = """You are a mathematical tutor who evaluates solutions and identifies errors.
+TUTOR_SYSTEM_PROMPT="""You are a mathematical tutor who evaluates solutions and identifies errors.
 
 <thinking>
 Analyze the solution approach and reasoning here.
@@ -126,31 +79,7 @@ If a specific step is wrong, write 'Step X: ' followed by the correct version of
 Otherwise leave this section empty
 </substitution>"""
 
-        prompt = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=(
-                "Here is a mathematical problem and a proposed solution:\n\n"
-                f"Problem:\n{problem}\n\n"
-                f"Proposed Solution:\n{solution}\n\n"
-                "Please analyze this solution and:\n"
-                "1. Provide a brief analysis of the solution approach\n"
-                "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
-                "3. If there's a wrong step, suggest how to correct it"
-            ))
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
-        return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
-
-
-class ProgrammingAgent:
-    """Agent that generates Python code to solve mathematical problems"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Generate Python code that solves the mathematical problem"""
-        system_prompt = """You will be given a mathematical problem. Your task is to write Python code that solves this problem.
+PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to write Python code that solves this problem.
 
 <thinking>
 First, analyze the problem carefully and determine the mathematical concepts involved.
@@ -188,6 +117,83 @@ result = ...
 print(result)  # Just the number, no text
 ```
 </response>"""
+
+class CompletionAgent:
+    """Agent that completes partial solutions"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Complete a partial solution"""
+        system_prompt =COMPLETION_SYSTEM_PROMPT
+
+        prompt = [SystemMessage(content=system_prompt),
+            HumanMessage(content=(
+                f"Problem: {problem}\n\n"
+                f"Partial Solution: {partial_solution}"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (prompt[0].content, response) if return_prompt else response
+
+
+
+class FullSolutionAgent:
+    """Agent that provides complete solutions with analysis and steps"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a complete solution with analysis and steps"""
+        system_prompt = FULLSOLUTION_SYSTEM_PROMPT
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
+
+
+class TutorAgent:
+    """Agent that evaluates mathematical solutions and identifies the first wrong step"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def find_first_wrong_step(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """
+        Analyze a solution and identify the first step that contains an error.
+        Returns analysis, verdict and suggested correction in a structured format.
+        """
+        system_prompt = TUTOR_SYSTEM_PROMPT
+
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=(
+                "Here is a mathematical problem and a proposed solution:\n\n"
+                f"Problem:\n{problem}\n\n"
+                f"Proposed Solution:\n{solution}\n\n"
+                "Please analyze this solution and:\n"
+                "1. Provide a brief analysis of the solution approach\n"
+                "2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong\n"
+                "3. If there's a wrong step, suggest how to correct it"
+            ))
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
+
+
+class ProgrammingAgent:
+    """Agent that generates Python code to solve mathematical problems"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate Python code that solves the mathematical problem"""
+        system_prompt = PROGRAMMER_SYSTEM_PROMPT
 
         prompt = [
             SystemMessage(content=system_prompt),

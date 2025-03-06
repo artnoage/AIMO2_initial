@@ -401,7 +401,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
             api_key=openrouter_api_key)
 
 
-def async_retry(max_retries: int = 3, timeout: int = 300):
+def async_retry(max_retries: int = 3, timeout: int = 500):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -423,7 +423,7 @@ def async_retry(max_retries: int = 3, timeout: int = 300):
         return wrapper
     return decorator
 
-@async_retry(max_retries=3, timeout=240)
+@async_retry(max_retries=3, timeout=500)
 async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
     try:

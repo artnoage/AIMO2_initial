@@ -236,7 +236,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/completion"
     dataset_name = "Metaskepsis/completion"
     
     # Setup logging first
@@ -615,7 +615,7 @@ def main():
     # Shuffle the combined dataset
     formatted_dataset = formatted_dataset.shuffle(seed=20)
     # Use a reasonable number of examples
-    formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.select(range(1000))
    
     # Verify first few entries
     solution_count = 0

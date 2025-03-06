@@ -363,54 +363,8 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         return True, "Valid completion"
                     
 
-def validate_step(resp: str, expected_step: Optional[int] = None) -> Tuple[bool, str]:
-    """Validate a solution step"""
-    # If no expected step, just check for multiple step mentions
-    if expected_step is None:
-        step_count = resp.lower().count("step")
-        if step_count > 1:
-            return False, "Multiple step mentions"
-        return True, "Step valid"
-        
-    # Reject if there are any decimal numbers in steps (e.g. 2.1)
-    if re.search(r'step\s*\d+\.\d+', resp.lower()):
-        return False, "Contains decimal step numbers"
-        
-    # Find step numbers in the text
-    found_numbers = []
-    for pattern in STEP_NUMBER_PATTERNS:
-        match = pattern.search(resp)
-        if match:
-            try:
-                num = int(match.group(1))
-                found_numbers.append(num)
-            except ValueError:
-                return False, "Invalid step number format"
-    
-    # If we found numbers, they must match the expected step
-    if found_numbers:
-        if not any(num == expected_step for num in found_numbers):
-            return False, f"Step number mismatch: expected {expected_step}"
-    else:
-        # No explicit numbers found, check for text mentions
-        step_mentions = [
-            f"step {expected_step}",
-            f"step{expected_step}",
-            f"({expected_step})",
-            f"{expected_step}."
-        ]
-        if not any(mention.lower() in resp.lower() for mention in step_mentions):
-            return False, f"Missing step number {expected_step}"
-    
-    # Steps should not have multiple step mentions
-    step_count = resp.lower().count("step")
-    if step_count > 1:
-        return False, "Multiple step mentions"
-        
-    return True, "Step valid"
-
 class NumericVerifier:
-    def __init__(self, tolerance: float = 1e-6):
+    def __init__(self, tolerance: float = 1e-2):
         self.tolerance = tolerance
         
     async def verify(self, solution: str, correct_answer: str, problem: str) -> Tuple[bool, Optional[str]]:

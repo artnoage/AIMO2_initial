@@ -40,9 +40,9 @@ class RewardConfig:
     
     # Programming reward values
     structure_reward: float = 0.5  # Reward for having both thinking and response sections
-    syntax_reward: float = 1.0     # Reward for code with no syntax errors
-    execution_reward: float = 1.5  # Reward for code that executes and returns a float
-    correctness_reward: float = 3.0 # Reward for code that returns the correct answer
+    syntax_reward: float = 0.5     # Reward for code with no syntax errors
+    execution_reward: float = 0.75  # Reward for code that executes and returns a float
+    correctness_reward: float = 2.5 # Reward for code that returns the correct answer
     
     # Group-specific settings
     group_base_reward: float = 3

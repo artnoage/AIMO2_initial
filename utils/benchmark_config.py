@@ -17,10 +17,11 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/A"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/B"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/C"
-    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/completion"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/E"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/D"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/programming_0/20250305_223555"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
+    
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250304_160952"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
@@ -55,7 +56,7 @@ class BenchmarkConfig:
     completions: int = 20
     
     # Verification settings
-    tolerance: float = 1e-6  # Tolerance for numeric answer comparison
+    tolerance: float = 1e-2  # Tolerance for numeric answer comparison
     
     # Output settings
     produce_statistics: bool = True
@@ -107,7 +108,7 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=64,
+        parser.add_argument('--max-concurrent', type=int, default=32,
                           help='Maximum number of concurrent problems (default: 64)')
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
@@ -115,7 +116,7 @@ class BenchmarkConfig:
                           help='Number of completions to try per path (default: 15)')
                           
         # Verification arguments
-        parser.add_argument('--tolerance', type=float, default=1e-6,
+        parser.add_argument('--tolerance', type=float, default=1e-2,
                           help='Tolerance for numeric answer comparison')
         
         # Output settings

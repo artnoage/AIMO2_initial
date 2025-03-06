@@ -1,4 +1,4 @@
-pip install unsloth vllm wandb langchain_core latex2sympy2
+pip install unsloth vllm wandb langchain_core latex2sympy2 scipy
 
 python -m venv myenv
 sudo apt install build-essential
