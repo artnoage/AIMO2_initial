@@ -165,13 +165,12 @@ def main():
     )
     
     def get_questions(split="train") -> Dataset:
+        # Import the data preparation function
+        from utils.data_preparation import prepare_programming_data
+        
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        data = data.map(lambda x: {
-            'prompt': '<|im_start|>system\\n' + SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-            'answer': x.get('answer', x.get('correct_answer', ''))
-        })
-        return data
+        return prepare_programming_data(data, SYSTEM_PROMPT, split)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)

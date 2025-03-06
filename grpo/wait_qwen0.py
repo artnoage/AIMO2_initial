@@ -185,61 +185,14 @@ def main():
         Only modify if the solution is incorrect.
         Uses the is_correct field from benchmark entries.
         """
+        # Import the data preparation function
+        from utils.data_preparation import prepare_wait_data
+        
         # Load the dataset
         data = load_from_disk(dataset_name) # type: ignore
         
-        # Process each example
-        def process_example(example):
-            # Check if the solution is correct - directly use the is_correct field
-            is_correct = example.get('is_correct', False)
-            
-            # Only modify thinking section if solution is incorrect
-            if not is_correct:
-                # Extract the thinking section from the model solution
-                thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-                thinking_match = thinking_pattern.search(example.get('model_solution', ''))
-                
-                if thinking_match:
-                    thinking_content = thinking_match.group(1)
-                    # Modify the thinking section
-                    modified_thinking = thinking_content + "...no wait a second."
-                    
-                    # Create prompt with the modified thinking section
-                    prompt = (
-                        '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n'
-                        '<|im_start|>user\n' + example['problem'] + '<|im_end|>\n'
-                        '<|im_start|>assistant\n'
-                        '<thinking>' + modified_thinking )
-                    
-                    return {
-                        'prompt': prompt,
-                        'answer': str(example.get('correct_answer', '')),  # Stringify the answer
-                        'is_modified': True
-                    }
-            
-            # For correct solutions or if no thinking section found, use standard prompt
-            return {
-                'prompt': '<|im_start|>system\n' + SYSTEM_PROMPT + '<|im_end|>\n<|im_start|>user\n' + example['problem'] + '<|im_end|>\n<|im_start|>assistant\n',
-                'answer': str(example.get('correct_answer', '')),  # Stringify the answer
-                'is_modified': False
-            }
-        
-        # Apply the processing to each example
-        processed_data = data.map(process_example)
-            
-        # Make sure we keep the original problem field for the reward function
-        def add_problem_field(example):
-            if 'problem' not in example:
-                # Find the problem in the prompt
-                match = re.search(r'<\|im_start\|>user\n(.*?)<\|im_end\|>', example['prompt'], re.DOTALL)
-                if match:
-                    example['problem'] = match.group(1)
-            return example
-                
-        processed_data = processed_data.map(add_problem_field)
-            
-        logger.info(f"Created dataset with {len(processed_data)} examples")
-        return processed_data
+        # Use the prepare_wait_data function
+        return prepare_wait_data(data, SYSTEM_PROMPT)
 
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=11)

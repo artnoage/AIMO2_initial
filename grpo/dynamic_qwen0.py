@@ -440,85 +440,28 @@ def main():
         - 15% completion examples
         - 15% wait examples
         """
+        # Import the data preparation function
+        from utils.data_preparation import prepare_combined_data
+        
         # Load the base dataset
         data = load_dataset(dataset_name, split=split)
         
-        # Check if we have model_solutions in the dataset
-        has_model_solutions = sum(1 for x in data if 'model_solution' in x and x['model_solution'])
-        logger.info(f"Dataset has {has_model_solutions} examples with model_solutions")
+        # Define the distribution
+        distribution = {
+            'solution': 0.35,
+            'programming': 0.35,
+            'completion': 0.15,
+            'wait': 0.15
+        }
         
-        # Check how many model solutions have valid steps
-        valid_steps = 0
-        for example in data:
-            if 'model_solution' in example and example['model_solution']:
-                response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
-                if response_match:
-                    response = response_match.group(1).strip()
-                    steps = re.findall(r'<step>(.*?)</step>', response, re.DOTALL)
-                    if len(steps) >= 2:
-                        valid_steps += 1
-        
-        logger.info(f"Found {valid_steps} examples with valid steps (2+ steps)")
-        
-        # Create examples for each type using the separate methods
-        solution_data = create_solution_examples(data)
-        programming_data = create_programming_examples(data)
-        completion_data = create_completion_examples(data)
-        wait_data = create_wait_examples(data)
-        
-        # Calculate the target number of examples for each type
-        total_examples = len(data)
-        solution_target = int(total_examples * 0.35)  # 35% solution examples
-        programming_target = int(total_examples * 0.35)  # 35% programming examples
-        completion_target = int(total_examples * 0.15)  # 15% completion examples
-        wait_target = int(total_examples * 0.15)  # 15% wait examples
-        
-        
-        # Function to count example types in a dataset
-        def count_types(dataset):
-            type_counts = {}
-            for example in dataset:
-                example_type = example.get('example_type', 'unknown')
-                type_counts[example_type] = type_counts.get(example_type, 0) + 1
-            return type_counts
-        
-        # Log the counts before shuffling
-        logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
-        logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
-        logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
-        logger.info(f"Created {len(wait_data)} wait examples (target: {wait_target})")
-        
-        # Shuffle and select examples for each type
-        solution_data = solution_data.shuffle(seed=42)
-        programming_data = programming_data.shuffle(seed=43)
-        completion_data = completion_data.shuffle(seed=44)
-        wait_data = wait_data.shuffle(seed=45)
-        
-        solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
-        programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
-        completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
-        wait_data = wait_data.select(range(min(wait_target, len(wait_data))))
-        
-        # Log type distribution before combining
-        logger.info("Dataset type distribution before combining:")
-        logger.info(f"Solution dataset: {count_types(solution_data)}")
-        logger.info(f"Programming dataset: {count_types(programming_data)}")
-        logger.info(f"Completion dataset: {count_types(completion_data)}")
-        logger.info(f"Wait dataset: {count_types(wait_data)}")
-        
-        # Combine all datasets
-        combined_data = concatenate_datasets([solution_data, programming_data, completion_data, wait_data])
-        
-        # Count types in the combined dataset
-        combined_types = count_types(combined_data)
-        logger.info(f"Combined dataset types: {combined_types}")
-        
-        # Calculate percentages
-        total = sum(combined_types.values())
-        percentages = {k: f"{v/total*100:.1f}%" for k, v in combined_types.items()}
-        logger.info(f"Type percentages: {percentages}")
-        
-        return combined_data
+        # Use the prepare_combined_data function
+        return prepare_combined_data(
+            data, 
+            SOLVER_SYSTEM_PROMPT, 
+            COMPLETION_SYSTEM_PROMPT, 
+            tokenizer, 
+            distribution
+        )
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
