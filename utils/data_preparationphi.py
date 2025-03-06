@@ -106,7 +106,9 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             partial_solutions = get_partial_solutions(partial_steps)
             if not partial_solutions:
                 return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
+                             '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
+                             '<|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -133,7 +135,9 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                     if total_tokens >= max_prompt_tokens:
                         logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
                         return {
-                            'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                            'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
+                                     '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
+                                     '<|im_start|>assistant<|im_sep|>',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
@@ -191,7 +195,9 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
                 # If is_correct is explicitly True, return as regular solution
                 if is_correct == True:
                     return {
-                        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
+                                 '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
+                                 '<|im_start|>assistant<|im_sep|>',
                         'answer': example.get('answer', example.get('correct_answer', '')),
                         'partial_solution': '',
                         'example_type': 'solution'

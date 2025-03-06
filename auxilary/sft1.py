@@ -45,7 +45,18 @@ def main():
         problems = examples['problem']
         prompt_completion = examples['prompt_completion']
         for problem, prompt_completion in zip(problems, prompt_completion):
-            formatted_text = (prompt_completion + '<|im_end|>')
+            # Convert to Phi format if needed
+            if '<|im_start|>system\n' in prompt_completion:
+                # Replace Qwen format with Phi format
+                formatted_text = (
+                    prompt_completion.replace('<|im_start|>system\n', '<|im_start|>system<|im_sep|>')
+                    .replace('<|im_end|>\n<|im_start|>user\n', '<|im_end|><|im_start|>user<|im_sep|>')
+                    .replace('<|im_end|>\n<|im_start|>assistant\n', '<|im_end|><|im_start|>assistant<|im_sep|>')
+                    + '<|im_end|>'
+                )
+            else:
+                # Already in Phi format or other format
+                formatted_text = (prompt_completion + '<|im_end|>')
             texts.append(formatted_text)
         return {"text": texts}
 
