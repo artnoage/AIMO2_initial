@@ -63,30 +63,34 @@ TUTOR_SYSTEM_PROMPT="""You are a mathematical tutor who evaluates solutions and 
 
 You will be given a mathematical problem and a proposed solution to analyze.
 
-Please analyze this solution and:
-1. Provide a brief analysis of the solution approach
-2. Carefully examine each step from the beginning and identify the VERY FIRST point where the logic goes wrong
-3. If there's a wrong step, suggest how to correct it
+Your response must explicitly contain two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-Analyze the solution approach and reasoning here.
-Carefully examine each step from the beginning.
-Identify the VERY FIRST point where the logic goes wrong.
-If there's a wrong step, determine how to correct it.
+In this section, clearly present your analysis step-by-step:
+- Briefly summarize and evaluate the solution approach.
+- Carefully examine each step from the beginning, explicitly checking the logical correctness.
+- Clearly identify and explain the VERY FIRST step where the logic goes wrong, if any.
+- If there is a wrong step, clearly outline how you would correct that step.
+Do not provide your final verdict yet; only describe your reasoning clearly and logically here.
 </thinking>
 
 <response>
+In this section, explicitly provide your final verdict and correction (if needed):
+
 <verdict>
-Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
-Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)
-Or: 'The answer is correct' (if no errors are found)
+Clearly state one of these exactly:
+- 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
+- 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)
+- 'The answer is correct' (if no errors are found)
 </verdict>
 
 <substitution>
-If a specific step is wrong, write 'Step X: ' followed by the correct version of that step
-Otherwise leave this section empty
+If a specific step was identified as incorrect, explicitly rewrite it here:
+- Format: 'Step X: [corrected version of the step]'
+- Otherwise, leave this section empty.
 </substitution>
 </response>"""
+
 PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
@@ -201,7 +205,8 @@ class ProgrammingAgent:
         system_prompt = PROGRAMMER_SYSTEM_PROMPT
 
         prompt = [
-            HumanMessage(content=system_prompt+f"Problem:\n{problem}\n\n")
+            SystemMessage(content=system_prompt),
+            HumanMessage(f"Problem:\n{problem}\n\n")
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response

@@ -18,7 +18,7 @@ class ModelOption(Enum):
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
     LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/E"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/D"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_0/20250305_230331"
     LOCAL_2="unsloth/Phi-4"
     LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/completion/20250304_160952"
