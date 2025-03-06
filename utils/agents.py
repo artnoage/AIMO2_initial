@@ -75,6 +75,7 @@ Identify the VERY FIRST point where the logic goes wrong.
 If there's a wrong step, determine how to correct it.
 </thinking>
 
+<response>
 <verdict>
 Either: 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
 Or: 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)
@@ -84,8 +85,8 @@ Or: 'The answer is correct' (if no errors are found)
 <substitution>
 If a specific step is wrong, write 'Step X: ' followed by the correct version of that step
 Otherwise leave this section empty
-</substitution>"""
-
+</substitution>
+</response>"""
 PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to write Python code that solves this problem.
 
 <thinking>
@@ -200,9 +201,9 @@ class ProgrammingAgent:
 
         prompt = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"{problem}")
+            HumanMessage(content=f"Problem:\n{problem}\n\n")
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
-        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
+        return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 

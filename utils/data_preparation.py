@@ -1,9 +1,8 @@
-import os
 import re
 import random
 import logging
-from typing import Dict, List, Optional, Tuple, Any
-from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
+from typing import Dict
+from datasets import concatenate_datasets, Dataset
 from utils.solution_utils import (
     extract_response_section, split_into_steps, get_partial_solutions,
     has_thinking_section, extract_thinking_section, has_response_section
@@ -15,7 +14,7 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     logger.addHandler(logging.StreamHandler())
 
-def prepare_solution_data(data: Dataset, system_prompt: str, split: str = "train") -> Dataset:
+def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
     """Create examples for full solution tasks"""
     logger.info("Creating solution examples...")
     solution_data = data.map(lambda x: {
@@ -26,7 +25,7 @@ def prepare_solution_data(data: Dataset, system_prompt: str, split: str = "train
     })
     return solution_data
 
-def prepare_programming_data(data: Dataset, system_prompt: str, split: str = "train") -> Dataset:
+def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     """Create examples for programming tasks"""
     logger.info("Creating programming examples...")
     programming_data = data.map(lambda x: {
@@ -164,7 +163,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
     
     return completion_data
 
-def prepare_wait_data(data: Dataset, system_prompt: str, split: str = "train") -> Dataset:
+def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
     """Create examples for wait-a-second tasks"""
     logger.info("Creating wait examples...")
     
