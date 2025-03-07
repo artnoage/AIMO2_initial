@@ -18,9 +18,7 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
     """Create examples for full solution tasks"""
     logger.info("Creating solution examples...")
     solution_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                 '<|im_start|>user<|im_sep|>' + x['problem'] + '<|im_end|>' + 
-                 '<|im_start|>assistant<|im_sep|>',
+        'prompt': "<|im_start|>system<|im_sep|>" + system_prompt + "<|im_end|><|im_start|>user<|im_sep|>" + x['problem'] + "<|im_end|><|im_start|>assistant<|im_sep|>",
         'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
         'partial_solution': '',  # Empty partial solution indicates full solution task
         'example_type': 'solution'  # Add type for tracking
@@ -28,12 +26,10 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
     return solution_data
 
 def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
-    """Create examples for programming tasks"""
+    """Create examples for programming tasks using the programming-specific system prompt"""
     logger.info("Creating programming examples...")
     programming_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                 '<|im_start|>user<|im_sep|>' + x['problem'] + '<|im_end|>' + 
-                 '<|im_start|>assistant<|im_sep|>',
+        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + x['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'partial_solution': '',
         'example_type': 'programming'
@@ -59,9 +55,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             # Only process examples that have model_solutions with proper steps
             if 'model_solution' not in example or not example['model_solution']:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                             '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                             '<|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -71,9 +65,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             response = extract_response_section(example['model_solution'])
             if not response:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                             '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                             '<|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -85,9 +77,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             # Need at least 2 steps to create a partial solution
             if len(steps) < 2:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                             '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                             '<|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -106,9 +96,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             partial_solutions = get_partial_solutions(partial_steps)
             if not partial_solutions:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                             '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                             '<|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -135,19 +123,15 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                     if total_tokens >= max_prompt_tokens:
                         logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
                         return {
-                            'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                                     '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                                     '<|im_start|>assistant<|im_sep|>',
+                            'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
                         }
             
             # Format the completion prompt with the partial solution in the user section
-            formatted_prompt = '<|im_start|>system<|im_sep|>' + completion_system_prompt + '<|im_end|>' + \
-                '<|im_start|>user<|im_sep|>' + \
-                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}" + \
-                '<|im_end|>' + '<|im_start|>assistant<|im_sep|>'
+            formatted_prompt = '<|im_start|>system<|im_sep|>' + completion_system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + \
+                f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|><|im_start|>assistant<|im_sep|>"
             
             #logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
             return {
@@ -161,9 +145,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             logger.warning(f"Error creating partial solution: {str(e)}")
             # Return as a full solution example on error
             return {
-                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                         '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                         '<|im_start|>assistant<|im_sep|>',
+                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
                 'example_type': 'solution'
@@ -195,9 +177,7 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
                 # If is_correct is explicitly True, return as regular solution
                 if is_correct == True:
                     return {
-                        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                                 '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                                 '<|im_start|>assistant<|im_sep|>',
+                        'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                         'answer': example.get('answer', example.get('correct_answer', '')),
                         'partial_solution': '',
                         'example_type': 'solution'
@@ -213,9 +193,9 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
                         
                         # Create prompt with the modified thinking section
                         prompt = (
-                            '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' +
-                            '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' +
-                            '<|im_start|>assistant<|im_sep|>' +
+                            '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>'
+                            '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>'
+                            '<|im_start|>assistant<|im_sep|>'
                             '<thinking>' + modified_thinking
                         )
                         
@@ -228,9 +208,7 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
             
             # If we couldn't create a wait example, return as regular solution
             return {
-                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                         '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                         '<|im_start|>assistant<|im_sep|>',
+                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
                 'example_type': 'solution'
@@ -240,9 +218,7 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
             logger.warning(f"Error creating wait example: {str(e)}")
             # Return as a regular solution example on error
             return {
-                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + 
-                         '<|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|>' + 
-                         '<|im_start|>assistant<|im_sep|>',
+                'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
                 'example_type': 'solution'
@@ -306,10 +282,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                     answer = example['correct_answer']
                 
                 # Create the prompt with the data we have
-                prompt = '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + \
-                        '<|im_start|>user<|im_sep|>' + \
-                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}" + \
-                        '<|im_end|>' + '<|im_start|>assistant<|im_sep|>'
+                prompt = '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + \
+                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|><|im_start|>assistant<|im_sep|>"
                 
                 return {
                     'valid': True,
@@ -435,10 +409,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
                 answer = example['correct_answer']
             
             # Create the prompt with all required fields
-            prompt = '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|>' + \
-                    '<|im_start|>user<|im_sep|>' + \
-                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}" + \
-                    '<|im_end|>' + '<|im_start|>assistant<|im_sep|>'
+            prompt = '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + \
+                    f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|><|im_start|>assistant<|im_sep|>"
             return {
                 'valid': True,
                 'prompt': prompt,
@@ -493,6 +465,7 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
     return valid_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
+                          programming_system_prompt: str,
                          tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
@@ -530,7 +503,7 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     
     # Create examples for each type using the separate methods
     solution_data = prepare_solution_data(data, system_prompt)
-    programming_data = prepare_programming_data(data, system_prompt)
+    programming_data = prepare_programming_data(data, programming_system_prompt)
     completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer)
     wait_data = prepare_wait_data(data, system_prompt)
     

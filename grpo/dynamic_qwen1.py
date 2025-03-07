@@ -21,7 +21,11 @@ from config import RewardConfig
 from dynamic_reward import DynamicReward
 from utils.similarity_checker import SolutionSimilarityChecker
 from utils.data_preparation import prepare_combined_data
-from utils.agents import *
+from utils.agents import (
+    FULLSOLUTION_SYSTEM_PROMPT, 
+    COMPLETION_SYSTEM_PROMPT,
+    PROGRAMMER_SYSTEM_PROMPT
+)
 
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -244,14 +248,14 @@ def main():
             'wait': 0.15
         }
         
-        # Use the prepare_combined_data function
+        # Use the prepare_combined_data function with programming system prompt
         return prepare_combined_data(
             data, 
             FULLSOLUTION_SYSTEM_PROMPT, 
             COMPLETION_SYSTEM_PROMPT, 
+            PROGRAMMER_SYSTEM_PROMPT,
             tokenizer, 
-            distribution
-        )
+            distribution)
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()

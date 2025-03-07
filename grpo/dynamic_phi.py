@@ -249,9 +249,9 @@ def main():
             data, 
             FULLSOLUTION_SYSTEM_PROMPT, 
             COMPLETION_SYSTEM_PROMPT, 
+            PROGRAMMER_SYSTEM_PROMPT,
             tokenizer, 
-            distribution
-        )
+            distribution)
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()

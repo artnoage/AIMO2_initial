@@ -465,8 +465,8 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
     return valid_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
-                         tokenizer=None, distribution: Dict[str, float] = None,
-                         programming_system_prompt: str = None) -> Dataset:
+                          programming_system_prompt: str,
+                         tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
@@ -483,10 +483,6 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
             'completion': 0.15,
             'wait': 0.15
         }
-    
-    # If no programming system prompt is provided, use the general system prompt
-    if programming_system_prompt is None:
-        programming_system_prompt = system_prompt
     
     # Check if we have model_solutions in the dataset
     has_model_solutions = sum(1 for x in data if 'model_solution' in x and x['model_solution'])
