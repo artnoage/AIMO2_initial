@@ -86,7 +86,31 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Store the full solution but extract code for execution
                 # The full_solution contains the complete model output
-                code = extract_code_from_response(full_solution)
+                
+                # First check if response section exists
+                response_match = re.search(r'<response>(.*?)</response>', full_solution, re.DOTALL)
+                if response_match:
+                    response_content = response_match.group(1)
+                    code = extract_code_from_response(response_content)
+                    if not code:
+                        # If no code in response section, try the whole solution
+                        logger.append(f"No code found in response section, trying whole solution")
+                        code = extract_code_from_response(full_solution)
+                else:
+                    # If no response tags, extract from the whole solution
+                    code = extract_code_from_response(full_solution)
+                
+                logger.append(f"Extracted code length: {len(code)} characters")
+                if not code:
+                    logger.append(f"❌ No code found in solution")
+                    solutions.append({
+                        'solution': full_solution,
+                        'code': "",
+                        'answer': None,
+                        'is_correct': False,
+                        'error_message': "No code found in solution"
+                    })
+                    continue
                 
                 # Check code quality first to save time
                 code_quality_passed, quality_message = check_code_quality(code)

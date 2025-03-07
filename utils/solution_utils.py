@@ -230,14 +230,25 @@ def extract_code_from_response(response: str) -> str:
             if code_blocks:
                 return code_blocks[0]
             # If no code blocks in response section, assume the entire response section is code
-            return response_content
+            # Check if it looks like Python code (has def, import, print, etc.)
+            if (re.search(r'\bdef\b|\bimport\b|\bprint\b|\bfor\b|\bif\b|\breturn\b', response_content) and 
+                not re.search(r'<[a-z]+>', response_content)):  # Avoid HTML-like content
+                return response_content
     
-    # If no structured format, assume the entire response is code
-    # Remove the Python indicator check to be more permissive and consistent with benchmark
-    return response
+    # Look for Python-like code patterns in the entire response
+    if (re.search(r'\bdef\b|\bimport\b|\bprint\b|\bfor\b|\bif\b|\breturn\b', response) and 
+        not re.search(r'<[a-z]+>', response)):  # Avoid HTML-like content
+        return response
+        
+    # If no structured format and no Python-like patterns, return empty string
+    # This is more conservative than before to avoid treating non-code as code
+    return ""
 
 def check_code_quality(code: str) -> Tuple[bool, str]:
     """Check code for syntax errors and basic linting issues"""
+    if not code.strip():
+        return False, "Empty code"
+        
     # First check for syntax errors
     try:
         compile(code, '<string>', 'exec')
@@ -265,6 +276,10 @@ def check_code_quality(code: str) -> Tuple[bool, str]:
     # If there are issues, return them
     if issues:
         return False, "Linting issues: " + "; ".join(issues)
+    
+    # Check if code has at least one function definition or meaningful computation
+    if not re.search(r'\bdef\b|\bprint\b|\breturn\b|=\s*[a-zA-Z0-9_]+', code):
+        return False, "Code lacks meaningful computation or function definitions"
     
     return True, "Code passed quality checks"
 

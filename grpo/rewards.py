@@ -485,6 +485,8 @@ class ProgrammingReward(BaseReward):
                         self.logger.info("No code found in completion")
                         return reward
             
+            self.logger.info(f"Extracted code length: {len(code)} characters")
+            
             # 2. Check code quality (syntax reward)
             code_quality_passed, quality_message = check_code_quality(code)
             if code_quality_passed:
