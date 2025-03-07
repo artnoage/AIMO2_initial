@@ -1,4 +1,4 @@
-unsloth==2025.3.6 unsloth_zoo==2025.3.4 vllm wandb langchain_core latex2sympy2 scipy
+pip install unsloth vllm wandb langchain_core latex2sympy2 scipy
 python -m venv myenv
 sudo apt install build-essential
 touch ~/.no_auto_tmux

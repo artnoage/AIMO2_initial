@@ -15,8 +15,8 @@ from utils.solution_utils import (
     count_manual_steps)
 from utils.similarity_checker import SolutionSimilarityChecker
 from abc import ABC, abstractmethod
-from config import RewardConfig
-from reward_stats import RewardStats
+from grpo.config import RewardConfig
+from grpo.reward_stats import RewardStats
 
 class BaseReward(ABC):
     """Base class for reward calculation

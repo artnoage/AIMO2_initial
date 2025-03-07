@@ -1,9 +1,5 @@
 import re
 import asyncio
-import torch
-import logging
-from datetime import datetime
-from pathlib import Path
 import os, sys
 from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,9 +7,9 @@ sys.path.append(project_root)
 from utils.model_utils import *
 from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
-from config import RewardConfig
-from reward_stats import RewardStats
-from rewards import BaseReward, SolutionReward, CompletionReward, ProgrammingReward
+from grpo.config import RewardConfig
+from grpo.reward_stats import RewardStats
+from grpo.rewards import BaseReward, SolutionReward, CompletionReward, ProgrammingReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
