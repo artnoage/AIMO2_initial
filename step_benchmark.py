@@ -771,7 +771,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'data_type': 'statistics',
                 'example_processed_successfully': False,
                 'is_correct': False,
-                'wrong_step_found': False
+                'wrong_step_found': False,
+                'wrong_step': -1  # Actual step number (1-based)
             }],
             'logs': '\n'.join(logger.logs) if logger.logs else ""
         }
