@@ -37,7 +37,7 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     return programming_data
 
 def prepare_completion_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
-                           tokenizer=None, max_prompt_tokens: int = 2000) -> Dataset:
+                           tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for completion tasks"""
     logger.info("Creating completion examples...")
     
