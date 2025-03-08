@@ -240,6 +240,7 @@ class StepAnalyzer:
         wrong_solution: str,
         correct_answer: str,
         wrong_step_index: int,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
+        wrong_step_number: int,  # Actual step number (1-based)
         partial_solutions: List[str],
         saved_good_completion: Optional[str] = None,
         example_id: Optional[int] = None
@@ -249,6 +250,7 @@ class StepAnalyzer:
         
         Args:
             wrong_step_index: 0-based index of the first wrong step (0 = Step 1, 1 = Step 2, etc.)
+            wrong_step_number: Actual step number (1-based)
         """
         results = []
         
@@ -300,6 +302,7 @@ class StepAnalyzer:
                 'is_correct': False,
                 'corrected_solution': correct_with_completion,
                 'wrong_step_index': wrong_step_index,
+                'wrong_step': wrong_step_number,  # Actual step number (1-based)
                 'total_steps': len(wrong_steps),
                 'position_category': position_category,
                 'completion_score': completion_score
@@ -316,6 +319,7 @@ class StepAnalyzer:
             'example_processed_successfully': True,
             'wrong_step_found': wrong_step_index is not None,
             'wrong_step_index': wrong_step_index if wrong_step_index is not None else -1,
+            'wrong_step': wrong_step_number if wrong_step_index is not None else -1,  # Actual step number (1-based)
             'total_steps': len(wrong_steps),
             'completion_attempts': self.max_attempts,
             'num_completions_per_step': self.max_attempts,
@@ -569,6 +573,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'example_processed_successfully': True,
                         'wrong_step_found': False,
                         'wrong_step_index': -1,
+                        'wrong_step': -1,  # Actual step number (1-based)
                         'total_steps': 0,
                         'completion_attempts': 0,
                         'solution_index': idx,
@@ -576,25 +581,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'unsalvageable_reason': analysis['reason']
                     })
                 elif wrong_step_index is not None:
-                    logger.append(f"\n✓ Found wrong step {wrong_step_index+1} (Step {wrong_step_index+1}) in solution {idx+1}")
+                    # Use the actual step number (index+1) for clarity
+                    wrong_step_number = wrong_step_index + 1
+                    logger.append(f"\n✓ Found wrong step {wrong_step_number} (Step {wrong_step_number}) in solution {idx+1}")
                     
                     # Get steps from wrong solution
                     wrong_steps = split_into_steps(analysis_solution)
                     step_count = len(wrong_steps)
                     
                     # Make step count very visible in the log
+                    wrong_step_number = wrong_step_index + 1
                     logger.append(f"\n   🔢 TOTAL STEPS IN SOLUTION: {step_count}")
-                    logger.append(f"   🔍 WRONG STEP: Step {wrong_step_index+1} of {step_count}")
+                    logger.append(f"   🔍 WRONG STEP: Step {wrong_step_number} of {step_count}")
                     logger.append(f"   📊 PROGRESS: {'▓' * wrong_step_index}{'░' * (step_count - wrong_step_index)}")
                     
                     partial_solutions = get_partial_solutions(wrong_steps)
                     
                     # Create training examples
+                    wrong_step_number = wrong_step_index + 1
                     step_examples = await analyzer.create_step_examples(
                         problem=problem,
                         wrong_solution=analysis_solution,
                         correct_answer=correct_answer,
                         wrong_step_index=wrong_step_index,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
+                        wrong_step_number=wrong_step_number,  # Actual step number (1-based)
                         partial_solutions=partial_solutions,
                         saved_good_completion=saved_good_completion if saved_good_completion is not None else "",
                         example_id=example_id
@@ -624,6 +634,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         'example_processed_successfully': True,
                         'wrong_step_found': False,
                         'wrong_step_index': -1,
+                        'wrong_step': -1,  # Actual step number (1-based)
                         'total_steps': len(split_into_steps(analysis_solution)),
                         'completion_attempts': config.completions,
                         'solution_index': idx,
