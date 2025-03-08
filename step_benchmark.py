@@ -449,20 +449,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                # Use response section for analysis
-                logger.append(f"   Using extracted response section for analysis")
-                analysis_solution = response
+                # Use the full solution for analysis
+                logger.append(f"   Using full solution for analysis")
+                analysis_solution = solution
                 
-                # Check if response contains steps with proper tags and has enough steps
-                steps = split_into_steps(response)
+                # Check if solution contains steps with proper tags and has enough steps
+                steps = split_into_steps(solution)
                 step_count = len(steps) if steps else 0
                 
                 # Make step count very visible with a special format
                 logger.append(f"\n   🔢 STEP COUNT: {step_count} {'✅' if step_count >= 2 else '❌'}")
                 logger.append(f"   {'=' * 30}")
                 
-                if not steps or '<step>' not in response:
-                    logger.append(f"   ❌ No <step> tags found in response section - marking as unsalvageable")
+                if not steps or '<step>' not in solution:
+                    logger.append(f"   ❌ No <step> tags found in solution - marking as unsalvageable")
                     analyzed_solutions.append({
                         'solution': solution,
                         'wrong_step_index': None,
