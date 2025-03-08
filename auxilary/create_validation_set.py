@@ -256,10 +256,16 @@ def main():
             # If there's exactly one "=", keep only what's on the right
             if equals_count == 1:
                 answer = answer.split("=")[1].strip()
+            
+            # Check if the answer has a valid numeric value
+            numeric_value, _ = extract_numeric_answer(answer)
+            if numeric_value is None:
+                continue
                 
             examples.append({
                 'answer': answer,
-                'problem': str(item['problem'])
+                'problem': str(item['problem']),
+                'numeric_value': numeric_value
             })
         return examples
     
