@@ -239,7 +239,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'id': example_id,
                 'data_type': 'training',
                 'problem': example['problem'],
-                'correct_solution': example.get('solution', ''),
+                'correct_solution': example.get('solution', '') if 'solution' in example else '',
                 'correct_answer': correct_answer,
                 'model_solution': s['solution'],
                 'model_code': s['code'],
