@@ -40,6 +40,9 @@ class BenchmarkConfig:
     main_temp: float = 0.7
     auxiliary_temp: float = 0.7
     auxiliary2_temp: float = 0.0
+    main_template: int = 1  # Template type for main model (1=CustomChat, 2=CustomChat2)
+    auxiliary_template: int = 1  # Template type for auxiliary model
+    auxiliary2_template: int = 1  # Template type for auxiliary2 model
     
     
     # Dataset settings
@@ -93,6 +96,12 @@ class BenchmarkConfig:
                           help='Temperature for auxiliary model generation (default: 0.7)')
         parser.add_argument('--auxiliary2-temp', type=float, default=0.0,
                           help='Temperature for second auxiliary model generation (default: 0.0)')
+        parser.add_argument('--main-template', type=int, choices=[1, 2], default=1,
+                          help='Template type for main model (1=CustomChat, 2=CustomChat2)')
+        parser.add_argument('--auxiliary-template', type=int, choices=[1, 2], default=1,
+                          help='Template type for auxiliary model (1=CustomChat, 2=CustomChat2)')
+        parser.add_argument('--auxiliary2-template', type=int, choices=[1, 2], default=1,
+                          help='Template type for auxiliary2 model (1=CustomChat, 2=CustomChat2)')
                           
         # Dataset arguments
         parser.add_argument('--dataset', type=str,

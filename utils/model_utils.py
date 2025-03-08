@@ -371,10 +371,13 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
     
     if role=="main":
         temp=config.main_temp
+        template=config.main_template
     elif role=="auxiliary":
         temp = config.auxiliary_temp
+        template=config.auxiliary_template
     else:
         temp=config.auxiliary2_temp
+        template=config.auxiliary2_template
 
     # Check if the model name starts with "LOCAL_" to handle any LOCAL_number pattern
     if str(model).startswith("ModelOption.LOCAL_"):
@@ -384,11 +387,19 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
             "auxiliary2": config.auxiliary2_port
         }.get(role, config.main_port)
         
-        return CustomChat(
-            model=name,
-            temperature=temp,
-            api_key="EMPTY",
-            base_url=f"http://localhost:{port}/v1")
+        # Choose between CustomChat and CustomChat2 based on template setting
+        if template == 2:
+            return CustomChat2(
+                model=name,
+                temperature=temp,
+                api_key="EMPTY",
+                base_url=f"http://localhost:{port}/v1")
+        else:
+            return CustomChat(
+                model=name,
+                temperature=temp,
+                api_key="EMPTY",
+                base_url=f"http://localhost:{port}/v1")
     else:
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
