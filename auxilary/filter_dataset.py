@@ -3,7 +3,8 @@ import argparse
 import signal
 from contextlib import contextmanager
 from datasets import load_dataset, Dataset
-from huggingface_hub import HfApi
+from huggingface_hub import HfApi, login
+from typing import Optional
 import re
 from typing import Optional, Dict, List, Tuple, Any
 from tqdm import tqdm
@@ -78,7 +79,33 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 
     return None  # Return None if no boxed content is found
 
-def filter_dataset(repo_name: str, output_dir: str = None, max_length: int = 2000, exclude_multiple_choice: bool = True):
+def push_to_hub(dataset: Dataset, repo_name: str, token: Optional[str] = None) -> str:
+    """
+    Push a dataset to the Hugging Face Hub.
+    
+    Args:
+        dataset: The dataset to push
+        repo_name: Target repository name (e.g., 'username/dataset_name')
+        token: HF API token (optional if already logged in)
+        
+    Returns:
+        URL of the dataset on the Hub
+    """
+    if token:
+        login(token)
+    
+    log_info(f"Pushing dataset to {repo_name}...")
+    api = HfApi()
+    
+    # Push the dataset to the Hub
+    url = dataset.push_to_hub(repo_name)
+    
+    log_info(f"Dataset successfully pushed to {url}")
+    return url
+
+def filter_dataset(repo_name: str, output_dir: str = None, max_length: int = 2000, 
+                  exclude_multiple_choice: bool = True, push_to_hub_name: Optional[str] = None,
+                  token: Optional[str] = None):
     """
     Download a dataset from HuggingFace, filter it, and save it locally.
     
@@ -281,6 +308,10 @@ def filter_dataset(repo_name: str, output_dir: str = None, max_length: int = 200
             reduction_pct = ((stats['original'] - stats['final'])/stats['original'])*100
             log_info(f"Total reduction: {reduction_pct:.1f}%")
         
+        # Push to Hugging Face Hub if requested
+        if push_to_hub_name and filtered_examples:
+            push_to_hub(filtered_dataset, push_to_hub_name, token)
+            
         return filtered_dataset
         
     except Exception as e:
@@ -299,6 +330,10 @@ def main():
                        help='Maximum character length for problems (default: 2000)')
     parser.add_argument('--include-multiple-choice', action='store_true',
                        help='Include multiple choice problems (default: exclude them)')
+    parser.add_argument('--push-to-hub', type=str, default=None,
+                       help='Push filtered dataset to HF Hub with this repo name (e.g., "username/filtered_dataset")')
+    parser.add_argument('--token', type=str, default=None,
+                       help='HuggingFace API token for pushing to Hub (optional if already logged in)')
     
     args = parser.parse_args()
     
@@ -306,7 +341,9 @@ def main():
         repo_name=args.repo_name,
         output_dir=args.output_dir,
         max_length=args.max_length,
-        exclude_multiple_choice=not args.include_multiple_choice
+        exclude_multiple_choice=not args.include_multiple_choice,
+        push_to_hub_name=args.push_to_hub,
+        token=args.token
     )
 
 if __name__ == "__main__":
