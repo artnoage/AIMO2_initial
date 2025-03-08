@@ -241,7 +241,7 @@ class StepAnalyzer:
         correct_answer: str,
         wrong_step_index: int,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
         partial_solutions: List[str],
-        saved_good_completion: str,
+        saved_good_completion: Optional[str] = None,
         example_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -276,11 +276,19 @@ class StepAnalyzer:
             # Get solver prompt for recovery
             solver_prompt = await self.solution_agent.generate(problem, return_prompt=True)
             
-            # Extract content from response tags in the completion if present
-            completion_content = extract_response_section(saved_good_completion) or saved_good_completion
+            # Check if saved_good_completion is None before using it
+            if saved_good_completion is None:
+                self._log("Warning: saved_good_completion is None, using empty string")
+                completion_content = ""
+            else:
+                # Extract content from response tags in the completion if present
+                completion_content = extract_response_section(saved_good_completion) or saved_good_completion
             
             # Create correct solution with completion
-            correct_with_completion = partial_solutions[wrong_step_index-1] + completion_content if wrong_step_index > 0 else completion_content
+            if wrong_step_index > 0 and wrong_step_index - 1 < len(partial_solutions):
+                correct_with_completion = partial_solutions[wrong_step_index-1] + completion_content
+            else:
+                correct_with_completion = completion_content
             
             # Add recovery entry (training data)
             results.append({
@@ -541,7 +549,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'solution': solution,
                     'wrong_step_index': wrong_step_index,
                     'good_completion': saved_good_completion,
-                    'last_good_step': last_good_step
+                    'last_good_step': last_good_step,
+                    'completion_prompt': saved_completion_prompt
                 })
             
             # Process all analyzed solutions
@@ -587,7 +596,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         correct_answer=correct_answer,
                         wrong_step_index=wrong_step_index,  # 0-based index (0 = Step 1, 1 = Step 2, etc.)
                         partial_solutions=partial_solutions,
-                        saved_good_completion=saved_good_completion,
+                        saved_good_completion=saved_good_completion if saved_good_completion is not None else "",
                         example_id=example_id
                     )
                     
@@ -602,8 +611,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                     example['response'] = response
                                 break
                     
-                    # Add step examples to results
-                    results.extend(step_examples)
+                    # Add step examples to results if they exist
+                    if step_examples:
+                        results.extend(step_examples)
                 else:
                     logger.append(f"\n❌ Could not identify a specific wrong step in solution {idx+1}")
                     
