@@ -566,16 +566,27 @@ class NumericVerifier:
 def split_into_steps(solution: str) -> List[str]:
     """
     Split a solution into steps.
-    Handles both:
+    Handles:
     1. Steps enclosed in <step> tags
     2. Traditional "Step N" format
+    3. Multiple steps inside a single <step> tag
     
     Returns a list of steps from the response section only.
     """
     # First check for <step> tags
     step_tags = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
     if step_tags:
-        # Just return the steps without thinking section
+        # If we have only one step tag but it contains multiple steps
+        if len(step_tags) == 1 and re.search(r'Step\s+\d+[\.:]', step_tags[0], re.IGNORECASE) and re.search(r'Step\s+\d+[\.:].*?Step\s+\d+[\.:]', step_tags[0], re.IGNORECASE | re.DOTALL):
+            # Split the content of the single step tag by "Step"
+            parts = step_tags[0].split("Step")
+            steps = []
+            for step in parts[1:]:  # Skip the first part before "Step"
+                if step.strip():
+                    full_step = "Step" + step
+                    steps.append(full_step.strip())
+            return steps
+        # Otherwise just return the steps without thinking section
         return step_tags
     
     # Fall back to traditional "Step" keyword splitting

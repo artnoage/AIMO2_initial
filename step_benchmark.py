@@ -434,9 +434,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 steps = split_into_steps(solution)
                 step_count = len(steps) if steps else 0
                 
-                # Make step count very visible with a special format
+                # Add detailed logging about steps extraction
                 logger.append(f"\n   🔢 STEP COUNT: {step_count} {'✅' if step_count >= 2 else '❌'}")
                 logger.append(f"   {'=' * 30}")
+                
+                # Log if we found a single step tag with multiple steps inside
+                if '<step>' in solution and step_count > 1 and solution.count('<step>') == 1:
+                    logger.append(f"   ℹ️ Found single <step> tag containing multiple steps")
+                    
+                # Log the first few characters of each step for debugging
+                for i, step in enumerate(steps[:3]):  # Show first 3 steps max
+                    preview = step[:50].replace('\n', ' ').strip() + ('...' if len(step) > 50 else '')
+                    logger.append(f"   📝 Step {i+1} preview: {preview}")
                 
                 if not steps or '<step>' not in solution:
                     logger.append(f"   ❌ No <step> tags found in solution - marking as unsalvageable")
