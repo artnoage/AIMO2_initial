@@ -222,8 +222,10 @@ class StepAnalyzer:
                         break
                         
                     if current_step - 1 < 0:
-                        self._log("❌ Reached start without finding good step")
-                        return None, None, None, None
+                        self._log("❌ First step (Step 1) is wrong")
+                        # If the first step is wrong, return it as the wrong step
+                        # rather than marking the solution as unsalvageable
+                        return 0, None, None, None
                     current_step -= 1
                     
             except Exception as e:
