@@ -163,9 +163,15 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
     
     return completion_data
 
-def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_wait_data(data: Dataset, system_prompt: str, tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for wait-a-second tasks"""
     logger.info("Creating wait examples...")
+    
+    # Function to count tokens if tokenizer is provided
+    def count_tokens(text):
+        if tokenizer:
+            return len(tokenizer.encode(text))
+        return len(text) // 4  # Rough estimate if no tokenizer provided
     
     def create_wait_example(example):
         try:
@@ -199,29 +205,47 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
                             '<thinking>' + modified_thinking
                         )
                         
+                        # Check token count if tokenizer is provided
+                        if tokenizer:
+                            total_tokens = count_tokens(prompt)
+                            if total_tokens > max_prompt_tokens:
+                                logger.info(f"Wait prompt too long ({total_tokens} tokens), converting to full solution")
+                                return {
+                                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                                    'answer': example.get('answer', example.get('correct_answer', '')),
+                                    'partial_solution': '',
+                                    'example_type': 'solution',
+                                    'token_count': count_tokens('<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n')
+                                }
+                        
                         return {
                             'prompt': prompt,
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
-                            'example_type': 'wait'
+                            'example_type': 'wait',
+                            'token_count': count_tokens(prompt) if tokenizer else 0
                         }
             
             # If we couldn't create a wait example, return as regular solution
+            regular_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
             return {
-                'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                'prompt': regular_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
-                'example_type': 'solution'
+                'example_type': 'solution',
+                'token_count': count_tokens(regular_prompt) if tokenizer else 0
             }
             
         except Exception as e:
             logger.warning(f"Error creating wait example: {str(e)}")
             # Return as a regular solution example on error
+            regular_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
             return {
-                'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+                'prompt': regular_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
-                'example_type': 'solution'
+                'example_type': 'solution',
+                'token_count': count_tokens(regular_prompt) if tokenizer else 0
             }
     
     # Process all examples for wait tasks
@@ -229,6 +253,14 @@ def prepare_wait_data(data: Dataset, system_prompt: str) -> Dataset:
     
     # Filter out any wait examples that didn't actually get the wait modification
     wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
+    
+    # Filter by token count if tokenizer is provided
+    if tokenizer:
+        original_count = len(wait_data)
+        wait_data = wait_data.filter(lambda x: x['token_count'] <= max_prompt_tokens)
+        filtered_count = original_count - len(wait_data)
+        if filtered_count > 0:
+            logger.info(f"Filtered out {filtered_count} wait examples with more than {max_prompt_tokens} tokens")
     
     logger.info(f"Found {len(wait_data)} wait examples after filtering")
     
@@ -504,8 +536,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     # Create examples for each type using the separate methods
     solution_data = prepare_solution_data(data, system_prompt)
     programming_data = prepare_programming_data(data, programming_system_prompt)
-    completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer)
-    wait_data = prepare_wait_data(data, system_prompt)
+    completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer, max_prompt_tokens=1500)
+    wait_data = prepare_wait_data(data, system_prompt, tokenizer, max_prompt_tokens=1500)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
