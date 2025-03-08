@@ -314,19 +314,39 @@ class DynamicReward(BaseReward):
                     
             return await asyncio.gather(*tasks)
             
-        # Run async code in event loop
+        # Run async code in event loop - with Jupyter notebook compatibility
         try:
-            loop = asyncio.get_event_loop()
-            self.logger.debug("Using existing event loop")
-        except RuntimeError:
-            self.logger.debug("No event loop found - creating new one")
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Check if we're in IPython/Jupyter
+            import sys
+            is_jupyter = 'ipykernel' in sys.modules
             
-        try:
-            rewards = loop.run_until_complete(process_batch())
+            if is_jupyter:
+                self.logger.debug("Detected Jupyter environment, using nest_asyncio")
+                # Use nest_asyncio to allow nested event loops in Jupyter
+                import nest_asyncio
+                nest_asyncio.apply()
+                
+            # Get or create event loop
+            try:
+                loop = asyncio.get_event_loop()
+                self.logger.debug("Using existing event loop")
+            except RuntimeError:
+                self.logger.debug("No event loop found - creating new one")
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Run the coroutine
+            if is_jupyter:
+                # In Jupyter, we can directly await the coroutine
+                rewards = asyncio.run(process_batch())
+            else:
+                # In regular Python, use run_until_complete
+                rewards = loop.run_until_complete(process_batch())
+                
         except Exception as e:
             self.logger.error(f"Error during batch processing: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             rewards = [0.0] * len(completions)
         
         # Apply normalization if needed (same as in BaseReward)
