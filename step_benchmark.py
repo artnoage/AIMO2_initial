@@ -372,16 +372,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             solution = await solution_agent.generate(problem)
             is_correct, model_answer = await verifier.verify(solution, correct_answer, problem)
             
-            # Extract thinking and response sections if present
-            thinking = extract_thinking_section(solution)
-            response = extract_response_section(solution)
-            
             solutions.append({
                 'solution': solution,
                 'answer': model_answer,
-                'is_correct': is_correct,
-                'thinking': thinking,
-                'response': response
+                'is_correct': is_correct
             })
         
         # Initialize results list
@@ -429,29 +423,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for idx, sol_data in enumerate(incorrect_solutions[:3]):
                 solution = sol_data['solution']
                 model_answer = sol_data['answer']
-                thinking = sol_data.get('thinking')
-                response = sol_data.get('response')
-                
                 logger.append(f"\n🔍 Analyzing incorrect solution {idx+1}/{min(3, len(incorrect_solutions))}")
                 logger.append(f"   Model answer: {model_answer}")
-                
-                # If we have response section, log it
-                if response:
-                    logger.append(f"\n📝 Response section extracted:")
-                    logger.append(f"{response[:200]}...")
-                
-                # Check if response section exists
-                if not response or len(response.strip()) == 0:
-                    logger.append(f"   ❌ No response section found - marking as unsalvageable")
-                    analyzed_solutions.append({
-                        'solution': solution,
-                        'wrong_step_index': None,
-                        'good_completion': None,
-                        'last_good_step': None,
-                        'unsalvageable': True,
-                        'reason': 'no_response_section'
-                    })
-                    continue
                 
                 # Use the full solution for analysis
                 logger.append(f"   Using full solution for analysis")
@@ -610,16 +583,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         example_id=example_id
                     )
                     
-                    # Add the original solution and reasoning to the first training example
-                    if step_examples and len(step_examples) > 0:
-                        for example in step_examples:
-                            if example.get('data_type') == 'training':
-                                example['original_solution'] = solution
-                                if thinking:
-                                    example['thinking'] = thinking
-                                if response:
-                                    example['response'] = response
-                                break
+                    # No need to add additional solution data since we're using the full model solution
                     
                     # Add step examples to results if they exist
                     if step_examples:
@@ -664,9 +628,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             avg_position = sum(wrong_step_positions) / len(wrong_step_positions) if wrong_step_positions else 0
             avg_completion_score = sum(completion_scores) / len(completion_scores) if completion_scores else 0
             
-            # Count solutions with thinking/response sections
-            solutions_with_thinking = sum(1 for s in incorrect_solutions[:3] if s.get('thinking'))
-            solutions_with_response = sum(1 for s in incorrect_solutions[:3] if s.get('response'))
+            # No need to count thinking/response sections as we're using the full model solution
             
             # Count unsalvageable solutions
             unsalvageable_solutions = sum(1 for r in results if r.get('data_type') == 'statistics' and r.get('unsalvageable', False))
@@ -688,10 +650,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'position_distribution': dict(position_counts),
                     'avg_completion_score': avg_completion_score,
                     'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
-                    'solutions_with_thinking': solutions_with_thinking,
-                    'solutions_with_response': solutions_with_response,
-                    'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                    'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
                     'unsalvageable_solutions': unsalvageable_solutions,
                     'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
                     'unsalvageable_reasons': unsalvageable_reasons
@@ -707,10 +665,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'position_distribution': dict(position_counts),
                     'avg_completion_score': avg_completion_score,
                     'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
-                    'solutions_with_thinking': solutions_with_thinking,
-                    'solutions_with_response': solutions_with_response,
-                    'thinking_extraction_rate': solutions_with_thinking / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                    'response_extraction_rate': solutions_with_response / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
                     'unsalvageable_solutions': unsalvageable_solutions,
                     'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
                     'unsalvageable_reasons': unsalvageable_reasons
