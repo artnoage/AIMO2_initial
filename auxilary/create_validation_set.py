@@ -7,99 +7,17 @@ from huggingface_hub import HfApi, login
 import logging
 import random
 import sys
-import re
-import signal
-from contextlib import contextmanager
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from utils.solution_utils import extract_numeric_answer
+
 # Simple print function for status updates
 def log_info(message):
     print(f"[INFO] {message}")
-
-class TimeoutException(Exception): pass
-
-@contextmanager
-def time_limit(seconds):
-    def signal_handler(signum, frame):
-        raise TimeoutException("Timed out!")
-    signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
-
-def extract_numeric_answer(answer: str, debug: bool = False) -> Tuple[Optional[float], Optional[str]]:
-    """
-    Extract numeric value from a LaTeX answer string.
-    First tries to evaluate using sympy, then falls back to direct float conversion.
-    Returns float if found, None otherwise.
-    """
-    if not answer:
-        return None, "No answer provided" if debug else None
-        
-    # Check for logical operators that indicate multiple answers
-    if "\\text{or}" in answer or "\\text{and}" in answer:
-        return None, "Answer contains 'or'/'and' operators" if debug else None
-        
-    # Clean the answer string
-    clean_answer = answer.strip()
-    clean_answer = re.sub(r'\\textbf{([^}]*)}', r'\1', clean_answer)  # Remove \textbf{} first   
-    clean_answer = re.sub(r'\\text{[^}]*}', '', clean_answer)
-    clean_answer = clean_answer.replace('\\pm', '')
-    clean_answer = clean_answer.replace('\\ ', '')
-    clean_answer = clean_answer.replace('\\,', '')
-    clean_answer = clean_answer.replace('\\%', '')
-    clean_answer = clean_answer.replace('^{\\circ}', '')  # Remove degree symbol
-    clean_answer = clean_answer.replace('^\\circ', '')  # Remove degree symbol
-    
-    # Only split on = or \approx if there's a single term before it
-    def has_single_term(text: str) -> bool:
-        """Check if text has only a single term (no operators outside brackets)"""
-        bracket_level = 0
-        for char in text:
-            if char == '{':
-                bracket_level += 1
-            elif char == '}':
-                bracket_level -= 1
-            elif bracket_level == 0 and char in '+-*/^':
-                return False
-        return True
-
-    # Handle = and \approx separately
-    if '=' in clean_answer:
-        eq_pos = clean_answer.rfind('=')
-        before_eq = clean_answer[:eq_pos].strip()
-        if has_single_term(before_eq):
-            clean_answer = clean_answer[eq_pos + 1:].strip()
-    
-    if '\\approx' in clean_answer:
-        approx_pos = clean_answer.rfind('\\approx')
-        before_approx = clean_answer[:approx_pos].strip()
-        if has_single_term(before_approx):
-            clean_answer = clean_answer[approx_pos + 8:].strip()
-                
-    if not clean_answer:
-        return None, "Empty answer after cleaning" if debug else None
-    
-    # Simple numeric check first
-    try:
-        result = float(clean_answer)
-        return result, f"Direct conversion: {clean_answer} -> {result}" if debug else None
-    except ValueError:
-        pass
-    
-    # If not a simple number, try more complex parsing
-    try:
-        # For now, just return None as we don't have latex2sympy imported
-        # In a real implementation, you would use latex2sympy here
-        return None, f"Complex LaTeX parsing not implemented for: {clean_answer}" if debug else None
-    except Exception as e:
-        return None, f"Error: {str(e)} on input: {clean_answer}" if debug else None
 
 SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.\n\n
     <thinking>
