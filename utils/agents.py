@@ -3,7 +3,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
 import asyncio
 
-COMPLETION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
+FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.
 
@@ -138,7 +138,7 @@ class FinalizationAgent:
         
     async def generate(self, problem: str, partial_solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Finalize a partial solution"""
-        system_prompt = COMPLETION_SYSTEM_PROMPT
+        system_prompt = FINALIZATION_SYSTEM_PROMPT
 
         prompt = [SystemMessage(content=system_prompt),
             HumanMessage(content=(

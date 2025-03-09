@@ -20,11 +20,11 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from rewards import CompletionReward, SolutionSimilarityChecker
-from utils.agents import COMPLETION_SYSTEM_PROMPT
+from rewards import FinalizationReward, SolutionSimilarityChecker
+from utils.agents import FINALIZATION_SYSTEM_PROMPT
 
 # Use the system prompt from agents.py
-SYSTEM_PROMPT = COMPLETION_SYSTEM_PROMPT
+SYSTEM_PROMPT = FINALIZATION_SYSTEM_PROMPT
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -32,7 +32,7 @@ def setup_logging(model_type: str) -> logging.Logger:
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('completion_grpo')
+    logger = logging.getLogger('finalization_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -95,7 +95,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "completion"
+    model_type = "finalization"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/qwen_sft/20250303_224627"
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250301_141300"
     
@@ -130,8 +130,8 @@ def main():
     similarity_checker = SolutionSimilarityChecker(reward_config)
     
     # Initialize reward function with similarity checker
-    reward_func = CompletionReward(reward_config, similarity_checker)
-    logger.info("\nInitialized CompletionReward:")
+    reward_func = FinalizationReward(reward_config, similarity_checker)
+    logger.info("\nInitialized FinalizationReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
     # Load model
