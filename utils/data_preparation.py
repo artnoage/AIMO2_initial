@@ -18,6 +18,9 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
         'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
         'partial_solution': '',  # Empty partial solution indicates full solution task
+        'model_solution': '',
+        'is_correct': '',
+        'wrong_step': '',
         'example_type': 'solution'  # Add type for tracking
     })
     return solution_data
@@ -29,6 +32,9 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
         'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'partial_solution': '',
+        'model_solution': '',
+        'is_correct': '',
+        'wrong_step': '',
         'example_type': 'programming'
     })
     return programming_data
@@ -68,6 +74,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str) -> Dataset:
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
+                'partial_solution': '',
                 'model_solution': example['model_solution'],
                 'is_correct': is_correct,
                 'wrong_step': wrong_step,
@@ -108,6 +115,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
+                    'model_solution': '',
+                    'is_correct': '',
+                    'wrong_step': '',
                     'example_type': 'solution'
                 }
             
@@ -118,6 +128,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
+                    'model_solution': '',
+                    'is_correct': '',
+                    'wrong_step': '',
                     'example_type': 'solution'
                 }
             
@@ -130,6 +143,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
+                    'model_solution': '',
+                    'is_correct': '',
+                    'wrong_step': '',
                     'example_type': 'solution'
                 }
             
@@ -149,6 +165,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
+                    'model_solution': '',
+                    'is_correct': '',
+                    'wrong_step': '',
                     'example_type': 'solution'
                 }
             
@@ -176,6 +195,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                             'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
+                            'model_solution': '',
+                            'is_correct': '',
+                            'wrong_step': '',
                             'example_type': 'solution'
                         }
             
@@ -187,7 +209,10 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
-                'partial_solution': partial_solution,
+                'partial_solution': partial_solution,                
+                'model_solution': '',
+                'is_correct': '',
+                'wrong_step': '',
                 'example_type': 'finalization'
             }
                 
@@ -198,6 +223,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
+                'model_solution': '',
+                'is_correct': '',
+                'wrong_step': '',
                 'example_type': 'solution'
             }
     
