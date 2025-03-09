@@ -9,7 +9,8 @@ from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward
+from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward
+from grpo.tutor_reward import TutorReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
