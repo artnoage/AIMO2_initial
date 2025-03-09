@@ -159,10 +159,6 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 
 STEP_NUMBER_PATTERNS = [
     re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
-    re.compile(r'^.*?(\d+)[:.)](?:\s|$)'),   # Match "N." or "N)" at start
-    re.compile(r'^\s*(\d+)\.\s'),            # Match "N. " at start
-    re.compile(r'^\s*\((\d+)\)\s'),          # Match "(N) " at start
-    re.compile(r'^\s*Step\s*(\d+)$'),        # Match just "Step N" at end of line
     # Add a pattern to check if Step is followed by a non-digit (to detect errors)
     re.compile(r'^.*?Step\s+([^\d\s]+)')     # Match "Step X" where X is not a digit
 ]
@@ -366,13 +362,14 @@ def validate_finalization(partial_solution: str, finalization: str) -> Tuple[boo
     
     # Extract step numbers from partial solution (ignoring tags)
     last_step = 0
-    for pattern in STEP_NUMBER_PATTERNS:
-        for match in pattern.finditer(partial_solution):
-            try:
-                num = int(match.group(1))
-                last_step = max(last_step, num)
-            except (ValueError, IndexError):
-                continue
+    # Only look for "Step N" pattern in partial solution
+    step_pattern = re.compile(r'Step\s*(\d+)[:.)\s]')
+    for match in step_pattern.finditer(partial_solution):
+        try:
+            num = int(match.group(1))
+            last_step = max(last_step, num)
+        except (ValueError, IndexError):
+            continue
     
     # Extract steps from finalization
     finalization_steps = re.findall(r'<step>(.*?)</step>', finalization, re.DOTALL)
@@ -386,13 +383,8 @@ def validate_finalization(partial_solution: str, finalization: str) -> Tuple[boo
     for i, step in enumerate(finalization_steps, 1):
         expected_step_num = last_step + i
         
-        # Check if step starts with "Step N"
-        step_match = None
-        for pattern in STEP_NUMBER_PATTERNS:
-            match = pattern.search(step)
-            if match:
-                step_match = match
-                break
+        # Check if step starts with "Step N" - only accept this format
+        step_match = re.search(r'Step\s*(\d+)[:.)\s]', step)
         
         if not step_match:
             return False, f"Step {i} does not have proper 'Step N:' format"
