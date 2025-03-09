@@ -160,7 +160,7 @@ def main():
     )
     
     # Import the data preparation function
-    from utils.data_preparation import prepare_detailed_completion_data
+    from utils.data_preparation import prepare_detailed_finalization_data
     
     # Apply the transformation and filter out invalid results
     data = load_from_disk(dataset_name)
@@ -170,7 +170,7 @@ def main():
     logger.info(f"Sample example keys: {list(data[0].keys()) if len(data) > 0 else 'No examples'}")
     
     # Process the data using the imported function
-    valid_data = prepare_detailed_completion_data(data, SYSTEM_PROMPT, tokenizer)
+    valid_data = prepare_detailed_finalization_data(data, SYSTEM_PROMPT, tokenizer)
     
     # Shuffle and select examples
     valid_data = valid_data.shuffle(seed=11)

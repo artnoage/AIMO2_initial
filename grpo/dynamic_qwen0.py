@@ -23,7 +23,7 @@ from utils.similarity_checker import SolutionSimilarityChecker
 from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
-    COMPLETION_SYSTEM_PROMPT,
+    FINALIZATION_SYSTEM_PROMPT,
     PROGRAMMER_SYSTEM_PROMPT
 )
 
@@ -251,7 +251,7 @@ def main():
         return prepare_combined_data(
             data, 
             FULLSOLUTION_SYSTEM_PROMPT, 
-            COMPLETION_SYSTEM_PROMPT, 
+            FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
@@ -265,7 +265,7 @@ def main():
    
     # Verify first few entries
     solution_count = 0
-    completion_count = 0
+    finalization_count = 0
     programming_count = 0
     
     for i in range(min(12, len(formatted_dataset))):
@@ -274,8 +274,8 @@ def main():
         
         if example_type == 'solution':
             solution_count += 1
-        elif example_type == 'completion':
-            completion_count += 1
+        elif example_type == 'finalization':
+            finalization_count += 1
         elif example_type == 'programming':
             programming_count += 1
             
@@ -288,7 +288,7 @@ def main():
         prompt_tokens = count_tokens(prompt)
         print(f"Prompt tokens: {prompt_tokens}")
         
-        if example_type == 'completion' and entry.get('partial_solution'):
+        if example_type == 'finalization' and entry.get('partial_solution'):
             partial = entry.get('partial_solution')
             # Count steps in partial solution
             step_count = len(re.findall(r'<step>', partial))
@@ -304,7 +304,7 @@ def main():
         has_next_step = 'next step' in prompt.lower()
         print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
     
-    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {programming_count} programming examples")
+    print(f"\nSample ratio: {solution_count} solution examples, {finalization_count} finalization examples, {programming_count} programming examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(

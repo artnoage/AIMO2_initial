@@ -36,10 +36,10 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return programming_data
 
-def prepare_completion_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
+def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                            tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
-    """Create examples for completion tasks"""
-    logger.info("Creating completion examples...")
+    """Create examples for finalization tasks"""
+    logger.info("Creating finalization examples...")
     
     # Function to count tokens if tokenizer is provided
     def count_tokens(text):
@@ -48,7 +48,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
         return len(text) // 4  # Rough estimate if no tokenizer provided
     
     # Calculate token counts for system prompts if tokenizer is provided
-    completion_prompt_tokens = count_tokens(completion_system_prompt) if tokenizer else 0
+    finalization_prompt_tokens = count_tokens(finalization_system_prompt) if tokenizer else 0
     
     def create_partial_solution(example):
         try:
@@ -104,10 +104,10 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
             
             partial_solution = partial_solutions[-1]  # Get the last partial solution (with all steps)
             
-            # Check token count for the completion prompt if tokenizer is provided
+            # Check token count for the finalization prompt if tokenizer is provided
             if tokenizer:
-                completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                finalization_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                total_tokens = finalization_prompt_tokens + count_tokens(finalization_text)
                 
                 # If token count is too high, reduce the number of steps
                 if total_tokens >= max_prompt_tokens:
@@ -116,12 +116,12 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                         one_step_solutions = get_partial_solutions(steps[:1])
                         if one_step_solutions:
                             partial_solution = one_step_solutions[-1]
-                            completion_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
-                            total_tokens = completion_prompt_tokens + count_tokens(completion_text)
+                            finalization_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
+                            total_tokens = finalization_prompt_tokens + count_tokens(finalization_text)
                     
                     # If still too long, return as full solution
                     if total_tokens >= max_prompt_tokens:
-                        logger.info(f"Completion prompt too long ({total_tokens} tokens), converting to full solution")
+                        logger.info(f"Finalization prompt too long ({total_tokens} tokens), converting to full solution")
                         return {
                             'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
                             'answer': example.get('answer', example.get('correct_answer', '')),
@@ -129,16 +129,16 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                             'example_type': 'solution'
                         }
             
-            # Format the completion prompt with the partial solution in the user section
-            formatted_prompt = '<|im_start|>system\\n' + completion_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+            # Format the finalization prompt with the partial solution in the user section
+            formatted_prompt = '<|im_start|>system\\n' + finalization_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
             
-            #logger.info(f"Created completion example with {split_point} steps out of {len(steps)}")
+            #logger.info(f"Created finalization example with {split_point} steps out of {len(steps)}")
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': partial_solution,
-                'example_type': 'completion'
+                'example_type': 'finalization'
             }
                 
         except Exception as e:
@@ -151,23 +151,23 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
                 'example_type': 'solution'
             }
     
-    # Process all examples for completion tasks
-    completion_data = data.map(create_partial_solution)
+    # Process all examples for finalization tasks
+    finalization_data = data.map(create_partial_solution)
     
-    # Filter to only keep actual completion examples
-    completion_data = completion_data.filter(lambda x: x['example_type'] == 'completion')
+    # Filter to only keep actual finalization examples
+    finalization_data = finalization_data.filter(lambda x: x['example_type'] == 'finalization')
     
-    # Log completion data details
-    completion_count = len(completion_data)
-    logger.info(f"Found {completion_count} completion examples after filtering")
+    # Log finalization data details
+    finalization_count = len(finalization_data)
+    logger.info(f"Found {finalization_count} finalization examples after filtering")
     
-    return completion_data
+    return finalization_data
 
 # Wait data preparation function removed
 
-def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenizer=None) -> Dataset:
-    """Create examples for completion tasks with detailed validation"""
-    logger.info("Creating detailed completion examples...")
+def prepare_detailed_finalization_data(data: Dataset, system_prompt: str, tokenizer=None) -> Dataset:
+    """Create examples for finalization tasks with detailed validation"""
+    logger.info("Creating detailed finalization examples...")
     
     def prepare_completion_example(example):
         try:
@@ -395,7 +395,7 @@ def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenize
     
     return valid_data
 
-def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_prompt: str, 
+def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                           programming_system_prompt: str,
                          tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
     """
@@ -403,14 +403,14 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     Default distribution:
     - 40% solution examples
     - 40% programming examples
-    - 20% completion examples
+    - 20% finalization examples
     """
     # Default distribution if not provided
     if distribution is None:
         distribution = {
             'solution': 0.40,
             'programming': 0.40,
-            'completion': 0.20
+            'finalization': 0.20
         }
     
     # Check if we have model_solutions in the dataset
@@ -433,13 +433,13 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     # Create examples for each type using the separate methods
     solution_data = prepare_solution_data(data, system_prompt)
     programming_data = prepare_programming_data(data, programming_system_prompt)
-    completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer, max_prompt_tokens=1500)
+    finalization_data = prepare_finalization_data(data, system_prompt, finalization_system_prompt, tokenizer, max_prompt_tokens=1500)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
     solution_target = int(total_examples * distribution['solution'])
     programming_target = int(total_examples * distribution['programming'])
-    completion_target = int(total_examples * distribution['completion'])
+    finalization_target = int(total_examples * distribution['finalization'])
     
     # Function to count example types in a dataset
     def count_types(dataset):
@@ -452,25 +452,25 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     # Log the counts before shuffling
     logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
     logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
-    logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
+    logger.info(f"Created {len(finalization_data)} finalization examples (target: {finalization_target})")
     
     # Shuffle and select examples for each type
     solution_data = solution_data.shuffle(seed=42)
     programming_data = programming_data.shuffle(seed=43)
-    completion_data = completion_data.shuffle(seed=44)
+    finalization_data = finalization_data.shuffle(seed=44)
     
     solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
     programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
-    completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
+    finalization_data = finalization_data.select(range(min(finalization_target, len(finalization_data))))
     
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
     logger.info(f"Solution dataset: {count_types(solution_data)}")
     logger.info(f"Programming dataset: {count_types(programming_data)}")
-    logger.info(f"Completion dataset: {count_types(completion_data)}")
+    logger.info(f"Finalization dataset: {count_types(finalization_data)}")
     
     # Combine all datasets
-    combined_data = concatenate_datasets([solution_data, programming_data, completion_data])
+    combined_data = concatenate_datasets([solution_data, programming_data, finalization_data])
     
     # Count types in the combined dataset
     combined_types = count_types(combined_data)
