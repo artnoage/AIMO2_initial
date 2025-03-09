@@ -210,6 +210,24 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             partial_solution = partial_solutions[-1]  # Get the last partial solution (with all steps)
             full_solution = full_solutions[-1] if full_solutions else ''
             
+            # Validate the partial solution using validate_solution
+            from utils.solution_utils import validate_solution
+            
+            # Extract step numbers from partial solution to determine start_step
+            step_pattern = re.compile(r'Step\s*(\d+)[:.)\s]')
+            step_numbers = []
+            for match in step_pattern.finditer(partial_solution):
+                try:
+                    step_numbers.append(int(match.group(1)))
+                except (ValueError, IndexError):
+                    pass
+                    
+            # Validate the partial solution structure
+            is_valid_partial, validation_reason = validate_solution(partial_solution, start_step=0)
+            if not is_valid_partial:
+                logger.info(f"Invalid partial solution: {validation_reason}")
+                return create_invalid_example(example)
+                
             # Check token count for the finalization prompt if tokenizer is provided
             if tokenizer:
                 finalization_text = f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}"
