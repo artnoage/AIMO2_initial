@@ -661,61 +661,19 @@ class FinalizationReward(BaseReward):
             else:
                 self.stats.reward_components['incorrect_answers'] = self.stats.reward_components.get('incorrect_answers', 0) + 1
                 
-            # Check step continuity and numbering
-            # Extract steps from partial solution to determine last step number
-            partial_steps = re.findall(r'<step>Step\s+(\d+):', partial_solution, re.IGNORECASE)
-            last_partial_step = int(partial_steps[-1]) if partial_steps else 0
+            # Check step continuity using the validate_finalization function
+            from utils.solution_utils import validate_finalization
             
-            # Check if partial solution has properly closed step tags
-            opening_tags_partial = len(re.findall(r'<step>', partial_solution, re.IGNORECASE))
-            closing_tags_partial = len(re.findall(r'</step>', partial_solution, re.IGNORECASE))
-            if opening_tags_partial != closing_tags_partial:
-                self.logger.info(f"Partial solution has mismatched step tags: {opening_tags_partial} opening, {closing_tags_partial} closing")
-            
-            # Extract steps from completion
+            # Extract steps from completion for logging purposes
             completion_steps = re.findall(r'<step>Step\s+(\d+):', completion, re.IGNORECASE)
             
-            # Check if completion has properly closed step tags
-            opening_tags_completion = len(re.findall(r'<step>', completion, re.IGNORECASE))
-            closing_tags_completion = len(re.findall(r'</step>', completion, re.IGNORECASE))
+            # Use the validate_finalization function to check step continuity
+            from utils.solution_utils import validate_finalization
             
-            # Extract properly formatted steps (each in its own tag)
-            proper_steps = re.findall(r'<step>.*?Step\s+\d+:.*?</step>', completion, re.DOTALL)
-            proper_step_count = len(proper_steps)
+            step_continuity_correct, validation_reason = validate_finalization(partial_solution, completion)
             
-            # Check if each step is in its own tag
-            steps_properly_tagged = proper_step_count == len(completion_steps)
-            
-            if opening_tags_completion != closing_tags_completion:
-                self.logger.info(f"Completion has mismatched step tags: {opening_tags_completion} opening, {closing_tags_completion} closing")
-                # We don't fail here as the model might be learning to close tags properly
-            
-            if not steps_properly_tagged:
-                self.logger.info(f"Steps are not properly tagged: found {proper_step_count} properly tagged steps out of {len(completion_steps)} total steps")
-                # We don't fail here but this will affect the step continuity reward
-            
-            # Check if completion continues step numbering correctly
-            step_continuity_correct = True
-            if completion_steps:
-                try:
-                    first_completion_step = int(completion_steps[0])
-                    if first_completion_step != last_partial_step + 1:
-                        step_continuity_correct = False
-                        self.logger.info(f"Step numbering incorrect: Expected {last_partial_step + 1}, got {first_completion_step}")
-                    
-                    # Check if steps are in sequence
-                    for i in range(1, len(completion_steps)):
-                        if int(completion_steps[i]) != int(completion_steps[i-1]) + 1:
-                            step_continuity_correct = False
-                            self.logger.info(f"Step sequence broken: {completion_steps[i-1]} followed by {completion_steps[i]}")
-                            break
-                except (ValueError, IndexError) as e:
-                    step_continuity_correct = False
-                    self.logger.info(f"Error parsing step numbers: {str(e)}")
-            else:
-                # No steps found in finalization
-                step_continuity_correct = False
-                self.logger.info("No steps found in finalization")
+            if not step_continuity_correct:
+                self.logger.info(f"Step validation failed: {validation_reason}")
             
             # Reward for correct step continuity
             if step_continuity_correct:
