@@ -774,6 +774,78 @@ class TutorReward(BaseReward):
             'correct_fix_rewards': 0
         })
         
+    def _extract_evaluation(self, completion: str) -> bool:
+        """Extract whether the tutor evaluated the solution as correct or incorrect"""
+        # First check for verdict tags
+        verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
+        if verdict_match:
+            verdict_content = verdict_match.group(1).strip().lower()
+            if 'correct' in verdict_content or 'right' in verdict_content:
+                return True
+            elif 'step' in verdict_content or 'incorrect' in verdict_content or 'wrong' in verdict_content:
+                return False
+        
+        # Look for explicit statements about correctness
+        if re.search(r'(solution is correct|correct solution|solution works|solution is valid|the answer is correct)', completion.lower()):
+            return True
+        elif re.search(r'(solution is incorrect|incorrect solution|solution is wrong|wrong solution|error in|mistake in)', completion.lower()):
+            return False
+            
+        # Check for "The solution is..." followed by positive/negative assessment
+        solution_assessment = re.search(r'the solution is\s+(\w+)', completion.lower())
+        if solution_assessment:
+            assessment = solution_assessment.group(1).lower()
+            if assessment in ['correct', 'right', 'valid', 'accurate', 'good', 'perfect']:
+                return True
+            elif assessment in ['incorrect', 'wrong', 'invalid', 'inaccurate', 'bad', 'flawed']:
+                return False
+        
+        # Default to assuming the solution is incorrect if we find step mentions
+        if re.search(r'step\s+\d+', completion.lower()):
+            return False
+            
+        # Default to assuming the solution is correct if no clear indication
+        return True
+        
+    def _extract_wrong_step(self, completion: str) -> Optional[int]:
+        """Extract which step the tutor identified as wrong"""
+        # First check for verdict tags
+        verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
+        if verdict_match:
+            verdict_content = verdict_match.group(1).strip().lower()
+            step_match = re.search(r'step\s+(\d+)', verdict_content)
+            if step_match:
+                try:
+                    return int(step_match.group(1))
+                except (ValueError, IndexError):
+                    pass
+        
+        # Look for step numbers in the context of errors
+        step_mentions = re.findall(r'(step|Step)\s+(\d+).*?(incorrect|wrong|error|mistake)', completion, re.DOTALL)
+        if step_mentions:
+            # Return the first mentioned wrong step
+            try:
+                return int(step_mentions[0][1])
+            except (ValueError, IndexError):
+                pass
+        
+        # Look for "The error is in Step X" pattern
+        error_in_step = re.search(r'(error|mistake|problem|issue).*?(step|Step)\s+(\d+)', completion, re.DOTALL)
+        if error_in_step:
+            try:
+                return int(error_in_step.group(3))
+            except (ValueError, IndexError):
+                pass
+                
+        # Look for more general mentions of step numbers
+        step_numbers = re.findall(r'(step|Step)\s+(\d+)', completion, re.DOTALL)
+        if step_numbers:
+            try:
+                return int(step_numbers[0][1])
+            except (ValueError, IndexError):
+                pass
+                
+        return None
 
 
     async def calculate_reward(self, completion: str, **kwargs) -> float:
@@ -916,6 +988,11 @@ class TutorReward(BaseReward):
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
             self.stats.reward_components['average_reward'] = self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+            
+            # Log detailed reward breakdown
+            self.logger.info(f"Tutor reward breakdown: verdict_correct={verdict_is_correct} ({self.config.tutor_verdict_reward if verdict_is_correct else 0}), " +
+                            f"fix_reward={fix_reward if 'fix_reward' in locals() else 0}, " +
+                            f"length_penalty={length_penalty:.4f}, total={reward:.4f}")
             
             return reward
             
