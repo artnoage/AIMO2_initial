@@ -8,24 +8,17 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from datasets import load_from_disk, Dataset
 import markdown
-from bs4 import BeautifulSoup
-import html
+
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.data_preparation import (
-    prepare_solution_data, 
-    prepare_programming_data, 
-    prepare_finalization_data, 
-    prepare_tutor_data,
-    prepare_combined_data
-)
+from utils.data_preparation import prepare_combined_data
 from utils.agents import (
-    SOLUTION_SYSTEM_PROMPT, 
-    PROGRAMMING_SYSTEM_PROMPT, 
+    FULLSOLUTION_SYSTEM_PROMPT, 
+    PROGRAMMER_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT, 
     TUTOR_SYSTEM_PROMPT
 )
@@ -108,9 +101,9 @@ def create_dataset_preview(dataset_path: str, output_path: str, num_examples: in
     logger.info("Preparing combined dataset with equal distribution")
     combined_data = prepare_combined_data(
         data,
-        SOLUTION_SYSTEM_PROMPT,
+        FULLSOLUTION_SYSTEM_PROMPT,
         FINALIZATION_SYSTEM_PROMPT,
-        PROGRAMMING_SYSTEM_PROMPT,
+        PROGRAMMER_SYSTEM_PROMPT,
         TUTOR_SYSTEM_PROMPT,
         distribution=distribution
     )
