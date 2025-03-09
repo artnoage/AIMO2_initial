@@ -40,7 +40,6 @@ class RewardConfig:
     solution_validation_reward: float = 0.2  # For passing solution validation
     
     # Programming reward values
-    structure_reward: float = 0.5  # Reward for having both thinking and response sections
     syntax_reward: float = 0.5     # Reward for code with no syntax errors
     execution_reward: float = 0.75  # Reward for code that executes and returns a float
     correctness_reward: float = 2.5 # Reward for code that returns the correct answer

@@ -446,17 +446,13 @@ class ProgrammingReward(BaseReward):
             # Initialize reward
             reward = 0.0
             
-            # 1. Check for thinking and response sections (structure reward)
+            # 1. Check for thinking and response sections
             has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
             has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
-            print("does it",has_thinking,has_response)
-            if has_thinking and has_response:
-                structure_reward = self.config.structure_reward
-                reward += structure_reward
-                self.stats.reward_components['structure_rewards'] = self.stats.reward_components.get('structure_rewards', 0) + 1
-                self.logger.info(f"Applied structure reward: +{structure_reward:.3f}")
-            else:
+            
+            if not has_thinking or not has_response:
                 self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
+                return 0.0
             
             # Extract code from the completion
             # First check if response section exists
