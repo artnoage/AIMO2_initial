@@ -840,7 +840,7 @@ class TutorReward(BaseReward):
                 step_match = re.search(r'step\s+(\d+)', verdict_content, re.IGNORECASE)
                 if step_match:
                     identified_step = int(step_match.group(1))
-                    if identified_step == wrong_step:
+                    if wrong_step is not None and identified_step == wrong_step:
                         verdict_is_correct = True
                         self.stats.tutor_stats['correct_verdicts'] += 1
                         self.logger.info(f"Correct verdict identifying wrong step {wrong_step}")
@@ -853,7 +853,7 @@ class TutorReward(BaseReward):
             
             # Award points for correct verdict
             if verdict_is_correct:
-                verdict_reward = 0.8
+                verdict_reward = self.config.tutor_verdict_reward
                 reward += verdict_reward
                 self.stats.reward_components['correct_verdict_rewards'] = self.stats.reward_components.get('correct_verdict_rewards', 0) + 1
                 self.logger.info(f"Applied verdict reward: +{verdict_reward:.3f}")
@@ -883,11 +883,11 @@ class TutorReward(BaseReward):
                                 
                                 if fix_is_correct:
                                     # Award points for correct fix
-                                    fix_reward = 2.0
+                                    fix_reward = self.config.tutor_fix_reward
                                     
                                     # If both the verdict and fix are correct, award bonus points
                                     if verdict_is_correct:
-                                        fix_reward = 3.0
+                                        fix_reward = self.config.tutor_combined_reward
                                     
                                     reward += fix_reward
                                     self.stats.reward_components['correct_fix_rewards'] = self.stats.reward_components.get('correct_fix_rewards', 0) + 1

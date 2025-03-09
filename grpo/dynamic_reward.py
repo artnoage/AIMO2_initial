@@ -257,6 +257,11 @@ class DynamicReward(BaseReward):
                     # Get the example type for this specific completion
                     example_type = example_types_list[idx] if idx < len(example_types_list) else reward_type
                     
+                    # Extract additional tutor-specific parameters
+                    wrong_step = kwargs.get('wrong_step', [None] * len(prompts))[idx] if idx < len(kwargs.get('wrong_step', [])) else None
+                    is_correct = kwargs.get('is_correct', [False] * len(prompts))[idx] if idx < len(kwargs.get('is_correct', [])) else False
+                    model_solution = kwargs.get('model_solution', [''] * len(prompts))[idx] if idx < len(kwargs.get('model_solution', [])) else ''
+                    
                     # Create kwargs with group context and original kwargs
                     task_kwargs = {
                         **kwargs,  # Base kwargs first
@@ -271,7 +276,10 @@ class DynamicReward(BaseReward):
                         'group_idx': group_idx,
                         'group_completions': group['completions'],
                         'group_answers': group['answers'], 
-                        'group_indices': group['indices']
+                        'group_indices': group['indices'],
+                        'wrong_step': wrong_step,
+                        'is_correct': is_correct,
+                        'model_solution': model_solution
                     }
                     
                     task = self.calculate_reward(completion, **task_kwargs)
