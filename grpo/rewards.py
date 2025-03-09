@@ -794,17 +794,25 @@ class TutorReward(BaseReward):
                 return False
         
     def _extract_wrong_step(self, completion: str) -> Optional[int]:
-        """Extract which step the tutor identified as wrong"""
+        """
+        Extract which step the tutor identified as wrong.
+        If the verdict contains exactly one integer, return that integer.
+        Otherwise return None.
+        """
         # First check for verdict tags
         verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
         if verdict_match:
-            verdict_content = verdict_match.group(1).strip().lower()
-            step_match = re.search(r'step\s+(\d+)', verdict_content)
-            if step_match:
+            verdict_content = verdict_match.group(1).strip()
+            
+            # Find all integers in the verdict
+            integers = re.findall(r'\b\d+\b', verdict_content)
+            
+            # If there's exactly one integer, return it
+            if len(integers) == 1:
                 try:
-                    return int(step_match.group(1))
+                    return int(integers[0])
                 except (ValueError, IndexError):
-                    pass                   
+                    pass
         return None
 
 
