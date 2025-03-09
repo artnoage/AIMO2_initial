@@ -174,9 +174,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 else:
                     is_correct = None
             
-            # Skip if the solution is explicitly marked as incorrect
-            if is_correct is False:
-                logger.info(f"Skipping example with incorrect solution")
+            # Only use examples that are explicitly marked as correct
+            if is_correct is not True:
+                logger.info(f"Skipping example that is not explicitly marked as correct")
                 return create_invalid_example(example)
                 
             # Validate the solution structure
