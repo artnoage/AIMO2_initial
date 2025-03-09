@@ -17,8 +17,23 @@ def load_json_dataset(json_path: Path):
 
 def convert_to_hf_dataset(data, dataset_type=None):
     """Convert the data to a HuggingFace Dataset and save in Arrow format with train split."""
-    # First create a Dataset from the list of dicts
-    dataset = Dataset.from_list(data)
+    # First collect all possible fields across all entries
+    print("Scanning dataset for all possible fields...")
+    all_fields = set()
+    for entry in data:
+        all_fields.update(entry.keys())
+    
+    print(f"Found {len(all_fields)} unique fields: {', '.join(sorted(all_fields))}")
+    
+    # Normalize all entries to have the same fields
+    print("Normalizing entries to include all fields...")
+    normalized_data = []
+    for entry in data:
+        normalized_entry = {field: entry.get(field, None) for field in all_fields}
+        normalized_data.append(normalized_entry)
+    
+    # Create Dataset from normalized data
+    dataset = Dataset.from_list(normalized_data)
     
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -35,14 +50,27 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
     try:
         dataset = load_from_disk(str(arrow_path))
         
-        # Always expect a DatasetDict with a train split
-        if not isinstance(dataset, DatasetDict):
-            raise ValueError("Expected DatasetDict format")
-        if 'train' not in dataset:
-            raise ValueError("No train split found in dataset")
-            
-        # Get data from train split
-        data = dataset['train'].to_list()
+        # Handle both Dataset and DatasetDict formats
+        if isinstance(dataset, DatasetDict):
+            if 'train' not in dataset:
+                raise ValueError("No train split found in dataset")
+            data = dataset['train'].to_list()
+        else:
+            # Direct Dataset object
+            data = dataset.to_list()
+        
+        # Ensure all entries have the same fields
+        all_fields = set()
+        for entry in data:
+            all_fields.update(entry.keys())
+        
+        print(f"Found {len(all_fields)} unique fields in dataset")
+        
+        # Normalize all entries
+        normalized_data = []
+        for entry in data:
+            normalized_entry = {field: entry.get(field, None) for field in all_fields}
+            normalized_data.append(normalized_entry)
         
         if output_path is None:
             # Create output path based on input path
@@ -50,7 +78,7 @@ def convert_to_json(arrow_path: Path, output_path: Path = None):
             output_path = arrow_path.parent / f"dataset_{timestamp}.json"
             
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(normalized_data, f, indent=2, ensure_ascii=False)
             
         return output_path
     except Exception as e:
@@ -73,10 +101,11 @@ def main():
             # JSON to Arrow conversion
             print(f"Loading JSON dataset from {args.input_path}...")
             data = load_json_dataset(args.input_path)
+            print(f"Loaded {len(data)} examples from JSON")
             print("Converting to HuggingFace dataset format...")
             dataset, save_path = convert_to_hf_dataset(data, args.type)
             print(f"Dataset saved locally in Arrow format at '{save_path}'")
-            print(f"Successfully converted {len(dataset)} examples")
+            print(f"Successfully converted {len(dataset)} examples with all fields normalized")
         
         elif args.input_path.is_dir():
             # Arrow to JSON conversion
