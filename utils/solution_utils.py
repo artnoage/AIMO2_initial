@@ -415,6 +415,61 @@ def validate_finalization(partial_solution: str, finalization: str) -> Tuple[boo
         return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
     
     return True, "Valid finalization"
+
+def validate_solution(solution: str) -> Tuple[bool, str]:
+    """
+    Validate if a solution has properly formatted steps with correct numbering.
+    
+    Args:
+        solution: The complete solution to validate
+        
+    Returns:
+        Tuple[bool, str]: (is_valid, reason)
+    """
+    # Extract steps from solution
+    solution_steps = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
+    if not solution_steps:
+        return False, "Solution contains no steps"
+    
+    # Track found step numbers to ensure no duplicates or gaps
+    found_steps = set()
+    
+    # Validate each step in solution
+    for i, step in enumerate(solution_steps, 1):
+        expected_step_num = i
+        
+        # Check if step starts with "Step N" - only accept this format
+        step_match = re.search(r'Step\s*(\d+)[:.)\s]', step)
+        
+        if not step_match:
+            return False, f"Step {i} does not have proper 'Step N:' format"
+        
+        # Extract the step number
+        try:
+            actual_step = int(step_match.group(1))
+        except (ValueError, IndexError):
+            return False, f"Could not parse step number in step {i}"
+        
+        # Validate step number
+        if actual_step != expected_step_num:
+            return False, f"Expected step {expected_step_num}, found step {actual_step}"
+        
+        if actual_step in found_steps:
+            return False, f"Duplicate step number {actual_step}"
+        
+        found_steps.add(actual_step)
+        
+        # Check if step has sufficient content
+        content_after_number = step[step_match.end():].strip()
+        if len(content_after_number) < 10:  # Minimum content length
+            return False, f"Step {actual_step} has insufficient content"
+    
+    # Check for gaps in step numbers
+    expected_steps = set(range(1, len(solution_steps) + 1))
+    if found_steps != expected_steps:
+        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+    
+    return True, "Valid solution"
                     
 
 class NumericVerifier:
