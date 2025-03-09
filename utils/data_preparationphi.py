@@ -3,10 +3,7 @@ import random
 import logging
 from typing import Dict
 from datasets import concatenate_datasets, Dataset
-from utils.solution_utils import (
-    extract_response_section, split_into_steps, get_partial_solutions,
-    has_thinking_section, extract_thinking_section, has_response_section
-)
+from utils.solution_utils import (extract_response_section, split_into_steps, get_partial_solutions, has_response_section)
 
 # Setup logging
 logger = logging.getLogger('data_preparation')
