@@ -458,6 +458,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     - 30% programming examples
     - 20% finalization examples
     - 20% tutor examples (if tutor_system_prompt is provided)
+    
+    If any distribution value is 0, no examples of that type will be generated.
     """
     # Default distribution if not provided
     if distribution is None:
@@ -485,26 +487,36 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     
     logger.info(f"Found {valid_steps} examples with valid steps (2+ steps)")
     
-    # Create examples for each type using the separate methods
-    solution_data = prepare_solution_data(data, system_prompt)
-    programming_data = prepare_programming_data(data, programming_system_prompt)
-    finalization_data = prepare_finalization_data(data, system_prompt, finalization_system_prompt, tokenizer, max_prompt_tokens=1500)
+    # Create examples for each type only if their distribution is non-zero
+    solution_data = None
+    if distribution.get('solution', 0) > 0:
+        solution_data = prepare_solution_data(data, system_prompt)
+        
+    programming_data = None
+    if distribution.get('programming', 0) > 0:
+        programming_data = prepare_programming_data(data, programming_system_prompt)
+        
+    finalization_data = None
+    if distribution.get('finalization', 0) > 0:
+        finalization_data = prepare_finalization_data(data, system_prompt, finalization_system_prompt, tokenizer, max_prompt_tokens=1500)
     
-    # Create tutor examples if tutor_system_prompt is provided
+    # Create tutor examples if tutor_system_prompt is provided and distribution is non-zero
     tutor_data = None
-    if tutor_system_prompt:
+    if tutor_system_prompt and distribution.get('tutor', 0) > 0:
         from utils.agents import TUTOR_SYSTEM_PROMPT
         tutor_data = prepare_tutor_data(data, tutor_system_prompt or TUTOR_SYSTEM_PROMPT)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
-    solution_target = int(total_examples * distribution['solution'])
-    programming_target = int(total_examples * distribution['programming'])
-    finalization_target = int(total_examples * distribution['finalization'])
+    solution_target = int(total_examples * distribution.get('solution', 0))
+    programming_target = int(total_examples * distribution.get('programming', 0))
+    finalization_target = int(total_examples * distribution.get('finalization', 0))
     tutor_target = int(total_examples * distribution.get('tutor', 0)) if tutor_data else 0
     
     # Function to count example types in a dataset
     def count_types(dataset):
+        if dataset is None:
+            return {}
         type_counts = {}
         for example in dataset:
             example_type = example.get('example_type', 'unknown')
@@ -512,35 +524,51 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         return type_counts
     
     # Log the counts before shuffling
-    logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
-    logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
-    logger.info(f"Created {len(finalization_data)} finalization examples (target: {finalization_target})")
+    if solution_data:
+        logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
+    if programming_data:
+        logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
+    if finalization_data:
+        logger.info(f"Created {len(finalization_data)} finalization examples (target: {finalization_target})")
     if tutor_data:
         logger.info(f"Created {len(tutor_data)} tutor examples (target: {tutor_target})")
     
     # Shuffle and select examples for each type
-    solution_data = solution_data.shuffle(seed=42)
-    programming_data = programming_data.shuffle(seed=43)
-    finalization_data = finalization_data.shuffle(seed=44)
+    if solution_data:
+        solution_data = solution_data.shuffle(seed=42)
+        solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
+    
+    if programming_data:
+        programming_data = programming_data.shuffle(seed=43)
+        programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
+    
+    if finalization_data:
+        finalization_data = finalization_data.shuffle(seed=44)
+        finalization_data = finalization_data.select(range(min(finalization_target, len(finalization_data))))
+    
     if tutor_data:
         tutor_data = tutor_data.shuffle(seed=45)
-    
-    solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
-    programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
-    finalization_data = finalization_data.select(range(min(finalization_target, len(finalization_data))))
-    if tutor_data:
         tutor_data = tutor_data.select(range(min(tutor_target, len(tutor_data))))
     
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
-    logger.info(f"Solution dataset: {count_types(solution_data)}")
-    logger.info(f"Programming dataset: {count_types(programming_data)}")
-    logger.info(f"Finalization dataset: {count_types(finalization_data)}")
+    if solution_data:
+        logger.info(f"Solution dataset: {count_types(solution_data)}")
+    if programming_data:
+        logger.info(f"Programming dataset: {count_types(programming_data)}")
+    if finalization_data:
+        logger.info(f"Finalization dataset: {count_types(finalization_data)}")
     if tutor_data:
         logger.info(f"Tutor dataset: {count_types(tutor_data)}")
     
     # Combine all datasets
-    datasets_to_combine = [solution_data, programming_data, finalization_data]
+    datasets_to_combine = []
+    if solution_data:
+        datasets_to_combine.append(solution_data)
+    if programming_data:
+        datasets_to_combine.append(programming_data)
+    if finalization_data:
+        datasets_to_combine.append(finalization_data)
     if tutor_data:
         datasets_to_combine.append(tutor_data)
     

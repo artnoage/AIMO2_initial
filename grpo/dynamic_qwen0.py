@@ -242,6 +242,7 @@ def main():
         data = load_dataset(dataset_name, split=split)
         
         # Define the distribution
+        # You can set any value to 0 to skip generating that type of example
         distribution = {
             'solution': 0.30,
             'programming': 0.30,
