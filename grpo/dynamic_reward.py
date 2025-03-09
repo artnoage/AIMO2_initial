@@ -235,10 +235,7 @@ class DynamicReward(BaseReward):
         async def process_batch():
             tasks = []
             
-            # Extract problems, solutions, and partial solutions from kwargs if present
-            problems = kwargs.get('problem', [''] * len(prompts))
-            solutions = kwargs.get('model_solution', [''] * len(prompts))
-            partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
+            # Extract example types list
             example_types_list = self._extract_example_types(kwargs)
             
             # Ensure example_types_list has the right length
@@ -257,18 +254,10 @@ class DynamicReward(BaseReward):
                     # Get the example type for this specific completion
                     example_type = example_types_list[idx] if idx < len(example_types_list) else reward_type
                     
-                    # Extract additional tutor-specific parameters
-                    wrong_step = kwargs.get('wrong_step', [None] * len(prompts))[idx] if idx < len(kwargs.get('wrong_step', [])) else None
-                    is_correct = kwargs.get('is_correct', [False] * len(prompts))[idx] if idx < len(kwargs.get('is_correct', [])) else False
-                    full_solution = kwargs.get('full_solution', [''] * len(prompts))[idx] if idx < len(kwargs.get('full_solution', [])) else ''
-                    
                     # Create kwargs with group context and original kwargs
                     task_kwargs = {
                         **kwargs,  # Base kwargs first
                         'prompt': prompt,
-                        'problem': problems[idx] if idx < len(problems) else '',
-                        'solution': solutions[idx] if idx < len(solutions) else '',
-                        'partial_solution': partial_solutions[idx] if idx < len(partial_solutions) else '',
                         'answer': str(ans),
                         'reward_index': idx,
                         'reward_type': reward_type,  # Batch-level reward type
@@ -276,10 +265,7 @@ class DynamicReward(BaseReward):
                         'group_idx': group_idx,
                         'group_completions': group['completions'],
                         'group_answers': group['answers'], 
-                        'group_indices': group['indices'],
-                        'wrong_step': wrong_step,
-                        'is_correct': is_correct,
-                        'full_solution': full_solution
+                        'group_indices': group['indices']
                     }
                     
                     task = self.calculate_reward(completion, **task_kwargs)

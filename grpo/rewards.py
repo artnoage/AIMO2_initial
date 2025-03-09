@@ -116,6 +116,11 @@ class BaseReward(ABC):
             solutions = kwargs.get('model_solution', [''] * len(prompts))
             partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
             
+            # Extract tutor-specific parameters if present
+            wrong_steps = kwargs.get('wrong_step', [None] * len(prompts))
+            is_corrects = kwargs.get('is_correct', [False] * len(prompts))
+            full_solutions = kwargs.get('full_solution', [''] * len(prompts))
+            
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
                 for group_idx, (completion, ans, idx) in enumerate(zip(
@@ -127,15 +132,18 @@ class BaseReward(ABC):
                     task_kwargs = {
                         **kwargs,  # Base kwargs first
                         'prompt': prompt,
-                        'problem': problems[idx],  # Map to original index
-                        'solution': solutions[idx], # Map to original index
-                        'partial_solution': partial_solutions[idx], # Map to original index
+                        'problem': problems[idx] if idx < len(problems) else '',
+                        'solution': solutions[idx] if idx < len(solutions) else '',
+                        'partial_solution': partial_solutions[idx] if idx < len(partial_solutions) else '',
                         'answer': str(ans),
                         'group_idx': group_idx,
                         'reward_index': idx,
                         'group_completions': group['completions'],
                         'group_answers': group['answers'], 
-                        'group_indices': group['indices']
+                        'group_indices': group['indices'],
+                        'wrong_step': wrong_steps[idx] if idx < len(wrong_steps) else None,
+                        'is_correct': is_corrects[idx] if idx < len(is_corrects) else False,
+                        'full_solution': full_solutions[idx] if idx < len(full_solutions) else ''
                     }
                     task = self.calculate_reward(completion, **task_kwargs)
                     tasks.append(task)
