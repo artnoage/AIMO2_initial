@@ -43,10 +43,8 @@ class RewardStats:
             'total_rewards': 0.0,
             'average_reward': 0.0,
             'solution_reward_uses': 0,
-            'completion_reward_uses': 0,
-            'programming_reward_uses': 0,
-            'wait_examples_processed': 0,
-            'wait_examples_rewarded': 0
+            'finalization_reward_uses': 0,
+            'programming_reward_uses': 0
         }
         
         # Track group-specific stats
@@ -78,7 +76,6 @@ class RewardStats:
         
         # Initialize programming-specific reward components
         self.reward_components.update({
-            'structure_rewards': 0,
             'syntax_rewards': 0,
             'execution_rewards': 0,
             'correctness_rewards': 0,

@@ -201,11 +201,11 @@ class DynamicReward(BaseReward):
             
             # Update the reward type usage
             if reward_type == 'solution':
-                self.stats.reward_components['solution_reward_uses'] += 1
+                self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
             elif reward_type == 'finalization':
-                self.stats.reward_components['finalization_reward_uses'] += 1
+                self.stats.reward_components['finalization_reward_uses'] = self.stats.reward_components.get('finalization_reward_uses', 0) + 1
             elif reward_type == 'programming':
-                self.stats.reward_components['programming_reward_uses'] += 1
+                self.stats.reward_components['programming_reward_uses'] = self.stats.reward_components.get('programming_reward_uses', 0) + 1
         
         # Group completions by prompt for group context
         prompt_groups = {}

@@ -206,7 +206,7 @@ class SolutionReward(BaseReward):
     
     __name__ = "group_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'diversity_bonuses', 'similarity_penalties'],
+        'reward_components': ['base_rewards', 'validation_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty'],
         'group_stats': [
             'correct_answers', 'incorrect_answers', 'unique_solutions', 'similar_solutions',
             'total_similarity'
@@ -410,7 +410,7 @@ class ProgrammingReward(BaseReward):
     __name__ = "programming_reward"
     relevant_stats = {
         'reward_components': [
-            'structure_rewards', 'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+            'syntax_rewards', 'execution_rewards', 'correctness_rewards',
             'total_length_penalty', 'correct_solutions', 'syntax_valid_solutions', 
             'execution_valid_solutions', 'total_rewards', 'average_reward'
         ],
@@ -569,7 +569,7 @@ class FinalizationReward(BaseReward):
     
     __name__ = "finalization_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'step_continuity_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward'],
+        'reward_components': ['base_rewards', 'step_continuity_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty'],
         'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed'],
         'similarity_stats': ['unique_completions', 'similar_completions', 'total_similarity']
     }
