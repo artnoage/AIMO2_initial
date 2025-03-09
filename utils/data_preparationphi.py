@@ -4,8 +4,8 @@ import logging
 from typing import Dict, Optional, Tuple
 from datasets import concatenate_datasets, Dataset
 from utils.solution_utils import (
-    extract_response_section, split_into_steps, get_partial_solutions, 
-    has_response_section
+    extract_response_section, split_into_steps, get_partial_solutions,
+    has_response_section, has_thinking_section, extract_thinking_section
 )
 
 # Setup logging
@@ -37,7 +37,7 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     return programming_data
 
 def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
-                           tokenizer=None, max_prompt_tokens: int = 2000) -> Dataset:
+                           tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for finalization tasks"""
     logger.info("Creating finalization examples...")
     
@@ -65,7 +65,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             response = extract_response_section(example['model_solution'])
             if not response:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -77,7 +77,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             # Need at least 2 steps to create a partial solution
             if len(steps) < 2:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -96,7 +96,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             partial_solutions = get_partial_solutions(partial_steps)
             if not partial_solutions:
                 return {
-                    'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
+                    'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                     'answer': example.get('answer', example.get('correct_answer', '')),
                     'partial_solution': '',
                     'example_type': 'solution'
@@ -123,7 +123,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     if total_tokens >= max_prompt_tokens:
                         logger.info(f"Finalization prompt too long ({total_tokens} tokens), converting to full solution")
                         return {
-                            'prompt': '<|im_start|>system<|im_sep|> ' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
+                            'prompt': '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + example['problem'] + '<|im_end|><|im_start|>assistant<|im_sep|>',
                             'answer': example.get('answer', example.get('correct_answer', '')),
                             'partial_solution': '',
                             'example_type': 'solution'
@@ -493,7 +493,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     # Create tutor examples if tutor_system_prompt is provided
     tutor_data = None
     if tutor_system_prompt:
-        tutor_data = prepare_tutor_data(data, tutor_system_prompt)
+        from utils.agents import TUTOR_SYSTEM_PROMPT
+        tutor_data = prepare_tutor_data(data, tutor_system_prompt or TUTOR_SYSTEM_PROMPT)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
