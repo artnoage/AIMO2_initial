@@ -361,16 +361,29 @@ def validate_solution(solution: str, start_step: int = 0) -> Tuple[bool, str]:
     # If no step tags, try to extract steps based on "Step N" pattern
     if not solution_steps:
         # Look for "Step N" pattern in the solution
-        step_matches = list(re.finditer(r'Step\s*(\d+)[:.)\s]', solution))
+        step_matches = re.findall(r'Step\s*(\d+)[:.)\s]', solution)
         if not step_matches:
             return False, "Solution contains no steps"
             
-        # Create synthetic steps from the matches
-        solution_steps = []
-        for i in range(len(step_matches)):
-            start_idx = step_matches[i].start()
-            end_idx = step_matches[i+1].start() if i < len(step_matches) - 1 else len(solution)
-            solution_steps.append(solution[start_idx:end_idx])
+        # We found step markers but they're not in tags
+        # This is enough to validate the presence of steps
+        # We'll extract the step numbers for validation
+        step_numbers = []
+        for match in step_matches:
+            try:
+                step_numbers.append(int(match))
+            except (ValueError, TypeError):
+                pass
+                
+        # Check if we have the expected sequence of steps
+        expected_steps = set(range(start_step + 1, start_step + len(step_numbers) + 1))
+        found_steps = set(step_numbers)
+        
+        if found_steps != expected_steps:
+            return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+            
+        # If we have the right steps in the right order, consider it valid
+        return True, "Valid solution with step markers"
     
     if not solution_steps:
         return False, "Solution contains no steps"

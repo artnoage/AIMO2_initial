@@ -655,17 +655,9 @@ class FinalizationReward(BaseReward):
             response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
             completion_response = response_match.group(1) if response_match else completion
             
-            # Count the number of steps in the partial solution to determine start_step
-            step_pattern = re.compile(r'Step\s*(\d+)[:.)\s]')
-            step_numbers = []
-            for match in step_pattern.finditer(partial_solution):
-                try:
-                    step_numbers.append(int(match.group(1)))
-                except (ValueError, IndexError):
-                    pass
-            
-            # Use the last step number as the start_step for validation
-            start_step = max(step_numbers) if step_numbers else 0
+            # Get the last step number from the partial solution
+            step_numbers = re.findall(r'Step\s*(\d+)[:.)\s]', partial_solution)
+            start_step = max([int(num) for num in step_numbers]) if step_numbers else 0
             
             step_continuity_correct, validation_reason = validate_solution(completion_response, start_step=start_step)
             
