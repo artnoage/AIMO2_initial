@@ -407,135 +407,65 @@ def validate_finalization(partial_solution: str, finalization: str) -> Tuple[boo
     if "[...]" in finalization:
         return False, "Contains invalid tokens ([...])"
     
-    # Check if we're using <step> tags format
-    using_tags = "<step>" in partial_solution or "<step>" in finalization
+    # Extract step numbers from partial solution (ignoring tags)
+    last_step = 0
+    for pattern in STEP_NUMBER_PATTERNS:
+        for match in pattern.finditer(partial_solution):
+            try:
+                num = int(match.group(1))
+                last_step = max(last_step, num)
+            except (ValueError, IndexError):
+                continue
     
-    if using_tags:
-        # Extract steps from finalization
-        finalization_steps = re.findall(r'<step>(.*?)</step>', finalization, re.DOTALL)
-        if not finalization_steps:
-            return False, "Finalization contains no steps"
-            
-        # Extract steps from partial solution
-        partial_steps = re.findall(r'<step>(.*?)</step>', partial_solution, re.DOTALL)
+    # Extract steps from finalization
+    finalization_steps = re.findall(r'<step>(.*?)</step>', finalization, re.DOTALL)
+    if not finalization_steps:
+        return False, "Finalization contains no steps"
+    
+    # Track found step numbers to ensure no duplicates or gaps
+    found_steps = set()
+    
+    # Validate each step in finalization
+    for i, step in enumerate(finalization_steps, 1):
+        expected_step_num = last_step + i
         
-        # Get the last step number from partial solution
-        last_step = 0
-        for step in partial_steps:
-            for pattern in STEP_NUMBER_PATTERNS:
-                match = pattern.search(step)
-                if match:
-                    try:
-                        num = int(match.group(1))
-                        last_step = max(last_step, num)
-                    except ValueError:
-                        continue
+        # Check if step starts with "Step N"
+        step_match = None
+        for pattern in STEP_NUMBER_PATTERNS:
+            match = pattern.search(step)
+            if match:
+                step_match = match
+                break
         
-        # Track found step numbers to ensure no duplicates or gaps
-        found_steps = set()
+        if not step_match:
+            return False, f"Step {i} does not have proper 'Step N:' format"
         
-        # Validate each step in finalization
-        for i, step in enumerate(finalization_steps, 1):
-            expected_step_num = last_step + i
-            
-            # Find actual step number in the finalization
-            actual_step = None
-            for pattern in STEP_NUMBER_PATTERNS:
-                match = pattern.search(step)
-                if match:
-                    try:
-                        actual_step = int(match.group(1))
-                        break
-                    except ValueError:
-                        continue
-            
-            if actual_step is None:
-                return False, f"Could not find step number in finalization step {i}"
-                
-            if actual_step != expected_step_num:
-                return False, f"Expected step {expected_step_num}, found step {actual_step}"
-                
-            if actual_step in found_steps:
-                return False, f"Duplicate step number {actual_step}"
-                
-            found_steps.add(actual_step)
-            
-            # Validate step format and content
-            is_valid, reason = validate_step(step, expected_step=expected_step_num)
-            if not is_valid:
-                return False, f"Step {expected_step_num}: {reason}"
+        # Extract the step number
+        try:
+            actual_step = int(step_match.group(1))
+        except (ValueError, IndexError):
+            return False, f"Could not parse step number in step {i}"
         
-        # Check for gaps in step numbers
-        expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
-        if found_steps != expected_steps:
-            return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
-                
-        return True, "Valid finalization"
-    else:
-        # Traditional format (without tags)
-        # Check if finalization starts with "Step" in first 5 chars
-        if not finalization[:5].strip().startswith("Step"):
-            return False, "Finalization must start with 'Step'"
-            
-        # Get the last step number from partial solution
-        parts = partial_solution.split("Step")
-        last_step = 0
-        for part in parts[1:]:  # Skip first split which is before "Step"
-            for pattern in STEP_NUMBER_PATTERNS:
-                match = pattern.search(part)
-                if match:
-                    try:
-                        num = int(match.group(1))
-                        last_step = max(last_step, num)
-                    except ValueError:
-                        continue
-                        
-        # Split finalization into steps
-        finalization_steps = finalization.split("Step")[1:]  # Skip text before first "Step"
-        if not finalization_steps:
-            return False, "Finalization contains no steps"
-            
-        # Track found step numbers to ensure no duplicates or gaps
-        found_steps = set()
+        # Validate step number
+        if actual_step != expected_step_num:
+            return False, f"Expected step {expected_step_num}, found step {actual_step}"
         
-        # Validate each step in finalization
-        for i, step in enumerate(finalization_steps, 1):
-            expected_step_num = last_step + i
-            full_step = "Step" + step
-            
-            # Find actual step number in the finalization
-            actual_step = None
-            for pattern in STEP_NUMBER_PATTERNS:
-                match = pattern.search(full_step)
-                if match:
-                    try:
-                        actual_step = int(match.group(1))
-                        break
-                    except ValueError:
-                        continue
-                        
-            if actual_step is None:
-                return False, f"Could not find step number in finalization step {i}"
-                
-            if actual_step != expected_step_num:
-                return False, f"Expected step {expected_step_num}, found step {actual_step}"
-                
-            if actual_step in found_steps:
-                return False, f"Duplicate step number {actual_step}"
-                
-            found_steps.add(actual_step)
-            
-            # Validate step format and content
-            is_valid, reason = validate_step(full_step, expected_step=expected_step_num)
-            if not is_valid:
-                return False, f"Step {expected_step_num}: {reason}"
-                
-        # Check for gaps in step numbers
-        expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
-        if found_steps != expected_steps:
-            return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
-                
-        return True, "Valid finalization"
+        if actual_step in found_steps:
+            return False, f"Duplicate step number {actual_step}"
+        
+        found_steps.add(actual_step)
+        
+        # Check if step has sufficient content
+        content_after_number = step[step_match.end():].strip()
+        if len(content_after_number) < 10:  # Minimum content length
+            return False, f"Step {actual_step} has insufficient content"
+    
+    # Check for gaps in step numbers
+    expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
+    if found_steps != expected_steps:
+        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
+    
+    return True, "Valid finalization"
                     
 
 class NumericVerifier:
