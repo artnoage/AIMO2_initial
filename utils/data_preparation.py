@@ -21,8 +21,7 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
         'full_solution': '',
         'is_correct': None,  # Use None instead of empty string for consistency
         'wrong_step': None,  # Use None instead of empty string for consistency
-        'example_type': 'solution',  # Add type for tracking
-        'valid': True  # Mark as valid by default
+        'example_type': 'solution'  # Add type for tracking
     })
     return solution_data
 
@@ -36,8 +35,7 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
         'full_solution': '',
         'is_correct': None,  # Use None instead of empty string for consistency
         'wrong_step': None,  # Use None instead of empty string for consistency
-        'example_type': 'programming',
-        'valid': True  # Mark as valid by default
+        'example_type': 'programming'
     })
     return programming_data
 
@@ -106,8 +104,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                 'full_solution': full_solution,
                 'is_correct': is_correct,
                 'wrong_step': wrong_step,
-                'example_type': 'tutor',
-                'valid': True  # Mark as valid by default
+                'example_type': 'tutor'
             }
         except Exception as e:
             logger.warning(f"Error creating tutor example: {str(e)}")
@@ -136,7 +133,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     # Calculate token counts for system prompts if tokenizer is provided
     finalization_prompt_tokens = count_tokens(finalization_system_prompt) if tokenizer else 0
     
-    # Default invalid example template
+    # Default invalid example template - mark as solution type instead of using valid flag
     def create_invalid_example(example):
         return {
             'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
@@ -145,8 +142,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             'full_solution': '',
             'is_correct': None,
             'wrong_step': None,
-            'example_type': 'solution',
-            'valid': False
+            'example_type': 'solution'  # Mark as solution type instead of using valid flag
         }
     
     def prepare_finalization_example(example):
@@ -244,8 +240,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 'full_solution': full_solution,
                 'is_correct': example.get('is_correct', None),
                 'wrong_step': example.get('wrong_step', None),
-                'example_type': 'finalization',
-                'valid': True
+                'example_type': 'finalization'
             }
                 
         except Exception as e:
@@ -259,14 +254,14 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     # Add token count to each example if tokenizer is provided
     if tokenizer:
         def count_tokens(example):
-            if not example.get('valid', False) or not example.get('prompt'):
+            if example.get('example_type') != 'finalization' or not example.get('prompt'):
                 return {'token_count': 0}
             return {'token_count': len(tokenizer.encode(example['prompt']))}
         
         processed_data = processed_data.map(count_tokens)
         
         # Log token count statistics
-        token_counts = [ex['token_count'] for ex in processed_data if ex.get('valid', False)]
+        token_counts = [ex['token_count'] for ex in processed_data if ex.get('example_type') == 'finalization']
         if token_counts:
             logger.info(f"Token count statistics:")
             logger.info(f"  Min: {min(token_counts)}")
@@ -274,15 +269,15 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             logger.info(f"  Mean: {sum(token_counts)/len(token_counts):.2f}")
             logger.info(f"  Examples > 1500 tokens: {sum(1 for t in token_counts if t > 1500)}")
         
-        # Filter valid examples and those with token count <= 1500
-        finalization_data = processed_data.filter(lambda x: x.get('valid', False) and x.get('token_count', 0) <= 1500)
+        # Filter finalization examples and those with token count <= 1500
+        finalization_data = processed_data.filter(lambda x: x.get('example_type') == 'finalization' and x.get('token_count', 0) <= 1500)
     else:
-        # If no tokenizer, just filter valid examples
-        finalization_data = processed_data.filter(lambda x: x.get('valid', False))
+        # If no tokenizer, just filter finalization examples
+        finalization_data = processed_data.filter(lambda x: x.get('example_type') == 'finalization')
     
     # Log validation results
     logger.info(f"Total examples in dataset: {len(data)}")
-    logger.info(f"Valid examples after processing: {len(processed_data.filter(lambda x: x['valid']))}")
+    logger.info(f"Finalization examples after processing: {len(processed_data.filter(lambda x: x.get('example_type') == 'finalization'))}")
     logger.info(f"Final finalization examples: {len(finalization_data)}")
     
     return finalization_data
