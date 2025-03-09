@@ -1,7 +1,6 @@
 from typing import Union, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
-import asyncio
 
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
@@ -89,7 +88,7 @@ If an incorrect step was found, provide the corrected solution starting from tha
 </response>"""
 
 
-PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
+PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
 In this section, explicitly detail your thought process step-by-step:

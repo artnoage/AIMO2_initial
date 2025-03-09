@@ -272,47 +272,7 @@ def main():
     finalization_count = 0
     programming_count = 0
     tutor_count = 0
-    
-    for i in range(min(12, len(formatted_dataset))):
-        entry = formatted_dataset[i]
-        example_type = entry.get('example_type', 'unknown')
         
-        if example_type == 'solution':
-            solution_count += 1
-        elif example_type == 'finalization':
-            finalization_count += 1
-        elif example_type == 'programming':
-            programming_count += 1
-        elif example_type == 'tutor':
-            tutor_count += 1
-            
-        print(f"\nEntry {i} verification:")
-        print(f"Type: {example_type}")
-        print(f"Answer: {entry.get('answer')}")
-        
-        # Get token count for the prompt
-        prompt = entry.get('prompt', '')
-        prompt_tokens = count_tokens(prompt)
-        print(f"Prompt tokens: {prompt_tokens}")
-        
-        if example_type == 'finalization' and entry.get('partial_solution'):
-            partial = entry.get('partial_solution')
-            # Count steps in partial solution
-            step_count = len(re.findall(r'<step>', partial))
-            print(f"Steps in partial solution: {step_count}")
-            
-        elif example_type == 'wait':
-            # Extract thinking section to verify wait modification
-            thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-            thinking_match = thinking_pattern.search(prompt)
-        
-        # Check for prompt indicators
-        has_continue = 'continue' in prompt.lower()
-        has_next_step = 'next step' in prompt.lower()
-        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
-    
-    print(f"\nSample ratio: {solution_count} solution examples, {finalization_count} finalization examples, {programming_count} programming examples, {tutor_count} tutor examples")
-    
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,

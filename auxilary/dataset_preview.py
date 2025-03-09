@@ -200,7 +200,7 @@ def main():
     parser = argparse.ArgumentParser(description="Create a preview of a dataset with equal distribution of example types")
     parser.add_argument("dataset_path", help="Path to the dataset")
     parser.add_argument("--output", "-o", default="dataset_preview.md", help="Path to save the markdown preview")
-    parser.add_argument("--examples", "-n", type=int, default=5, help="Number of examples of each type to include")
+    parser.add_argument("--examples", "-n", type=int, default=40, help="Number of examples of each type to include")
     
     args = parser.parse_args()
     

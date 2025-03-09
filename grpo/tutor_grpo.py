@@ -15,9 +15,9 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from grpo.tutor_reward import TutorReward
+from rewards import TutorReward
 from utils.agents import TUTOR_SYSTEM_PROMPT
-
+from utils.data_preparation import prepare_tutor_data
 # Use the system prompt from agents.py
 SYSTEM_PROMPT = TUTOR_SYSTEM_PROMPT
 
@@ -156,9 +156,6 @@ def main():
         use_rslora=False,
         loftq_config=None
     )
-    
-    # Import the data preparation function
-    from utils.data_preparation import prepare_tutor_data
     
     # Apply the transformation and filter out invalid results
     data = load_from_disk(dataset_name)
