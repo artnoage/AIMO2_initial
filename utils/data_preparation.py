@@ -198,7 +198,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             full_solution = full_solutions[-1] if full_solutions else ''
             
             # Validate the partial solution structure
-            from utils.solution_utils import validate_solution
             is_valid_partial, validation_reason = validate_solution(partial_solution, start_step=0)
             if not is_valid_partial:
                 logger.info(f"Invalid partial solution: {validation_reason}")
