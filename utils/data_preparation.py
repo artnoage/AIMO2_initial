@@ -169,7 +169,7 @@ def prepare_detailed_finalization_data(data: Dataset, system_prompt: str, tokeni
     """Create examples for finalization tasks with detailed validation"""
     logger.info("Creating detailed finalization examples...")
     
-    def prepare_completion_example(example):
+    def prepare_finalization_example(example):
         try:
             # First, check if we have the required problem field
             if 'problem' not in example or not example['problem']:
@@ -362,7 +362,7 @@ def prepare_detailed_finalization_data(data: Dataset, system_prompt: str, tokeni
             }
     
     # Process all examples
-    processed_data = data.map(prepare_completion_example)
+    processed_data = data.map(prepare_finalization_example)
     
     # Add token count to each example if tokenizer is provided
     if tokenizer:

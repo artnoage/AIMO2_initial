@@ -157,12 +157,6 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 
     return None  # Return None if no answer format is found
 
-STEP_NUMBER_PATTERNS = [
-    re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
-    # Add a pattern to check if Step is followed by a non-digit (to detect errors)
-    re.compile(r'^.*?Step\s+([^\d\s]+)')     # Match "Step X" where X is not a digit
-]
-
 def has_thinking_section(solution: str) -> bool:
     """Check if solution has a thinking section"""
     thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
