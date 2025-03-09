@@ -163,108 +163,7 @@ def prepare_completion_data(data: Dataset, system_prompt: str, completion_system
     
     return completion_data
 
-def prepare_wait_data(data: Dataset, system_prompt: str, tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
-    """Create examples for wait-a-second tasks"""
-    logger.info("Creating wait examples...")
-    
-    # Function to count tokens if tokenizer is provided
-    def count_tokens(text):
-        if tokenizer:
-            return len(tokenizer.encode(text))
-        return len(text) // 4  # Rough estimate if no tokenizer provided
-    
-    def create_wait_example(example):
-        try:
-            # Only create wait examples for examples with model_solution
-            if 'model_solution' in example and example['model_solution']:
-                # Check if the solution is incorrect (if is_correct field exists)
-                is_correct = example.get('is_correct', None)
-                
-                # If is_correct is explicitly True, return as regular solution
-                if is_correct == True:
-                    return {
-                        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'example_type': 'solution'
-                    }
-                
-                # Check if solution has a thinking section using solution_utils
-                if has_thinking_section(example['model_solution']):
-                    # Extract the thinking section using solution_utils
-                    thinking_content = extract_thinking_section(example['model_solution'])
-                    if thinking_content:
-                        # Modify the thinking section with "wait a second"
-                        modified_thinking = thinking_content + "...no wait a second."
-                        
-                        # Create prompt with the modified thinking section
-                        prompt = (
-                            '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n'
-                            '<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n'
-                            '<|im_start|>assistant\\n'
-                            '<thinking>' + modified_thinking
-                        )
-                        
-                        # Check token count if tokenizer is provided
-                        if tokenizer:
-                            total_tokens = count_tokens(prompt)
-                            if total_tokens > max_prompt_tokens:
-                                logger.info(f"Wait prompt too long ({total_tokens} tokens), converting to full solution")
-                                return {
-                                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                                    'answer': example.get('answer', example.get('correct_answer', '')),
-                                    'partial_solution': '',
-                                    'example_type': 'solution',
-                                    'token_count': count_tokens('<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n')
-                                }
-                        
-                        return {
-                            'prompt': prompt,
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': '',
-                            'example_type': 'wait',
-                            'token_count': count_tokens(prompt) if tokenizer else 0
-                        }
-            
-            # If we couldn't create a wait example, return as regular solution
-            regular_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
-            return {
-                'prompt': regular_prompt,
-                'answer': example.get('answer', example.get('correct_answer', '')),
-                'partial_solution': '',
-                'example_type': 'solution',
-                'token_count': count_tokens(regular_prompt) if tokenizer else 0
-            }
-            
-        except Exception as e:
-            logger.warning(f"Error creating wait example: {str(e)}")
-            # Return as a regular solution example on error
-            regular_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n'
-            return {
-                'prompt': regular_prompt,
-                'answer': example.get('answer', example.get('correct_answer', '')),
-                'partial_solution': '',
-                'example_type': 'solution',
-                'token_count': count_tokens(regular_prompt) if tokenizer else 0
-            }
-    
-    # Process all examples for wait tasks
-    wait_data = data.map(create_wait_example)
-    
-    # Filter out any wait examples that didn't actually get the wait modification
-    wait_data = wait_data.filter(lambda x: x['example_type'] == 'wait' and "...no wait a second." in x['prompt'])
-    
-    # Filter by token count if tokenizer is provided
-    if tokenizer:
-        original_count = len(wait_data)
-        wait_data = wait_data.filter(lambda x: x['token_count'] <= max_prompt_tokens)
-        filtered_count = original_count - len(wait_data)
-        if filtered_count > 0:
-            logger.info(f"Filtered out {filtered_count} wait examples with more than {max_prompt_tokens} tokens")
-    
-    logger.info(f"Found {len(wait_data)} wait examples after filtering")
-    
-    return wait_data
+# Wait data preparation function removed
 
 def prepare_detailed_completion_data(data: Dataset, system_prompt: str, tokenizer=None) -> Dataset:
     """Create examples for completion tasks with detailed validation"""
@@ -502,18 +401,16 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
-    - 35% solution examples
-    - 35% programming examples
-    - 15% completion examples
-    - 15% wait examples
+    - 40% solution examples
+    - 40% programming examples
+    - 20% completion examples
     """
     # Default distribution if not provided
     if distribution is None:
         distribution = {
-            'solution': 0.35,
-            'programming': 0.35,
-            'completion': 0.15,
-            'wait': 0.15
+            'solution': 0.40,
+            'programming': 0.40,
+            'completion': 0.20
         }
     
     # Check if we have model_solutions in the dataset
@@ -537,14 +434,12 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     solution_data = prepare_solution_data(data, system_prompt)
     programming_data = prepare_programming_data(data, programming_system_prompt)
     completion_data = prepare_completion_data(data, system_prompt, completion_system_prompt, tokenizer, max_prompt_tokens=1500)
-    wait_data = prepare_wait_data(data, system_prompt, tokenizer, max_prompt_tokens=1500)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
     solution_target = int(total_examples * distribution['solution'])
     programming_target = int(total_examples * distribution['programming'])
     completion_target = int(total_examples * distribution['completion'])
-    wait_target = int(total_examples * distribution['wait'])
     
     # Function to count example types in a dataset
     def count_types(dataset):
@@ -558,28 +453,24 @@ def prepare_combined_data(data: Dataset, system_prompt: str, completion_system_p
     logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
     logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
     logger.info(f"Created {len(completion_data)} completion examples (target: {completion_target})")
-    logger.info(f"Created {len(wait_data)} wait examples (target: {wait_target})")
     
     # Shuffle and select examples for each type
     solution_data = solution_data.shuffle(seed=42)
     programming_data = programming_data.shuffle(seed=43)
     completion_data = completion_data.shuffle(seed=44)
-    wait_data = wait_data.shuffle(seed=45)
     
     solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
     programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
     completion_data = completion_data.select(range(min(completion_target, len(completion_data))))
-    wait_data = wait_data.select(range(min(wait_target, len(wait_data))))
     
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
     logger.info(f"Solution dataset: {count_types(solution_data)}")
     logger.info(f"Programming dataset: {count_types(programming_data)}")
     logger.info(f"Completion dataset: {count_types(completion_data)}")
-    logger.info(f"Wait dataset: {count_types(wait_data)}")
     
     # Combine all datasets
-    combined_data = concatenate_datasets([solution_data, programming_data, completion_data, wait_data])
+    combined_data = concatenate_datasets([solution_data, programming_data, completion_data])
     
     # Count types in the combined dataset
     combined_types = count_types(combined_data)

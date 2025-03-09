@@ -75,16 +75,6 @@ class DynamicReward(BaseReward):
         elif isinstance(raw_types, str):
             # Handle string case
             example_types.append(raw_types)
-        
-        # Check prompts for wait examples
-        prompts = batch_kwargs.get('prompts', [])
-        if prompts and len(prompts) == len(example_types):
-            for i, prompt in enumerate(prompts):
-                # If the prompt contains wait indicators but the example_type isn't 'wait',
-                # update the example_type to 'wait'
-                if isinstance(prompt, str) and 'wait a second' in prompt.lower() and example_types[i] != 'wait':
-                    self.logger.info(f"Detected 'wait' example from prompt content (was '{example_types[i]}')")
-                    example_types[i] = 'wait'
             
         # Count the different types
         type_counts = {}
@@ -107,17 +97,11 @@ class DynamicReward(BaseReward):
         # Count the different types in the batch
         completion_count = sum(1 for et in example_types if et == 'completion')
         solution_count = sum(1 for et in example_types if et == 'solution')
-        wait_count = sum(1 for et in example_types if et == 'wait')
         programming_count = sum(1 for et in example_types if et == 'programming')
         
-        self.logger.info(f"Type counts in batch: completion={completion_count}, solution={solution_count}, wait={wait_count}, programming={programming_count}")
+        self.logger.info(f"Type counts in batch: completion={completion_count}, solution={solution_count}, programming={programming_count}")
         
-        # Always use solution reward if there are any wait examples in the batch
-        if wait_count > 0:
-            self.logger.info("Selected solution reward because batch contains wait examples")
-            return 'solution'
-        
-        # Determine the majority type for other cases
+        # Determine the majority type
         if programming_count > 0 and programming_count >= completion_count and programming_count >= solution_count:
             self.logger.info("Selected programming reward (majority type)")
             return 'programming'
@@ -152,36 +136,6 @@ class DynamicReward(BaseReward):
             
             # Get the example type for this specific completion
             example_type = kwargs.get('example_type', '')
-            
-            # Special handling for wait examples
-            # Check if it's explicitly marked as wait or if the prompt contains wait phrases
-            prompt = kwargs.get('prompt', '')
-            wait_phrases = ["wait a second", "hold on", "actually", "let me reconsider", "I made a mistake"]
-            
-            is_wait_example = example_type == 'wait' or (
-                isinstance(prompt, str) and any(phrase in prompt.lower() for phrase in wait_phrases)
-            )
-            
-            if is_wait_example:
-                self.logger.info(f"Processing wait example (type={example_type}, detected_from_prompt={is_wait_example and example_type != 'wait'})")
-                # Check if the completion contains "wait a second" or similar phrases
-                has_wait_phrase = any(phrase in completion.lower() for phrase in wait_phrases)
-                
-                # Check if the completion has a thinking section with a correction
-                thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
-                has_thinking_correction = thinking_match and any(phrase in thinking_match.group(1).lower() for phrase in wait_phrases)
-                
-                if has_wait_phrase or has_thinking_correction:
-                    # Reward for recognizing the need to reconsider
-                    self.logger.info(f"Wait example detected with correction phrase, applying base reward")
-                    reward = self.config.base_reward
-                    self.stats.reward_components['base_rewards'] += 1
-                    self.stats.reward_components['wait_examples_rewarded'] = self.stats.reward_components.get('wait_examples_rewarded', 0) + 1
-                    return reward
-                else:
-                    self.logger.info(f"Wait example without correction phrases, continuing with normal processing")
-                    # Track that we processed a wait example even if not rewarded
-                    self.stats.reward_components['wait_examples_processed'] = self.stats.reward_components.get('wait_examples_processed', 0) + 1
             
             # Select the appropriate reward function
             if reward_type == 'completion':

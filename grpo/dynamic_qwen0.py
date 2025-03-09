@@ -242,10 +242,9 @@ def main():
         
         # Define the distribution
         distribution = {
-            'solution': 0.35,
-            'programming': 0.35,
-            'completion': 0.15,
-            'wait': 0.15
+            'solution': 0.40,
+            'programming': 0.40,
+            'completion': 0.20
         }
         
         # Use the prepare_combined_data function with programming system prompt
@@ -267,7 +266,6 @@ def main():
     # Verify first few entries
     solution_count = 0
     completion_count = 0
-    wait_count = 0
     programming_count = 0
     
     for i in range(min(12, len(formatted_dataset))):
@@ -278,8 +276,6 @@ def main():
             solution_count += 1
         elif example_type == 'completion':
             completion_count += 1
-        elif example_type == 'wait':
-            wait_count += 1
         elif example_type == 'programming':
             programming_count += 1
             
@@ -306,10 +302,9 @@ def main():
         # Check for prompt indicators
         has_continue = 'continue' in prompt.lower()
         has_next_step = 'next step' in prompt.lower()
-        has_wait = 'wait a second' in prompt.lower()
-        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}, wait={has_wait}")
+        print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
     
-    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {wait_count} wait examples, {programming_count} programming examples")
+    print(f"\nSample ratio: {solution_count} solution examples, {completion_count} completion examples, {programming_count} programming examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
