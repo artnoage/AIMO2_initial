@@ -179,7 +179,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             
             # Use a deterministic approach based on example ID
             example_id = example.get('id', hash(example.get('problem', '')))
-            if isinstance(example_id, str):
+            if example_id is None:
+                example_id = hash(str(random.random()))  # Fallback if both id and problem are None
+            elif isinstance(example_id, str):
                 example_id = hash(example_id)
             
             # Deterministically decide how many steps to include in partial solution
