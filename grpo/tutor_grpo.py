@@ -1,19 +1,14 @@
+from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
 import os
 import wandb
 import logging
-import json
-from datasets import load_dataset, concatenate_datasets, Dataset, load_from_disk
+from datasets import load_dataset, concatenate_datasets, load_from_disk, Dataset
 from datetime import datetime
 from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-PatchFastRL("GRPO", FastLanguageModel)
 import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
-import re
-import time
-from time import time
-import random
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -222,8 +217,8 @@ def main():
         per_device_train_batch_size=9,
         gradient_accumulation_steps=4,
         num_generations=9,
-        max_prompt_length=2048,
-        max_completion_length=2048,
+        max_prompt_length=1500,
+        max_completion_length=2596,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
