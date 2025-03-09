@@ -18,7 +18,7 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
         'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
         'partial_solution': '',  # Empty partial solution indicates full solution task
-        'model_solution': '',
+        'full_solution': '',
         'is_correct': '',
         'wrong_step': '',
         'example_type': 'solution'  # Add type for tracking
@@ -32,7 +32,7 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
         'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'partial_solution': '',
-        'model_solution': '',
+        'full_solution': '',
         'is_correct': '',
         'wrong_step': '',
         'example_type': 'programming'
@@ -97,7 +97,6 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
                 'full_solution': full_solution,
-                'model_solution': '',  # Empty as we're using full_solution instead
                 'is_correct': is_correct,
                 'wrong_step': wrong_step,
                 'example_type': 'tutor'
@@ -136,7 +135,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             'answer': example.get('answer', example.get('correct_answer', '')),
             'partial_solution': '',
             'full_solution': '',
-            'model_solution': '',
             'is_correct': '',
             'wrong_step': '',
             'example_type': 'solution',
@@ -188,7 +186,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     'answer': answer,
                     'partial_solution': partial_solution,
                     'full_solution': full_solution,
-                    'model_solution': example.get('model_solution', ''),
                     'is_correct': example.get('is_correct', ''),
                     'wrong_step': example.get('wrong_step', ''),
                     'example_type': 'finalization',
@@ -288,7 +285,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 'answer': answer,
                 'partial_solution': partial_solution,
                 'full_solution': full_solution,
-                'model_solution': example.get('model_solution', ''),
                 'is_correct': example.get('is_correct', ''),
                 'wrong_step': example.get('wrong_step', ''),
                 'example_type': 'finalization',
