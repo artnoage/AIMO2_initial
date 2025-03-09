@@ -33,12 +33,10 @@ logging.basicConfig(
 logger = logging.getLogger('dataset_preview')
 
 def clean_prompt_for_display(prompt: str) -> str:
-    """Clean prompt text for display in markdown"""
-    # Remove system prompt tags
-    prompt = re.sub(r'<\|im_start\|>system\\n.*?<\|im_end\|>\\n', '', prompt)
-    # Clean up user and assistant tags
-    prompt = re.sub(r'<\|im_start\|>user\\n', '**User:**\n\n', prompt)
-    prompt = re.sub(r'<\|im_end\|>\\n<\|im_start\|>assistant\\n', '\n\n**Assistant:**\n\n', prompt)
+    """
+    Display prompt text verbatim in markdown
+    Only replace escaped newlines with actual newlines for readability
+    """
     # Replace escaped newlines with actual newlines
     prompt = prompt.replace('\\n', '\n')
     return prompt
@@ -49,8 +47,9 @@ def format_example_as_markdown(example: Dict, example_type: str, index: int) -> 
     
     # Add prompt (cleaned for display)
     md += "### Prompt\n\n"
+    md += "```\n"
     md += clean_prompt_for_display(example['prompt'])
-    md += "\n\n"
+    md += "\n```\n\n"
     
     # Add example-specific fields
     if example_type == 'finalization':
