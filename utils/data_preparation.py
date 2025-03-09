@@ -39,9 +39,15 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return programming_data
 
-def prepare_tutor_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for tutor tasks using the tutor-specific system prompt"""
     logger.info("Creating tutor examples...")
+    
+    # Function to count tokens if tokenizer is provided
+    def count_tokens(text):
+        if tokenizer:
+            return len(tokenizer.encode(text))
+        return len(text) // 4  # Rough estimate if no tokenizer provided
     
     def create_tutor_example(example):
         try:
@@ -50,6 +56,14 @@ def prepare_tutor_data(data: Dataset, system_prompt: str) -> Dataset:
                 return None
                 
             if 'model_solution' not in example or not example['model_solution']:
+                return None
+                
+            # Extract response part from model_solution
+            response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
+            full_solution = response_match.group(1).strip() if response_match else None
+            
+            # If no response part found, return None
+            if full_solution is None:
                 return None
                 
             # Extract is_correct flag
@@ -65,17 +79,25 @@ def prepare_tutor_data(data: Dataset, system_prompt: str) -> Dataset:
                 except (ValueError, TypeError):
                     wrong_step = None
             
-            # Format the prompt with the problem and model solution
+            # Format the prompt with the problem and full solution
             formatted_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Here is a mathematical problem and a proposed solution:\n\n" + \
                 f"Problem:\n{example['problem']}\n\n" + \
-                f"Proposed Solution:\n{example['model_solution']}<|im_end|>\\n<|im_start|>assistant\\n"
+                f"Proposed Solution:\n{full_solution}<|im_end|>\\n<|im_start|>assistant\\n"
+            
+            # Check token count if tokenizer is provided
+            if tokenizer:
+                prompt_tokens = count_tokens(formatted_prompt)
+                if prompt_tokens > max_prompt_tokens:
+                    logger.info(f"Tutor prompt too long ({prompt_tokens} tokens), skipping")
+                    return None
             
             return {
                 'prompt': formatted_prompt,
                 'answer': example.get('answer', example.get('correct_answer', '')),
                 'partial_solution': '',
-                'model_solution': example['model_solution'],
+                'full_solution': full_solution,
+                'model_solution': '',  # Empty as we're using full_solution instead
                 'is_correct': is_correct,
                 'wrong_step': wrong_step,
                 'example_type': 'tutor'
@@ -410,7 +432,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
 
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                           programming_system_prompt: str, tutor_system_prompt: str = None,
-                         tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
+                         tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 1500) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
@@ -464,7 +486,7 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     tutor_data = None
     if tutor_system_prompt and distribution.get('tutor', 0) > 0:
         from utils.agents import TUTOR_SYSTEM_PROMPT
-        tutor_data = prepare_tutor_data(data, tutor_system_prompt or TUTOR_SYSTEM_PROMPT)
+        tutor_data = prepare_tutor_data(data, tutor_system_prompt or TUTOR_SYSTEM_PROMPT, tokenizer, max_prompt_tokens)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)

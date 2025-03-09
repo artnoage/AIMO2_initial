@@ -261,7 +261,7 @@ class DynamicReward(BaseReward):
                     # Extract additional tutor-specific parameters
                     wrong_step = kwargs.get('wrong_step', [None] * len(prompts))[idx] if idx < len(kwargs.get('wrong_step', [])) else None
                     is_correct = kwargs.get('is_correct', [False] * len(prompts))[idx] if idx < len(kwargs.get('is_correct', [])) else False
-                    model_solution = kwargs.get('model_solution', [''] * len(prompts))[idx] if idx < len(kwargs.get('model_solution', [])) else ''
+                    full_solution = kwargs.get('full_solution', [''] * len(prompts))[idx] if idx < len(kwargs.get('full_solution', [])) else ''
                     
                     # Create kwargs with group context and original kwargs
                     task_kwargs = {
@@ -280,7 +280,7 @@ class DynamicReward(BaseReward):
                         'group_indices': group['indices'],
                         'wrong_step': wrong_step,
                         'is_correct': is_correct,
-                        'model_solution': model_solution
+                        'full_solution': full_solution
                     }
                     
                     task = self.calculate_reward(completion, **task_kwargs)

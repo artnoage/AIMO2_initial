@@ -851,9 +851,9 @@ class TutorReward(BaseReward):
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a tutor evaluation"""
         try:
-            # Get problem, model solution, and wrong step information
+            # Get problem, full solution, and wrong step information
             problem = kwargs.get('problem', '')
-            model_solution = kwargs.get('model_solution', '')
+            full_solution = kwargs.get('full_solution', '')
             is_correct = kwargs.get('is_correct', False)
             
             # Try to convert wrong_step to int, default to None if not possible
@@ -865,7 +865,7 @@ class TutorReward(BaseReward):
                     self.logger.warning(f"Could not convert wrong_step to int: {wrong_step}")
                     wrong_step = None
             
-            if not all([problem, model_solution]):
+            if not all([problem, full_solution]):
                 self.logger.warning("Missing required inputs for tutor reward calculation")
                 return 0.0
             
