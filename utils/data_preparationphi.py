@@ -70,6 +70,11 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             if full_solution is None:
                 return None
                 
+            # Check if the solution contains the string "Begin with the first calculation or operation"
+            if "Begin with the first calculation or operation" in example['model_solution']:
+                logger.info(f"Skipping tutor example with 'Begin with the first calculation or operation' instruction")
+                return None
+                
             # Extract is_correct flag - default to None if not available
             is_correct = example.get('is_correct', None)
             if isinstance(is_correct, str):
@@ -171,6 +176,11 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             # Extract response section
             response = extract_response_section(example['model_solution'])
             if not response:
+                return create_invalid_example(example)
+                
+            # Check if the solution contains the string "Begin with the first calculation or operation"
+            if "Begin with the first calculation or operation" in example['model_solution']:
+                logger.info(f"Skipping example with 'Begin with the first calculation or operation' instruction")
                 return create_invalid_example(example)
                 
             # Check if the solution is marked as correct
