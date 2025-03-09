@@ -342,86 +342,36 @@ def has_boxed_answer(solution: str) -> bool:
     """Check if solution has a boxed answer"""
     return "\\boxed{" in solution
 
-def validate_finalization(partial_solution: str, finalization: str) -> Tuple[bool, str]:
-    """
-    Validate if a finalization properly continues from a partial solution.
-    
-    Args:
-        partial_solution: The solution up to a certain point
-        finalization: The proposed finalization of the solution
-        
-    Returns:
-        Tuple[bool, str]: (is_valid, reason)
-    """
-    
-    # Extract step numbers from partial solution (ignoring tags)
-    last_step = 0
-    # Only look for "Step N" pattern in partial solution
-    step_pattern = re.compile(r'Step\s*(\d+)[:.)\s]')
-    for match in step_pattern.finditer(partial_solution):
-        try:
-            num = int(match.group(1))
-            last_step = max(last_step, num)
-        except (ValueError, IndexError):
-            continue
-    
-    # Extract steps from finalization
-    finalization_steps = re.findall(r'<step>(.*?)</step>', finalization, re.DOTALL)
-    if not finalization_steps:
-        return False, "Finalization contains no steps"
-    
-    # Track found step numbers to ensure no duplicates or gaps
-    found_steps = set()
-    
-    # Validate each step in finalization
-    for i, step in enumerate(finalization_steps, 1):
-        expected_step_num = last_step + i
-        
-        # Check if step starts with "Step N" - only accept this format
-        step_match = re.search(r'Step\s*(\d+)[:.)\s]', step)
-        
-        if not step_match:
-            return False, f"Step {i} does not have proper 'Step N:' format"
-        
-        # Extract the step number
-        try:
-            actual_step = int(step_match.group(1))
-        except (ValueError, IndexError):
-            return False, f"Could not parse step number in step {i}"
-        
-        # Validate step number
-        if actual_step != expected_step_num:
-            return False, f"Expected step {expected_step_num}, found step {actual_step}"
-        
-        if actual_step in found_steps:
-            return False, f"Duplicate step number {actual_step}"
-        
-        found_steps.add(actual_step)
-        
-        # Check if step has sufficient content
-        content_after_number = step[step_match.end():].strip()
-        if len(content_after_number) < 10:  # Minimum content length
-            return False, f"Step {actual_step} has insufficient content"
-    
-    # Check for gaps in step numbers
-    expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
-    if found_steps != expected_steps:
-        return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
-    
-    return True, "Valid finalization"
+# Function removed - functionality merged into validate_solution with start_step parameter
 
-def validate_solution(solution: str) -> Tuple[bool, str]:
+def validate_solution(solution: str, start_step: int = 0) -> Tuple[bool, str]:
     """
     Validate if a solution has properly formatted steps with correct numbering.
     
     Args:
         solution: The complete solution to validate
+        start_step: The step number to start from (for finalization validation)
         
     Returns:
         Tuple[bool, str]: (is_valid, reason)
     """
     # Extract steps from solution
     solution_steps = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
+    
+    # If no step tags, try to extract steps based on "Step N" pattern
+    if not solution_steps:
+        # Look for "Step N" pattern in the solution
+        step_matches = list(re.finditer(r'Step\s*(\d+)[:.)\s]', solution))
+        if not step_matches:
+            return False, "Solution contains no steps"
+            
+        # Create synthetic steps from the matches
+        solution_steps = []
+        for i in range(len(step_matches)):
+            start_idx = step_matches[i].start()
+            end_idx = step_matches[i+1].start() if i < len(step_matches) - 1 else len(solution)
+            solution_steps.append(solution[start_idx:end_idx])
+    
     if not solution_steps:
         return False, "Solution contains no steps"
     
@@ -430,7 +380,7 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
     
     # Validate each step in solution
     for i, step in enumerate(solution_steps, 1):
-        expected_step_num = i
+        expected_step_num = start_step + i
         
         # Check if step starts with "Step N" - only accept this format
         step_match = re.search(r'Step\s*(\d+)[:.)\s]', step)
@@ -459,7 +409,7 @@ def validate_solution(solution: str) -> Tuple[bool, str]:
             return False, f"Step {actual_step} has insufficient content"
     
     # Check for gaps in step numbers
-    expected_steps = set(range(1, len(solution_steps) + 1))
+    expected_steps = set(range(start_step + 1, start_step + len(solution_steps) + 1))
     if found_steps != expected_steps:
         return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
     

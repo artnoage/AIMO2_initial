@@ -651,10 +651,15 @@ class FinalizationReward(BaseReward):
             # Extract steps from completion for logging purposes
             completion_steps = re.findall(r'<step>Step\s+(\d+):', completion, re.IGNORECASE)
             
-            # Use the validate_finalization function to check step continuity
-            from utils.solution_utils import validate_finalization
+            # Use the validate_solution method to check solution structure
+            from utils.solution_utils import validate_solution
             
-            step_continuity_correct, validation_reason = validate_finalization(partial_solution, completion)
+            # Extract response part from completion
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            completion_response = response_match.group(1) if response_match else completion
+            
+            step_continuity_correct, validation_reason = validate_solution(completion_response, 
+                                                                          start_step=len(re.findall(r'Step\s*(\d+)[:.)\s]', partial_solution)))
             
             if not step_continuity_correct:
                 self.logger.info(f"Step validation failed: {validation_reason}")
