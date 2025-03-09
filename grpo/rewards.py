@@ -788,10 +788,18 @@ class TutorReward(BaseReward):
         verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
         if verdict_match:
             verdict_content = verdict_match.group(1).strip().lower()
-            if 'correct' in verdict_content or 'right' in verdict_content:
+            # Check for positive indicators
+            if any(word in verdict_content for word in ['correct', 'right', 'valid', 'solution is good']):
                 return True
-            else:
+            # Check for negative indicators
+            elif any(word in verdict_content for word in ['incorrect', 'wrong', 'error', 'mistake']):
                 return False
+            # Check for "step X" pattern which indicates an error
+            elif re.search(r'step\s+\d+', verdict_content):
+                return False
+        
+        # Default to None if we can't determine
+        return None
         
     def _extract_wrong_step(self, completion: str) -> Optional[int]:
         """
@@ -871,10 +879,9 @@ class TutorReward(BaseReward):
             # Check if the verdict is correct
             verdict_is_correct = False
             
-            # Extract the model's evaluation of the solution
-            model_says_correct = re.search(r'(answer|solution)\s+is\s+correct', verdict_content, re.IGNORECASE) is not None
-            step_match = re.search(r'step\s+(\d+)', verdict_content, re.IGNORECASE)
-            identified_step = int(step_match.group(1)) if step_match else None
+            # Extract the model's evaluation of the solution using the helper methods
+            model_says_correct = self._extract_evaluation(completion)
+            identified_step = self._extract_wrong_step(completion)
             
             # If we don't have ground truth, we can't determine if the verdict is correct
             if is_correct is None:
