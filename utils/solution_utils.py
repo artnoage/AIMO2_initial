@@ -392,13 +392,13 @@ def validate_step(step: str, expected_step: int = None) -> Tuple[bool, str]:
     
     return True, "Valid step"
 
-def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, str]:
+def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool, str]:
     """
-    Validate if a completion properly continues from a partial solution.
+    Validate if a finalization properly continues from a partial solution.
     
     Args:
         partial_solution: The solution up to a certain point
-        completion: The proposed completion of the solution
+        completion: The proposed finalization of the solution
         
     Returns:
         Tuple[bool, str]: (is_valid, reason)
@@ -414,7 +414,7 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         # Extract steps from completion
         completion_steps = re.findall(r'<step>(.*?)</step>', completion, re.DOTALL)
         if not completion_steps:
-            return False, "Completion contains no steps"
+            return False, "Finalization contains no steps"
             
         # Extract steps from partial solution
         partial_steps = re.findall(r'<step>(.*?)</step>', partial_solution, re.DOTALL)
@@ -434,7 +434,7 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         # Track found step numbers to ensure no duplicates or gaps
         found_steps = set()
         
-        # Validate each step in completion
+        # Validate each step in finalization
         for i, step in enumerate(completion_steps, 1):
             expected_step_num = last_step + i
             
@@ -450,7 +450,7 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
                         continue
             
             if actual_step is None:
-                return False, f"Could not find step number in completion step {i}"
+                return False, f"Could not find step number in finalization step {i}"
                 
             if actual_step != expected_step_num:
                 return False, f"Expected step {expected_step_num}, found step {actual_step}"
@@ -473,9 +473,9 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
         return True, "Valid completion"
     else:
         # Traditional format (without tags)
-        # Check if completion starts with "Step" in first 5 chars
+        # Check if finalization starts with "Step" in first 5 chars
         if not completion[:5].strip().startswith("Step"):
-            return False, "Completion must start with 'Step'"
+            return False, "Finalization must start with 'Step'"
             
         # Get the last step number from partial solution
         parts = partial_solution.split("Step")
@@ -490,10 +490,10 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
                     except ValueError:
                         continue
                         
-        # Split completion into steps
+        # Split finalization into steps
         completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
         if not completion_steps:
-            return False, "Completion contains no steps"
+            return False, "Finalization contains no steps"
             
         # Track found step numbers to ensure no duplicates or gaps
         found_steps = set()
@@ -503,7 +503,7 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
             expected_step_num = last_step + i
             full_step = "Step" + step
             
-            # Find actual step number in the completion
+            # Find actual step number in the finalization
             actual_step = None
             for pattern in STEP_NUMBER_PATTERNS:
                 match = pattern.search(full_step)
@@ -515,7 +515,7 @@ def validate_completion(partial_solution: str, completion: str) -> Tuple[bool, s
                         continue
                         
             if actual_step is None:
-                return False, f"Could not find step number in completion step {i}"
+                return False, f"Could not find step number in finalization step {i}"
                 
             if actual_step != expected_step_num:
                 return False, f"Expected step {expected_step_num}, found step {actual_step}"

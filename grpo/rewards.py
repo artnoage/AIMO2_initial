@@ -713,9 +713,9 @@ class FinalizationReward(BaseReward):
                     step_continuity_correct = False
                     self.logger.info(f"Error parsing step numbers: {str(e)}")
             else:
-                # No steps found in completion
+                # No steps found in finalization
                 step_continuity_correct = False
-                self.logger.info("No steps found in completion")
+                self.logger.info("No steps found in finalization")
             
             # Reward for correct step continuity
             if step_continuity_correct:
