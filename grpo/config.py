@@ -40,8 +40,9 @@ class RewardConfig:
     solution_validation_reward: float = 0.2  # For passing solution validation
     
     # Programming reward values
-    syntax_reward: float = 0.5     # Reward for code with no syntax errors
-    execution_reward: float = 0.75  # Reward for code that executes and returns a float
+    syntax_reward: float = 0.2     # Reward for code with no syntax errors
+    syntax_penalty: float = 0.2    # Penalty for code with syntax errors
+    execution_reward: float = 0.5  # Reward for code that executes and returns a float
     correctness_reward: float = 2.5 # Reward for code that returns the correct answer
     
     # Group-specific settings

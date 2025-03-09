@@ -478,7 +478,7 @@ class ProgrammingReward(BaseReward):
             
             self.logger.info(f"Extracted code length: {len(code)} characters")
             
-            # 2. Check code quality (syntax reward)
+            # 2. Check code quality (syntax reward/penalty)
             code_quality_passed, quality_message = check_code_quality(code)
             if code_quality_passed:
                 syntax_reward = self.config.syntax_reward
@@ -487,6 +487,9 @@ class ProgrammingReward(BaseReward):
                 self.stats.reward_components['syntax_valid_solutions'] = self.stats.reward_components.get('syntax_valid_solutions', 0) + 1
                 self.logger.info(f"Applied syntax reward: +{syntax_reward:.3f}")
             else:
+                syntax_penalty = self.config.syntax_penalty
+                reward -= syntax_penalty
+                self.logger.info(f"Applied syntax penalty: -{syntax_penalty:.3f}")
                 self.logger.info(f"Code quality check failed: {quality_message}")
                 self.stats.programming_stats['syntax_errors'] += 1
                 # Update total rewards and average before returning
