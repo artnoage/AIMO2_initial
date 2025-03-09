@@ -19,8 +19,8 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
         'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
         'partial_solution': '',  # Empty partial solution indicates full solution task
         'full_solution': '',
-        'is_correct': '',
-        'wrong_step': '',
+        'is_correct': None,  # Use None instead of empty string for consistency
+        'wrong_step': None,  # Use None instead of empty string for consistency
         'example_type': 'solution'  # Add type for tracking
     })
     return solution_data
@@ -33,8 +33,8 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
         'answer': x.get('answer', x.get('correct_answer', '')),
         'partial_solution': '',
         'full_solution': '',
-        'is_correct': '',
-        'wrong_step': '',
+        'is_correct': None,  # Use None instead of empty string for consistency
+        'wrong_step': None,  # Use None instead of empty string for consistency
         'example_type': 'programming'
     })
     return programming_data
@@ -140,8 +140,8 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             'answer': example.get('answer', example.get('correct_answer', '')),
             'partial_solution': '',
             'full_solution': '',
-            'is_correct': '',
-            'wrong_step': '',
+            'is_correct': None,
+            'wrong_step': None,
             'example_type': 'solution',
             'valid': False
         }
@@ -290,8 +290,8 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 'answer': answer,
                 'partial_solution': partial_solution,
                 'full_solution': full_solution,
-                'is_correct': example.get('is_correct', ''),
-                'wrong_step': example.get('wrong_step', ''),
+                'is_correct': example.get('is_correct', None),
+                'wrong_step': example.get('wrong_step', None),
                 'example_type': 'finalization',
                 'valid': True
             }
