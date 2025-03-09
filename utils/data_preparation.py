@@ -129,21 +129,25 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     # Calculate token counts for system prompts if tokenizer is provided
     finalization_prompt_tokens = count_tokens(finalization_system_prompt) if tokenizer else 0
     
+    # Default invalid example template
+    def create_invalid_example(example):
+        return {
+            'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'answer': example.get('answer', example.get('correct_answer', '')),
+            'partial_solution': '',
+            'full_solution': '',
+            'model_solution': '',
+            'is_correct': '',
+            'wrong_step': '',
+            'example_type': 'solution',
+            'valid': False
+        }
+    
     def prepare_finalization_example(example):
         try:
             # First, check if we have the required problem field
             if 'problem' not in example or not example['problem']:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
                 
             # If example is explicitly marked as correct, consider it valid
             if example.get('is_correct', False) == True:
@@ -193,63 +197,23 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             
             # Skip if no model_solution or if it's empty
             if 'model_solution' not in example or not example['model_solution']:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             # Check if solution has a response section
             if not has_response_section(example['model_solution']):
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             # Extract response section
             response = extract_response_section(example['model_solution'])
             if not response:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             # Extract steps using solution_utils
             steps = split_into_steps(response)
             
             # Need at least 2 steps to create a partial solution
             if len(steps) < 2:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             # Verify step numbering
             step_numbers = []
@@ -257,48 +221,18 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 # Look for step numbers like "Step 1:", "Step 2:" etc.
                 number_match = re.search(r'Step\s+(\d+):', step)
                 if not number_match:
-                    return {
-                        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'full_solution': '',
-                        'model_solution': '',
-                        'is_correct': '',
-                        'wrong_step': '',
-                        'example_type': 'solution',
-                        'valid': False
-                    }
+                    return create_invalid_example(example)
                 
                 try:
                     step_num = int(number_match.group(1))
                     step_numbers.append(step_num)
                 except ValueError:
-                    return {
-                        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                        'answer': example.get('answer', example.get('correct_answer', '')),
-                        'partial_solution': '',
-                        'full_solution': '',
-                        'model_solution': '',
-                        'is_correct': '',
-                        'wrong_step': '',
-                        'example_type': 'solution',
-                        'valid': False
-                    }
+                    return create_invalid_example(example)
             
             # Check if step numbers are sequential
             expected_numbers = list(range(1, len(steps) + 1))
             if step_numbers != expected_numbers:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             # Use a deterministic approach based on example ID
             example_id = example.get('id', hash(example.get('problem', '')))
@@ -315,17 +249,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             full_solutions = get_partial_solutions(steps)
             
             if not partial_solutions:
-                return {
-                    'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                    'answer': example.get('answer', example.get('correct_answer', '')),
-                    'partial_solution': '',
-                    'full_solution': '',
-                    'model_solution': '',
-                    'is_correct': '',
-                    'wrong_step': '',
-                    'example_type': 'solution',
-                    'valid': False
-                }
+                return create_invalid_example(example)
             
             partial_solution = partial_solutions[-1]  # Get the last partial solution (with all steps)
             full_solution = full_solutions[-1] if full_solutions else ''
@@ -348,17 +272,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                     # If still too long, return as invalid
                     if total_tokens >= max_prompt_tokens:
                         logger.info(f"Finalization prompt too long ({total_tokens} tokens), marking as invalid")
-                        return {
-                            'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-                            'answer': example.get('answer', example.get('correct_answer', '')),
-                            'partial_solution': '',
-                            'full_solution': '',
-                            'model_solution': '',
-                            'is_correct': '',
-                            'wrong_step': '',
-                            'example_type': 'solution',
-                            'valid': False
-                        }
+                        return create_invalid_example(example)
             
             # Format the finalization prompt with the partial solution in the user section
             formatted_prompt = '<|im_start|>system\\n' + finalization_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
@@ -384,17 +298,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
         except Exception as e:
             logger.warning(f"Error creating finalization example: {str(e)}")
             # Return as invalid on error
-            return {
-                'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
-                'answer': example.get('answer', example.get('correct_answer', '')),
-                'partial_solution': '',
-                'full_solution': '',
-                'model_solution': '',
-                'is_correct': '',
-                'wrong_step': '',
-                'example_type': 'solution',
-                'valid': False
-            }
+            return create_invalid_example(example)
     
     # Process all examples
     processed_data = data.map(prepare_finalization_example)
