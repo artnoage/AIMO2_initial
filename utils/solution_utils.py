@@ -392,28 +392,28 @@ def validate_step(step: str, expected_step: int = None) -> Tuple[bool, str]:
     
     return True, "Valid step"
 
-def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool, str]:
+def validate_finalization(partial_solution: str, finalization: str) -> Tuple[bool, str]:
     """
     Validate if a finalization properly continues from a partial solution.
     
     Args:
         partial_solution: The solution up to a certain point
-        completion: The proposed finalization of the solution
+        finalization: The proposed finalization of the solution
         
     Returns:
         Tuple[bool, str]: (is_valid, reason)
     """
     # Check for invalid tokens
-    if "[...]" in completion:
+    if "[...]" in finalization:
         return False, "Contains invalid tokens ([...])"
     
     # Check if we're using <step> tags format
-    using_tags = "<step>" in partial_solution or "<step>" in completion
+    using_tags = "<step>" in partial_solution or "<step>" in finalization
     
     if using_tags:
-        # Extract steps from completion
-        completion_steps = re.findall(r'<step>(.*?)</step>', completion, re.DOTALL)
-        if not completion_steps:
+        # Extract steps from finalization
+        finalization_steps = re.findall(r'<step>(.*?)</step>', finalization, re.DOTALL)
+        if not finalization_steps:
             return False, "Finalization contains no steps"
             
         # Extract steps from partial solution
@@ -435,10 +435,10 @@ def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool,
         found_steps = set()
         
         # Validate each step in finalization
-        for i, step in enumerate(completion_steps, 1):
+        for i, step in enumerate(finalization_steps, 1):
             expected_step_num = last_step + i
             
-            # Find actual step number in the completion
+            # Find actual step number in the finalization
             actual_step = None
             for pattern in STEP_NUMBER_PATTERNS:
                 match = pattern.search(step)
@@ -466,15 +466,15 @@ def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool,
                 return False, f"Step {expected_step_num}: {reason}"
         
         # Check for gaps in step numbers
-        expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
+        expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
         if found_steps != expected_steps:
             return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
                 
-        return True, "Valid completion"
+        return True, "Valid finalization"
     else:
         # Traditional format (without tags)
         # Check if finalization starts with "Step" in first 5 chars
-        if not completion[:5].strip().startswith("Step"):
+        if not finalization[:5].strip().startswith("Step"):
             return False, "Finalization must start with 'Step'"
             
         # Get the last step number from partial solution
@@ -491,15 +491,15 @@ def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool,
                         continue
                         
         # Split finalization into steps
-        completion_steps = completion.split("Step")[1:]  # Skip text before first "Step"
-        if not completion_steps:
+        finalization_steps = finalization.split("Step")[1:]  # Skip text before first "Step"
+        if not finalization_steps:
             return False, "Finalization contains no steps"
             
         # Track found step numbers to ensure no duplicates or gaps
         found_steps = set()
         
-        # Validate each step in completion
-        for i, step in enumerate(completion_steps, 1):
+        # Validate each step in finalization
+        for i, step in enumerate(finalization_steps, 1):
             expected_step_num = last_step + i
             full_step = "Step" + step
             
@@ -531,11 +531,11 @@ def validate_finalization(partial_solution: str, completion: str) -> Tuple[bool,
                 return False, f"Step {expected_step_num}: {reason}"
                 
         # Check for gaps in step numbers
-        expected_steps = set(range(last_step + 1, last_step + len(completion_steps) + 1))
+        expected_steps = set(range(last_step + 1, last_step + len(finalization_steps) + 1))
         if found_steps != expected_steps:
             return False, f"Missing or out of order steps. Expected {expected_steps}, found {found_steps}"
                 
-        return True, "Valid completion"
+        return True, "Valid finalization"
                     
 
 class NumericVerifier:
@@ -613,7 +613,7 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
     Handles both traditional steps and <step> tag format.
-    Does NOT wrap in <response> tags to match completion_grpo.py behavior.
+    Does NOT wrap in <response> tags to match finalization_grpo.py behavior.
     """
     if not steps:
         return []
