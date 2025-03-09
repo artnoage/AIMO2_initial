@@ -24,7 +24,8 @@ from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT
+    PROGRAMMER_SYSTEM_PROMPT,
+    TUTOR_SYSTEM_PROMPT
 )
 
 
@@ -242,17 +243,19 @@ def main():
         
         # Define the distribution
         distribution = {
-            'solution': 0.40,
-            'programming': 0.40,
-            'completion': 0.20
+            'solution': 0.30,
+            'programming': 0.30,
+            'finalization': 0.20,
+            'tutor': 0.20
         }
         
-        # Use the prepare_combined_data function with programming system prompt
+        # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
             FULLSOLUTION_SYSTEM_PROMPT, 
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
+            TUTOR_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 
@@ -267,6 +270,7 @@ def main():
     solution_count = 0
     finalization_count = 0
     programming_count = 0
+    tutor_count = 0
     
     for i in range(min(12, len(formatted_dataset))):
         entry = formatted_dataset[i]
@@ -278,6 +282,8 @@ def main():
             finalization_count += 1
         elif example_type == 'programming':
             programming_count += 1
+        elif example_type == 'tutor':
+            tutor_count += 1
             
         print(f"\nEntry {i} verification:")
         print(f"Type: {example_type}")
@@ -304,7 +310,7 @@ def main():
         has_next_step = 'next step' in prompt.lower()
         print(f"Prompt indicators: continue={has_continue}, next_step={has_next_step}")
     
-    print(f"\nSample ratio: {solution_count} solution examples, {finalization_count} finalization examples, {programming_count} programming examples")
+    print(f"\nSample ratio: {solution_count} solution examples, {finalization_count} finalization examples, {programming_count} programming examples, {tutor_count} tutor examples")
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
