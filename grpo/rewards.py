@@ -854,7 +854,7 @@ class TutorReward(BaseReward):
             # Get problem, full solution, and wrong step information
             problem = kwargs.get('problem', '')
             full_solution = kwargs.get('full_solution', '')
-            is_correct = kwargs.get('is_correct', False)
+            is_correct = kwargs.get('is_correct')
             
             # Try to convert wrong_step to int, default to None if not possible
             wrong_step = kwargs.get('wrong_step', None)
@@ -868,6 +868,10 @@ class TutorReward(BaseReward):
             if not all([problem, full_solution]):
                 self.logger.warning("Missing required inputs for tutor reward calculation")
                 return 0.0
+                
+            # If is_correct is None, we need to infer it from the model's evaluation
+            if is_correct is None:
+                self.logger.info("No ground truth 'is_correct' value provided, will infer from model evaluation")
             
             # Initialize reward
             reward = 0.0
@@ -899,9 +903,22 @@ class TutorReward(BaseReward):
             # Check if the verdict is correct
             verdict_is_correct = False
             
-            if is_correct:
+            # Extract the model's evaluation of the solution
+            model_says_correct = re.search(r'(answer|solution)\s+is\s+correct', verdict_content, re.IGNORECASE) is not None
+            step_match = re.search(r'step\s+(\d+)', verdict_content, re.IGNORECASE)
+            identified_step = int(step_match.group(1)) if step_match else None
+            
+            # If we don't have ground truth, we can't determine if the verdict is correct
+            if is_correct is None:
+                self.logger.info("No ground truth for solution correctness, skipping verdict evaluation")
+                # We'll still give a small reward for providing a structured verdict
+                if model_says_correct or identified_step is not None:
+                    verdict_reward = self.config.tutor_verdict_reward * 0.5
+                    reward += verdict_reward
+                    self.logger.info(f"Applied partial verdict reward (no ground truth): +{verdict_reward:.3f}")
+            elif is_correct:
                 # Solution is correct, verdict should indicate correctness
-                if re.search(r'(answer|solution)\s+is\s+correct', verdict_content, re.IGNORECASE):
+                if model_says_correct:
                     verdict_is_correct = True
                     self.stats.tutor_stats['correct_verdicts'] += 1
                     self.logger.info("Correct verdict for correct solution")
@@ -910,13 +927,19 @@ class TutorReward(BaseReward):
                     self.logger.info(f"Incorrect verdict for correct solution: {verdict_content}")
             else:
                 # Solution has error, verdict should be "Step X"
-                step_match = re.search(r'step\s+(\d+)', verdict_content, re.IGNORECASE)
-                if step_match:
-                    identified_step = int(step_match.group(1))
+                if identified_step is not None:
                     if wrong_step is not None and identified_step == wrong_step:
                         verdict_is_correct = True
                         self.stats.tutor_stats['correct_verdicts'] += 1
                         self.logger.info(f"Correct verdict identifying wrong step {wrong_step}")
+                    elif wrong_step is None:
+                        # We know the solution is wrong but don't know which step
+                        # Give partial credit for identifying any step
+                        verdict_reward = self.config.tutor_verdict_reward * 0.7
+                        reward += verdict_reward
+                        self.logger.info(f"Applied partial verdict reward (step identified but no ground truth): +{verdict_reward:.3f}")
+                        # Skip the rest of the verdict evaluation
+                        verdict_is_correct = None
                     else:
                         self.stats.tutor_stats['incorrect_verdicts'] += 1
                         self.logger.info(f"Incorrect verdict: identified step {identified_step}, actual wrong step {wrong_step}")
@@ -925,14 +948,14 @@ class TutorReward(BaseReward):
                     self.logger.info(f"Incorrect verdict format for solution with error: {verdict_content}")
             
             # Award points for correct verdict
-            if verdict_is_correct:
+            if verdict_is_correct is True:  # Explicitly check for True since it could be None
                 verdict_reward = self.config.tutor_verdict_reward
                 reward += verdict_reward
                 self.stats.reward_components['correct_verdict_rewards'] = self.stats.reward_components.get('correct_verdict_rewards', 0) + 1
                 self.logger.info(f"Applied verdict reward: +{verdict_reward:.3f}")
             
-            # If the solution has an error, check the finalization
-            if not is_correct:
+            # If the solution has an error or we don't know, check the finalization
+            if is_correct is False or (is_correct is None and not model_says_correct):
                 # Extract finalization section
                 finalization_match = re.search(r'<finalization>(.*?)</finalization>', response_content, re.DOTALL)
                 if finalization_match:

@@ -66,10 +66,15 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             if full_solution is None:
                 return None
                 
-            # Extract is_correct flag
-            is_correct = example.get('is_correct', False)
+            # Extract is_correct flag - default to None if not available
+            is_correct = example.get('is_correct', None)
             if isinstance(is_correct, str):
-                is_correct = is_correct.lower() == 'true'
+                if is_correct.lower() == 'true':
+                    is_correct = True
+                elif is_correct.lower() == 'false':
+                    is_correct = False
+                else:
+                    is_correct = None
                 
             # Extract wrong_step if available
             wrong_step = example.get('wrong_step', None)
