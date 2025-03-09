@@ -365,6 +365,18 @@ class SolutionReward(BaseReward):
                     self.stats.reward_components['similarity_penalties'] = self.stats.reward_components.get('similarity_penalties', 0) + 1
                     self.logger.info(f"Applied similarity penalty: -{diversity_bonus:.3f}")
                 
+                # Update similarity stats with diversity bonus/penalty information
+                if diversity_bonus_applied > 0:
+                    self.stats.similarity_stats['diversity_bonuses'] = self.stats.similarity_stats.get('diversity_bonuses', 0) + 1
+                elif diversity_bonus_applied < 0:
+                    self.stats.similarity_stats['similarity_penalties'] = self.stats.similarity_stats.get('similarity_penalties', 0) + 1
+                
+                # Update group stats with diversity bonus/penalty information
+                if diversity_bonus_applied > 0:
+                    self.stats.group_stats['diversity_bonuses'] = self.stats.group_stats.get('diversity_bonuses', 0) + 1
+                elif diversity_bonus_applied < 0:
+                    self.stats.group_stats['similarity_penalties'] = self.stats.group_stats.get('similarity_penalties', 0) + 1
+                
             # Update group-specific statistics
             if is_correct:
                 self.stats.group_stats['correct_answers'] += 1
