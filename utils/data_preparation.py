@@ -142,8 +142,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             'full_solution': '',
             'is_correct': None,
             'wrong_step': None,
-            'example_type': 'solution',
-            'valid': False
+            'example_type': 'solution'
         }
     
     def prepare_finalization_example(example):
@@ -152,51 +151,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             if 'problem' not in example or not example['problem']:
                 return create_invalid_example(example)
                 
-            # If example is explicitly marked as correct, consider it valid
-            if example.get('is_correct', False) == True:
-                # Still need to extract data but skip validation checks
-                response = ''
-                steps = []
-                
-                # Try to extract response section if model_solution exists
-                if 'model_solution' in example and example['model_solution']:
-                    response = extract_response_section(example['model_solution'])
-                    if response:
-                        steps = split_into_steps(response)
-                
-                # Create partial solution with at least one step if available
-                partial_solution = ''
-                full_solution = ''
-                if steps:
-                    split_point = min(1, len(steps) - 1)
-                    partial_solutions = get_partial_solutions(steps[:split_point])
-                    full_solutions = get_partial_solutions(steps)
-                    
-                    if partial_solutions:
-                        partial_solution = partial_solutions[-1]
-                    if full_solutions:
-                        full_solution = full_solutions[-1]
-                
-                # Get the answer
-                answer = example.get('answer', '')
-                if not answer and 'correct_answer' in example:
-                    answer = example['correct_answer']
-                
-                # Create the prompt with the data we have
-                formatted_prompt = '<|im_start|>system\\n' + finalization_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
-                        f"Problem: {example.get('problem', '')}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
-                
-                return {
-                    'prompt': formatted_prompt,
-                    'answer': answer,
-                    'partial_solution': partial_solution,
-                    'full_solution': full_solution,
-                    'is_correct': example.get('is_correct', ''),
-                    'wrong_step': example.get('wrong_step', ''),
-                    'example_type': 'finalization',
-                    'valid': True
-                }
-            
             # Skip if no model_solution or if it's empty
             if 'model_solution' not in example or not example['model_solution']:
                 return create_invalid_example(example)
@@ -320,10 +274,10 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             logger.info(f"  Min: {min(token_counts)}")
             logger.info(f"  Max: {max(token_counts)}")
             logger.info(f"  Mean: {sum(token_counts)/len(token_counts):.2f}")
-            logger.info(f"  Examples > 2000 tokens: {sum(1 for t in token_counts if t > 2000)}")
+            logger.info(f"  Examples > 1500 tokens: {sum(1 for t in token_counts if t > 1500)}")
         
-        # Filter valid examples and those with token count <= 2000
-        finalization_data = processed_data.filter(lambda x: x['valid'] and x['token_count'] <= 2000)
+        # Filter valid examples and those with token count <= 1500
+        finalization_data = processed_data.filter(lambda x: x['valid'] and x['token_count'] <= 1500)
     else:
         # If no tokenizer, just filter valid examples
         finalization_data = processed_data.filter(lambda x: x['valid'])
