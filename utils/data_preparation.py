@@ -84,6 +84,11 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                 except (ValueError, TypeError):
                     wrong_step = None
             
+            # Skip examples that are not correct and don't have a wrong step
+            if is_correct is not True and (wrong_step is None or wrong_step == ''):
+                logger.info(f"Skipping tutor example that is not correct and has no wrong_step")
+                return None
+            
             # Format the prompt with the problem and full solution
             formatted_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Here is a mathematical problem and a proposed solution:\n\n" + \
