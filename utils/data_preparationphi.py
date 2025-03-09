@@ -52,6 +52,18 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
         if tokenizer:
             return len(tokenizer.encode(text))
         return len(text) // 4  # Rough estimate if no tokenizer provided
+        
+    # Default solution example template for correct solutions we don't keep
+    def create_solution_example(example):
+        return {
+            'prompt': "<|im_start|>system<|im_sep|>" + system_prompt + "<|im_end|><|im_start|>user<|im_sep|>" + example.get('problem', '') + "<|im_end|><|im_start|>assistant<|im_sep|>",
+            'answer': example.get('answer', example.get('correct_answer', '')),
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,
+            'wrong_step': None,
+            'example_type': 'solution'  # Mark as solution type
+        }
     
     def create_tutor_example(example):
         try:
@@ -97,6 +109,14 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             if is_correct is not True and (wrong_step is None or wrong_step == ''):
                 logger.info(f"Skipping tutor example that is not correct and has no wrong_step")
                 return None
+                
+            # For correct examples, keep only 10% as tutor examples, convert the rest to solution type
+            if is_correct is True and wrong_step is None:
+                # Use a deterministic approach based on example hash
+                example_hash = hash(str(example.get('problem', '')))
+                if example_hash % 10 != 0:  # Keep only 10% (when hash mod 10 equals 0)
+                    logger.info(f"Converting correct tutor example to solution type (90% filter)")
+                    return create_solution_example(example)
             
             # Format the prompt with the problem and full solution
             formatted_prompt = '<|im_start|>system<|im_sep|>' + system_prompt + '<|im_end|><|im_start|>user<|im_sep|>' + \
