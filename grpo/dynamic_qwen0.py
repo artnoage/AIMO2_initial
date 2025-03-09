@@ -208,9 +208,9 @@ def main():
         
     # Calculate token counts for system prompts
     solver_prompt_tokens = count_tokens(FULLSOLUTION_SYSTEM_PROMPT)
-    completion_prompt_tokens = count_tokens(COMPLETION_SYSTEM_PROMPT)
+    finalization_prompt_tokens = count_tokens(FINALIZATION_SYSTEM_PROMPT)
     logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
-    logger.info(f"Completion system prompt: {completion_prompt_tokens} tokens")
+    logger.info(f"Finalization system prompt: {finalization_prompt_tokens} tokens")
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(

@@ -591,10 +591,10 @@ class ProgrammingReward(BaseReward):
             self.logger.error(traceback.format_exc())
             return 0.0
 
-class CompletionReward(BaseReward):
-    """Reward class for solution completion evaluation"""
+class FinalizationReward(BaseReward):
+    """Reward class for solution finalization evaluation"""
     
-    __name__ = "completion_reward"
+    __name__ = "finalization_reward"
     relevant_stats = {
         'reward_components': ['base_rewards', 'step_continuity_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty', 'correct_answers', 'incorrect_answers', 'total_rewards', 'average_reward'],
         'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed'],
