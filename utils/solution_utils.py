@@ -162,7 +162,9 @@ STEP_NUMBER_PATTERNS = [
     re.compile(r'^.*?(\d+)[:.)](?:\s|$)'),   # Match "N." or "N)" at start
     re.compile(r'^\s*(\d+)\.\s'),            # Match "N. " at start
     re.compile(r'^\s*\((\d+)\)\s'),          # Match "(N) " at start
-    re.compile(r'^\s*Step\s*(\d+)$')         # Match just "Step N" at end of line
+    re.compile(r'^\s*Step\s*(\d+)$'),        # Match just "Step N" at end of line
+    # Add a pattern to check if Step is followed by a non-digit (to detect errors)
+    re.compile(r'^.*?Step\s+([^\d\s]+)')     # Match "Step X" where X is not a digit
 ]
 
 def has_thinking_section(solution: str) -> bool:
