@@ -267,45 +267,20 @@ class SolutionReward(BaseReward):
             has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
             if not has_thinking or not has_response:
                 return 0.0
-            # Count valid steps
-            step_count = count_manual_steps(completion)
-            if step_count > 0:
                 
-                # Check step ordering and uniqueness
-                response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
-                if response_parts:
-                    # Count occurrences of each step number
-                    step_counts = {i: len(re.findall(rf'Step\s*{i}[:.)\s]', response_parts[0], re.IGNORECASE)) 
-                                 for i in range(1, step_count + 1)}
-                    
-                    # Check if steps are properly closed
-                    opening_tags = len(re.findall(r'<step>', response_parts[0], re.IGNORECASE))
-                    closing_tags = len(re.findall(r'</step>', response_parts[0], re.IGNORECASE))
-                    steps_properly_closed = opening_tags == closing_tags
-                    
-                    # Extract properly formatted steps (each in its own tag)
-                    proper_steps = re.findall(r'<step>.*?Step\s+\d+:.*?</step>', response_parts[0], re.DOTALL)
-                    proper_step_count = len(proper_steps)
-                    
-                    # Check if each step is in its own tag
-                    steps_properly_tagged = proper_step_count == step_count
-                    
-                    # Check if steps are in order and each appears exactly once
-                    if all(count == 1 for count in step_counts.values()) and all(
-                        response_parts[0].find(f"Step {i}") < response_parts[0].find(f"Step {i+1}")
-                        for i in range(1, step_count)
-                    ) and steps_properly_closed and steps_properly_tagged:
-                        validation_reward += self.config.solution_ordered_steps_reward
-                        self.logger.info(f"Steps are in correct order, unique, and properly closed (+{self.config.solution_ordered_steps_reward})")
-                    elif not steps_properly_tagged:
-                        self.logger.info(f"Steps are not properly tagged: found {proper_step_count} properly tagged steps out of {step_count} total steps")
-                    else:
-                        # Log which steps are duplicated
-                        duplicates = [i for i, count in step_counts.items() if count > 1]
-                        if duplicates:
-                            self.logger.info(f"Duplicate steps found: {duplicates}")
-                        if not steps_properly_closed:
-                            self.logger.info(f"Step tags not properly closed: {opening_tags} opening, {closing_tags} closing")
+            # Extract response part and validate solution structure
+            response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if response_parts:
+                # Use the validate_solution method to check solution structure
+                from utils.solution_utils import validate_solution
+                
+                solution_valid, validation_reason = validate_solution(response_parts[0])
+                
+                if solution_valid:
+                    validation_reward += 0.2
+                    self.logger.info(f"Solution structure validation passed (+0.2)")
+                else:
+                    self.logger.info(f"Solution structure validation failed: {validation_reason}")
             
             reward += validation_reward
             if validation_reward > 0:

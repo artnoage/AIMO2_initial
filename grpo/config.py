@@ -37,6 +37,7 @@ class RewardConfig:
     solution_response_reward: float = 0.1  # For having response section
     solution_steps_reward: float = 0.1  # For having numbered steps
     solution_ordered_steps_reward: float = 0.1  # Additional for ordered steps
+    solution_validation_reward: float = 0.2  # For passing solution validation
     
     # Programming reward values
     structure_reward: float = 0.5  # Reward for having both thinking and response sections
