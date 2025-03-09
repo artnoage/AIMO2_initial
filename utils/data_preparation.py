@@ -164,7 +164,22 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             if not response:
                 return create_invalid_example(example)
                 
-            # Validate the solution structure first
+            # Check if the solution is marked as correct
+            is_correct = example.get('is_correct', None)
+            if isinstance(is_correct, str):
+                if is_correct.lower() == 'true':
+                    is_correct = True
+                elif is_correct.lower() == 'false':
+                    is_correct = False
+                else:
+                    is_correct = None
+            
+            # Skip if the solution is explicitly marked as incorrect
+            if is_correct is False:
+                logger.info(f"Skipping example with incorrect solution")
+                return create_invalid_example(example)
+                
+            # Validate the solution structure
             is_valid_solution, validation_reason = validate_solution(response)
             if not is_valid_solution:
                 logger.info(f"Invalid solution structure: {validation_reason}")
