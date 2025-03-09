@@ -233,9 +233,6 @@ class SolutionReward(BaseReward):
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
             correct_answer = kwargs.get('answer')
-            prompt = kwargs.get('prompt', '')
-            problem = kwargs.get('problem', '')
-            example_type = kwargs.get('example_type', '')
             
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
@@ -653,8 +650,6 @@ class FinalizationReward(BaseReward):
             else:
                 self.stats.reward_components['incorrect_answers'] = self.stats.reward_components.get('incorrect_answers', 0) + 1
                 
-            # Check step continuity using the validate_solution function
-            from utils.solution_utils import validate_solution
             
             # Extract steps from completion for logging purposes
             completion_steps = re.findall(r'<step>Step\s+(\d+):', completion, re.IGNORECASE)
@@ -795,30 +790,8 @@ class TutorReward(BaseReward):
             verdict_content = verdict_match.group(1).strip().lower()
             if 'correct' in verdict_content or 'right' in verdict_content:
                 return True
-            elif 'step' in verdict_content or 'incorrect' in verdict_content or 'wrong' in verdict_content:
+            else:
                 return False
-        
-        # Look for explicit statements about correctness
-        if re.search(r'(solution is correct|correct solution|solution works|solution is valid|the answer is correct)', completion.lower()):
-            return True
-        elif re.search(r'(solution is incorrect|incorrect solution|solution is wrong|wrong solution|error in|mistake in)', completion.lower()):
-            return False
-            
-        # Check for "The solution is..." followed by positive/negative assessment
-        solution_assessment = re.search(r'the solution is\s+(\w+)', completion.lower())
-        if solution_assessment:
-            assessment = solution_assessment.group(1).lower()
-            if assessment in ['correct', 'right', 'valid', 'accurate', 'good', 'perfect']:
-                return True
-            elif assessment in ['incorrect', 'wrong', 'invalid', 'inaccurate', 'bad', 'flawed']:
-                return False
-        
-        # Default to assuming the solution is incorrect if we find step mentions
-        if re.search(r'step\s+\d+', completion.lower()):
-            return False
-            
-        # Default to assuming the solution is correct if no clear indication
-        return True
         
     def _extract_wrong_step(self, completion: str) -> Optional[int]:
         """Extract which step the tutor identified as wrong"""
@@ -831,33 +804,7 @@ class TutorReward(BaseReward):
                 try:
                     return int(step_match.group(1))
                 except (ValueError, IndexError):
-                    pass
-        
-        # Look for step numbers in the context of errors
-        step_mentions = re.findall(r'(step|Step)\s+(\d+).*?(incorrect|wrong|error|mistake)', completion, re.DOTALL)
-        if step_mentions:
-            # Return the first mentioned wrong step
-            try:
-                return int(step_mentions[0][1])
-            except (ValueError, IndexError):
-                pass
-        
-        # Look for "The error is in Step X" pattern
-        error_in_step = re.search(r'(error|mistake|problem|issue).*?(step|Step)\s+(\d+)', completion, re.DOTALL)
-        if error_in_step:
-            try:
-                return int(error_in_step.group(3))
-            except (ValueError, IndexError):
-                pass
-                
-        # Look for more general mentions of step numbers
-        step_numbers = re.findall(r'(step|Step)\s+(\d+)', completion, re.DOTALL)
-        if step_numbers:
-            try:
-                return int(step_numbers[0][1])
-            except (ValueError, IndexError):
-                pass
-                
+                    pass                   
         return None
 
 
