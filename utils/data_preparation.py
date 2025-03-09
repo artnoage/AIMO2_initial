@@ -49,8 +49,8 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             return len(tokenizer.encode(text))
         return len(text) // 4  # Rough estimate if no tokenizer provided
         
-    # Default solution example template for correct solutions we don't keep
-    def create_solution_example(example):
+    # Default invalid example template - mark as solution type instead of using valid flag
+    def create_invalid_example(example):
         return {
             'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': example.get('answer', example.get('correct_answer', '')),
@@ -65,23 +65,23 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
         try:
             # Check if we have the required fields
             if 'problem' not in example or not example['problem']:
-                return None
+                return create_invalid_example(example)
                 
             if 'model_solution' not in example or not example['model_solution']:
-                return None
+                return create_invalid_example(example)
                 
             # Extract response part from model_solution
             response_match = re.search(r'<response>(.*?)</response>', example['model_solution'], re.DOTALL)
             full_solution = response_match.group(1).strip() if response_match else None
             
-            # If no response part found, return None
+            # If no response part found, return invalid example
             if full_solution is None:
-                return None
+                return create_invalid_example(example)
                 
             # Check if the solution contains the string "Begin with the first calculation or operation"
             if "Begin with the first calculation or operation" in example['model_solution']:
                 logger.info(f"Skipping tutor example with 'Begin with the first calculation or operation' instruction")
-                return None
+                return create_invalid_example(example)
                 
             # Extract is_correct flag - default to None if not available
             is_correct = example.get('is_correct', None)
@@ -104,7 +104,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             # Skip examples that are not correct and don't have a wrong step
             if is_correct is not True and (wrong_step is None or wrong_step == ''):
                 logger.info(f"Skipping tutor example that is not correct and has no wrong_step")
-                return None
+                return create_invalid_example(example)
                 
             # For correct examples, keep only 10% as tutor examples, convert the rest to solution type
             if is_correct is True and wrong_step is None:
@@ -112,7 +112,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                 example_hash = hash(str(example.get('problem', '')))
                 if example_hash % 20 != 0:  # Keep only 10% (when hash mod 10 equals 0)
                     logger.info(f"Converting correct tutor example to solution type (90% filter)")
-                    return create_solution_example(example)
+                    return create_invalid_example(example)
             
             # Format the prompt with the problem and full solution
             formatted_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
@@ -125,7 +125,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                 prompt_tokens = count_tokens(formatted_prompt)
                 if prompt_tokens > max_prompt_tokens:
                     logger.info(f"Tutor prompt too long ({prompt_tokens} tokens), skipping")
-                    return None
+                    return create_invalid_example(example)
             
             return {
                 'prompt': formatted_prompt,
@@ -138,15 +138,19 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             }
         except Exception as e:
             logger.warning(f"Error creating tutor example: {str(e)}")
-            return None
+            # Return as invalid on error
+            return create_invalid_example(example)
     
     # Process all examples
-    tutor_data = data.map(create_tutor_example)
+    processed_data = data.map(create_tutor_example)
     
-    # Filter out None values
-    tutor_data = tutor_data.filter(lambda x: x is not None)
+    # Filter to keep only tutor examples
+    tutor_data = processed_data.filter(lambda x: x.get('example_type') == 'tutor')
     
-    logger.info(f"Created {len(tutor_data)} tutor examples")
+    # Log validation results
+    logger.info(f"Total examples in dataset: {len(data)}")
+    logger.info(f"Tutor examples after processing: {len(tutor_data)}")
+    
     return tutor_data
 
 def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
