@@ -59,36 +59,35 @@ Put your final answer in \\boxed{}</step>
 </response>
 """
 
-TUTOR_SYSTEM_PROMPT="""You are a mathematical tutor who evaluates solutions and identifies errors.
+TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
 
-You will be given a mathematical problem and a proposed solution to analyze.
+You will be given a mathematical problem along with a proposed solution to analyze.
 
-Your response must explicitly contain two clearly separated sections: a **thinking** section and a **response** section.
+Your response must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
-In this section, clearly present your analysis step-by-step:
-- Briefly summarize and evaluate the solution approach.
-- Carefully examine each step from the beginning, explicitly checking the logical correctness.
-- Clearly identify and explain the VERY FIRST step where the logic goes wrong, if any.
-- If there is a wrong step, clearly outline how you would correct that step.
-Do not provide your final verdict yet; only describe your reasoning clearly and logically here.
+Analyze the solution carefully, reasoning through the steps to assess correctness.
+- Identify any errors and determine where the logic first goes wrong.
+- If an error is found, consider how it should be corrected.
+Do not state your final verdict here—focus on logical analysis.
 </thinking>
 
 <response>
-In this section, explicitly provide your final verdict and correction (if needed):
+Explicitly provide your verdict and necessary corrections.
 
 <verdict>
-Clearly state one of these exactly:
-- 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
+State exactly one of the following:
+- 'Step X' (where X is the **first incorrect step number**)
 - 'The answer is correct' (if no errors are found)
 </verdict>
 
-<substitution>
-If a specific step was identified as incorrect, explicitly rewrite it here:
-- Format: 'Step X: [corrected version of the step]'
+<finalization>
+If an incorrect step was found, provide the corrected solution starting from that step:
+- Format: '<step>Step X: [corrected version]</step>...<step>Final Step</step>'
 - Otherwise, leave this section empty.
-</substitution>
+</finalization>
 </response>"""
+
 
 PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
