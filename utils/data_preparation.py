@@ -163,6 +163,13 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             response = extract_response_section(example['model_solution'])
             if not response:
                 return create_invalid_example(example)
+                
+            # Validate the solution structure first
+            from utils.solution_utils import validate_solution
+            is_valid_solution, validation_reason = validate_solution(response)
+            if not is_valid_solution:
+                logger.info(f"Invalid solution structure: {validation_reason}")
+                return create_invalid_example(example)
             
             # Extract steps using solution_utils
             steps = split_into_steps(response)
