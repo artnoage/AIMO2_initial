@@ -55,7 +55,9 @@ class RewardStats:
             'correct_verdicts': 0,
             'incorrect_verdicts': 0,
             'correct_fixes': 0,
-            'incorrect_fixes': 0
+            'incorrect_fixes': 0,
+            'wrong_step_identified': 0,
+            'wrong_step_missed': 0
         }
         
         # Track group-specific stats
