@@ -114,7 +114,23 @@ def create_dataset_preview(dataset_path: str, output_path: str, num_examples: in
         example_type = example.get('example_type', 'unknown')
         if example_type not in examples_by_type:
             examples_by_type[example_type] = []
-        examples_by_type[example_type].append(example)
+        
+        # Check if example has all required fields
+        try:
+            # Basic validation to ensure we can process this example
+            if example_type == 'finalization' and not example.get('partial_solution'):
+                logger.warning(f"Skipping finalization example without partial_solution")
+                continue
+                
+            if example_type == 'tutor' and not example.get('full_solution'):
+                logger.warning(f"Skipping tutor example without full_solution")
+                continue
+                
+            # Add the example if it passes validation
+            examples_by_type[example_type].append(example)
+        except Exception as e:
+            logger.warning(f"Error processing example: {str(e)}")
+            continue
     
     # Create markdown content
     md_content = "# Dataset Preview\n\n"
