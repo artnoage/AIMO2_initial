@@ -165,8 +165,6 @@ class CustomChat:
             raise
 
 class CustomChat2:
-    """Chat model that implements the 'wait a second' pattern by getting a response,
-    modifying it with '...no wait a second', and then getting a second response"""
     
     def __init__(
         self,

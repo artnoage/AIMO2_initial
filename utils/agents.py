@@ -80,7 +80,6 @@ In this section, explicitly provide your final verdict and correction (if needed
 <verdict>
 Clearly state one of these exactly:
 - 'Step X' (where X is the FIRST step number where the logic becomes incorrect)
-- 'The whole approach is wrong' (if the approach is fundamentally flawed from the start)
 - 'The answer is correct' (if no errors are found)
 </verdict>
 
@@ -190,7 +189,7 @@ class TutorAgent:
                 f"Proposed Solution:\n{solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
 
 
@@ -208,7 +207,7 @@ class ProgrammingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 

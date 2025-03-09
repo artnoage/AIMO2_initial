@@ -301,7 +301,6 @@ class StepAnalyzer:
                 'model_solution': wrong_solution,
                 'is_correct': False,
                 'corrected_solution': correct_with_completion,
-                'wrong_step_index': wrong_step_index,
                 'wrong_step': wrong_step_number,  # Actual step number (1-based)
                 'total_steps': len(wrong_steps),
                 'position_category': position_category,

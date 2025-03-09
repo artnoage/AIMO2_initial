@@ -216,7 +216,6 @@ class SolutionReward(BaseReward):
     def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker):
         super().__init__(config)
         self.similarity_checker = similarity_checker
-        # Initialize the wait logger for tracking "wait a second" moments
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -264,7 +263,10 @@ class SolutionReward(BaseReward):
                 
             # Structure validation rewards
             validation_reward = 0.0
-            
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            if not has_thinking or not has_response:
+                return 0.0
             # Count valid steps
             step_count = count_manual_steps(completion)
             if step_count > 0:
