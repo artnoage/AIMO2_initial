@@ -40,6 +40,11 @@ class RewardConfig:
     execution_reward: float = 0.5  # Reward for code that executes and returns a float
     correctness_reward: float = 2.5 # Reward for code that returns the correct answer
     
+    # Tutor-specific settings
+    tutor_verdict_reward: float = 0.8  # For correct verdict
+    tutor_fix_reward: float = 2.0      # For correct fix
+    tutor_combined_reward: float = 3.0 # For correct verdict and fix
+    
     # Group-specific settings
     group_diversity_bonus: float = 1
     group_similarity_threshold: float = 0.8

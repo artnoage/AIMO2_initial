@@ -44,7 +44,18 @@ class RewardStats:
             'average_reward': 0.0,
             'solution_reward_uses': 0,
             'finalization_reward_uses': 0,
-            'programming_reward_uses': 0
+            'programming_reward_uses': 0,
+            'tutor_reward_uses': 0,
+            'correct_verdict_rewards': 0,
+            'correct_fix_rewards': 0
+        }
+        
+        # Track tutor stats
+        self.tutor_stats = {
+            'correct_verdicts': 0,
+            'incorrect_verdicts': 0,
+            'correct_fixes': 0,
+            'incorrect_fixes': 0
         }
         
         # Track group-specific stats

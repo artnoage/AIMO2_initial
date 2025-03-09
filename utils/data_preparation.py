@@ -36,6 +36,59 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return programming_data
 
+def prepare_tutor_data(data: Dataset, system_prompt: str) -> Dataset:
+    """Create examples for tutor tasks using the tutor-specific system prompt"""
+    logger.info("Creating tutor examples...")
+    
+    def create_tutor_example(example):
+        try:
+            # Check if we have the required fields
+            if 'problem' not in example or not example['problem']:
+                return None
+                
+            if 'model_solution' not in example or not example['model_solution']:
+                return None
+                
+            # Extract is_correct flag
+            is_correct = example.get('is_correct', False)
+            if isinstance(is_correct, str):
+                is_correct = is_correct.lower() == 'true'
+                
+            # Extract wrong_step if available
+            wrong_step = example.get('wrong_step', None)
+            if wrong_step is not None:
+                try:
+                    wrong_step = int(wrong_step)
+                except (ValueError, TypeError):
+                    wrong_step = None
+            
+            # Format the prompt with the problem and model solution
+            formatted_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+                f"Here is a mathematical problem and a proposed solution:\n\n" + \
+                f"Problem:\n{example['problem']}\n\n" + \
+                f"Proposed Solution:\n{example['model_solution']}<|im_end|>\\n<|im_start|>assistant\\n"
+            
+            return {
+                'prompt': formatted_prompt,
+                'answer': example.get('answer', example.get('correct_answer', '')),
+                'model_solution': example['model_solution'],
+                'is_correct': is_correct,
+                'wrong_step': wrong_step,
+                'example_type': 'tutor'
+            }
+        except Exception as e:
+            logger.warning(f"Error creating tutor example: {str(e)}")
+            return None
+    
+    # Process all examples
+    tutor_data = data.map(create_tutor_example)
+    
+    # Filter out None values
+    tutor_data = tutor_data.filter(lambda x: x is not None)
+    
+    logger.info(f"Created {len(tutor_data)} tutor examples")
+    return tutor_data
+
 def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                            tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for finalization tasks"""
@@ -396,21 +449,23 @@ def prepare_detailed_finalization_data(data: Dataset, system_prompt: str, tokeni
     return valid_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
-                          programming_system_prompt: str,
+                          programming_system_prompt: str, tutor_system_prompt: str = None,
                          tokenizer=None, distribution: Dict[str, float] = None) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
-    - 40% solution examples
-    - 40% programming examples
+    - 30% solution examples
+    - 30% programming examples
     - 20% finalization examples
+    - 20% tutor examples
     """
     # Default distribution if not provided
     if distribution is None:
         distribution = {
-            'solution': 0.40,
-            'programming': 0.40,
-            'finalization': 0.20
+            'solution': 0.30,
+            'programming': 0.30,
+            'finalization': 0.20,
+            'tutor': 0.20
         }
     
     # Check if we have model_solutions in the dataset
@@ -435,11 +490,18 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     programming_data = prepare_programming_data(data, programming_system_prompt)
     finalization_data = prepare_finalization_data(data, system_prompt, finalization_system_prompt, tokenizer, max_prompt_tokens=1500)
     
+    # Create tutor examples if tutor_system_prompt is provided
+    tutor_data = None
+    if tutor_system_prompt:
+        from utils.agents import TUTOR_SYSTEM_PROMPT
+        tutor_data = prepare_tutor_data(data, tutor_system_prompt or TUTOR_SYSTEM_PROMPT)
+    
     # Calculate the target number of examples for each type
     total_examples = len(data)
     solution_target = int(total_examples * distribution['solution'])
     programming_target = int(total_examples * distribution['programming'])
     finalization_target = int(total_examples * distribution['finalization'])
+    tutor_target = int(total_examples * distribution.get('tutor', 0)) if tutor_data else 0
     
     # Function to count example types in a dataset
     def count_types(dataset):
@@ -453,24 +515,36 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     logger.info(f"Created {len(solution_data)} full solution examples (target: {solution_target})")
     logger.info(f"Created {len(programming_data)} programming examples (target: {programming_target})")
     logger.info(f"Created {len(finalization_data)} finalization examples (target: {finalization_target})")
+    if tutor_data:
+        logger.info(f"Created {len(tutor_data)} tutor examples (target: {tutor_target})")
     
     # Shuffle and select examples for each type
     solution_data = solution_data.shuffle(seed=42)
     programming_data = programming_data.shuffle(seed=43)
     finalization_data = finalization_data.shuffle(seed=44)
+    if tutor_data:
+        tutor_data = tutor_data.shuffle(seed=45)
     
     solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
     programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
     finalization_data = finalization_data.select(range(min(finalization_target, len(finalization_data))))
+    if tutor_data:
+        tutor_data = tutor_data.select(range(min(tutor_target, len(tutor_data))))
     
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
     logger.info(f"Solution dataset: {count_types(solution_data)}")
     logger.info(f"Programming dataset: {count_types(programming_data)}")
     logger.info(f"Finalization dataset: {count_types(finalization_data)}")
+    if tutor_data:
+        logger.info(f"Tutor dataset: {count_types(tutor_data)}")
     
     # Combine all datasets
-    combined_data = concatenate_datasets([solution_data, programming_data, finalization_data])
+    datasets_to_combine = [solution_data, programming_data, finalization_data]
+    if tutor_data:
+        datasets_to_combine.append(tutor_data)
+    
+    combined_data = concatenate_datasets(datasets_to_combine)
     
     # Count types in the combined dataset
     combined_types = count_types(combined_data)
