@@ -170,7 +170,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 logger.info(f"Invalid solution structure: {validation_reason}")
                 return create_invalid_example(example)
             
-            # Extract steps using solution_utils
+            # Extract steps using solution_utils (now returns steps with tags)
             steps = split_into_steps(response)
             
             # Need at least 2 steps to create a partial solution

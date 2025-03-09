@@ -170,7 +170,8 @@ def main():
     logger.info(f"Sample example keys: {list(data[0].keys()) if len(data) > 0 else 'No examples'}")
     
     # Process the data using the imported function
-    valid_data = prepare_detailed_finalization_data(data, SYSTEM_PROMPT, tokenizer)
+    from utils.data_preparation import prepare_finalization_data
+    valid_data = prepare_finalization_data(data, SYSTEM_PROMPT, SYSTEM_PROMPT, tokenizer)
     
     # Shuffle and select examples
     valid_data = valid_data.shuffle(seed=11)

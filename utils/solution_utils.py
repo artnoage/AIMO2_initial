@@ -462,23 +462,30 @@ def split_into_steps(solution: str) -> List[str]:
     2. Traditional "Step N" format
     3. Multiple steps inside a single <step> tag
     
-    Returns a list of steps from the response section only.
+    Returns a list of steps from the response section only, with each step wrapped in <step> tags.
     """
     # First check for <step> tags
-    step_tags = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
-    if step_tags:
+    step_tags_with_content = re.findall(r'(<step>.*?</step>)', solution, re.DOTALL)
+    if step_tags_with_content:
+        # If we have step tags, extract them directly with tags included
+        return step_tags_with_content
+        
+    # Extract content from step tags to check for multiple steps in one tag
+    step_contents = re.findall(r'<step>(.*?)</step>', solution, re.DOTALL)
+    if step_contents:
         # If we have only one step tag but it contains multiple steps
-        if len(step_tags) == 1 and re.search(r'Step\s+\d+[\.:]', step_tags[0], re.IGNORECASE) and re.search(r'Step\s+\d+[\.:].*?Step\s+\d+[\.:]', step_tags[0], re.IGNORECASE | re.DOTALL):
+        if len(step_contents) == 1 and re.search(r'Step\s+\d+[\.:]', step_contents[0], re.IGNORECASE) and re.search(r'Step\s+\d+[\.:].*?Step\s+\d+[\.:]', step_contents[0], re.IGNORECASE | re.DOTALL):
             # Split the content of the single step tag by "Step"
-            parts = step_tags[0].split("Step")
+            parts = step_contents[0].split("Step")
             steps = []
             for step in parts[1:]:  # Skip the first part before "Step"
                 if step.strip():
                     full_step = "Step" + step
-                    steps.append(full_step.strip())
+                    # Wrap in <step> tags
+                    steps.append(f"<step>{full_step.strip()}</step>")
             return steps
-        # Otherwise just return the steps without thinking section
-        return step_tags
+        # Otherwise wrap each step in <step> tags
+        return [f"<step>{step}</step>" for step in step_contents]
     
     # Fall back to traditional "Step" keyword splitting
     parts = solution.split("Step")
@@ -488,14 +495,16 @@ def split_into_steps(solution: str) -> List[str]:
     steps = []
     # Process first part (potential analysis)
     if parts[0].strip() and ("analysis" in parts[0].lower() or "<thinking>" in parts[0]):
-        steps.append(parts[0].strip())
+        # Wrap in <step> tags if it's an analysis step
+        steps.append(f"<step>{parts[0].strip()}</step>")
         
     # Process numbered steps
     for step in parts[1:]:
         if step.strip():  # Skip empty steps
             # Reconstruct the step with its prefix
             full_step = "Step" + step
-            steps.append(full_step.strip())
+            # Wrap in <step> tags
+            steps.append(f"<step>{full_step.strip()}</step>")
             
     return steps
 
@@ -503,7 +512,7 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     """
     Generate partial solutions ending at each step.
     Each partial solution includes all previous steps.
-    Handles both traditional steps and <step> tag format.
+    Expects steps to be wrapped in <step> tags and preserves them.
     Does NOT wrap in <response> tags to match finalization_grpo.py behavior.
     """
     if not steps:
@@ -512,13 +521,10 @@ def get_partial_solutions(steps: List[str]) -> List[str]:
     partial_solutions = []
     current = ""
     
-    # Check if we're using <step> tags format
-    using_tags = any("<step>" in step or "</step>" in step for step in steps)
-    
-    # Process steps
+    # Process steps (all steps should already have <step> tags)
     for step in steps:
-        # For tagged format, wrap step in tags if not already wrapped
-        if using_tags and not (step.strip().startswith("<step>") and step.strip().endswith("</step>")):
+        # Ensure step has proper tags
+        if not (step.strip().startswith("<step>") and step.strip().endswith("</step>")):
             step = f"<step>{step}</step>"
             
         if current:
