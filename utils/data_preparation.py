@@ -3,7 +3,7 @@ import random
 import logging
 from typing import Dict
 from datasets import concatenate_datasets, Dataset
-from utils.solution_utils import (extract_response_section, split_into_steps, get_partial_solutions, has_response_section)
+from utils.solution_utils import (extract_response_section, split_into_steps, get_partial_solutions, has_response_section, validate_solution)
 
 # Setup logging
 logger = logging.getLogger('data_preparation')
@@ -165,7 +165,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                 return create_invalid_example(example)
                 
             # Validate the solution structure first
-            from utils.solution_utils import validate_solution
             is_valid_solution, validation_reason = validate_solution(response)
             if not is_valid_solution:
                 logger.info(f"Invalid solution structure: {validation_reason}")
@@ -176,25 +175,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             
             # Need at least 2 steps to create a partial solution
             if len(steps) < 2:
-                return create_invalid_example(example)
-            
-            # Verify step numbering
-            step_numbers = []
-            for step in steps:
-                # Look for step numbers like "Step 1:", "Step 2:" etc.
-                number_match = re.search(r'Step\s+(\d+):', step)
-                if not number_match:
-                    return create_invalid_example(example)
-                
-                try:
-                    step_num = int(number_match.group(1))
-                    step_numbers.append(step_num)
-                except ValueError:
-                    return create_invalid_example(example)
-            
-            # Check if step numbers are sequential
-            expected_numbers = list(range(1, len(steps) + 1))
-            if step_numbers != expected_numbers:
                 return create_invalid_example(example)
             
             # Use a deterministic approach based on example ID
