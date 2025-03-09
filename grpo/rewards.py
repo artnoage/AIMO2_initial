@@ -589,33 +589,6 @@ class FinalizationReward(BaseReward):
         super().__init__(config)
         self.similarity_checker = similarity_checker
 
-
-class TutorReward(BaseReward):
-    """Reward class for tutor evaluation of solutions and identification of errors"""
-    
-    __name__ = "tutor_reward"
-    relevant_stats = {
-        'reward_components': ['base_rewards', 'correct_verdict_rewards', 'correct_fix_rewards', 'total_length_penalty'],
-        'tutor_stats': ['correct_verdicts', 'incorrect_verdicts', 'correct_fixes', 'incorrect_fixes']
-    }
-    
-    def __init__(self, config: RewardConfig):
-        super().__init__(config)
-        
-        # Initialize tutor-specific stats
-        self.stats.tutor_stats = {
-            'correct_verdicts': 0,
-            'incorrect_verdicts': 0,
-            'correct_fixes': 0,
-            'incorrect_fixes': 0
-        }
-        
-        # Initialize tutor-specific reward components
-        self.stats.reward_components.update({
-            'correct_verdict_rewards': 0,
-            'correct_fix_rewards': 0
-        })
-        
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a solution completion"""
         try:
@@ -773,6 +746,34 @@ class TutorReward(BaseReward):
         except Exception as e:
             self.logger.error(f"Error calculating completion reward: {str(e)}")
             return 0.0
+        
+        
+class TutorReward(BaseReward):
+    """Reward class for tutor evaluation of solutions and identification of errors"""
+    
+    __name__ = "tutor_reward"
+    relevant_stats = {
+        'reward_components': ['base_rewards', 'correct_verdict_rewards', 'correct_fix_rewards', 'total_length_penalty'],
+        'tutor_stats': ['correct_verdicts', 'incorrect_verdicts', 'correct_fixes', 'incorrect_fixes']
+    }
+    
+    def __init__(self, config: RewardConfig):
+        super().__init__(config)
+        
+        # Initialize tutor-specific stats
+        self.stats.tutor_stats = {
+            'correct_verdicts': 0,
+            'incorrect_verdicts': 0,
+            'correct_fixes': 0,
+            'incorrect_fixes': 0
+        }
+        
+        # Initialize tutor-specific reward components
+        self.stats.reward_components.update({
+            'correct_verdict_rewards': 0,
+            'correct_fix_rewards': 0
+        })
+        
 
 
     async def calculate_reward(self, completion: str, **kwargs) -> float:
