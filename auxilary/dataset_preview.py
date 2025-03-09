@@ -17,8 +17,8 @@ if project_root not in sys.path:
 
 from utils.data_preparation import prepare_combined_data
 from utils.agents import (
-    SOLUTION_SYSTEM_PROMPT, 
-    PROGRAMMING_SYSTEM_PROMPT, 
+    FULLSOLUTION_SYSTEM_PROMPT, 
+    PROGRAMMER_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT, 
     TUTOR_SYSTEM_PROMPT
 )
@@ -101,9 +101,9 @@ def create_dataset_preview(dataset_path: str, output_path: str, num_examples: in
     logger.info("Preparing combined dataset with equal distribution")
     combined_data = prepare_combined_data(
         data,
-        SOLUTION_SYSTEM_PROMPT,
+        FULLSOLUTION_SYSTEM_PROMPT,
         FINALIZATION_SYSTEM_PROMPT,
-        PROGRAMMING_SYSTEM_PROMPT,
+        PROGRAMMER_SYSTEM_PROMPT,
         TUTOR_SYSTEM_PROMPT,
         distribution=distribution
     )
