@@ -88,8 +88,51 @@ def create_dataset_preview(dataset_path: str, output_path: str, num_examples: in
         output_path: Path to save the markdown preview
         num_examples: Number of examples of each type to include
     """
+    import time
+    
     logger.info(f"Loading dataset from {dataset_path}")
     data = load_from_disk(dataset_path)
+    
+    # Print all available tags/flags in the dataset
+    logger.info("Analyzing dataset tags and flags...")
+    
+    # Get all keys from the first example
+    if len(data) > 0:
+        first_example = data[0]
+        logger.info(f"Dataset fields: {list(first_example.keys())}")
+        
+        # Count occurrences of each field
+        field_counts = {}
+        for example in data:
+            for key in example:
+                field_counts[key] = field_counts.get(key, 0) + 1
+        
+        logger.info(f"Field occurrence counts: {field_counts}")
+        
+        # Check for boolean flags and their distributions
+        boolean_fields = ['is_correct']
+        for field in boolean_fields:
+            if field in field_counts:
+                true_count = sum(1 for ex in data if ex.get(field) is True)
+                false_count = sum(1 for ex in data if ex.get(field) is False)
+                none_count = sum(1 for ex in data if field in ex and ex.get(field) is None)
+                string_true = sum(1 for ex in data if isinstance(ex.get(field), str) and ex.get(field).lower() == 'true')
+                string_false = sum(1 for ex in data if isinstance(ex.get(field), str) and ex.get(field).lower() == 'false')
+                
+                logger.info(f"Field '{field}' distribution:")
+                logger.info(f"  True: {true_count}")
+                logger.info(f"  False: {false_count}")
+                logger.info(f"  None: {none_count}")
+                logger.info(f"  'true' (string): {string_true}")
+                logger.info(f"  'false' (string): {string_false}")
+        
+        # Check for wrong_step field
+        if 'wrong_step' in field_counts:
+            has_wrong_step = sum(1 for ex in data if ex.get('wrong_step') is not None and ex.get('wrong_step') != '')
+            logger.info(f"Examples with wrong_step: {has_wrong_step}")
+    
+    logger.info("Waiting 10 seconds before proceeding with dataset creation...")
+    time.sleep(10)
     
     # Create equal distribution of example types
     distribution = {
