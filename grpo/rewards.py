@@ -17,7 +17,7 @@ from utils.similarity_checker import SolutionSimilarityChecker
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-
+from utils.solution_utils import validate_solution
 class BaseReward(ABC):
     """Base class for reward calculation
     
@@ -272,7 +272,6 @@ class SolutionReward(BaseReward):
             response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
             if response_parts:
                 # Use the validate_solution method to check solution structure
-                from utils.solution_utils import validate_solution
                 
                 solution_valid, validation_reason = validate_solution(response_parts[0])
                 
