@@ -241,7 +241,6 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     
     return finalization_data
 
-# Wait data preparation function removed
 
 def prepare_detailed_finalization_data(data: Dataset, system_prompt: str, tokenizer=None) -> Dataset:
     """Create examples for finalization tasks with detailed validation"""
