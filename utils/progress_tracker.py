@@ -73,7 +73,13 @@ class ProgressTracker:
         most_common_correct = 0
         
         for r in entries:
-            matches = r.get('is_correct_list', [])
+            # First check for tutor solution benchmark format
+            if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
+                matches = r['initial_correctness']
+            else:
+                # Fall back to original format
+                matches = r.get('is_correct_list', [])
+                
             if matches:
                 # Check if any verdict matches
                 matches_count = sum(1 for match in matches if match)
@@ -87,7 +93,7 @@ class ProgressTracker:
                     above_avg += 1
                     
                 # Check most common verdict
-                if r.get('is_most_common_correct', False):
+                if r.get('is_most_common_correct', False) or r.get('initial_majority_correct', False):
                     most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
@@ -96,17 +102,17 @@ class ProgressTracker:
         stats['most_common_correct'] = most_common_correct
         
         # Tutor solution benchmark statistics
-        tutor_entries = [r for r in entries if 'initial_solution_correct' in r]
+        tutor_entries = [r for r in entries if 'initial_correctness' in r or 'final_correctness' in r]
         if tutor_entries:
             # Track best-of statistics
             all_initial_correctness = []
             for r in tutor_entries:
-                if 'initial_correctness' in r:
+                if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
                     all_initial_correctness.extend(r['initial_correctness'])
             
             if all_initial_correctness:
                 stats['total_initial_solutions'] = len(all_initial_correctness)
-                stats['total_initial_correct'] = sum(all_initial_correctness)
+                stats['total_initial_correct'] = sum(1 for x in all_initial_correctness if x)
                 stats['overall_initial_success_rate'] = (stats['total_initial_correct'] / stats['total_initial_solutions'] * 100) if stats['total_initial_solutions'] > 0 else 0
                 
                 # Calculate how many examples had at least one correct solution
@@ -122,12 +128,12 @@ class ProgressTracker:
             # Track final solution statistics
             all_final_correctness = []
             for r in tutor_entries:
-                if 'final_correctness' in r:
+                if 'final_correctness' in r and isinstance(r['final_correctness'], list):
                     all_final_correctness.extend(r['final_correctness'])
             
             if all_final_correctness:
                 stats['total_final_solutions'] = len(all_final_correctness)
-                stats['total_final_correct'] = sum(all_final_correctness)
+                stats['total_final_correct'] = sum(1 for x in all_final_correctness if x)
                 stats['overall_final_success_rate'] = (stats['total_final_correct'] / stats['total_final_solutions'] * 100) if stats['total_final_solutions'] > 0 else 0
             
             # Track final majority vote statistics
@@ -209,8 +215,14 @@ class ProgressTracker:
             
             # Track solution sources
             from collections import Counter
-            solution_sources = Counter(r.get('solution_source', 'unknown') for r in tutor_entries)
-            stats['solution_sources'] = dict(solution_sources)
+            solution_sources_counter = Counter()
+            for r in tutor_entries:
+                if 'solution_sources' in r and isinstance(r['solution_sources'], list):
+                    solution_sources_counter.update(r['solution_sources'])
+                elif 'solution_source' in r:
+                    solution_sources_counter[r.get('solution_source', 'unknown')] += 1
+            
+            stats['solution_sources'] = dict(solution_sources_counter)
         
         # Judge statistics
         judge_entries = [r for r in entries if r.get('judge_accuracy') is not None]
