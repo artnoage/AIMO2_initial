@@ -211,7 +211,7 @@ class BaseReward(ABC):
 class SolutionReward(BaseReward):
     """Reward class for group-based solution evaluation"""
     
-    __name__ = "group_reward"
+    __name__ = "solution_reward"
     relevant_stats = {
         'reward_components': ['base_rewards', 'validation_rewards', 'diversity_bonuses', 'similarity_penalties', 'total_length_penalty'],
         'group_stats': [
@@ -233,7 +233,7 @@ class SolutionReward(BaseReward):
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
             correct_answer = kwargs.get('answer')
-            
+            reward=0.0
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
                 return 0.0
@@ -244,34 +244,37 @@ class SolutionReward(BaseReward):
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
-                return 0.0
+                self.logger.info("Thre is not model_answer")
+                return reward
                 
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(str(correct_answer))
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")
-                return 0.0
+                return reward
                 
+                
+            # Structure validation rewards
+            
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            if not has_thinking or not has_response:
+                self.logger.debug("No thinking or response")
+                return reward
+            validation_reward = 0.0
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
-            reward = self.config.group_base_reward if is_correct else 0.0
             if is_correct:
-                reward = self.config.base_reward
+                reward += self.config.base_reward
                 self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
                 
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
-                
-            # Structure validation rewards
-            validation_reward = 0.0
-            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
-            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
-            if not has_thinking or not has_response:
-                return 0.0
-                
+
+
             # Extract response part and validate solution structure
             response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
             if response_parts:
@@ -883,15 +886,7 @@ class TutorReward(BaseReward):
             model_says_correct = self._extract_evaluation(completion)
             identified_step = self._extract_wrong_step(completion)
             
-            # If we don't have ground truth, we can't determine if the verdict is correct
-            if is_correct is None:
-                self.logger.info("No ground truth for solution correctness, skipping verdict evaluation")
-                # We'll still give a small reward for providing a structured verdict
-                if model_says_correct or identified_step is not None:
-                    verdict_reward = self.config.tutor_verdict_reward * 0.5
-                    reward += verdict_reward
-                    self.logger.info(f"Applied partial verdict reward (no ground truth): +{verdict_reward:.3f}")
-            elif is_correct:
+            if is_correct:
                 # Solution is correct, verdict should indicate correctness
                 if model_says_correct:
                     verdict_is_correct = True
@@ -907,14 +902,6 @@ class TutorReward(BaseReward):
                         verdict_is_correct = True
                         self.stats.tutor_stats['correct_verdicts'] += 1
                         self.logger.info(f"Correct verdict identifying wrong step {wrong_step}")
-                    elif wrong_step is None:
-                        # We know the solution is wrong but don't know which step
-                        # Give partial credit for identifying any step
-                        verdict_reward = self.config.tutor_verdict_reward * 0.7
-                        reward += verdict_reward
-                        self.logger.info(f"Applied partial verdict reward (step identified but no ground truth): +{verdict_reward:.3f}")
-                        # Skip the rest of the verdict evaluation
-                        verdict_is_correct = None
                     else:
                         self.stats.tutor_stats['incorrect_verdicts'] += 1
                         self.logger.info(f"Incorrect verdict: identified step {identified_step}, actual wrong step {wrong_step}")

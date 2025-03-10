@@ -11,20 +11,15 @@ class RewardConfig:
     timeout: int = 300
     
     # Completion reward parameters
-    step_continuity_reward: float = 1.0
-    
-    # Completion agent settings
-    completion_port: int = 8004
-    completion_temp: float = 0.7
-    completion_attempts: int = 10
+    step_continuity_reward: float = 0.5
     
     # Embedding model settings
     embedding_model: str = "sentence-transformers/all-mpnet-base-v2"  # Model with larger context support
     embedding_max_length: int = 512  # Increased context length
-    embedding_device: str = "cpu"  # Use GPU when available
+    embedding_device: str = "auto"  # Use GPU when available
     embedding_batch_size: int = 8  # Adjusted batch size for larger model
     embedding_fallback_to_cpu: bool = True  # Fallback to CPU if GPU fails
-    embedding_compute_on_cpu: bool = True # IMPORTANT: Use GPU for performance
+    embedding_compute_on_cpu: bool = False # IMPORTANT: Use GPU for performance
     
     # Common reward components
     base_reward: float = 3.0
