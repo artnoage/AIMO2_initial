@@ -70,7 +70,8 @@ class ProgressTracker:
         at_least_one = 0
         total_correct = 0
         above_avg = 0
-        most_common_correct = 0
+        initial_most_common_correct = 0
+        final_most_common_correct = 0
         
         for r in entries:
             # First check for tutor solution benchmark format
@@ -89,17 +90,49 @@ class ProgressTracker:
                 
                 # Calculate if above average (more than half of solutions are correct)
                 # This is different from most_common_correct which checks if the most frequent answer is correct
-                if len(matches) > 0 and matches_count / len(matches) > 0.5:
-                    above_avg += 1
+                initial_above_avg = 0
+                final_above_avg = 0
+        
+                for r in entries:
+                    # Initial solutions above average
+                    if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
+                        matches = r['initial_correctness']
+                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
+                            initial_above_avg += 1
+            
+                    # Final solutions above average
+                    if 'final_correctness' in r and isinstance(r['final_correctness'], list):
+                        matches = r['final_correctness']
+                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
+                            final_above_avg += 1
+            
+                    # Legacy format
+                    elif 'is_correct_list' in r:
+                        matches = r.get('is_correct_list', [])
+                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
+                            initial_above_avg += 1
+                            final_above_avg += 1
+        
+                stats['initial_above_avg'] = initial_above_avg
+                stats['final_above_avg'] = final_above_avg
                     
-                # Check most common verdict
-                if r.get('is_most_common_correct', False) or r.get('initial_majority_correct', False):
-                    most_common_correct += 1
+                # Check most common verdict - separate initial and final
+                if r.get('is_most_common_correct', False):
+                    # For traditional benchmark
+                    initial_most_common_correct += 1
+                    final_most_common_correct += 1
+                else:
+                    # For tutor solution benchmark
+                    if r.get('initial_majority_correct', False):
+                        initial_most_common_correct += 1
+                    if r.get('final_majority_correct', False):
+                        final_most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
         stats['above_avg'] = above_avg
-        stats['most_common_correct'] = most_common_correct
+        stats['initial_most_common_correct'] = initial_most_common_correct
+        stats['final_most_common_correct'] = final_most_common_correct
         
         # Tutor solution benchmark statistics
         tutor_entries = [r for r in entries if 'initial_correctness' in r or 'final_correctness' in r]
@@ -358,10 +391,14 @@ class ProgressTracker:
             f"- Problems with at least one correct solution: {batch_stats['at_least_one']}/{batch_stats['total']} "
             f"({(batch_stats['at_least_one']/batch_stats['total']*100):.1f}%)\n"
             f"- Average correct solutions per problem: {batch_stats['avg_correct']:.2f}\n"
-            f"- Problems with above average correct solutions: {batch_stats['above_avg']}/{batch_stats['total']} "
-            f"({(batch_stats['above_avg']/batch_stats['total']*100):.1f}%)\n"
-            f"- Problems where most common answer is correct: {batch_stats['most_common_correct']}/{batch_stats['total']} "
-            f"({(batch_stats['most_common_correct']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems with above average initial correct solutions: {batch_stats['initial_above_avg']}/{batch_stats['total']} "
+            f"({(batch_stats['initial_above_avg']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems with above average final correct solutions: {batch_stats['final_above_avg']}/{batch_stats['total']} "
+            f"({(batch_stats['final_above_avg']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems where initial most common answer is correct: {batch_stats['initial_most_common_correct']}/{batch_stats['total']} "
+            f"({(batch_stats['initial_most_common_correct']/batch_stats['total']*100):.1f}%)\n"
+            f"- Problems where final most common answer is correct: {batch_stats['final_most_common_correct']}/{batch_stats['total']} "
+            f"({(batch_stats['final_most_common_correct']/batch_stats['total']*100):.1f}%)\n"
         )
         
         # Tutor solution benchmark statistics if present
@@ -498,10 +535,14 @@ class ProgressTracker:
                 f"- Problems with at least one correct solution: {acc_stats['at_least_one']}/{acc_stats['total']} "
                 f"({(acc_stats['at_least_one']/acc_stats['total']*100):.1f}%)\n"
                 f"- Average correct solutions per problem: {acc_stats['avg_correct']:.2f}\n"
-                f"- Problems with above average correct solutions: {acc_stats['above_avg']}/{acc_stats['total']} "
-                f"({(acc_stats['above_avg']/acc_stats['total']*100):.1f}%)\n"
-                f"- Problems where most common answer is correct: {acc_stats['most_common_correct']}/{acc_stats['total']} "
-                f"({(acc_stats['most_common_correct']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems with above average initial correct solutions: {acc_stats['initial_above_avg']}/{acc_stats['total']} "
+                f"({(acc_stats['initial_above_avg']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems with above average final correct solutions: {acc_stats['final_above_avg']}/{acc_stats['total']} "
+                f"({(acc_stats['final_above_avg']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems where initial most common answer is correct: {acc_stats['initial_most_common_correct']}/{acc_stats['total']} "
+                f"({(acc_stats['initial_most_common_correct']/acc_stats['total']*100):.1f}%)\n"
+                f"- Problems where final most common answer is correct: {acc_stats['final_most_common_correct']}/{acc_stats['total']} "
+                f"({(acc_stats['final_most_common_correct']/acc_stats['total']*100):.1f}%)\n"
             )
             
             # Tutor solution benchmark statistics if present in accumulated stats
@@ -694,10 +735,14 @@ class ProgressTracker:
             f"- Problems with at least one correct solution: {final_stats['at_least_one']}/{total} "
             f"({(final_stats['at_least_one']/total*100) if total > 0 else 0:.1f}%)\n"
             f"- Average correct solutions per problem: {final_stats['avg_correct']:.2f}\n"
-            f"- Problems with above average correct solutions: {final_stats['above_avg']}/{total} "
-            f"({(final_stats['above_avg']/total*100) if total > 0 else 0:.1f}%)\n"
-            f"- Problems where most common answer is correct: {final_stats['most_common_correct']}/{total} "
-            f"({(final_stats['most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems with above average initial correct solutions: {final_stats['initial_above_avg']}/{total} "
+            f"({(final_stats['initial_above_avg']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems with above average final correct solutions: {final_stats['final_above_avg']}/{total} "
+            f"({(final_stats['final_above_avg']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems where initial most common answer is correct: {final_stats['initial_most_common_correct']}/{total} "
+            f"({(final_stats['initial_most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
+            f"- Problems where final most common answer is correct: {final_stats['final_most_common_correct']}/{total} "
+            f"({(final_stats['final_most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
         )
 
         # Tutor solution benchmark statistics if present
