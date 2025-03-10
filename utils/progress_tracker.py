@@ -69,68 +69,60 @@ class ProgressTracker:
         # Calculate correct verdicts
         at_least_one = 0
         total_correct = 0
-        above_avg = 0
+        initial_above_avg = 0
+        final_above_avg = 0
         initial_most_common_correct = 0
         final_most_common_correct = 0
         
         for r in entries:
-            # First check for tutor solution benchmark format
+            # Process initial solutions
+            initial_matches = None
             if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
-                matches = r['initial_correctness']
+                initial_matches = r['initial_correctness']
             else:
                 # Fall back to original format
-                matches = r.get('is_correct_list', [])
+                initial_matches = r.get('is_correct_list', [])
                 
-            if matches:
+            if initial_matches:
                 # Check if any verdict matches
-                matches_count = sum(1 for match in matches if match)
+                matches_count = sum(1 for match in initial_matches if match)
                 if matches_count > 0:
                     at_least_one += 1
                 total_correct += matches_count
                 
                 # Calculate if above average (more than half of solutions are correct)
-                # This is different from most_common_correct which checks if the most frequent answer is correct
-                initial_above_avg = 0
-                final_above_avg = 0
-        
-                for r in entries:
-                    # Initial solutions above average
-                    if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
-                        matches = r['initial_correctness']
-                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
-                            initial_above_avg += 1
+                if len(initial_matches) > 0 and matches_count / len(initial_matches) > 0.5:
+                    initial_above_avg += 1
             
-                    # Final solutions above average
-                    if 'final_correctness' in r and isinstance(r['final_correctness'], list):
-                        matches = r['final_correctness']
-                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
-                            final_above_avg += 1
-            
-                    # Legacy format
-                    elif 'is_correct_list' in r:
-                        matches = r.get('is_correct_list', [])
-                        if len(matches) > 0 and sum(1 for match in matches if match) / len(matches) > 0.5:
-                            initial_above_avg += 1
-                            final_above_avg += 1
-        
-                stats['initial_above_avg'] = initial_above_avg
-                stats['final_above_avg'] = final_above_avg
+            # Process final solutions
+            final_matches = None
+            if 'final_correctness' in r and isinstance(r['final_correctness'], list):
+                final_matches = r['final_correctness']
+                # Calculate if above average for final solutions
+                if len(final_matches) > 0:
+                    final_matches_count = sum(1 for match in final_matches if match)
+                    if final_matches_count / len(final_matches) > 0.5:
+                        final_above_avg += 1
+            elif not 'final_correctness' in r and initial_matches:
+                # If no final solutions, use initial for backward compatibility
+                final_above_avg = initial_above_avg
                     
-                # Check most common verdict - separate initial and final
-                if r.get('is_most_common_correct', False):
-                    # For traditional benchmark
+            # Check most common verdict - separate initial and final
+            if r.get('is_most_common_correct', False):
+                # For traditional benchmark
+                initial_most_common_correct += 1
+                final_most_common_correct += 1
+            else:
+                # For tutor solution benchmark
+                if r.get('initial_majority_correct', False):
                     initial_most_common_correct += 1
+                if r.get('final_majority_correct', False):
                     final_most_common_correct += 1
-                else:
-                    # For tutor solution benchmark
-                    if r.get('initial_majority_correct', False):
-                        initial_most_common_correct += 1
-                    if r.get('final_majority_correct', False):
-                        final_most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
-        stats['above_avg'] = above_avg
+        stats['initial_above_avg'] = initial_above_avg
+        stats['final_above_avg'] = final_above_avg
         stats['initial_most_common_correct'] = initial_most_common_correct
         stats['final_most_common_correct'] = final_most_common_correct
         
