@@ -98,6 +98,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             example["problem"]
         )
         
+        # Get initial solution correctness
+        initial_is_correct, initial_answer = await verifier.verify(initial_solution, correct_answer, example['problem'])
+        
         # Add statistics to logs
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -106,7 +109,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         logger.append(f"\n📊 Statistics:")
-        logger.append(f"├─ Initial solution correct? {await verifier.verify(initial_solution, correct_answer, example['problem'])[0]}")
+        logger.append(f"├─ Initial solution correct? {initial_is_correct}")
+        logger.append(f"├─ Initial answer: {initial_answer}")
         logger.append(f"├─ Tutor verdict: {verdict}")
         logger.append(f"├─ Solution used: {solution_source}")
         logger.append(f"├─ Final answer: {final_answer}")
@@ -141,10 +145,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            'initial_solution_correct': await verifier.verify(initial_solution, correct_answer, example['problem'])[0],
-            'tutor_verdict_correct': ("The answer is correct" in verdict) == await verifier.verify(initial_solution, correct_answer, example['problem'])[0],
+            'initial_solution_correct': initial_is_correct,
+            'tutor_verdict_correct': ("The answer is correct" in verdict) == initial_is_correct,
             'final_solution_correct': is_correct,
-            'solution_source': solution_source
+            'solution_source': solution_source,
+            'solution_improved': not initial_is_correct and is_correct,
+            'solution_worsened': initial_is_correct and not is_correct
         })
         
         return result_entries

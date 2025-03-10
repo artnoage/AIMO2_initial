@@ -95,6 +95,45 @@ class ProgressTracker:
         stats['above_avg'] = above_avg
         stats['most_common_correct'] = most_common_correct
         
+        # Tutor solution benchmark statistics
+        tutor_entries = [r for r in entries if 'initial_solution_correct' in r]
+        if tutor_entries:
+            # Count initial solution correctness
+            initial_solution_correct_count = sum(1 for r in tutor_entries if r.get('initial_solution_correct', False))
+            stats['initial_solution_correct_count'] = initial_solution_correct_count
+            stats['initial_solution_correct_rate'] = (initial_solution_correct_count / total * 100) if total > 0 else 0
+            
+            # Count tutor verdict correctness
+            tutor_verdict_correct_count = sum(1 for r in tutor_entries if r.get('tutor_verdict_correct', False))
+            stats['tutor_verdict_correct_count'] = tutor_verdict_correct_count
+            stats['tutor_verdict_correct_rate'] = (tutor_verdict_correct_count / total * 100) if total > 0 else 0
+            
+            # Count final solution correctness
+            final_solution_correct_count = sum(1 for r in tutor_entries if r.get('final_solution_correct', False))
+            stats['final_solution_correct_count'] = final_solution_correct_count
+            stats['final_solution_correct_rate'] = (final_solution_correct_count / total * 100) if total > 0 else 0
+            
+            # Count solutions improved or worsened by tutor
+            solutions_improved = 0
+            solutions_worsened = 0
+            for r in tutor_entries:
+                initial_correct = r.get('initial_solution_correct', False)
+                final_correct = r.get('final_solution_correct', False)
+                if not initial_correct and final_correct:
+                    solutions_improved += 1
+                elif initial_correct and not final_correct:
+                    solutions_worsened += 1
+                    
+            stats['solutions_improved_count'] = solutions_improved
+            stats['solutions_improved_rate'] = (solutions_improved / total * 100) if total > 0 else 0
+            stats['solutions_worsened_count'] = solutions_worsened
+            stats['solutions_worsened_rate'] = (solutions_worsened / total * 100) if total > 0 else 0
+            
+            # Track solution sources
+            from collections import Counter
+            solution_sources = Counter(r.get('solution_source', 'unknown') for r in tutor_entries)
+            stats['solution_sources'] = dict(solution_sources)
+        
         # Judge statistics
         judge_entries = [r for r in entries if r.get('judge_accuracy') is not None]
         if judge_entries:
@@ -235,6 +274,23 @@ class ProgressTracker:
             f"({(batch_stats['most_common_correct']/batch_stats['total']*100):.1f}%)\n"
         )
         
+        # Tutor solution benchmark statistics if present
+        if 'initial_solution_correct_count' in batch_stats:
+            stats_str += (
+                f"\nTutor Solution Benchmark Statistics:\n"
+                f"- Initial solution correct: {batch_stats['initial_solution_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['initial_solution_correct_rate']:.1f}%)\n"
+                f"- Tutor verdict correct: {batch_stats['tutor_verdict_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['tutor_verdict_correct_rate']:.1f}%)\n"
+                f"- Final solution correct: {batch_stats['final_solution_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['final_solution_correct_rate']:.1f}%)\n"
+                f"- Solutions improved by tutor: {batch_stats['solutions_improved_count']}/{batch_stats['total']} "
+                f"({batch_stats['solutions_improved_rate']:.1f}%)\n"
+                f"- Solutions worsened by tutor: {batch_stats['solutions_worsened_count']}/{batch_stats['total']} "
+                f"({batch_stats['solutions_worsened_rate']:.1f}%)\n"
+                f"- Solution sources: {batch_stats['solution_sources']}\n"
+            )
+            
         # Joined benchmark statistics if present
         if 'main_model_success_rate' in batch_stats:
             stats_str += (
@@ -328,6 +384,23 @@ class ProgressTracker:
                 f"- Problems where most common answer is correct: {acc_stats['most_common_correct']}/{acc_stats['total']} "
                 f"({(acc_stats['most_common_correct']/acc_stats['total']*100):.1f}%)\n"
             )
+            
+            # Tutor solution benchmark statistics if present in accumulated stats
+            if 'initial_solution_correct_count' in acc_stats:
+                stats_str += (
+                    f"\nTutor Solution Benchmark Statistics:\n"
+                    f"- Initial solution correct: {acc_stats['initial_solution_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['initial_solution_correct_rate']:.1f}%)\n"
+                    f"- Tutor verdict correct: {acc_stats['tutor_verdict_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['tutor_verdict_correct_rate']:.1f}%)\n"
+                    f"- Final solution correct: {acc_stats['final_solution_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['final_solution_correct_rate']:.1f}%)\n"
+                    f"- Solutions improved by tutor: {acc_stats['solutions_improved_count']}/{acc_stats['total']} "
+                    f"({acc_stats['solutions_improved_rate']:.1f}%)\n"
+                    f"- Solutions worsened by tutor: {acc_stats['solutions_worsened_count']}/{acc_stats['total']} "
+                    f"({acc_stats['solutions_worsened_rate']:.1f}%)\n"
+                    f"- Solution sources: {acc_stats['solution_sources']}\n"
+                )
             
             # Joined benchmark statistics if present in accumulated stats
             if 'main_model_success_rate' in acc_stats:
@@ -479,6 +552,23 @@ class ProgressTracker:
             f"({(final_stats['most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
         )
 
+        # Tutor solution benchmark statistics if present
+        if 'initial_solution_correct_count' in final_stats:
+            stats_str += (
+                f"\nTutor Solution Benchmark Statistics:\n"
+                f"- Initial solution correct: {final_stats['initial_solution_correct_count']}/{total} "
+                f"({final_stats['initial_solution_correct_rate']:.1f}%)\n"
+                f"- Tutor verdict correct: {final_stats['tutor_verdict_correct_count']}/{total} "
+                f"({final_stats['tutor_verdict_correct_rate']:.1f}%)\n"
+                f"- Final solution correct: {final_stats['final_solution_correct_count']}/{total} "
+                f"({final_stats['final_solution_correct_rate']:.1f}%)\n"
+                f"- Solutions improved by tutor: {final_stats['solutions_improved_count']}/{total} "
+                f"({final_stats['solutions_improved_rate']:.1f}%)\n"
+                f"- Solutions worsened by tutor: {final_stats['solutions_worsened_count']}/{total} "
+                f"({final_stats['solutions_worsened_rate']:.1f}%)\n"
+                f"- Solution sources: {final_stats['solution_sources']}\n"
+            )
+            
         # Joined benchmark statistics if present
         if 'main_model_success_rate' in final_stats:
             stats_str += (
