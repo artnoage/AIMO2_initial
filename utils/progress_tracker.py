@@ -98,11 +98,6 @@ class ProgressTracker:
         # Tutor solution benchmark statistics
         tutor_entries = [r for r in entries if 'initial_solution_correct' in r]
         if tutor_entries:
-            # Count initial solution correctness (first solution)
-            initial_solution_correct_count = sum(1 for r in tutor_entries if r.get('initial_solution_correct', False))
-            stats['initial_solution_correct_count'] = initial_solution_correct_count
-            stats['initial_solution_correct_rate'] = (initial_solution_correct_count / total * 100) if total > 0 else 0
-            
             # Track best-of statistics
             all_initial_correctness = []
             for r in tutor_entries:
@@ -119,15 +114,39 @@ class ProgressTracker:
                 stats['examples_with_at_least_one_correct'] = examples_with_at_least_one_correct
                 stats['examples_with_at_least_one_correct_rate'] = (examples_with_at_least_one_correct / total * 100) if total > 0 else 0
             
-            # Count tutor verdict correctness
-            tutor_verdict_correct_count = sum(1 for r in tutor_entries if r.get('tutor_verdict_correct', False))
-            stats['tutor_verdict_correct_count'] = tutor_verdict_correct_count
-            stats['tutor_verdict_correct_rate'] = (tutor_verdict_correct_count / total * 100) if total > 0 else 0
+            # Track majority vote statistics
+            initial_majority_correct_count = sum(1 for r in tutor_entries if r.get('initial_majority_correct', False))
+            stats['initial_majority_correct_count'] = initial_majority_correct_count
+            stats['initial_majority_correct_rate'] = (initial_majority_correct_count / total * 100) if total > 0 else 0
             
-            # Count final solution correctness
-            final_solution_correct_count = sum(1 for r in tutor_entries if r.get('final_solution_correct', False))
-            stats['final_solution_correct_count'] = final_solution_correct_count
-            stats['final_solution_correct_rate'] = (final_solution_correct_count / total * 100) if total > 0 else 0
+            # Track final solution statistics
+            all_final_correctness = []
+            for r in tutor_entries:
+                if 'final_correctness' in r:
+                    all_final_correctness.extend(r['final_correctness'])
+            
+            if all_final_correctness:
+                stats['total_final_solutions'] = len(all_final_correctness)
+                stats['total_final_correct'] = sum(all_final_correctness)
+                stats['overall_final_success_rate'] = (stats['total_final_correct'] / stats['total_final_solutions'] * 100) if stats['total_final_solutions'] > 0 else 0
+            
+            # Track final majority vote statistics
+            final_majority_correct_count = sum(1 for r in tutor_entries if r.get('final_majority_correct', False))
+            stats['final_majority_correct_count'] = final_majority_correct_count
+            stats['final_majority_correct_rate'] = (final_majority_correct_count / total * 100) if total > 0 else 0
+            
+            # Track improvement statistics
+            majority_vote_improved_count = sum(1 for r in tutor_entries if r.get('majority_vote_improved', False))
+            stats['majority_vote_improved_count'] = majority_vote_improved_count
+            stats['majority_vote_improved_rate'] = (majority_vote_improved_count / total * 100) if total > 0 else 0
+            
+            majority_vote_worsened_count = sum(1 for r in tutor_entries if r.get('majority_vote_worsened', False))
+            stats['majority_vote_worsened_count'] = majority_vote_worsened_count
+            stats['majority_vote_worsened_rate'] = (majority_vote_worsened_count / total * 100) if total > 0 else 0
+            
+            success_rate_improved_count = sum(1 for r in tutor_entries if r.get('success_rate_improved', False))
+            stats['success_rate_improved_count'] = success_rate_improved_count
+            stats['success_rate_improved_rate'] = (success_rate_improved_count / total * 100) if total > 0 else 0
             
             # Count solutions improved or worsened by tutor
             solutions_improved = 0
@@ -337,27 +356,33 @@ class ProgressTracker:
         if 'initial_solution_correct_count' in batch_stats:
             stats_str += (
                 f"\nTutor Solution Benchmark Statistics:\n"
-                f"- Initial solution correct (first attempt): {batch_stats['initial_solution_correct_count']}/{batch_stats['total']} "
-                f"({batch_stats['initial_solution_correct_rate']:.1f}%)\n"
+                f"- Initial Solutions Statistics:\n"
             )
             
             # Add best-of statistics if available
             if 'total_initial_solutions' in batch_stats:
                 stats_str += (
-                f"- Total initial solutions: {batch_stats['total_initial_solutions']}\n"
-                f"- Total correct initial solutions: {batch_stats['total_initial_correct']}/{batch_stats['total_initial_solutions']} "
+                f"  - Total initial solutions: {batch_stats['total_initial_solutions']}\n"
+                f"  - Total correct initial solutions: {batch_stats['total_initial_correct']}/{batch_stats['total_initial_solutions']} "
                 f"({batch_stats['overall_initial_success_rate']:.1f}%)\n"
-                f"- Examples with at least one correct solution: {batch_stats['examples_with_at_least_one_correct']}/{batch_stats['total']} "
+                f"  - Examples with at least one correct solution: {batch_stats['examples_with_at_least_one_correct']}/{batch_stats['total']} "
                 f"({batch_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
-                f"- Tutor verdict correct: {batch_stats['tutor_verdict_correct_count']}/{batch_stats['total']} "
-                f"({batch_stats['tutor_verdict_correct_rate']:.1f}%)\n"
-                f"- Final solution correct: {batch_stats['final_solution_correct_count']}/{batch_stats['total']} "
-                f"({batch_stats['final_solution_correct_rate']:.1f}%)\n"
-                f"- Solutions improved by tutor: {batch_stats['solutions_improved_count']}/{batch_stats['total']} "
-                f"({batch_stats['solutions_improved_rate']:.1f}%)\n"
-                f"- Solutions worsened by tutor: {batch_stats['solutions_worsened_count']}/{batch_stats['total']} "
-                f"({batch_stats['solutions_worsened_rate']:.1f}%)\n"
-                f"- Solution sources: {batch_stats['solution_sources']}\n"
+                f"  - Initial majority vote correct: {batch_stats['initial_majority_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['initial_majority_correct_rate']:.1f}%)\n"
+                f"\n- Final Solutions Statistics:\n"
+                f"  - Total final solutions: {batch_stats['total_final_solutions']}\n"
+                f"  - Total correct final solutions: {batch_stats['total_final_correct']}/{batch_stats['total_final_solutions']} "
+                f"({batch_stats['overall_final_success_rate']:.1f}%)\n"
+                f"  - Final majority vote correct: {batch_stats['final_majority_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['final_majority_correct_rate']:.1f}%)\n"
+                f"\n- Improvement Statistics:\n"
+                f"  - Majority vote improved: {batch_stats['majority_vote_improved_count']}/{batch_stats['total']} "
+                f"({batch_stats['majority_vote_improved_rate']:.1f}%)\n"
+                f"  - Majority vote worsened: {batch_stats['majority_vote_worsened_count']}/{batch_stats['total']} "
+                f"({batch_stats['majority_vote_worsened_rate']:.1f}%)\n"
+                f"  - Overall success rate improved: {batch_stats['success_rate_improved_count']}/{batch_stats['total']} "
+                f"({batch_stats['success_rate_improved_rate']:.1f}%)\n"
+                f"  - Solution sources: {batch_stats['solution_sources']}\n"
             )
             
             # Add quality improvement statistics if available
@@ -471,27 +496,33 @@ class ProgressTracker:
             if 'initial_solution_correct_count' in acc_stats:
                 stats_str += (
                     f"\nTutor Solution Benchmark Statistics:\n"
-                    f"- Initial solution correct (first attempt): {acc_stats['initial_solution_correct_count']}/{acc_stats['total']} "
-                    f"({acc_stats['initial_solution_correct_rate']:.1f}%)\n"
+                    f"- Initial Solutions Statistics:\n"
                 )
                 
                 # Add best-of statistics if available
                 if 'total_initial_solutions' in acc_stats:
                     stats_str += (
-                    f"- Total initial solutions: {acc_stats['total_initial_solutions']}\n"
-                    f"- Total correct initial solutions: {acc_stats['total_initial_correct']}/{acc_stats['total_initial_solutions']} "
+                    f"  - Total initial solutions: {acc_stats['total_initial_solutions']}\n"
+                    f"  - Total correct initial solutions: {acc_stats['total_initial_correct']}/{acc_stats['total_initial_solutions']} "
                     f"({acc_stats['overall_initial_success_rate']:.1f}%)\n"
-                    f"- Examples with at least one correct solution: {acc_stats['examples_with_at_least_one_correct']}/{acc_stats['total']} "
+                    f"  - Examples with at least one correct solution: {acc_stats['examples_with_at_least_one_correct']}/{acc_stats['total']} "
                     f"({acc_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
-                    f"- Tutor verdict correct: {acc_stats['tutor_verdict_correct_count']}/{acc_stats['total']} "
-                    f"({acc_stats['tutor_verdict_correct_rate']:.1f}%)\n"
-                    f"- Final solution correct: {acc_stats['final_solution_correct_count']}/{acc_stats['total']} "
-                    f"({acc_stats['final_solution_correct_rate']:.1f}%)\n"
-                    f"- Solutions improved by tutor: {acc_stats['solutions_improved_count']}/{acc_stats['total']} "
-                    f"({acc_stats['solutions_improved_rate']:.1f}%)\n"
-                    f"- Solutions worsened by tutor: {acc_stats['solutions_worsened_count']}/{acc_stats['total']} "
-                    f"({acc_stats['solutions_worsened_rate']:.1f}%)\n"
-                    f"- Solution sources: {acc_stats['solution_sources']}\n"
+                    f"  - Initial majority vote correct: {acc_stats['initial_majority_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['initial_majority_correct_rate']:.1f}%)\n"
+                    f"\n- Final Solutions Statistics:\n"
+                    f"  - Total final solutions: {acc_stats['total_final_solutions']}\n"
+                    f"  - Total correct final solutions: {acc_stats['total_final_correct']}/{acc_stats['total_final_solutions']} "
+                    f"({acc_stats['overall_final_success_rate']:.1f}%)\n"
+                    f"  - Final majority vote correct: {acc_stats['final_majority_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['final_majority_correct_rate']:.1f}%)\n"
+                    f"\n- Improvement Statistics:\n"
+                    f"  - Majority vote improved: {acc_stats['majority_vote_improved_count']}/{acc_stats['total']} "
+                    f"({acc_stats['majority_vote_improved_rate']:.1f}%)\n"
+                    f"  - Majority vote worsened: {acc_stats['majority_vote_worsened_count']}/{acc_stats['total']} "
+                    f"({acc_stats['majority_vote_worsened_rate']:.1f}%)\n"
+                    f"  - Overall success rate improved: {acc_stats['success_rate_improved_count']}/{acc_stats['total']} "
+                    f"({acc_stats['success_rate_improved_rate']:.1f}%)\n"
+                    f"  - Solution sources: {acc_stats['solution_sources']}\n"
                 )
                 
                 # Add quality improvement statistics if available
@@ -661,27 +692,33 @@ class ProgressTracker:
         if 'initial_solution_correct_count' in final_stats:
             stats_str += (
                 f"\nTutor Solution Benchmark Statistics:\n"
-                f"- Initial solution correct (first attempt): {final_stats['initial_solution_correct_count']}/{total} "
-                f"({final_stats['initial_solution_correct_rate']:.1f}%)\n"
+                f"- Initial Solutions Statistics:\n"
             )
             
             # Add best-of statistics if available
             if 'total_initial_solutions' in final_stats:
                 stats_str += (
-                f"- Total initial solutions: {final_stats['total_initial_solutions']}\n"
-                f"- Total correct initial solutions: {final_stats['total_initial_correct']}/{final_stats['total_initial_solutions']} "
+                f"  - Total initial solutions: {final_stats['total_initial_solutions']}\n"
+                f"  - Total correct initial solutions: {final_stats['total_initial_correct']}/{final_stats['total_initial_solutions']} "
                 f"({final_stats['overall_initial_success_rate']:.1f}%)\n"
-                f"- Examples with at least one correct solution: {final_stats['examples_with_at_least_one_correct']}/{total} "
+                f"  - Examples with at least one correct solution: {final_stats['examples_with_at_least_one_correct']}/{total} "
                 f"({final_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
-                f"- Tutor verdict correct: {final_stats['tutor_verdict_correct_count']}/{total} "
-                f"({final_stats['tutor_verdict_correct_rate']:.1f}%)\n"
-                f"- Final solution correct: {final_stats['final_solution_correct_count']}/{total} "
-                f"({final_stats['final_solution_correct_rate']:.1f}%)\n"
-                f"- Solutions improved by tutor: {final_stats['solutions_improved_count']}/{total} "
-                f"({final_stats['solutions_improved_rate']:.1f}%)\n"
-                f"- Solutions worsened by tutor: {final_stats['solutions_worsened_count']}/{total} "
-                f"({final_stats['solutions_worsened_rate']:.1f}%)\n"
-                f"- Solution sources: {final_stats['solution_sources']}\n"
+                f"  - Initial majority vote correct: {final_stats['initial_majority_correct_count']}/{total} "
+                f"({final_stats['initial_majority_correct_rate']:.1f}%)\n"
+                f"\n- Final Solutions Statistics:\n"
+                f"  - Total final solutions: {final_stats['total_final_solutions']}\n"
+                f"  - Total correct final solutions: {final_stats['total_final_correct']}/{final_stats['total_final_solutions']} "
+                f"({final_stats['overall_final_success_rate']:.1f}%)\n"
+                f"  - Final majority vote correct: {final_stats['final_majority_correct_count']}/{total} "
+                f"({final_stats['final_majority_correct_rate']:.1f}%)\n"
+                f"\n- Improvement Statistics:\n"
+                f"  - Majority vote improved: {final_stats['majority_vote_improved_count']}/{total} "
+                f"({final_stats['majority_vote_improved_rate']:.1f}%)\n"
+                f"  - Majority vote worsened: {final_stats['majority_vote_worsened_count']}/{total} "
+                f"({final_stats['majority_vote_worsened_rate']:.1f}%)\n"
+                f"  - Overall success rate improved: {final_stats['success_rate_improved_count']}/{total} "
+                f"({final_stats['success_rate_improved_rate']:.1f}%)\n"
+                f"  - Solution sources: {final_stats['solution_sources']}\n"
             )
             
             # Add quality improvement statistics if available
