@@ -41,12 +41,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         # Get models for solution and tutor agents
+        # Get models for solution and tutor agents
         main_model = get_model(config, role="main")
-        tutor_model = get_model(config, role="main") 
-        
+        auxiliary_model=get_model(config, role="auxiliary")
         # Initialize agents
         solution_agent = FullSolutionAgent(main_model)
-        tutor_agent = TutorAgent(main_model)
+        tutor_agent = TutorAgent(auxiliary_model)
         
         # Generate initial solution
         prompt, initial_solution = await solution_agent.generate(example["problem"], return_prompt=True)
