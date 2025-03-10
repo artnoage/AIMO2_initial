@@ -79,9 +79,12 @@ class ProgressTracker:
             initial_matches = None
             if 'initial_correctness' in r and isinstance(r['initial_correctness'], list):
                 initial_matches = r['initial_correctness']
-            else:
+            elif 'is_correct_list' in r and isinstance(r['is_correct_list'], list):
                 # Fall back to original format
-                initial_matches = r.get('is_correct_list', [])
+                initial_matches = r['is_correct_list']
+            else:
+                # Create a single-item list for benchmarks that only report overall correctness
+                initial_matches = [r.get('is_correct', False)] if 'is_correct' in r else []
                 
             if initial_matches:
                 # Check if any verdict matches
@@ -117,6 +120,10 @@ class ProgressTracker:
                 if r.get('initial_majority_correct', False):
                     initial_most_common_correct += 1
                 if r.get('final_majority_correct', False):
+                    final_most_common_correct += 1
+                # For hybrid benchmark
+                if r.get('most_common_correct', False):
+                    initial_most_common_correct += 1
                     final_most_common_correct += 1
                 
         stats['at_least_one'] = at_least_one
@@ -256,14 +263,20 @@ class ProgressTracker:
             stats['avg_judge_accuracy'] = sum(r['judge_accuracy'] for r in judge_entries) / len(judge_entries)
         
         # Step benchmark statistics from regular statistics entries
-        step_entries = [r for r in entries if 'wrong_steps_found' in r]
+        step_entries = [r for r in entries if 'wrong_steps_found' in r or 'wrong_step_found' in r]
         if step_entries:
             # Wrong step statistics
             wrong_steps_found = sum(r.get('wrong_steps_found', 0) for r in step_entries)
+            # Also count individual wrong_step_found entries (boolean)
+            wrong_steps_found += sum(1 for r in step_entries if r.get('wrong_step_found', False) and 'wrong_steps_found' not in r)
             stats['wrong_steps_found'] = wrong_steps_found
             
             # Position statistics
             position_values = [r.get('avg_wrong_step_position', 0) for r in step_entries if 'avg_wrong_step_position' in r]
+            # Also include individual wrong_step_index values
+            position_values.extend([r.get('wrong_step_index', 0) / r.get('total_steps', 1) 
+                                  for r in step_entries 
+                                  if 'wrong_step_index' in r and r.get('wrong_step_index', -1) >= 0 and 'total_steps' in r and r.get('total_steps', 0) > 0])
             if position_values:
                 stats['avg_wrong_step_position'] = sum(position_values) / len(position_values)
             
@@ -273,6 +286,8 @@ class ProgressTracker:
             for r in step_entries:
                 if 'position_distribution' in r:
                     position_dist.update(r['position_distribution'])
+                elif 'position_category' in r:
+                    position_dist[r['position_category']] = position_dist.get(r['position_category'], 0) + 1
             stats['position_distribution'] = dict(position_dist)
             
             # Recovery statistics
@@ -282,11 +297,14 @@ class ProgressTracker:
             
             # Completion score statistics
             completion_scores = [r.get('avg_completion_score', 0) for r in step_entries if 'avg_completion_score' in r]
+            completion_scores.extend([r.get('completion_score', 0) for r in step_entries if 'completion_score' in r and 'avg_completion_score' not in r])
             if completion_scores:
                 stats['avg_completion_score'] = sum(completion_scores) / len(completion_scores)
             
             # Unsalvageable statistics
             unsalvageable_counts = [r.get('unsalvageable_solutions', 0) for r in step_entries if 'unsalvageable_solutions' in r]
+            # Also count individual unsalvageable entries (boolean)
+            unsalvageable_counts.append(sum(1 for r in step_entries if r.get('unsalvageable', False) and 'unsalvageable_solutions' not in r))
             if unsalvageable_counts:
                 stats['unsalvageable_solutions'] = sum(unsalvageable_counts)
                 
@@ -296,6 +314,9 @@ class ProgressTracker:
                 if 'unsalvageable_reasons' in r:
                     for reason, count in r['unsalvageable_reasons'].items():
                         unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + count
+                elif 'unsalvageable_reason' in r and r.get('unsalvageable', False):
+                    reason = r['unsalvageable_reason']
+                    unsalvageable_reasons[reason] = unsalvageable_reasons.get(reason, 0) + 1
             stats['unsalvageable_reasons'] = unsalvageable_reasons
             
             # Section extraction statistics

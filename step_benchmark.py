@@ -675,7 +675,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'recovery_success_rate': len(wrong_step_positions) / len(incorrect_solutions[:3]) if incorrect_solutions else 0,
                     'unsalvageable_solutions': unsalvageable_solutions,
                     'unsalvageable_rate': unsalvageable_solutions / len(incorrect_solutions[:3]) if incorrect_solutions[:3] else 0,
-                    'unsalvageable_reasons': unsalvageable_reasons
+                    'unsalvageable_reasons': unsalvageable_reasons,
+                    # Add standard fields for compatibility with other benchmarks
+                    'is_correct_list': [s['is_correct'] for s in solutions],
+                    'is_most_common_correct': is_most_common_correct if 'is_most_common_correct' in locals() else False,
+                    'success_rate': (correct_count/len(solutions))*100 if len(solutions) > 0 else 0,
+                    'total_solutions': len(solutions),
+                    'correct_solutions': correct_count,
+                    'incorrect_solutions': len(solutions) - correct_count
                 })
         else:
             logger.append("\n" + "="*80)
@@ -703,11 +710,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'data_type': 'statistics',
                 'example_processed_successfully': True,
                 'is_correct_list': [s['is_correct'] for s in solutions],
+                'is_most_common_correct': is_most_common_correct,
                 'success_rate': success_rate,
                 'total_solutions': len(solutions),
                 'correct_solutions': correct_count,
                 'incorrect_solutions': len(solutions) - correct_count,
-                'total_steps': [len(split_into_steps(s['solution'])) for s in solutions]
+                'total_steps': [len(split_into_steps(s['solution'])) for s in solutions],
+                'solution_types': [s.get('solution_type', 'regular') for s in solutions]
             })
             
         # Print logs before returning results

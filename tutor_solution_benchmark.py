@@ -260,7 +260,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'solution_sources': solution_sources,
             'majority_vote_improved': final_majority_is_correct and not initial_majority_is_correct,
             'majority_vote_worsened': initial_majority_is_correct and not final_majority_is_correct,
-            'success_rate_improved': final_success_rate > initial_success_rate
+            'success_rate_improved': final_success_rate > initial_success_rate,
+            # Add standard fields for compatibility with other benchmarks
+            'is_correct_list': initial_correctness,  # For compatibility with standard benchmark
+            'is_most_common_correct': initial_majority_is_correct,  # For compatibility with standard benchmark
+            'total_solutions': len(initial_solutions),
+            'correct_solutions': sum(initial_correctness),
+            'incorrect_solutions': len(initial_correctness) - sum(initial_correctness)
         })
         
         return result_entries
