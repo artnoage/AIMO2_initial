@@ -42,11 +42,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Get models for solution and tutor agents
         main_model = get_model(config, role="main")
-        tutor_model = get_model(config, role="tutor") if config.use_separate_judge else main_model
+        tutor_model = get_model(config, role="main") 
         
         # Initialize agents
         solution_agent = FullSolutionAgent(main_model)
-        tutor_agent = TutorAgent(tutor_model)
+        tutor_agent = TutorAgent(main_model)
         
         # Generate initial solution
         prompt, initial_solution = await solution_agent.generate(example["problem"], return_prompt=True)
