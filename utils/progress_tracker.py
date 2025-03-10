@@ -98,10 +98,26 @@ class ProgressTracker:
         # Tutor solution benchmark statistics
         tutor_entries = [r for r in entries if 'initial_solution_correct' in r]
         if tutor_entries:
-            # Count initial solution correctness
+            # Count initial solution correctness (first solution)
             initial_solution_correct_count = sum(1 for r in tutor_entries if r.get('initial_solution_correct', False))
             stats['initial_solution_correct_count'] = initial_solution_correct_count
             stats['initial_solution_correct_rate'] = (initial_solution_correct_count / total * 100) if total > 0 else 0
+            
+            # Track best-of statistics
+            all_initial_correctness = []
+            for r in tutor_entries:
+                if 'initial_correctness' in r:
+                    all_initial_correctness.extend(r['initial_correctness'])
+            
+            if all_initial_correctness:
+                stats['total_initial_solutions'] = len(all_initial_correctness)
+                stats['total_initial_correct'] = sum(all_initial_correctness)
+                stats['overall_initial_success_rate'] = (stats['total_initial_correct'] / stats['total_initial_solutions'] * 100) if stats['total_initial_solutions'] > 0 else 0
+                
+                # Calculate how many examples had at least one correct solution
+                examples_with_at_least_one_correct = sum(1 for r in tutor_entries if r.get('initial_correctness') and any(r['initial_correctness']))
+                stats['examples_with_at_least_one_correct'] = examples_with_at_least_one_correct
+                stats['examples_with_at_least_one_correct_rate'] = (examples_with_at_least_one_correct / total * 100) if total > 0 else 0
             
             # Count tutor verdict correctness
             tutor_verdict_correct_count = sum(1 for r in tutor_entries if r.get('tutor_verdict_correct', False))
@@ -116,18 +132,61 @@ class ProgressTracker:
             # Count solutions improved or worsened by tutor
             solutions_improved = 0
             solutions_worsened = 0
+            
+            # Track quality improvements
+            initial_quality_sum = 0
+            final_quality_sum = 0
+            quality_improved_count = 0
+            quality_worsened_count = 0
+            
             for r in tutor_entries:
                 initial_correct = r.get('initial_solution_correct', False)
                 final_correct = r.get('final_solution_correct', False)
+                
+                # Binary correct/incorrect tracking
                 if not initial_correct and final_correct:
                     solutions_improved += 1
                 elif initial_correct and not final_correct:
                     solutions_worsened += 1
-                    
+                
+                # Quality tracking (how close to correct answer)
+                initial_quality = r.get('initial_solution_quality')
+                final_quality = r.get('final_solution_quality')
+                
+                if initial_quality is not None and final_quality is not None:
+                    # For numeric answers, we can compare how close they are to the correct answer
+                    # Lower is better (closer to correct)
+                    if isinstance(initial_quality, (int, float)) and isinstance(final_quality, (int, float)):
+                        initial_quality_sum += abs(initial_quality)
+                        final_quality_sum += abs(final_quality)
+                        
+                        # Count cases where quality improved or worsened
+                        if abs(final_quality) < abs(initial_quality):
+                            quality_improved_count += 1
+                        elif abs(final_quality) > abs(initial_quality):
+                            quality_worsened_count += 1
+            
+            # Store binary improvement/worsening stats
             stats['solutions_improved_count'] = solutions_improved
             stats['solutions_improved_rate'] = (solutions_improved / total * 100) if total > 0 else 0
             stats['solutions_worsened_count'] = solutions_worsened
             stats['solutions_worsened_rate'] = (solutions_worsened / total * 100) if total > 0 else 0
+            
+            # Store quality improvement stats
+            valid_quality_entries = sum(1 for r in tutor_entries if 
+                                      r.get('initial_solution_quality') is not None and 
+                                      r.get('final_solution_quality') is not None and
+                                      isinstance(r.get('initial_solution_quality'), (int, float)) and
+                                      isinstance(r.get('final_solution_quality'), (int, float)))
+            
+            if valid_quality_entries > 0:
+                stats['valid_quality_entries'] = valid_quality_entries
+                stats['initial_avg_quality'] = initial_quality_sum / valid_quality_entries
+                stats['final_avg_quality'] = final_quality_sum / valid_quality_entries
+                stats['quality_improved_count'] = quality_improved_count
+                stats['quality_improved_rate'] = (quality_improved_count / valid_quality_entries * 100)
+                stats['quality_worsened_count'] = quality_worsened_count
+                stats['quality_worsened_rate'] = (quality_worsened_count / valid_quality_entries * 100)
             
             # Track solution sources
             from collections import Counter
@@ -278,8 +337,18 @@ class ProgressTracker:
         if 'initial_solution_correct_count' in batch_stats:
             stats_str += (
                 f"\nTutor Solution Benchmark Statistics:\n"
-                f"- Initial solution correct: {batch_stats['initial_solution_correct_count']}/{batch_stats['total']} "
+                f"- Initial solution correct (first attempt): {batch_stats['initial_solution_correct_count']}/{batch_stats['total']} "
                 f"({batch_stats['initial_solution_correct_rate']:.1f}%)\n"
+            )
+            
+            # Add best-of statistics if available
+            if 'total_initial_solutions' in batch_stats:
+                stats_str += (
+                f"- Total initial solutions: {batch_stats['total_initial_solutions']}\n"
+                f"- Total correct initial solutions: {batch_stats['total_initial_correct']}/{batch_stats['total_initial_solutions']} "
+                f"({batch_stats['overall_initial_success_rate']:.1f}%)\n"
+                f"- Examples with at least one correct solution: {batch_stats['examples_with_at_least_one_correct']}/{batch_stats['total']} "
+                f"({batch_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
                 f"- Tutor verdict correct: {batch_stats['tutor_verdict_correct_count']}/{batch_stats['total']} "
                 f"({batch_stats['tutor_verdict_correct_rate']:.1f}%)\n"
                 f"- Final solution correct: {batch_stats['final_solution_correct_count']}/{batch_stats['total']} "
@@ -289,6 +358,19 @@ class ProgressTracker:
                 f"- Solutions worsened by tutor: {batch_stats['solutions_worsened_count']}/{batch_stats['total']} "
                 f"({batch_stats['solutions_worsened_rate']:.1f}%)\n"
                 f"- Solution sources: {batch_stats['solution_sources']}\n"
+            )
+            
+            # Add quality improvement statistics if available
+            if 'quality_improved_count' in batch_stats:
+                stats_str += (
+                f"\nSolution Quality Metrics:\n"
+                f"- Initial average quality: {batch_stats['initial_avg_quality']:.4f}\n"
+                f"- Final average quality: {batch_stats['final_avg_quality']:.4f}\n"
+                f"- Quality improvement: {(batch_stats['initial_avg_quality'] - batch_stats['final_avg_quality']):.4f}\n"
+                f"- Solutions with improved quality: {batch_stats['quality_improved_count']}/{batch_stats.get('valid_quality_entries', batch_stats['total'])} "
+                f"({batch_stats['quality_improved_rate']:.1f}%)\n"
+                f"- Solutions with worsened quality: {batch_stats['quality_worsened_count']}/{batch_stats.get('valid_quality_entries', batch_stats['total'])} "
+                f"({batch_stats['quality_worsened_rate']:.1f}%)\n"
             )
             
         # Joined benchmark statistics if present
@@ -389,8 +471,18 @@ class ProgressTracker:
             if 'initial_solution_correct_count' in acc_stats:
                 stats_str += (
                     f"\nTutor Solution Benchmark Statistics:\n"
-                    f"- Initial solution correct: {acc_stats['initial_solution_correct_count']}/{acc_stats['total']} "
+                    f"- Initial solution correct (first attempt): {acc_stats['initial_solution_correct_count']}/{acc_stats['total']} "
                     f"({acc_stats['initial_solution_correct_rate']:.1f}%)\n"
+                )
+                
+                # Add best-of statistics if available
+                if 'total_initial_solutions' in acc_stats:
+                    stats_str += (
+                    f"- Total initial solutions: {acc_stats['total_initial_solutions']}\n"
+                    f"- Total correct initial solutions: {acc_stats['total_initial_correct']}/{acc_stats['total_initial_solutions']} "
+                    f"({acc_stats['overall_initial_success_rate']:.1f}%)\n"
+                    f"- Examples with at least one correct solution: {acc_stats['examples_with_at_least_one_correct']}/{acc_stats['total']} "
+                    f"({acc_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
                     f"- Tutor verdict correct: {acc_stats['tutor_verdict_correct_count']}/{acc_stats['total']} "
                     f"({acc_stats['tutor_verdict_correct_rate']:.1f}%)\n"
                     f"- Final solution correct: {acc_stats['final_solution_correct_count']}/{acc_stats['total']} "
@@ -400,6 +492,19 @@ class ProgressTracker:
                     f"- Solutions worsened by tutor: {acc_stats['solutions_worsened_count']}/{acc_stats['total']} "
                     f"({acc_stats['solutions_worsened_rate']:.1f}%)\n"
                     f"- Solution sources: {acc_stats['solution_sources']}\n"
+                )
+                
+                # Add quality improvement statistics if available
+                if 'quality_improved_count' in acc_stats:
+                    stats_str += (
+                    f"\nSolution Quality Metrics:\n"
+                    f"- Initial average quality: {acc_stats['initial_avg_quality']:.4f}\n"
+                    f"- Final average quality: {acc_stats['final_avg_quality']:.4f}\n"
+                    f"- Quality improvement: {(acc_stats['initial_avg_quality'] - acc_stats['final_avg_quality']):.4f}\n"
+                    f"- Solutions with improved quality: {acc_stats['quality_improved_count']}/{acc_stats.get('valid_quality_entries', acc_stats['total'])} "
+                    f"({acc_stats['quality_improved_rate']:.1f}%)\n"
+                    f"- Solutions with worsened quality: {acc_stats['quality_worsened_count']}/{acc_stats.get('valid_quality_entries', acc_stats['total'])} "
+                    f"({acc_stats['quality_worsened_rate']:.1f}%)\n"
                 )
             
             # Joined benchmark statistics if present in accumulated stats
@@ -556,8 +661,18 @@ class ProgressTracker:
         if 'initial_solution_correct_count' in final_stats:
             stats_str += (
                 f"\nTutor Solution Benchmark Statistics:\n"
-                f"- Initial solution correct: {final_stats['initial_solution_correct_count']}/{total} "
+                f"- Initial solution correct (first attempt): {final_stats['initial_solution_correct_count']}/{total} "
                 f"({final_stats['initial_solution_correct_rate']:.1f}%)\n"
+            )
+            
+            # Add best-of statistics if available
+            if 'total_initial_solutions' in final_stats:
+                stats_str += (
+                f"- Total initial solutions: {final_stats['total_initial_solutions']}\n"
+                f"- Total correct initial solutions: {final_stats['total_initial_correct']}/{final_stats['total_initial_solutions']} "
+                f"({final_stats['overall_initial_success_rate']:.1f}%)\n"
+                f"- Examples with at least one correct solution: {final_stats['examples_with_at_least_one_correct']}/{total} "
+                f"({final_stats['examples_with_at_least_one_correct_rate']:.1f}%)\n"
                 f"- Tutor verdict correct: {final_stats['tutor_verdict_correct_count']}/{total} "
                 f"({final_stats['tutor_verdict_correct_rate']:.1f}%)\n"
                 f"- Final solution correct: {final_stats['final_solution_correct_count']}/{total} "
@@ -567,6 +682,19 @@ class ProgressTracker:
                 f"- Solutions worsened by tutor: {final_stats['solutions_worsened_count']}/{total} "
                 f"({final_stats['solutions_worsened_rate']:.1f}%)\n"
                 f"- Solution sources: {final_stats['solution_sources']}\n"
+            )
+            
+            # Add quality improvement statistics if available
+            if 'quality_improved_count' in final_stats:
+                stats_str += (
+                f"\nSolution Quality Metrics:\n"
+                f"- Initial average quality: {final_stats['initial_avg_quality']:.4f}\n"
+                f"- Final average quality: {final_stats['final_avg_quality']:.4f}\n"
+                f"- Quality improvement: {(final_stats['initial_avg_quality'] - final_stats['final_avg_quality']):.4f}\n"
+                f"- Solutions with improved quality: {final_stats['quality_improved_count']}/{final_stats.get('valid_quality_entries', total)} "
+                f"({final_stats['quality_improved_rate']:.1f}%)\n"
+                f"- Solutions with worsened quality: {final_stats['quality_worsened_count']}/{final_stats.get('valid_quality_entries', total)} "
+                f"({final_stats['quality_worsened_rate']:.1f}%)\n"
             )
             
         # Joined benchmark statistics if present

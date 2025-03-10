@@ -41,15 +41,37 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         # Get models for solution and tutor agents
-        # Get models for solution and tutor agents
         main_model = get_model(config, role="main")
-        auxiliary_model=get_model(config, role="auxiliary")
+        auxiliary_model = get_model(config, role="auxiliary")
+        
         # Initialize agents
         solution_agent = FullSolutionAgent(main_model)
         tutor_agent = TutorAgent(auxiliary_model)
         
-        # Generate initial solution
-        prompt, initial_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+        # Generate multiple initial solutions if best_of > 1
+        initial_solutions = []
+        initial_correctness = []
+        initial_answers = []
+        
+        for attempt in range(config.best_of):
+            prompt, current_solution = await solution_agent.generate(example["problem"], return_prompt=True)
+            
+            # Verify the solution
+            verifier = NumericVerifier(tolerance=config.tolerance)
+            is_correct, answer = await verifier.verify(
+                current_solution,
+                correct_answer,
+                example["problem"]
+            )
+            
+            initial_solutions.append(current_solution)
+            initial_correctness.append(is_correct)
+            initial_answers.append(answer)
+        
+        # Use the first solution for tutor evaluation
+        initial_solution = initial_solutions[0]
+        initial_is_correct = initial_correctness[0]
+        initial_answer = initial_answers[0]
         
         # Have tutor evaluate the solution
         tutor_response = await tutor_agent.find_first_wrong_step(
@@ -108,9 +130,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"\n📋 Problem:")
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
-        logger.append(f"\n📊 Statistics:")
-        logger.append(f"├─ Initial solution correct? {initial_is_correct}")
-        logger.append(f"├─ Initial answer: {initial_answer}")
+        logger.append(f"\n📊 Initial Solutions Statistics:")
+        
+        # Log all initial solutions
+        for i, (sol_correct, sol_answer) in enumerate(zip(initial_correctness, initial_answers)):
+            logger.append(f"├─ Solution {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
+        
+        # Calculate initial success rate
+        initial_success_rate = sum(initial_correctness) / len(initial_correctness) * 100 if initial_correctness else 0
+        logger.append(f"├─ Initial success rate: {initial_success_rate:.1f}%")
+        
+        logger.append(f"\n📊 Tutor Evaluation:")
         logger.append(f"├─ Tutor verdict: {verdict}")
         logger.append(f"├─ Solution used: {solution_source}")
         logger.append(f"├─ Final answer: {final_answer}")
@@ -145,12 +175,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            'initial_solution_correct': initial_is_correct,
+            'initial_solutions_count': len(initial_solutions),
+            'initial_correctness': initial_correctness,
+            'initial_answers': initial_answers,
+            'initial_success_rate': initial_success_rate,
+            'initial_solution_correct': initial_is_correct,  # First solution correctness
             'tutor_verdict_correct': ("The answer is correct" in verdict) == initial_is_correct,
             'final_solution_correct': is_correct,
             'solution_source': solution_source,
             'solution_improved': not initial_is_correct and is_correct,
-            'solution_worsened': initial_is_correct and not is_correct
+            'solution_worsened': initial_is_correct and not is_correct,
+            'initial_solution_quality': initial_answer,
+            'final_solution_quality': final_answer
         })
         
         return result_entries
