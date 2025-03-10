@@ -145,9 +145,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_all"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250309_190024"
+    model_type = "dynamic_1"
+    model_name = "Metaskepsis/Qlast"
+    dataset_name = "Metaskepsis/validation_Set"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -197,9 +197,9 @@ def main():
         max_seq_length=4596,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
-        max_lora_rank=64)
+        use_gradient_checkpointing=False,
+        gpu_memory_utilization=0.7,
+        max_lora_rank=128)
         
     # Function to count tokens in a string
     def count_tokens(text):
@@ -214,10 +214,10 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -237,15 +237,15 @@ def main():
         
         
         # Load the base dataset
-        data = load_from_disk(dataset_name)
+        data = load_dataset(dataset_name,split="train")
         
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.30,
-            'programming': 0.30,
-            'finalization': 0.20,
-            'tutor': 0.20
+            'solution': 1,
+            'programming': 0,
+            'finalization': 0.0,
+            'tutor': 0.0
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -262,28 +262,27 @@ def main():
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
     formatted_dataset = formatted_dataset.shuffle(seed=20)
-    # Use a reasonable number of examples
-    formatted_dataset = formatted_dataset.select(range(2000))
+
    
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=1,
+        torch_empty_cache_steps=10,
         learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.05,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=8,
         gradient_accumulation_steps=8,
         num_generations=8,
-        max_prompt_length=1596,
-        max_completion_length=3000,
+        max_prompt_length=800,
+        max_completion_length=3796,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
