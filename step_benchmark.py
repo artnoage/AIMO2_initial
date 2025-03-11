@@ -9,7 +9,13 @@ from utils.model_utils import *
 from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
-
+STEP_NUMBER_PATTERNS = [
+     re.compile(r'^.*?Step\s*(\d+)[:.)\s]'),  # Match "Step N" with various separators
+     re.compile(r'^.*?(\d+)[:.)](?:\s|$)'),   # Match "N." or "N)" at start
+     re.compile(r'^\s*(\d+)\.\s'),            # Match "N. " at start
+     re.compile(r'^\s*\((\d+)\)\s'),          # Match "(N) " at start
+     re.compile(r'^\s*Step\s*(\d+)$')         # Match just "Step N" at end of line
+ ]
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -358,7 +364,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main_model = get_model(config, role="main")
         
         solution_agent = FullSolutionAgent(main_model)
-        completion_agent = CompletionAgent(main_model)
+        completion_agent = FinalizationAgent(main_model)
         
         # Create numeric verifier
         verifier = NumericVerifier(tolerance=config.tolerance)
@@ -678,7 +684,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'unsalvageable_reasons': unsalvageable_reasons,
                     # Add standard fields for compatibility with other benchmarks
                     'is_correct_list': [s['is_correct'] for s in solutions],
-                    'is_most_common_correct': is_most_common_correct if 'is_most_common_correct' in locals() else False,
                     'success_rate': (correct_count/len(solutions))*100 if len(solutions) > 0 else 0,
                     'total_solutions': len(solutions),
                     'correct_solutions': correct_count,
@@ -710,7 +715,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'data_type': 'statistics',
                 'example_processed_successfully': True,
                 'is_correct_list': [s['is_correct'] for s in solutions],
-                'is_most_common_correct': is_most_common_correct,
                 'success_rate': success_rate,
                 'total_solutions': len(solutions),
                 'correct_solutions': correct_count,
