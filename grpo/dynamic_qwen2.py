@@ -145,9 +145,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_all"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_0/20250306_213059"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250309_190024"
+    model_type = "dynamic_all_2"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all/20250310_142606"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250311_204732"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -263,7 +263,7 @@ def main():
     # Shuffle the combined dataset
     formatted_dataset = formatted_dataset.shuffle(seed=17)
     # Use a reasonable number of examples
-    formatted_dataset = formatted_dataset.select(range(2000))
+    formatted_dataset = formatted_dataset.select(range(3000))
    
         
     # GRPO specific training arguments
