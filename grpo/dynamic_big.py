@@ -145,9 +145,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_all_3"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all/20250310_142606"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250309_190024"
+    model_type = "dynamic_big"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -194,11 +194,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4596,
+        max_seq_length=3000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
+        gpu_memory_utilization=0.75,
         max_lora_rank=64)
         
     # Function to count tokens in a string
@@ -237,15 +237,15 @@ def main():
         
         
         # Load the base dataset
-        data = load_from_disk(dataset_name)
+        data = load_dataset(dataset_name,split="train")
         
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
             'solution': 0.30,
-            'programming': 0.30,
-            'finalization': 0.20,
-            'tutor': 0.20
+            'programming': 0.70,
+            'finalization': 0.0,
+            'tutor': 0.0
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -275,15 +275,15 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.1,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=16,
-        num_generations=8,
-        max_prompt_length=1596,
-        max_completion_length=3000,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=8,
+        num_generations=5,
+        max_prompt_length=800,
+        max_completion_length=2200,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

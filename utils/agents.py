@@ -58,6 +58,22 @@ Put your final answer in \\boxed{}</step>
 </response>
 """
 
+SIMPLE_FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+<response>
+<step>Step 1: Begin with the first calculation or operation
+Show your work clearly using LaTeX notation</step>
+
+<step>Step 2: Continue with the next logical step
+Each step should be numbered and self-contained</step>
+
+<step>Step N: In your final step, state your conclusion
+Put your final answer in \\boxed{}</step>
+</response>
+"""
+
+
+
+
 TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
 
 You will be given a mathematical problem along with a proposed solution to analyze.
@@ -162,7 +178,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
@@ -205,7 +221,7 @@ class ProgrammingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 

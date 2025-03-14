@@ -146,8 +146,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_all_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all/20250310_142606"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250311_204732"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_2/20250311_220626"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -194,11 +194,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4596,
+        max_seq_length=3000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
+        gpu_memory_utilization=0.66,
         max_lora_rank=64)
         
     # Function to count tokens in a string
@@ -237,15 +237,15 @@ def main():
         
         
         # Load the base dataset
-        data = load_from_disk(dataset_name)
+        data = load_dataset(dataset_name,split="train")
         
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.30,
-            'programming': 0.30,
-            'finalization': 0.20,
-            'tutor': 0.20
+            'solution': 0.5,
+            'programming': 0.5,
+            'finalization': 0,
+            'tutor': 0
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -261,7 +261,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=17)
+    formatted_dataset = formatted_dataset.shuffle(seed=23)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    
@@ -279,11 +279,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=10,
         gradient_accumulation_steps=16,
-        num_generations=8,
-        max_prompt_length=1596,
-        max_completion_length=3000,
+        num_generations=10,
+        max_prompt_length=800,
+        max_completion_length=2200,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

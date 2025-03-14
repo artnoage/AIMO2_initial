@@ -42,7 +42,8 @@ class OpenRouterChat:
         payload = {
             "model": self.model,
             "messages": messages,
-            "temperature": self.temperature
+            "temperature": self.temperature,
+            "stream" : False
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
@@ -409,7 +410,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
             api_key=openrouter_api_key)
 
 
-def async_retry(max_retries: int = 3, timeout: int = 500):
+def async_retry(max_retries: int = 3, timeout: int = 120):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -431,7 +432,7 @@ def async_retry(max_retries: int = 3, timeout: int = 500):
         return wrapper
     return decorator
 
-@async_retry(max_retries=3, timeout=500)
+@async_retry(max_retries=3, timeout=120)
 async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
     try:

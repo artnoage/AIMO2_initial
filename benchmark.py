@@ -40,6 +40,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         main = get_model(config, role="main")
+        #solution_agent = SimpleFullSolutionAgent(main)
         solution_agent = FullSolutionAgent(main)
         solutions = []
         correct_count = 0
