@@ -2,6 +2,7 @@ import os
 import asyncio
 import logging
 from typing import Optional, Dict, List, Tuple
+from collections import Counter
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
@@ -138,7 +139,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             final_answers.append(final_answer)
         
         # Calculate majority votes
-        from collections import Counter
         
         # Initial solutions majority vote
         initial_majority_correct = sum(initial_correctness) > len(initial_correctness) / 2
@@ -146,7 +146,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Get most common initial answer - use the same approach as in benchmark.py
         initial_majority_answer = None
         if initial_answers:
-            from collections import Counter
             initial_majority_answer = Counter(str(ans) for ans in initial_answers if ans is not None).most_common(1)[0][0] if any(ans is not None for ans in initial_answers) else None
         
         # Final solutions majority vote
