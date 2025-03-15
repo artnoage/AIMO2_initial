@@ -100,6 +100,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             tutor_verdicts.append(verdict)
             
             # Extract corrected solution if available
+            corrected_solution_text = None
             if "<finalization>" in tutor_response and "</finalization>" in tutor_response:
                 finalization_start = tutor_response.find("<finalization>") + len("<finalization>")
                 finalization_end = tutor_response.find("</finalization>")
