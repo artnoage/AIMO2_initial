@@ -143,43 +143,38 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Initial solutions majority vote
         initial_majority_correct = sum(initial_correctness) > len(initial_correctness) / 2
         
-        # Get most common initial answer
-        if any(isinstance(a, (int, float)) for a in initial_answers if a is not None):
-            # For numeric answers, use the median
-            numeric_answers = [a for a in initial_answers if a is not None and isinstance(a, (int, float))]
-            initial_majority_answer = sorted(numeric_answers)[len(numeric_answers)//2] if numeric_answers else None
-        else:
-            # For non-numeric answers, use the most common
-            initial_majority_answer = Counter([str(a) for a in initial_answers if a is not None]).most_common(1)[0][0] if initial_answers else None
+        # Get most common initial answer - use the same approach as in benchmark.py
+        initial_majority_answer = None
+        if initial_answers:
+            from collections import Counter
+            initial_majority_answer = Counter(str(ans) for ans in initial_answers if ans is not None).most_common(1)[0][0] if any(ans is not None for ans in initial_answers) else None
         
         # Final solutions majority vote
         final_majority_correct = sum(final_correctness) > len(final_correctness) / 2
         
-        # Get most common final answer
-        if any(isinstance(a, (int, float)) for a in final_answers if a is not None):
-            # For numeric answers, use the median
-            numeric_answers = [a for a in final_answers if a is not None and isinstance(a, (int, float))]
-            final_majority_answer = sorted(numeric_answers)[len(numeric_answers)//2] if numeric_answers else None
-        else:
-            # For non-numeric answers, use the most common
-            final_majority_answer = Counter([str(a) for a in final_answers if a is not None]).most_common(1)[0][0] if final_answers else None
+        # Get most common final answer - use the same approach as in benchmark.py
+        final_majority_answer = None
+        if final_answers:
+            final_majority_answer = Counter(str(ans) for ans in final_answers if ans is not None).most_common(1)[0][0] if any(ans is not None for ans in final_answers) else None
         
-        # Verify majority answers
+        # Verify majority answers - match the approach in benchmark.py
         initial_majority_is_correct = False
         final_majority_is_correct = False
         
         if initial_majority_answer is not None:
-            initial_majority_is_correct, _ = await verifier.verify(
-                f"\\boxed{{{initial_majority_answer}}}", 
-                correct_answer,
-                example["problem"]
+            # Check if any solution with this answer is marked as correct
+            initial_majority_is_correct = any(
+                str(ans) == initial_majority_answer and is_correct 
+                for ans, is_correct in zip(initial_answers, initial_correctness)
+                if ans is not None
             )
             
         if final_majority_answer is not None:
-            final_majority_is_correct, _ = await verifier.verify(
-                f"\\boxed{{{final_majority_answer}}}", 
-                correct_answer,
-                example["problem"]
+            # Check if any solution with this answer is marked as correct
+            final_majority_is_correct = any(
+                str(ans) == final_majority_answer and is_correct 
+                for ans, is_correct in zip(final_answers, final_correctness)
+                if ans is not None
             )
         
         # Add statistics to logs
