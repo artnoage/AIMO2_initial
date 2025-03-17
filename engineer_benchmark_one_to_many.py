@@ -214,18 +214,33 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         result_entries = []
         
-        # Add detailed entry
+        # Add engineer training entry
         result_entries.append({
             'id': example_id,
             'data_type': 'training',
+            'role': 'engineer',
             'problem': example['problem'],
             'correct_solution': example.get('solution', ''),
             'correct_answer': correct_answer,
-            'engineer_analysis': engineer_analysis,
-            'programming_solutions': programming_solutions,
-            'programming_correctness': programming_correctness,
-            'programming_answers': programming_answers
+            'model_solution': engineer_analysis,
+            'is_correct': any(programming_correctness)  # Engineer is considered correct if any programming solution is correct
         })
+        
+        # Add programming training entries
+        for i, (solution, is_correct, answer) in enumerate(zip(programming_solutions, programming_correctness, programming_answers)):
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'programmer',
+                'problem': example['problem'],
+                'engineer_prompt': engineer_response,  # Include the prompt from the engineer
+                'correct_solution': example.get('solution', ''),
+                'correct_answer': correct_answer,
+                'model_solution': solution,
+                'model_answer': answer,
+                'is_correct': is_correct,
+                'attempt_number': i + 1
+            })
         
         # Add statistics entry
         result_entries.append({

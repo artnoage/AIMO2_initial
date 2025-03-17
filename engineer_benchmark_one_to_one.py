@@ -206,18 +206,45 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         result_entries = []
         
-        # Add detailed entry
-        result_entries.append({
-            'id': example_id,
-            'data_type': 'training',
-            'problem': example['problem'],
-            'correct_solution': example.get('solution', ''),
-            'correct_answer': correct_answer,
-            'engineer_analyses': engineer_analyses,
-            'programming_solutions': programming_solutions,
-            'programming_correctness': programming_correctness,
-            'programming_answers': programming_answers
-        })
+        # Add engineer and programming training entries (one-to-one pairs)
+        for i, (engineer_analysis, solution, is_correct, answer) in enumerate(
+            zip(engineer_analyses, programming_solutions, programming_correctness, programming_answers)
+        ):
+            # Extract engineer response for this pair
+            engineer_response = None
+            response_match = re.search(r'<response>(.*?)</response>', engineer_analysis, re.DOTALL)
+            if response_match:
+                engineer_response = response_match.group(1).strip()
+            else:
+                engineer_response = "Please solve this problem using appropriate Python libraries and techniques."
+            
+            # Add engineer training entry
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'engineer',
+                'problem': example['problem'],
+                'correct_solution': example.get('solution', ''),
+                'correct_answer': correct_answer,
+                'model_solution': engineer_analysis,
+                'is_correct': is_correct,  # Engineer is considered correct if its paired programming solution is correct
+                'pair_id': i + 1
+            })
+            
+            # Add programming training entry
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'programmer',
+                'problem': example['problem'],
+                'engineer_prompt': engineer_response,  # Include the prompt from the engineer
+                'correct_solution': example.get('solution', ''),
+                'correct_answer': correct_answer,
+                'model_solution': solution,
+                'model_answer': answer,
+                'is_correct': is_correct,
+                'pair_id': i + 1
+            })
         
         # Add statistics entry
         result_entries.append({
