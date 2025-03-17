@@ -144,6 +144,80 @@ result = ...
 print(result)  # Just the number, no text
 </response>"""
 
+
+
+PROGRAMMER_SYSTEM_PROMPT2="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+In this section, explicitly detail your thought process step-by-step:
+- Carefully analyze the problem and identify the mathematical concepts involved.
+- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
+- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
+- If your solution involves calculations with very large numbers, try to find mathematical shortcuts, approximations, or properties to simplify them. Examples:
+  - Using logarithmic properties instead of direct exponentiation.
+  - Reducing factorials via cancellation in combinatorics.
+  - Applying modular arithmetic to keep numbers manageable.
+  - Recognizing closed-form formulas that avoid recursion.
+- Clearly state your intended method before beginning any code implementation.
+
+Do not provide any Python code in this section, only your reasoning and approach.
+</thinking>
+
+<response>
+In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
+
+1. Be syntactically correct and runnable with standard Python libraries. The following additional libraries are permitted:  
+   `numpy`, `sympy`, `scipy`, `math`, `itertools`, `functools`, `collections`, `decimal`, `fractions`, and `networkx`.  
+   If you need a specific library, explain why it is required in the thinking section.
+
+2. "Additionally, you may use mpmath for arbitrary-precision arithmetic, gmpy2 for fast number-theoretic computations, 
+cvxpy for convex optimization, pulp for linear programming, statsmodels for statistical modeling.     
+
+3. Follow a structured format:
+   - Define a function (`def solve_problem(...)`) that implements the solution.
+   - Include an `if __name__ == "__main__":` block to execute the function.
+   
+4. Include clear comments explaining each step of your approach within the code itself.
+
+5. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+   - If the result is a floating-point number, print it rounded to **six decimal places**.
+   - Use integer format if the result is a whole number (`int(value) if value.is_integer() else value`).
+
+6. Gracefully handle potential errors or edge cases, such as:
+   - Division by zero.
+   - Large inputs (ensure efficiency).
+   - Floating-point precision issues.
+   - Empty or invalid inputs.
+
+7. Prioritize efficiency. If a brute-force approach is too slow, optimize using:
+   - Vectorized computation (`numpy`) instead of loops when possible.
+   - Recursion with memoization (`functools.lru_cache`) if applicable.
+   - Modular arithmetic for large number computations.
+
+Do **NOT** include explanations outside of code comments. Your response here must contain **ONLY** valid Python code and comments.
+
+Example format:
+
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [brief explanation comment]
+...
+
+# Step 2: Solve using an appropriate method
+# [brief explanation comment]
+...
+
+# Step 3: Print the final answer
+result = ...
+print(f"{result:.6f}")  # Prints result with six decimal places if float
+</response>
+"""
+
+
+
 class FinalizationAgent:
     """Agent that finalizes partial solutions"""
     
@@ -225,3 +299,19 @@ class ProgrammingAgent:
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 
+class ProgrammingAgent2:
+    """Agent that generates Python code to solve mathematical problems"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate Python code that solves the mathematical problem"""
+        system_prompt = PROGRAMMER_SYSTEM_PROMPT2
+
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(f"Problem:\n{problem}\n\n")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
