@@ -31,11 +31,44 @@ class OpenRouterChat:
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """Async call to OpenRouter chat completion endpoint"""
         max_tokens = kwargs.get("max_tokens", None)
+        
+        # Process messages to properly handle system prompts
+        messages = []
+        system_content = ""
+        
         # Handle different prompt types
-        if hasattr(prompt, 'content'):  # LangChain message object
+        if hasattr(prompt, 'content'):  # Single LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
         elif isinstance(prompt, list):  # List of messages
-            messages = [{"role": "user", "content": prompt[-1].content}] if prompt else []
+            # Extract system message if present
+            for msg in prompt:
+                if hasattr(msg, 'type') and msg.type == 'system':
+                    system_content = msg.content
+                elif isinstance(msg, dict) and msg.get("role", "").lower() == "system":
+                    system_content = msg.get("content", "")
+            
+            # Get the last user message
+            user_content = ""
+            for msg in reversed(prompt):
+                if hasattr(msg, 'type') and msg.type == 'user':
+                    user_content = msg.content
+                    break
+                elif isinstance(msg, dict) and msg.get("role", "").lower() == "user":
+                    user_content = msg.get("content", "")
+                    break
+            
+            # Combine system and user content if both exist
+            if system_content and user_content:
+                combined_content = f"System instructions:\n{system_content}\n\nUser message:\n{user_content}"
+                messages = [{"role": "user", "content": combined_content}]
+            elif user_content:
+                messages = [{"role": "user", "content": user_content}]
+            elif prompt:  # Fallback to last message if no user message found
+                last_msg = prompt[-1]
+                if hasattr(last_msg, 'content'):
+                    messages = [{"role": "user", "content": last_msg.content}]
+                elif isinstance(last_msg, dict):
+                    messages = [{"role": "user", "content": last_msg.get("content", "")}]
         else:  # String or other
             messages = [{"role": "user", "content": str(prompt)}]
             
