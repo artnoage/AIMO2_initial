@@ -58,15 +58,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             try:
                 prompt, current_solution = await programming_agent.generate(example["problem"], return_prompt=True)
                 
-                # Extract code from solution
+                # Extract code from solution - similar to programming_benchmark.py
                 response_match = re.search(r'<response>(.*?)</response>', current_solution, re.DOTALL)
                 if response_match:
                     response_content = response_match.group(1)
                     code = extract_code_from_response(response_content)
                     if not code:
+                        # If no code in response section, try the whole solution
+                        logger.append(f"No code found in response section, trying whole solution")
                         code = extract_code_from_response(current_solution)
                 else:
+                    # If no response tags, extract from the whole solution
                     code = extract_code_from_response(current_solution)
+                
+                logger.append(f"Extracted code length: {len(code) if code else 0} characters")
                 
                 if not code:
                     logger.append(f"❌ No code found in programming solution {attempt+1}")
@@ -95,14 +100,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     programming_answers.append(None)
                     continue
                 
-                # Compare with correct answer
+                # Compare with correct answer - match programming_benchmark.py logic
                 is_correct = False
-                if isinstance(correct_answer, (int, float)) and isinstance(result, (int, float)):
-                    # Use tolerance for numeric comparison
-                    is_correct = abs(correct_answer - result) <= config.tolerance
-                else:
-                    # Try string comparison as fallback
-                    is_correct = str(correct_answer).strip() == str(result).strip()
+                try:
+                    # Convert correct_answer to float if possible for comparison
+                    numeric_correct_answer = None
+                    if isinstance(correct_answer, (int, float)):
+                        numeric_correct_answer = correct_answer
+                    else:
+                        try:
+                            numeric_correct_answer, _ = extract_numeric_answer(correct_answer)
+                        except:
+                            pass
+                    
+                    if numeric_correct_answer is not None and isinstance(result, (int, float)):
+                        # Use tolerance for numeric comparison
+                        is_correct = abs(numeric_correct_answer - result) <= config.tolerance
+                    else:
+                        # Try string comparison as fallback
+                        is_correct = str(correct_answer).strip() == str(result).strip()
+                except Exception as e:
+                    logger.append(f"Error comparing answers: {str(e)}")
                 
                 programming_solutions.append(current_solution)
                 programming_correctness.append(is_correct)
@@ -163,20 +181,115 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             if ans is not None
         ) if standard_majority_answer else False
         
-        # Find intersection of answers
-        programming_answer_set = {str(ans) for ans in programming_answers if ans is not None}
-        standard_answer_set = {str(ans) for ans in standard_answers if ans is not None}
-        intersection_answers = programming_answer_set.intersection(standard_answer_set)
+        # Find intersection of answers using numeric tolerance for comparison
+        intersection_answers = set()
+        tolerance = config.tolerance  # Use the same tolerance as for correctness checking
+        
+        # For each standard answer, find programming answers that are within tolerance
+        for std_ans in standard_answers:
+            if std_ans is None:
+                continue
+                
+            # Try to convert to numeric for comparison
+            std_numeric = None
+            try:
+                if isinstance(std_ans, (int, float)):
+                    std_numeric = std_ans
+                else:
+                    std_numeric, _ = extract_numeric_answer(str(std_ans))
+            except:
+                pass
+                
+            # If numeric, compare with tolerance
+            if std_numeric is not None:
+                for prog_ans in programming_answers:
+                    if prog_ans is None:
+                        continue
+                        
+                    # Try to convert to numeric
+                    prog_numeric = None
+                    try:
+                        if isinstance(prog_ans, (int, float)):
+                            prog_numeric = prog_ans
+                        else:
+                            prog_numeric, _ = extract_numeric_answer(str(prog_ans))
+                    except:
+                        pass
+                        
+                    # Compare with tolerance if both are numeric
+                    if prog_numeric is not None:
+                        if abs(std_numeric - prog_numeric) <= tolerance:
+                            # Add both original string representations to the intersection
+                            intersection_answers.add(str(std_ans))
+                            intersection_answers.add(str(prog_ans))
+            else:
+                # For non-numeric answers, use exact string comparison
+                if str(std_ans) in {str(ans) for ans in programming_answers if ans is not None}:
+                    intersection_answers.add(str(std_ans))
         
         # Determine final answer based on intersection
         final_answer = None
         if intersection_answers:
-            # If there's an intersection, count occurrences of each answer in the intersection
-            intersection_counts = {
-                ans: programming_answer_counts.get(ans, 0) + standard_answer_counts.get(ans, 0)
-                for ans in intersection_answers
-            }
-            final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
+            # If there's an intersection, count occurrences of each answer
+            # First, group similar numeric answers within tolerance
+            grouped_answers = {}
+            
+            # Process all answers from both methods
+            all_answers = programming_answers + standard_answers
+            
+            for ans in all_answers:
+                if ans is None:
+                    continue
+                    
+                # Try to convert to numeric
+                ans_numeric = None
+                try:
+                    if isinstance(ans, (int, float)):
+                        ans_numeric = ans
+                    else:
+                        ans_numeric, _ = extract_numeric_answer(str(ans))
+                except:
+                    pass
+                
+                # Find if this answer belongs to an existing group
+                found_group = False
+                if ans_numeric is not None:
+                    for group_key in grouped_answers:
+                        group_numeric = None
+                        try:
+                            if isinstance(group_key, (int, float)):
+                                group_numeric = group_key
+                            else:
+                                group_numeric, _ = extract_numeric_answer(group_key)
+                        except:
+                            pass
+                            
+                        if group_numeric is not None and abs(ans_numeric - group_numeric) <= tolerance:
+                            grouped_answers[group_key] += 1
+                            found_group = True
+                            break
+                
+                # If no group found, create a new one
+                if not found_group:
+                    grouped_answers[str(ans)] = 1
+            
+            # Filter to only include answers in the intersection
+            intersection_counts = {k: v for k, v in grouped_answers.items() 
+                                 if k in intersection_answers or any(
+                                     abs(extract_numeric_answer(k)[0] - extract_numeric_answer(ia)[0]) <= tolerance 
+                                     for ia in intersection_answers 
+                                     if extract_numeric_answer(k)[0] is not None and extract_numeric_answer(ia)[0] is not None
+                                 )}
+            
+            if intersection_counts:
+                final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
+            else:
+                # Fallback if grouping didn't work
+                intersection_counts = {
+                    ans: programming_answer_counts.get(ans, 0) + standard_answer_counts.get(ans, 0)
+                    for ans in intersection_answers
+                }
+                final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
         else:
             # If no intersection, pick one at random (we'll use the most common from programming)
             final_answer = programming_majority_answer if programming_majority_answer else standard_majority_answer
@@ -207,6 +320,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"\n📊 Programming Solutions Statistics:")
         for i, (sol_correct, sol_answer) in enumerate(zip(programming_correctness, programming_answers)):
             logger.append(f"├─ Solution {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
+            # Add error messages for debugging
+            if not sol_correct and i < len(programming_solutions):
+                code = extract_code_from_response(programming_solutions[i])
+                if not code:
+                    logger.append(f"  └─ No code extracted")
+                elif "Error:" in programming_solutions[i]:
+                    logger.append(f"  └─ {programming_solutions[i]}")
+        
         logger.append(f"├─ Programming success rate: {programming_success_rate:.1f}%")
         logger.append(f"├─ Programming majority answer: {programming_majority_answer}")
         logger.append(f"├─ Programming majority correct? {'✓' if programming_majority_correct else '✗'}")
@@ -221,9 +342,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Intersection statistics
         logger.append(f"\n📊 Intersection Statistics:")
-        logger.append(f"├─ Intersection answers: {intersection_answers}")
+        logger.append(f"├─ Intersection answers (within tolerance {tolerance}): {intersection_answers}")
         logger.append(f"├─ Final answer: {final_answer}")
         logger.append(f"├─ Final answer correct? {'✓' if final_answer_correct else '✗'}")
+        logger.append(f"├─ Programming majority correct? {'✓' if programming_majority_correct else '✗'}")
+        logger.append(f"├─ Standard majority correct? {'✓' if standard_majority_correct else '✗'}")
         logger.append(f"└─ Improvement from intersection? {'✓' if final_answer_correct and not (programming_majority_correct and standard_majority_correct) else '✗'}")
         
         logger.append("="*80)
@@ -252,19 +375,47 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'final_answer_correct': final_answer_correct
         })
         
-        # Add statistics entry (using naming conventions from tutor2_solution_benchmark.py)
+        # Add statistics entry - ensure compatibility with both programming_benchmark.py and tutor2_solution_benchmark.py
         result_entries.append({
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            # Initial solutions (programming) statistics
+            # Programming solutions statistics
+            'programming_solutions_count': len(programming_solutions),
+            'programming_correctness': programming_correctness,
+            'programming_answers': programming_answers,
+            'programming_success_rate': programming_success_rate,
+            'programming_majority_answer': programming_majority_answer,
+            'programming_majority_correct': programming_majority_correct,
+            # Standard solution statistics
+            'standard_solutions_count': len(standard_solutions),
+            'standard_correctness': standard_correctness,
+            'standard_answers': standard_answers,
+            'standard_success_rate': standard_success_rate,
+            'standard_majority_answer': standard_majority_answer,
+            'standard_majority_correct': standard_majority_correct,
+            # Intersection statistics
+            'intersection_answers': list(intersection_answers),
+            'has_intersection': len(intersection_answers) > 0,
+            'final_answer': final_answer,
+            'final_answer_correct': final_answer_correct,
+            'intersection_improved': final_answer_correct and not (programming_majority_correct and standard_majority_correct),
+            'intersection_worsened': (programming_majority_correct or standard_majority_correct) and not final_answer_correct,
+            
+            # Compatibility fields for ProgressTracker statistics
+            'is_correct_list': programming_correctness,  # Use programming correctness for main stats
+            'is_most_common_correct': programming_majority_correct,  # Use programming majority for main stats
+            'total_solutions': len(programming_solutions),
+            'correct_solutions': sum(programming_correctness),
+            'incorrect_solutions': len(programming_correctness) - sum(programming_correctness),
+            
+            # For compatibility with tutor2_solution_benchmark.py
             'initial_solutions_count': len(programming_solutions),
             'initial_correctness': programming_correctness,
             'initial_answers': programming_answers,
             'initial_success_rate': programming_success_rate,
             'initial_majority_answer': programming_majority_answer,
             'initial_majority_correct': programming_majority_correct,
-            # Standard solution statistics (equivalent to tutor solutions in the original)
             'tutor_responses': standard_solutions,
             'tutor_verdicts': ["Standard solution" for _ in standard_solutions],
             'final_solutions': standard_solutions,
@@ -273,18 +424,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'final_success_rate': standard_success_rate,
             'final_majority_answer': standard_majority_answer,
             'final_majority_correct': standard_majority_correct,
-            # Intersection statistics (using compatible field names)
             'has_clear_winner': len(intersection_answers) > 0,
             'solution_sources': ["intersection" if intersection_answers else "random"],
             'majority_vote_improved': final_answer_correct and not (programming_majority_correct and standard_majority_correct),
             'majority_vote_worsened': (programming_majority_correct or standard_majority_correct) and not final_answer_correct,
-            'success_rate_improved': final_answer_correct and not programming_majority_correct,
-            # Add standard fields for compatibility with other benchmarks
-            'is_correct_list': programming_correctness,
-            'is_most_common_correct': programming_majority_correct,
-            'total_solutions': len(programming_solutions),
-            'correct_solutions': sum(programming_correctness),
-            'incorrect_solutions': len(programming_correctness) - sum(programming_correctness)
+            'success_rate_improved': final_answer_correct and not programming_majority_correct
         })
         
         return result_entries
