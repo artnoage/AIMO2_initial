@@ -264,9 +264,9 @@ import math
 # [brief explanation comment]
 ...
 
-# Step 3: Print the final answer
+# Calculate and print the final answer
 result = ...
-print(f"{result:.6f}")  # Prints result with six decimal places if float
+print(result)  # Just the number, no text
 </response>
 """
 
