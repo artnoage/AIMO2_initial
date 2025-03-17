@@ -252,34 +252,36 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'final_answer_correct': final_answer_correct
         })
         
-        # Add statistics entry
+        # Add statistics entry (using naming conventions from tutor2_solution_benchmark.py)
         result_entries.append({
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            # Programming statistics
-            'programming_solutions_count': len(programming_solutions),
-            'programming_correctness': programming_correctness,
-            'programming_answers': programming_answers,
-            'programming_success_rate': programming_success_rate,
-            'programming_majority_answer': programming_majority_answer,
-            'programming_majority_correct': programming_majority_correct,
-            # Standard solution statistics
-            'standard_solutions_count': len(standard_solutions),
-            'standard_correctness': standard_correctness,
-            'standard_answers': standard_answers,
-            'standard_success_rate': standard_success_rate,
-            'standard_majority_answer': standard_majority_answer,
-            'standard_majority_correct': standard_majority_correct,
-            # Intersection statistics
-            'intersection_answers': list(intersection_answers),
-            'has_intersection': len(intersection_answers) > 0,
-            'final_answer': final_answer,
-            'final_answer_correct': final_answer_correct,
-            'improved_from_intersection': final_answer_correct and not (programming_majority_correct and standard_majority_correct),
+            # Initial solutions (programming) statistics
+            'initial_solutions_count': len(programming_solutions),
+            'initial_correctness': programming_correctness,
+            'initial_answers': programming_answers,
+            'initial_success_rate': programming_success_rate,
+            'initial_majority_answer': programming_majority_answer,
+            'initial_majority_correct': programming_majority_correct,
+            # Standard solution statistics (equivalent to tutor solutions in the original)
+            'tutor_responses': standard_solutions,
+            'tutor_verdicts': ["Standard solution" for _ in standard_solutions],
+            'final_solutions': standard_solutions,
+            'final_correctness': standard_correctness,
+            'final_answers': standard_answers,
+            'final_success_rate': standard_success_rate,
+            'final_majority_answer': standard_majority_answer,
+            'final_majority_correct': standard_majority_correct,
+            # Intersection statistics (using compatible field names)
+            'has_clear_winner': len(intersection_answers) > 0,
+            'solution_sources': ["intersection" if intersection_answers else "random"],
+            'majority_vote_improved': final_answer_correct and not (programming_majority_correct and standard_majority_correct),
+            'majority_vote_worsened': (programming_majority_correct or standard_majority_correct) and not final_answer_correct,
+            'success_rate_improved': final_answer_correct and not programming_majority_correct,
             # Add standard fields for compatibility with other benchmarks
-            'is_correct_list': programming_correctness,  # For compatibility with standard benchmark
-            'is_most_common_correct': programming_majority_correct,  # For compatibility with standard benchmark
+            'is_correct_list': programming_correctness,
+            'is_most_common_correct': programming_majority_correct,
             'total_solutions': len(programming_solutions),
             'correct_solutions': sum(programming_correctness),
             'incorrect_solutions': len(programming_correctness) - sum(programming_correctness)
@@ -296,10 +298,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': False,
-            'programming_success_rate': None,
-            'standard_success_rate': None,
-            'final_answer_correct': None,
-            'improved_from_intersection': None
+            'initial_success_rate': None,
+            'final_success_rate': None,
+            'initial_majority_correct': None,
+            'final_majority_correct': None,
+            'majority_vote_improved': None
         }]
 
 
