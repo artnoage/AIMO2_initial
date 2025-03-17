@@ -184,7 +184,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         response_preview = engineer_response.split('\n')[:5]
         response_preview = '\n'.join(response_preview)
         if len(engineer_response.split('\n')) > 5:
-            response_preview += f"\n... ({len(engineer_response.split('\n')) - 5} more lines)"
+            remaining_lines = len(engineer_response.split('\n')) - 5
+            response_preview += f"\n... ({remaining_lines} more lines)"
         logger.append(f"└─ Response: {response_preview}")
         
         # Programming solutions statistics
