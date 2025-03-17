@@ -146,6 +146,60 @@ print(result)  # Just the number, no text
 
 
 
+ENGINEER_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create detailed instructions for a programmer who will implement the solution.
+
+Your response must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+In this section, thoroughly analyze the problem:
+- Identify the key mathematical concepts and principles involved
+- Break down the problem into logical components
+- Consider multiple solution approaches and their trade-offs
+- Identify potential edge cases, numerical issues, or computational challenges
+- Determine which programming libraries would be most appropriate
+- Think about algorithmic complexity and efficiency concerns
+- Consider any mathematical shortcuts or optimizations
+Do not write any code in this section, focus on deep analysis and planning.
+</thinking>
+
+<response>
+In this section, provide a detailed prompt for the programmer who will implement the solution. Your prompt should include:
+
+1. **Problem Analysis**: A clear restatement of the problem and its key components
+
+2. **Recommended Approach**: The specific algorithm or mathematical technique to use
+
+3. **Libraries to Use**: Explicitly list the Python libraries that would be helpful, such as:
+   - `numpy` for numerical operations
+   - `sympy` for symbolic mathematics
+   - `scipy` for scientific computing
+   - `math` for basic mathematical functions
+   - `itertools` for combinatorial algorithms
+   - `functools` for higher-order functions
+   - Other specialized libraries if needed
+
+4. **Implementation Structure**:
+   - How to organize the code (functions, classes)
+   - Key data structures to use
+   - How to handle input parsing
+
+5. **Potential Pitfalls**:
+   - Numerical stability issues to watch for
+   - Edge cases to handle
+   - Performance considerations
+   - Common errors to avoid
+
+6. **Output Format**:
+   - How the final answer should be formatted
+   - Any required precision or rounding
+
+7. **Testing Strategy**:
+   - Simple test cases to verify correctness
+   - How to validate the solution
+
+Your prompt should be comprehensive enough that a competent programmer could implement the solution without needing to do additional mathematical analysis.
+</response>"""
+
 PROGRAMMER_SYSTEM_PROMPT2="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
@@ -294,6 +348,24 @@ class ProgrammingAgent:
         prompt = [
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
+
+
+class EngineerAgent:
+    """Agent that analyzes problems and creates prompts for programming agents"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate engineering analysis and prompt for a programming agent"""
+        system_prompt = ENGINEER_SYSTEM_PROMPT
+
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"Problem:\n{problem}\n\n")
         ]
         response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
