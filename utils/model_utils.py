@@ -35,7 +35,6 @@ class OpenRouterChat:
         # Process messages to properly handle system prompts
         messages = []
         system_content = ""
-        
         # Handle different prompt types
         if hasattr(prompt, 'content'):  # Single LangChain message object
             messages = [{"role": "user", "content": prompt.content}]
@@ -50,10 +49,10 @@ class OpenRouterChat:
             # Get the last user message
             user_content = ""
             for msg in reversed(prompt):
-                if hasattr(msg, 'type') and msg.type == 'user':
+                if hasattr(msg, 'type') and msg.type == 'human':
                     user_content = msg.content
                     break
-                elif isinstance(msg, dict) and msg.get("role", "").lower() == "user":
+                elif isinstance(msg, dict) and msg.get("role", "").lower() == "human":
                     user_content = msg.get("content", "")
                     break
             
@@ -143,6 +142,8 @@ class CustomChat:
             if role == "system":
                 formatted_prompt += f"<|im_start|>system\\n{content}<|im_end|>\\n"
             elif role == "user":
+                formatted_prompt += f"<|im_start|>user\\n{content}<|im_end|>\\n"
+            elif role == "human":
                 formatted_prompt += f"<|im_start|>user\\n{content}<|im_end|>\\n"
             elif role == "assistant":
                 formatted_prompt += f"<|im_start|>assistant\\n{content}<|im_end|>"

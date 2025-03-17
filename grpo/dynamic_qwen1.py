@@ -270,7 +270,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=2e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
