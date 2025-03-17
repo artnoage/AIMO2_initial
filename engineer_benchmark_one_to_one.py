@@ -48,7 +48,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Initialize agents
         engineer_agent = EngineerAgent(main_model)
-        programming_agent = ProgrammingAgent(main_model)
+        programming_agent = ProgrammingAgentNosystem(main_model)
         
         # Generate MULTIPLE engineering analyses and prompts, each with ONE programming solution
         engineer_analyses = []

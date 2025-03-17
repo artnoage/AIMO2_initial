@@ -1,4 +1,5 @@
-pip install unsloth vllm wandb langchain_core latex2sympy2 scipy matplotlib
+pip install unsloth vllm wandb langchain_core 
+pip install latex2sympy2 scipy matplotlib numpy sympy scipy networkx mpmath gmpy2 cvxpy pulp statsmodels
 python -m venv myenv
 sudo apt install build-essential
 touch ~/.no_auto_tmux

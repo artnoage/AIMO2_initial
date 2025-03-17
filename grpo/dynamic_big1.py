@@ -23,10 +23,10 @@ from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT,
+    PROGRAMMER_SYSTEM_PROMPT2,
     TUTOR_SYSTEM_PROMPT
 )
-
+PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT2
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -145,9 +145,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_big"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qwen"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_type = "dynamic_big_b"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_big2"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -261,7 +261,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=17)
+    formatted_dataset = formatted_dataset.shuffle(seed=33)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    
@@ -280,7 +280,7 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=5,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=16,
         num_generations=5,
         max_prompt_length=800,
         max_completion_length=2200,

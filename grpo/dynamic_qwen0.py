@@ -145,8 +145,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_all_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_2/20250311_220626"
+    model_type = "dynamic_0"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_4/20250313_222925"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -194,7 +194,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=3000,
+        max_seq_length=4000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -261,7 +261,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=17)
+    formatted_dataset = formatted_dataset.shuffle(seed=171)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    
@@ -279,11 +279,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=16,
-        num_generations=10,
+        num_generations=8,
         max_prompt_length=800,
-        max_completion_length=2200,
+        max_completion_length=3200,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

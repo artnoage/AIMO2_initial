@@ -168,7 +168,7 @@ Provide instructions for the programmer. Include:
 
 2. **Recommended Approach**: Specific algorithm or mathematical technique to use
 
-3. **Libraries**: List recommended Python libraries (numpy, sympy, scipy, math, etc.)
+3. **Libraries**: List recommended Python libraries (numpy, sympy, scipy, math), and include non-standard ones for special problems.
 
 4. **Implementation Structure**: Key functions and data structures
 
@@ -334,6 +334,21 @@ class ProgrammingAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
+    
+class ProgrammingAgentNosystem:
+    """Agent that generates Python code to solve mathematical problems"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate Python code that solves the mathematical problem"""
+
+        prompt = [
+            HumanMessage(f"Problem:\n{problem}\n\n")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        return (f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 
 class EngineerAgent:

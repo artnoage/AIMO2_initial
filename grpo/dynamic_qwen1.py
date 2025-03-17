@@ -23,9 +23,10 @@ from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT,
+    PROGRAMMER_SYSTEM_PROMPT2,
     TUTOR_SYSTEM_PROMPT
 )
+PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT2
 
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -145,8 +146,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_all_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_2/20250311_220626"
+    model_type = "dynamic_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_4/20250313_222925"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -261,7 +262,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=21)
+    formatted_dataset = formatted_dataset.shuffle(seed=172)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    
