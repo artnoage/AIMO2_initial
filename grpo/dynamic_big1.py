@@ -23,10 +23,9 @@ from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT2,
+    PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT
 )
-PROGRAMMER_SYSTEM_PROMPT=PROGRAMMER_SYSTEM_PROMPT2
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""

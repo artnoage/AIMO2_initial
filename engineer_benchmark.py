@@ -21,8 +21,50 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
+PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem, and some guidance from a software architect. Your task is to respond explicitly 
+in two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+In this section, explicitly detail your thought process step-by-step:
+- Carefully analyze the problem and identify the mathematical concepts involved.
+- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
+- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
+- Clearly state your intended method before beginning any code implementation.
+Do not provide any Python code in this section, only your reasoning and approach.
+</thinking>
+
+<response>
+In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
+2. Include clear comments explaining each step of your approach within the code itself.
+3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+4. Gracefully handle potential errors or edge cases.
+5. Be efficient and avoid excessive resource usage.
+
+Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
+
+Example format:
+
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [brief explanation comment]
+...
+
+# Step 2: Solve using appropriate method
+# [brief explanation comment]
+...
+
+# Calculate and print the final answer
+result = ...
+print(result)  # Just the number, no text
+</response>"""
+
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
-    """Process a single example using the Engineer-Programmer pipeline approach"""
+    """Process a single example using the Engineer-Programmer pipeline approach (one-to-one):
+    Multiple engineer prompts, each generating one programming solution"""
     logger = BenchmarkLogger()
     try:
         if not isinstance(example, dict) or 'problem' not in example or (('solution' not in example) and ('answer' not in example)):
@@ -47,32 +89,34 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Initialize agents
         engineer_agent = EngineerAgent(main_model)
-        programming_agent = ProgrammingAgent(main_model)
+        programming_agent = ProgrammingAgentNosystem(main_model)
         
-        # Generate engineering analysis and prompt
-        logger.append(f"Generating engineering analysis for problem {running_id + 1}...")
-        engineer_prompt, engineer_analysis = await engineer_agent.generate(example["problem"], return_prompt=True)
-        
-        # Extract the response section from the engineer's analysis
-        engineer_response = None
-        response_match = re.search(r'<response>(.*?)</response>', engineer_analysis, re.DOTALL)
-        if response_match:
-            engineer_response = response_match.group(1).strip()
-        else:
-            logger.append(f"❌ No response section found in engineer's analysis")
-            engineer_response = "Please solve this problem using appropriate Python libraries and techniques."
-        
-        # Generate multiple programming solutions using the engineer's prompt
+        # Generate MULTIPLE engineering analyses and prompts, each with ONE programming solution
+        engineer_analyses = []
         programming_solutions = []
         programming_correctness = []
         programming_answers = []
         
         for attempt in range(config.best_of):
             try:
-                # Combine the original problem with the engineer's guidance
-                combined_prompt = f"Problem:\n{example['problem']}\n\nEngineering Guidance:\n{engineer_response}"
+                # Generate a new engineer analysis for each attempt
+                logger.append(f"Generating engineering analysis {attempt+1} for problem {running_id + 1}...")
+                engineer_prompt, engineer_analysis = await engineer_agent.generate(example["problem"], return_prompt=True)
+                engineer_analyses.append(engineer_analysis)
                 
-                # Generate programming solution
+                # Extract the response section from the engineer's analysis
+                engineer_response = None
+                response_match = re.search(r'<response>(.*?)</response>', engineer_analysis, re.DOTALL)
+                if response_match:
+                    engineer_response = response_match.group(1).strip()
+                else:
+                    logger.append(f"❌ No response section found in engineer's analysis {attempt+1}")
+                    engineer_response = "Please solve this problem using appropriate Python libraries and techniques."
+                
+                # Combine the original problem with the engineer's guidance
+                combined_prompt = SIMPLE_FULLSOLUTION_SYSTEM_PROMPT+f"Problem:\n{example['problem']}\n\nEngineering Guidance:\n{engineer_response}"
+                
+                # Generate ONE programming solution for this engineer prompt
                 prompt, current_solution = await programming_agent.generate(combined_prompt, return_prompt=True)
                 
                 # Extract code from solution
@@ -144,7 +188,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 programming_answers.append(result)
                 
             except Exception as e:
-                logger.append(f"❌ Error in programming attempt {attempt+1}: {str(e)}")
+                logger.append(f"❌ Error in attempt {attempt+1}: {str(e)}")
+                engineer_analyses.append(f"Error: {str(e)}")
                 programming_solutions.append(f"Error: {str(e)}")
                 programming_correctness.append(False)
                 programming_answers.append(None)
@@ -168,37 +213,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         
-        # Engineer analysis summary
-        logger.append(f"\n📊 Engineer Analysis:")
-        thinking_match = re.search(r'<thinking>(.*?)</thinking>', engineer_analysis, re.DOTALL)
-        if thinking_match:
-            thinking_content = thinking_match.group(1).strip()
-            # Show just the first few lines of thinking
-            thinking_lines = thinking_content.split('\n')
-            thinking_preview = '\n'.join(thinking_lines[:5])
-            if len(thinking_lines) > 5:
-                thinking_preview += f"\n... ({len(thinking_lines) - 5} more lines)"
-            logger.append(f"├─ Thinking: {thinking_preview}")
-        
-        # Show a preview of the engineer's response
-        response_preview = engineer_response.split('\n')[:5]
-        response_preview = '\n'.join(response_preview)
-        if len(engineer_response.split('\n')) > 5:
-            remaining_lines = len(engineer_response.split('\n')) - 5
-            response_preview += f"\n... ({remaining_lines} more lines)"
-        logger.append(f"└─ Response: {response_preview}")
-        
-        # Programming solutions statistics
-        logger.append(f"\n📊 Programming Solutions Statistics:")
+        # Engineer-Programmer pairs statistics
+        logger.append(f"\n📊 Engineer-Programmer Pairs Statistics (One-to-One):")
         for i, (sol_correct, sol_answer) in enumerate(zip(programming_correctness, programming_answers)):
-            logger.append(f"├─ Solution {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
+            logger.append(f"├─ Pair {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
+            
+            # Show a preview of the engineer's thinking for this pair
+            if i < len(engineer_analyses):
+                thinking_match = re.search(r'<thinking>(.*?)</thinking>', engineer_analyses[i], re.DOTALL)
+                if thinking_match:
+                    thinking_content = thinking_match.group(1).strip()
+                    # Show just the first line of thinking
+                    thinking_preview = thinking_content.split('\n')[0]
+                    logger.append(f"│  ├─ Engineer thinking: {thinking_preview}...")
+            
             # Add error messages for debugging
             if not sol_correct and i < len(programming_solutions):
                 code = extract_code_from_response(programming_solutions[i])
                 if not code:
-                    logger.append(f"  └─ No code extracted")
+                    logger.append(f"│  └─ No code extracted")
                 elif "Error:" in programming_solutions[i]:
-                    logger.append(f"  └─ {programming_solutions[i]}")
+                    logger.append(f"│  └─ {programming_solutions[i]}")
         
         logger.append(f"├─ Programming success rate: {programming_success_rate:.1f}%")
         logger.append(f"├─ Programming majority answer: {programming_majority_answer}")
@@ -212,18 +247,45 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         result_entries = []
         
-        # Add detailed entry
-        result_entries.append({
-            'id': example_id,
-            'data_type': 'training',
-            'problem': example['problem'],
-            'correct_solution': example.get('solution', ''),
-            'correct_answer': correct_answer,
-            'engineer_analysis': engineer_analysis,
-            'programming_solutions': programming_solutions,
-            'programming_correctness': programming_correctness,
-            'programming_answers': programming_answers
-        })
+        # Add engineer and programming training entries (one-to-one pairs)
+        for i, (engineer_analysis, solution, is_correct, answer) in enumerate(
+            zip(engineer_analyses, programming_solutions, programming_correctness, programming_answers)
+        ):
+            # Extract engineer response for this pair
+            engineer_response = None
+            response_match = re.search(r'<response>(.*?)</response>', engineer_analysis, re.DOTALL)
+            if response_match:
+                engineer_response = response_match.group(1).strip()
+            else:
+                engineer_response = "Please solve this problem using appropriate Python libraries and techniques."
+            
+            # Add engineer training entry
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'engineer',
+                'problem': example['problem'],
+                'correct_solution': example.get('solution', ''),
+                'correct_answer': correct_answer,
+                'model_solution': engineer_analysis,
+                'is_correct': is_correct,  # Engineer is considered correct if its paired programming solution is correct
+                'pair_id': i + 1
+            })
+            
+            # Add programming training entry
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'programmer',
+                'problem': example['problem'],
+                'engineer_prompt': engineer_response,  # Include the prompt from the engineer
+                'correct_solution': example.get('solution', ''),
+                'correct_answer': correct_answer,
+                'model_solution': solution,
+                'model_answer': answer,
+                'is_correct': is_correct,
+                'pair_id': i + 1
+            })
         
         # Add statistics entry
         result_entries.append({
@@ -231,9 +293,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'data_type': 'statistics',
             'example_processed_successfully': True,
             # Engineer statistics
-            'has_engineer_thinking': bool(thinking_match),
-            'has_engineer_response': bool(response_match),
-            'engineer_response_length': len(engineer_response) if engineer_response else 0,
+            'engineer_count': len(engineer_analyses),  # Multiple engineers in this version
+            'has_engineer_thinking': [bool(re.search(r'<thinking>(.*?)</thinking>', ea, re.DOTALL)) for ea in engineer_analyses],
+            'has_engineer_response': [bool(re.search(r'<response>(.*?)</response>', ea, re.DOTALL)) for ea in engineer_analyses],
             # Programming solutions statistics
             'programming_solutions_count': len(programming_solutions),
             'programming_correctness': programming_correctness,
@@ -267,8 +329,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
 
 async def main():
-    """Main function for benchmarking with the Engineer-Programmer pipeline approach."""
-    config = BenchmarkConfig.from_args('Benchmark Engineer-Programmer pipeline approach')
+    """Main function for benchmarking with the Engineer-Programmer pipeline approach (one-to-one)."""
+    config = BenchmarkConfig.from_args('Benchmark Engineer-Programmer pipeline approach (many engineers → one program each)')
     
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)

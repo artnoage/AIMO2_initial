@@ -47,7 +47,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Initialize agents
         solution_agent = FullSolutionAgent(main_model)
-        programming_agent = ProgrammingAgent2(main_model)
+        programming_agent = ProgrammingAgent(main_model)
         
         # Generate multiple programming solutions
         programming_solutions = []

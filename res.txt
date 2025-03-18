@@ -1,6 +1,3 @@
+QWEN 8 (ours) 1 Programming 32 30% hybrid 32 33% Programming 64 31%
 
- 291/1133 (25.7%)
-
-
-
-BIG best of 32 : 325/1133 (28.7%) best of 8 294/1133 (25.9%)
+QWEN 32 (standard)  Programming 32 37% Hybrid 16 37% Hybrid 32 40% Programming 64 38%

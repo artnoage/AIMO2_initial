@@ -144,9 +144,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_1"
+    model_type = "dynamic_3"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/QWEN7b"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)

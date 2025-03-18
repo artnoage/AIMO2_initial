@@ -144,9 +144,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_1"
+    model_type = "dynamic_2"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/QWEN7b"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -260,7 +260,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=31)
+    formatted_dataset = formatted_dataset.shuffle(seed=172)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    

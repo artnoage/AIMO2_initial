@@ -95,7 +95,9 @@ def process_validation_set(
         
         # Apply the processing function to each example
         processed_dataset = dataset.map(process_example)
-        
+        processed_dataset = processed_dataset.shuffle(seed=171)
+    # Use a reasonable number of examples
+        processed_dataset = processed_dataset.select(range(100))
         log_info(f"Processing complete. Dataset has {len(processed_dataset)} examples.")
         
         # Push the processed dataset to the Hub
@@ -112,8 +114,8 @@ def main():
     parser = argparse.ArgumentParser(description='Process validation dataset to normalize question/problem fields')
     parser.add_argument('--source-repo', type=str, default="Metaskepsis/validation_set",
                        help='Source HuggingFace repository name (default: "Metaskepsis/validation_set")')
-    parser.add_argument('--target-repo', type=str, default="Metaskepsis/validation_set_filtered",
-                       help='Target HuggingFace repository name (default: "Metaskepsis/validation_set_filtered")')
+    parser.add_argument('--target-repo', type=str, default="Metaskepsis/validation_set_mini",
+                       help='Target HuggingFace repository name (default: "Metaskepsis/validation_set_mini")')
     parser.add_argument('--token', type=str, default=None,
                        help='HuggingFace API token (optional if already logged in)')
     

@@ -146,7 +146,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_all_4/20250313_222925"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/QWEN7b"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -261,7 +261,7 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=171)
+    formatted_dataset = formatted_dataset.shuffle(seed=22)
     # Use a reasonable number of examples
     formatted_dataset = formatted_dataset.select(range(3000))
    
@@ -279,9 +279,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=14,
         gradient_accumulation_steps=16,
-        num_generations=8,
+        num_generations=14,
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,
