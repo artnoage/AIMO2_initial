@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any, Union
 from collections import Counter
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
@@ -19,6 +19,65 @@ logging.basicConfig(
 
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
+
+def calculate_answer_majority(answers, tolerance=1e-2):
+    """
+    Calculate the most common answer by counting how many answers are within tolerance
+    of each unique answer.
+    
+    Args:
+        answers: List of answers (can be numeric or string)
+        tolerance: Numeric tolerance for grouping similar answers
+        
+    Returns:
+        Tuple of (majority_answer, count_dict) where count_dict maps each answer to its count
+    """
+    if not answers or all(ans is None for ans in answers):
+        return None, {}
+    
+    # Filter out None values
+    valid_answers = [ans for ans in answers if ans is not None]
+    
+    # Convert to numeric where possible
+    numeric_answers = []
+    for ans in valid_answers:
+        try:
+            if isinstance(ans, (int, float)):
+                numeric_answers.append((ans, str(ans)))
+            else:
+                numeric_val, _ = extract_numeric_answer(str(ans))
+                if numeric_val is not None:
+                    numeric_answers.append((numeric_val, str(ans)))
+                else:
+                    # Keep non-numeric answers as is
+                    numeric_answers.append((None, str(ans)))
+        except:
+            numeric_answers.append((None, str(ans)))
+    
+    # Count how many answers are within tolerance of each answer
+    count_dict = {}
+    for i, (num_val, str_val) in enumerate(numeric_answers):
+        # Initialize count for this answer
+        if str_val not in count_dict:
+            count_dict[str_val] = 0
+        
+        # Count all answers within tolerance of this one
+        for other_num, other_str in numeric_answers:
+            if num_val is not None and other_num is not None:
+                # Both are numeric, use tolerance
+                if abs(num_val - other_num) <= tolerance:
+                    count_dict[str_val] += 1
+            else:
+                # At least one is non-numeric, use exact string matching
+                if str_val == other_str:
+                    count_dict[str_val] += 1
+    
+    # Find the answer with the highest count
+    if count_dict:
+        majority_answer = max(count_dict.items(), key=lambda x: x[1])[0]
+        return majority_answer, count_dict
+    else:
+        return None, {}
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using both programming and standard solution agents,
@@ -162,116 +221,144 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Calculate statistics for programming solutions with tolerance-based grouping
         programming_success_rate = sum(programming_correctness) / len(programming_correctness) * 100 if programming_correctness else 0
         
-        # Group programming answers with tolerance
+        # Use the new approach to calculate programming majority answer
+        programming_majority_answer, programming_answer_counts = calculate_answer_majority(
+            programming_answers, tolerance=config.tolerance)
+            
+        # Create a backward-compatible programming_grouped_answers structure
         programming_grouped_answers = {}
-        for i, ans in enumerate(programming_answers):
-            if ans is None:
-                continue
+        for ans_str, count in programming_answer_counts.items():
+            programming_grouped_answers[ans_str] = []
+            for i, ans in enumerate(programming_answers):
+                if ans is None:
+                    continue
                 
-            # Try to convert to numeric
-            ans_numeric = None
-            try:
-                if isinstance(ans, (int, float)):
-                    ans_numeric = ans
-                else:
-                    ans_numeric, _ = extract_numeric_answer(str(ans))
-            except:
-                pass
-            
-            # Find if this answer belongs to an existing group
-            found_group = False
-            if ans_numeric is not None:
-                for group_key in list(programming_grouped_answers.keys()):
-                    group_numeric = None
-                    try:
-                        if isinstance(group_key, (int, float)):
-                            group_numeric = group_key
-                        else:
-                            group_numeric, _ = extract_numeric_answer(group_key)
-                    except:
-                        pass
+                # Check if this answer is within tolerance of the group key
+                ans_numeric = None
+                key_numeric = None
+                try:
+                    if isinstance(ans, (int, float)):
+                        ans_numeric = ans
+                    else:
+                        ans_numeric, _ = extract_numeric_answer(str(ans))
                         
-                    if group_numeric is not None and abs(ans_numeric - group_numeric) <= config.tolerance:
-                        # Add to existing group
-                        programming_grouped_answers[group_key].append((i, ans))
-                        found_group = True
-                        break
-            
-            # If no group found, create a new one
-            if not found_group:
-                programming_grouped_answers[str(ans)] = [(i, ans)]
-        
-        # Find the most common group
-        programming_group_counts = {k: len(v) for k, v in programming_grouped_answers.items()}
-        programming_most_common = max(programming_group_counts.items(), key=lambda x: x[1]) if programming_group_counts else (None, 0)
-        programming_majority_answer = programming_most_common[0] if programming_most_common[0] is not None else None
+                    if isinstance(ans_str, (int, float)):
+                        key_numeric = ans_str
+                    else:
+                        key_numeric, _ = extract_numeric_answer(ans_str)
+                except:
+                    pass
+                
+                # Add to group if within tolerance
+                if ans_numeric is not None and key_numeric is not None:
+                    if abs(ans_numeric - key_numeric) <= config.tolerance:
+                        programming_grouped_answers[ans_str].append((i, ans))
+                elif str(ans) == ans_str:
+                    programming_grouped_answers[ans_str].append((i, ans))
         
         # Check if majority answer is correct
         programming_majority_correct = False
         if programming_majority_answer is not None:
-            for group_key, group_items in programming_grouped_answers.items():
-                if group_key == programming_majority_answer:
-                    for idx, _ in group_items:
-                        if programming_correctness[idx]:
-                            programming_majority_correct = True
-                            break
+            for i, (ans, is_correct) in enumerate(zip(programming_answers, programming_correctness)):
+                if ans is None:
+                    continue
+                
+                # Check if this answer is the majority answer or within tolerance
+                ans_numeric = None
+                majority_numeric = None
+                try:
+                    if isinstance(ans, (int, float)):
+                        ans_numeric = ans
+                    else:
+                        ans_numeric, _ = extract_numeric_answer(str(ans))
+                        
+                    if isinstance(programming_majority_answer, (int, float)):
+                        majority_numeric = programming_majority_answer
+                    else:
+                        majority_numeric, _ = extract_numeric_answer(programming_majority_answer)
+                except:
+                    pass
+                
+                is_majority = False
+                if ans_numeric is not None and majority_numeric is not None:
+                    is_majority = abs(ans_numeric - majority_numeric) <= config.tolerance
+                else:
+                    is_majority = str(ans) == programming_majority_answer
+                
+                if is_majority and is_correct:
+                    programming_majority_correct = True
+                    break
         
         # Calculate statistics for standard solutions with tolerance-based grouping
         standard_success_rate = sum(standard_correctness) / len(standard_correctness) * 100 if standard_correctness else 0
         
-        # Group standard answers with tolerance
+        # Use the new approach to calculate standard majority answer
+        standard_majority_answer, standard_answer_counts = calculate_answer_majority(
+            standard_answers, tolerance=config.tolerance)
+            
+        # Create a backward-compatible standard_grouped_answers structure
         standard_grouped_answers = {}
-        for i, ans in enumerate(standard_answers):
-            if ans is None:
-                continue
+        for ans_str, count in standard_answer_counts.items():
+            standard_grouped_answers[ans_str] = []
+            for i, ans in enumerate(standard_answers):
+                if ans is None:
+                    continue
                 
-            # Try to convert to numeric
-            ans_numeric = None
-            try:
-                if isinstance(ans, (int, float)):
-                    ans_numeric = ans
-                else:
-                    ans_numeric, _ = extract_numeric_answer(str(ans))
-            except:
-                pass
-            
-            # Find if this answer belongs to an existing group
-            found_group = False
-            if ans_numeric is not None:
-                for group_key in list(standard_grouped_answers.keys()):
-                    group_numeric = None
-                    try:
-                        if isinstance(group_key, (int, float)):
-                            group_numeric = group_key
-                        else:
-                            group_numeric, _ = extract_numeric_answer(group_key)
-                    except:
-                        pass
+                # Check if this answer is within tolerance of the group key
+                ans_numeric = None
+                key_numeric = None
+                try:
+                    if isinstance(ans, (int, float)):
+                        ans_numeric = ans
+                    else:
+                        ans_numeric, _ = extract_numeric_answer(str(ans))
                         
-                    if group_numeric is not None and abs(ans_numeric - group_numeric) <= config.tolerance:
-                        # Add to existing group
-                        standard_grouped_answers[group_key].append((i, ans))
-                        found_group = True
-                        break
-            
-            # If no group found, create a new one
-            if not found_group:
-                standard_grouped_answers[str(ans)] = [(i, ans)]
-        
-        # Find the most common group
-        standard_group_counts = {k: len(v) for k, v in standard_grouped_answers.items()}
-        standard_most_common = max(standard_group_counts.items(), key=lambda x: x[1]) if standard_group_counts else (None, 0)
-        standard_majority_answer = standard_most_common[0] if standard_most_common[0] is not None else None
+                    if isinstance(ans_str, (int, float)):
+                        key_numeric = ans_str
+                    else:
+                        key_numeric, _ = extract_numeric_answer(ans_str)
+                except:
+                    pass
+                
+                # Add to group if within tolerance
+                if ans_numeric is not None and key_numeric is not None:
+                    if abs(ans_numeric - key_numeric) <= config.tolerance:
+                        standard_grouped_answers[ans_str].append((i, ans))
+                elif str(ans) == ans_str:
+                    standard_grouped_answers[ans_str].append((i, ans))
         
         # Check if majority answer is correct
         standard_majority_correct = False
         if standard_majority_answer is not None:
-            for group_key, group_items in standard_grouped_answers.items():
-                if group_key == standard_majority_answer:
-                    for idx, _ in group_items:
-                        if standard_correctness[idx]:
-                            standard_majority_correct = True
-                            break
+            for i, (ans, is_correct) in enumerate(zip(standard_answers, standard_correctness)):
+                if ans is None:
+                    continue
+                
+                # Check if this answer is the majority answer or within tolerance
+                ans_numeric = None
+                majority_numeric = None
+                try:
+                    if isinstance(ans, (int, float)):
+                        ans_numeric = ans
+                    else:
+                        ans_numeric, _ = extract_numeric_answer(str(ans))
+                        
+                    if isinstance(standard_majority_answer, (int, float)):
+                        majority_numeric = standard_majority_answer
+                    else:
+                        majority_numeric, _ = extract_numeric_answer(standard_majority_answer)
+                except:
+                    pass
+                
+                is_majority = False
+                if ans_numeric is not None and majority_numeric is not None:
+                    is_majority = abs(ans_numeric - majority_numeric) <= config.tolerance
+                else:
+                    is_majority = str(ans) == standard_majority_answer
+                
+                if is_majority and is_correct:
+                    standard_majority_correct = True
+                    break
         
         # Find intersection of answers using numeric tolerance for comparison
         intersection_answers = set()
@@ -322,61 +409,48 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Determine final answer based on intersection
         final_answer = None
         if intersection_answers:
-            # If there's an intersection, count occurrences of each answer
-            # First, group similar numeric answers within tolerance
-            grouped_answers = {}
-            
-            # Process all answers from both methods
+            # If there's an intersection, use the new approach to calculate the majority answer
+            # from all answers, but filter to only include those in the intersection
             all_answers = programming_answers + standard_answers
-            
-            for ans in all_answers:
-                if ans is None:
-                    continue
-                    
-                # Try to convert to numeric
-                ans_numeric = None
-                try:
-                    if isinstance(ans, (int, float)):
-                        ans_numeric = ans
-                    else:
-                        ans_numeric, _ = extract_numeric_answer(str(ans))
-                except:
-                    pass
-                
-                # Find if this answer belongs to an existing group
-                found_group = False
-                if ans_numeric is not None:
-                    for group_key in grouped_answers:
-                        group_numeric = None
-                        try:
-                            if isinstance(group_key, (int, float)):
-                                group_numeric = group_key
-                            else:
-                                group_numeric, _ = extract_numeric_answer(group_key)
-                        except:
-                            pass
-                            
-                        if group_numeric is not None and abs(ans_numeric - group_numeric) <= tolerance:
-                            grouped_answers[group_key] += 1
-                            found_group = True
-                            break
-                
-                # If no group found, create a new one
-                if not found_group:
-                    grouped_answers[str(ans)] = 1
+            _, all_answer_counts = calculate_answer_majority(all_answers, tolerance=config.tolerance)
             
             # Filter to only include answers in the intersection
-            intersection_counts = {k: v for k, v in grouped_answers.items() 
-                                 if k in intersection_answers or any(
-                                     abs(extract_numeric_answer(k)[0] - extract_numeric_answer(ia)[0]) <= tolerance 
-                                     for ia in intersection_answers 
-                                     if extract_numeric_answer(k)[0] is not None and extract_numeric_answer(ia)[0] is not None
-                                 )}
+            intersection_counts = {}
+            for ans_str, count in all_answer_counts.items():
+                # Check if this answer is in the intersection
+                in_intersection = False
+                
+                # Direct string match
+                if ans_str in intersection_answers:
+                    in_intersection = True
+                else:
+                    # Check numeric tolerance match
+                    ans_numeric = None
+                    try:
+                        ans_numeric, _ = extract_numeric_answer(ans_str)
+                    except:
+                        pass
+                        
+                    if ans_numeric is not None:
+                        for ia in intersection_answers:
+                            ia_numeric = None
+                            try:
+                                ia_numeric, _ = extract_numeric_answer(ia)
+                            except:
+                                pass
+                                
+                            if ia_numeric is not None and abs(ans_numeric - ia_numeric) <= tolerance:
+                                in_intersection = True
+                                break
+                
+                if in_intersection:
+                    intersection_counts[ans_str] = count
             
-            final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
-            
-        else:
-            # If no intersection, pick one at random (we'll use the most common from programming)
+            if intersection_counts:
+                final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
+        
+        if final_answer is None:
+            # If no intersection or no final answer determined, use the most common from either method
             final_answer = programming_majority_answer if programming_majority_answer else standard_majority_answer
         
         # Check if final answer is correct
