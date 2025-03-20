@@ -373,15 +373,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                      if extract_numeric_answer(k)[0] is not None and extract_numeric_answer(ia)[0] is not None
                                  )}
             
-            if intersection_counts:
-                final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
-            else:
-                # Fallback if grouping didn't work
-                intersection_counts = {
-                    ans: programming_answer_counts.get(ans, 0) + standard_answer_counts.get(ans, 0)
-                    for ans in intersection_answers
-                }
-                final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
+            final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
+            
         else:
             # If no intersection, pick one at random (we'll use the most common from programming)
             final_answer = programming_majority_answer if programming_majority_answer else standard_majority_answer
