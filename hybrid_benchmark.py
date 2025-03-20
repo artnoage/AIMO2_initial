@@ -159,27 +159,119 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 standard_correctness.append(False)
                 standard_answers.append(None)
         
-        # Calculate statistics for programming solutions
+        # Calculate statistics for programming solutions with tolerance-based grouping
         programming_success_rate = sum(programming_correctness) / len(programming_correctness) * 100 if programming_correctness else 0
-        programming_answer_counts = Counter([str(ans) for ans in programming_answers if ans is not None])
-        programming_most_common = programming_answer_counts.most_common(1)
-        programming_majority_answer = programming_most_common[0][0] if programming_most_common else None
-        programming_majority_correct = any(
-            str(ans) == programming_majority_answer and is_correct 
-            for ans, is_correct in zip(programming_answers, programming_correctness)
-            if ans is not None
-        ) if programming_majority_answer else False
         
-        # Calculate statistics for standard solutions
+        # Group programming answers with tolerance
+        programming_grouped_answers = {}
+        for i, ans in enumerate(programming_answers):
+            if ans is None:
+                continue
+                
+            # Try to convert to numeric
+            ans_numeric = None
+            try:
+                if isinstance(ans, (int, float)):
+                    ans_numeric = ans
+                else:
+                    ans_numeric, _ = extract_numeric_answer(str(ans))
+            except:
+                pass
+            
+            # Find if this answer belongs to an existing group
+            found_group = False
+            if ans_numeric is not None:
+                for group_key in list(programming_grouped_answers.keys()):
+                    group_numeric = None
+                    try:
+                        if isinstance(group_key, (int, float)):
+                            group_numeric = group_key
+                        else:
+                            group_numeric, _ = extract_numeric_answer(group_key)
+                    except:
+                        pass
+                        
+                    if group_numeric is not None and abs(ans_numeric - group_numeric) <= config.tolerance:
+                        # Add to existing group
+                        programming_grouped_answers[group_key].append((i, ans))
+                        found_group = True
+                        break
+            
+            # If no group found, create a new one
+            if not found_group:
+                programming_grouped_answers[str(ans)] = [(i, ans)]
+        
+        # Find the most common group
+        programming_group_counts = {k: len(v) for k, v in programming_grouped_answers.items()}
+        programming_most_common = max(programming_group_counts.items(), key=lambda x: x[1]) if programming_group_counts else (None, 0)
+        programming_majority_answer = programming_most_common[0] if programming_most_common[0] is not None else None
+        
+        # Check if majority answer is correct
+        programming_majority_correct = False
+        if programming_majority_answer is not None:
+            for group_key, group_items in programming_grouped_answers.items():
+                if group_key == programming_majority_answer:
+                    for idx, _ in group_items:
+                        if programming_correctness[idx]:
+                            programming_majority_correct = True
+                            break
+        
+        # Calculate statistics for standard solutions with tolerance-based grouping
         standard_success_rate = sum(standard_correctness) / len(standard_correctness) * 100 if standard_correctness else 0
-        standard_answer_counts = Counter([str(ans) for ans in standard_answers if ans is not None])
-        standard_most_common = standard_answer_counts.most_common(1)
-        standard_majority_answer = standard_most_common[0][0] if standard_most_common else None
-        standard_majority_correct = any(
-            str(ans) == standard_majority_answer and is_correct 
-            for ans, is_correct in zip(standard_answers, standard_correctness)
-            if ans is not None
-        ) if standard_majority_answer else False
+        
+        # Group standard answers with tolerance
+        standard_grouped_answers = {}
+        for i, ans in enumerate(standard_answers):
+            if ans is None:
+                continue
+                
+            # Try to convert to numeric
+            ans_numeric = None
+            try:
+                if isinstance(ans, (int, float)):
+                    ans_numeric = ans
+                else:
+                    ans_numeric, _ = extract_numeric_answer(str(ans))
+            except:
+                pass
+            
+            # Find if this answer belongs to an existing group
+            found_group = False
+            if ans_numeric is not None:
+                for group_key in list(standard_grouped_answers.keys()):
+                    group_numeric = None
+                    try:
+                        if isinstance(group_key, (int, float)):
+                            group_numeric = group_key
+                        else:
+                            group_numeric, _ = extract_numeric_answer(group_key)
+                    except:
+                        pass
+                        
+                    if group_numeric is not None and abs(ans_numeric - group_numeric) <= config.tolerance:
+                        # Add to existing group
+                        standard_grouped_answers[group_key].append((i, ans))
+                        found_group = True
+                        break
+            
+            # If no group found, create a new one
+            if not found_group:
+                standard_grouped_answers[str(ans)] = [(i, ans)]
+        
+        # Find the most common group
+        standard_group_counts = {k: len(v) for k, v in standard_grouped_answers.items()}
+        standard_most_common = max(standard_group_counts.items(), key=lambda x: x[1]) if standard_group_counts else (None, 0)
+        standard_majority_answer = standard_most_common[0] if standard_most_common[0] is not None else None
+        
+        # Check if majority answer is correct
+        standard_majority_correct = False
+        if standard_majority_answer is not None:
+            for group_key, group_items in standard_grouped_answers.items():
+                if group_key == standard_majority_answer:
+                    for idx, _ in group_items:
+                        if standard_correctness[idx]:
+                            standard_majority_correct = True
+                            break
         
         # Find intersection of answers using numeric tolerance for comparison
         intersection_answers = set()
@@ -328,6 +420,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 elif "Error:" in programming_solutions[i]:
                     logger.append(f"  └─ {programming_solutions[i]}")
         
+        # Log programming groups
+        logger.append(f"├─ Programming answer groups (tolerance: {config.tolerance}):")
+        for group_key, group_items in programming_grouped_answers.items():
+            group_indices = [idx+1 for idx, _ in group_items]
+            logger.append(f"│  └─ Group '{group_key}': solutions {group_indices} ({len(group_items)} items)")
+        
         logger.append(f"├─ Programming success rate: {programming_success_rate:.1f}%")
         logger.append(f"├─ Programming majority answer: {programming_majority_answer}")
         logger.append(f"├─ Programming majority correct? {'✓' if programming_majority_correct else '✗'}")
@@ -336,6 +434,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"\n📊 Standard Solutions Statistics:")
         for i, (sol_correct, sol_answer) in enumerate(zip(standard_correctness, standard_answers)):
             logger.append(f"├─ Solution {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
+        
+        # Log standard groups
+        logger.append(f"├─ Standard answer groups (tolerance: {config.tolerance}):")
+        for group_key, group_items in standard_grouped_answers.items():
+            group_indices = [idx+1 for idx, _ in group_items]
+            logger.append(f"│  └─ Group '{group_key}': solutions {group_indices} ({len(group_items)} items)")
+            
         logger.append(f"├─ Standard success rate: {standard_success_rate:.1f}%")
         logger.append(f"├─ Standard majority answer: {standard_majority_answer}")
         logger.append(f"├─ Standard majority correct? {'✓' if standard_majority_correct else '✗'}")
@@ -408,6 +513,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'total_solutions': len(programming_solutions),
             'correct_solutions': sum(programming_correctness),
             'incorrect_solutions': len(programming_correctness) - sum(programming_correctness),
+            'programming_grouped_answers': {k: [ans for _, ans in v] for k, v in programming_grouped_answers.items()},
+            'standard_grouped_answers': {k: [ans for _, ans in v] for k, v in standard_grouped_answers.items()},
             
             # For compatibility with tutor2_solution_benchmark.py
             'initial_solutions_count': len(programming_solutions),
