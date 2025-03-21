@@ -87,3 +87,16 @@ def get_hybrid_majority(programming_answers: List[float], standard_answers: List
     
     # Return programming majority if available, otherwise standard majority
     return programming_majority if programming_majority is not None else standard_majority
+
+
+def get_closest_integer(value: float) -> int:
+    """
+    Find the closest integer to a given float value.
+    
+    Args:
+        value: Float value to round to nearest integer
+        
+    Returns:
+        The closest integer to the input value
+    """
+    return round(value)
