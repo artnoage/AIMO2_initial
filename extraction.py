@@ -92,8 +92,14 @@ def get_programming_majority(programming_answers: List[Union[float, int, str, No
     Returns:
         The majority answer as a float if possible, otherwise as a string or None
     """
+    # Filter out None values
+    valid_answers = [ans for ans in programming_answers if ans is not None]
+    
+    if not valid_answers:
+        return None
+        
     # Use the calculate_answer_majority function to find the majority
-    majority_answer, _ = calculate_answer_majority(programming_answers, tolerance)
+    majority_answer, _ = calculate_answer_majority(valid_answers, tolerance)
     
     # Try to convert to float if possible
     if majority_answer is not None:
@@ -125,14 +131,23 @@ def get_hybrid_majority(programming_answers: List[Union[float, int, str, None]],
     Returns:
         The final answer as a float if possible, otherwise as a string or None
     """
+    # Filter out None values
+    valid_programming_answers = [ans for ans in programming_answers if ans is not None]
+    valid_standard_answers = [ans for ans in standard_answers if ans is not None]
+    
+    # If either list is empty, return the majority from the non-empty list
+    if not valid_programming_answers and not valid_standard_answers:
+        return None
+    elif not valid_programming_answers:
+        return get_programming_majority(valid_standard_answers, tolerance)
+    elif not valid_standard_answers:
+        return get_programming_majority(valid_programming_answers, tolerance)
+    
     # Find intersection of answers using numeric tolerance for comparison
     intersection_answers = set()
     
     # For each standard answer, find programming answers that are within tolerance
-    for std_ans in standard_answers:
-        if std_ans is None:
-            continue
-            
+    for std_ans in valid_standard_answers:
         # Try to convert to numeric for comparison
         std_numeric = None
         try:
@@ -145,10 +160,7 @@ def get_hybrid_majority(programming_answers: List[Union[float, int, str, None]],
             
         # If numeric, compare with tolerance
         if std_numeric is not None:
-            for prog_ans in programming_answers:
-                if prog_ans is None:
-                    continue
-                    
+            for prog_ans in valid_programming_answers:
                 # Try to convert to numeric
                 prog_numeric = None
                 try:
@@ -167,7 +179,7 @@ def get_hybrid_majority(programming_answers: List[Union[float, int, str, None]],
                         intersection_answers.add(str(prog_ans))
         else:
             # For non-numeric answers, use exact string comparison
-            if str(std_ans) in {str(ans) for ans in programming_answers if ans is not None}:
+            if str(std_ans) in {str(ans) for ans in valid_programming_answers}:
                 intersection_answers.add(str(std_ans))
     
     # Determine final answer based on intersection
@@ -175,7 +187,7 @@ def get_hybrid_majority(programming_answers: List[Union[float, int, str, None]],
     if intersection_answers:
         # If there's an intersection, use the calculate_answer_majority approach to calculate the majority answer
         # from all answers, but filter to only include those in the intersection
-        all_answers = programming_answers + standard_answers
+        all_answers = valid_programming_answers + valid_standard_answers
         _, all_answer_counts = calculate_answer_majority(all_answers, tolerance=tolerance)
         
         # Filter to only include answers in the intersection
@@ -215,8 +227,8 @@ def get_hybrid_majority(programming_answers: List[Union[float, int, str, None]],
     
     if final_answer is None:
         # If no intersection or no final answer determined, use the most common from either method
-        programming_majority_answer, _ = calculate_answer_majority(programming_answers, tolerance)
-        standard_majority_answer, _ = calculate_answer_majority(standard_answers, tolerance)
+        programming_majority_answer, _ = calculate_answer_majority(valid_programming_answers, tolerance)
+        standard_majority_answer, _ = calculate_answer_majority(valid_standard_answers, tolerance)
         final_answer = programming_majority_answer if programming_majority_answer else standard_majority_answer
     
     # Try to convert to float if possible
