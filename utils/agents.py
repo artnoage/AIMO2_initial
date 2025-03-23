@@ -144,8 +144,6 @@ result = ...
 print(result)  # Just the number, no text
 </response>"""
 
-
-
 ENGINEER_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
 
 Your response must include two clearly separated sections: a **thinking** section and a **response** section.

@@ -145,8 +145,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/QWEN7b"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigD"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -197,7 +197,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.66,
+        gpu_memory_utilization=0.6,
         max_lora_rank=64)
         
     # Function to count tokens in a string
@@ -236,8 +236,14 @@ def main():
         
         
         # Load the base dataset
-        data = load_dataset(dataset_name,split="train")
-        
+        data1 = load_dataset(dataset_name,split="train")
+        data1=data1.shuffle(seed=24)
+        data1=data1.select(range(2500))
+        data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
+        data2=data2.select(range(500))
+        data2=data2.shuffle(seed=24)
+        data = concatenate_datasets([data1,data2])
+        data = data.shuffle(seed=24)
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
@@ -260,9 +266,9 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     # Shuffle the combined dataset
-    formatted_dataset = formatted_dataset.shuffle(seed=172)
+    #formatted_dataset = formatted_dataset.shuffle(seed=172)
     # Use a reasonable number of examples
-    formatted_dataset = formatted_dataset.select(range(3000))
+    #formatted_dataset = formatted_dataset.select(range(3000))
    
         
     # GRPO specific training arguments
