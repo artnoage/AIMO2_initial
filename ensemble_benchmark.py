@@ -127,59 +127,165 @@ def extract_code_from_solution(solution: str) -> str:
     return ""
 
 
+def run_code_safely(code: str, timeout: int = 30) -> Tuple[bool, Optional[float], str]:
+    """
+    Run Python code safely in a subprocess with timeout
+    Returns:
+    - success: Whether the code executed successfully
+    - result: The numeric result (if any)
+    - error_message: Error message if any
+    """
+    # Create a temporary file with the code
+    with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
+        temp_file_path = temp_file.name
+        
+        # Add code to extract and print the result
+        full_code = code + "\n\n"
+        full_code += "# Extract and print the result\n"
+        full_code += "import re\n"
+        full_code += "import sys\n\n"
+        full_code += "# Get all output from print statements\n"
+        full_code += "from io import StringIO\n"
+        full_code += "import sys\n"
+        full_code += "output_buffer = StringIO()\n"
+        full_code += "sys.stdout = output_buffer\n"
+        full_code += "# Execute any main function if it exists\n"
+        full_code += "if 'main' in globals() and callable(globals()['main']):\n"
+        full_code += "    main()\n"
+        full_code += "# Restore stdout\n"
+        full_code += "sys.stdout = sys.__stdout__\n"
+        full_code += "output = output_buffer.getvalue()\n\n"
+        full_code += "# Try to extract a number from the output\n"
+        full_code += "if output.strip():\n"
+        full_code += "    # Get the last line of output\n"
+        full_code += "    last_line = output.strip().split('\\n')[-1]\n"
+        full_code += "    # Try to extract a number\n"
+        full_code += "    match = re.search(r'[-+]?\\d*\\.?\\d+', last_line)\n"
+        full_code += "    if match:\n"
+        full_code += "        print(float(match.group()))\n"
+        full_code += "        sys.exit(0)\n\n"
+        full_code += "# If no number in output, look for variables that might be the result\n"
+        full_code += "# Check for variables that look like results\n"
+        full_code += "result_vars = ['result', 'answer', 'solution', 'output', 'value', 'final']\n"
+        full_code += "for var in result_vars:\n"
+        full_code += "    if var in globals() and isinstance(globals()[var], (int, float)):\n"
+        full_code += "        print(float(globals()[var]))\n"
+        full_code += "        sys.exit(0)\n\n"
+        full_code += "# If still no result, look for any numeric variables\n"
+        full_code += "for var_name, var_value in globals().items():\n"
+        full_code += "    if isinstance(var_value, (int, float)) and not var_name.startswith('_'):\n"
+        full_code += "        print(float(var_value))\n"
+        full_code += "        sys.exit(0)\n\n"
+        full_code += "# If we get here, no result was found\n"
+        full_code += "print('NO_NUMERIC_RESULT_FOUND')\n"
+        
+        temp_file.write(full_code.encode('utf-8'))
+    
+    try:
+        # Run the code with a timeout
+        with time_limit(timeout):
+            result = subprocess.run(
+                [sys.executable, temp_file_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+        
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        
+        if result.returncode != 0:
+            return False, None, f"Execution error: {result.stderr}"
+        
+        # Parse the output
+        output = result.stdout.strip()
+        if output == "NO_NUMERIC_RESULT_FOUND":
+            return False, None, "No numeric result found in the code output"
+        
+        try:
+            numeric_result = float(output)
+            return True, numeric_result, ""
+        except ValueError:
+            return False, None, f"Could not convert output to float: {output}"
+            
+    except TimeoutException:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        return False, None, "Code execution timed out"
+    except Exception as e:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        return False, None, f"Error running code: {str(e)}"
+
 def run_test_function(test_code: str, solution_code: str, correct_answer: float, timeout: int = 30) -> Tuple[bool, str]:
     """
-    Run the test function on a solution code
+    Run the solution code to get a result, then test it with the test function
     
     Returns:
     - success: Whether the solution passes the test
     - error_message: Error message if any
     """
-    # Create a temporary file with the test function and solution code
+    # First run the solution code to get a result
+    execution_success, result, error_message = run_code_safely(solution_code, timeout=timeout)
+    
+    if not execution_success:
+        return False, error_message
+    
+    # Now create a temporary file with just the test function
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
         temp_file_path = temp_file.name
         
-        # Write the test function and solution code to the file
+        # Write the test function to the file
         test_code = test_code + "\n\n"
         
-        # Add code to run the solution and test it
-        test_code += solution_code + "\n\n"
-        test_code += "import sys\n"
+        # Add code to test the result
         test_code += "import json\n\n"
-        test_code += "def run_test():\n"
-        test_code += "    try:\n"
-        test_code += "        # Capture stdout to get the solution's output\n"
-        test_code += "        import io\n"
-        test_code += "        from contextlib import redirect_stdout\n"
-        test_code += "        f = io.StringIO()\n"
-        test_code += "        with redirect_stdout(f):\n"
-        test_code += "            # Execute the main code\n"
-        test_code += "            # Look for a main() function or just execute the global code\n"
-        test_code += "            if 'main' in globals() and callable(globals()['main']):\n"
-        test_code += "                main()\n"
-        test_code += "        output = f.getvalue().strip()\n"
-        test_code += "        \n"
-        test_code += "        # Try to convert the output to a float\n"
-        test_code += "        try:\n"
-        test_code += "            # Extract the last line if there are multiple lines\n"
-        test_code += "            last_line = output.split('\\n')[-1].strip()\n"
-        test_code += "            # Try to extract a number from the output\n"
-        test_code += "            import re\n"
-        test_code += "            number_match = re.search(r'[-+]?\\d*\\.?\\d+', last_line)\n"
-        test_code += "            if number_match:\n"
-        test_code += "                answer = float(number_match.group())\n"
-        test_code += "            else:\n"
-        test_code += "                answer = float(last_line)\n"
-        test_code += "        except ValueError:\n"
-        test_code += "            print(json.dumps({'success': False, 'error': f'Could not convert output to float: {output}'}))\n"
-        test_code += "            return\n"
-        test_code += "        \n"
-        test_code += "        # Test the answer\n"
-        test_code += "        result = test_solution(answer)\n"
-        test_code += "        print(json.dumps({'success': bool(result), 'answer': answer}))\n"
-        test_code += "    except Exception as e:\n"
-        test_code += "        print(json.dumps({'success': False, 'error': str(e)}))\n\n"
-        test_code += "run_test()\n"
+        test_code += f"answer = {result}\n"
+        test_code += "try:\n"
+        test_code += "    result = test_solution(answer)\n"
+        test_code += "    print(json.dumps({'success': bool(result), 'answer': answer}))\n"
+        test_code += "except Exception as e:\n"
+        test_code += "    print(json.dumps({'success': False, 'error': str(e)}))\n"
+        
+        temp_file.write(test_code.encode('utf-8'))
+    
+    try:
+        # Run the test function with a timeout
+        with time_limit(timeout):
+            result = subprocess.run(
+                [sys.executable, temp_file_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout
+            )
+        
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        
+        if result.returncode != 0:
+            return False, f"Test execution error: {result.stderr}"
+        
+        # Parse the results
+        try:
+            results_dict = json.loads(result.stdout.strip())
+            
+            if not results_dict.get('success', False):
+                error_msg = results_dict.get('error', 'Unknown error')
+                return False, error_msg
+            
+            return True, ""
+            
+        except json.JSONDecodeError:
+            return False, f"Failed to parse test results: {result.stdout}"
+            
+    except TimeoutException:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        return False, "Test execution timed out"
+    except Exception as e:
+        # Clean up the temporary file
+        os.unlink(temp_file_path)
+        return False, f"Error running test function: {str(e)}"
         
         temp_file.write(test_code.encode('utf-8'))
     
@@ -403,6 +509,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             'answer': result,
                             'is_correct': abs(correct_answer - result) <= config.tolerance
                         })
+                    else:
+                        logger.append(f"❌ Solution execution failed: {error_message}")
                 except Exception as e:
                     logger.append(f"❌ Error running solution: {str(e)}")
             
