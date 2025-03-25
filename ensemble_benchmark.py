@@ -44,12 +44,12 @@ def time_limit(seconds):
 
 
 # Import functions from test_benchmark.py
-from test_benchmark import extract_test_function, generate_test_cases, run_test_function as test_run_test_function
+from test_benchmark import extract_test_function, generate_test_cases
 
-# Import functions from programming_benchmark.py
-from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality
+# Import functions from programming_benchmark.py and solution_utils
+from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function
 
-def run_test_function(test_code: str, solution_code: str, correct_answer: float, timeout: int = 30) -> Tuple[bool, str]:
+def ensemble_run_test_function(test_code: str, solution_code: str, correct_answer: float, timeout: int = 30) -> Tuple[bool, str]:
     """
     Run the solution code to get a result, then test it with the test function
     
@@ -70,7 +70,7 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
     test_cases = [result]
     
     # Run the test function on the result
-    success, results, test_error = test_benchmark.run_test_function(
+    success, results, test_error = run_test_function(
         test_code,
         test_cases,
         result,  # We're testing if the test function accepts the solution's result
@@ -163,7 +163,7 @@ async def process_group(
                     logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
                 
                 # Test the solution against the test function
-                success, error_message = run_test_function(
+                success, error_message = ensemble_run_test_function(
                     test_function, 
                     solution_code, 
                     correct_answer,
