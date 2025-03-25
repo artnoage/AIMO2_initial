@@ -71,6 +71,20 @@ def extract_test_function(solution: str) -> str:
     return ""
 
 
+def extract_code_from_response(response: str) -> str:
+    """Extract code from a response section"""
+    # Look for Python code blocks
+    code_match = re.search(r'```python(.*?)```', response, re.DOTALL)
+    if code_match:
+        return code_match.group(1).strip()
+    
+    # Look for generic code blocks
+    code_match = re.search(r'```(.*?)```', response, re.DOTALL)
+    if code_match:
+        return code_match.group(1).strip()
+    
+    return ""
+
 def extract_code_from_solution(solution: str) -> str:
     """Extract Python code from a solution"""
     # First try to extract from response section
@@ -86,6 +100,29 @@ def extract_code_from_solution(solution: str) -> str:
     code_match = re.search(r'```python(.*?)```', solution, re.DOTALL)
     if code_match:
         return code_match.group(1).strip()
+    
+    # If no code blocks found, look for function definitions or imports
+    # This is a more aggressive approach to find any Python code
+    if "def " in solution or "import " in solution:
+        lines = solution.split('\n')
+        code_lines = []
+        in_code_block = False
+        
+        for line in lines:
+            stripped = line.strip()
+            # Look for indicators of Python code
+            if (stripped.startswith("def ") or 
+                stripped.startswith("import ") or 
+                stripped.startswith("from ") or
+                stripped.startswith("class ") or
+                stripped.startswith("# ")):
+                in_code_block = True
+            
+            if in_code_block:
+                code_lines.append(line)
+        
+        if code_lines:
+            return "\n".join(code_lines)
     
     return ""
 
@@ -230,8 +267,20 @@ async def process_group(
                 _, full_solution = await programming_agent.generate(problem, return_prompt=True)
                 
                 # Extract code from solution
-                solution_code = extract_code_from_response(full_solution)
+                # First check if response section exists
+                response_match = re.search(r'<response>(.*?)</response>', full_solution, re.DOTALL)
+                if response_match:
+                    response_content = response_match.group(1)
+                    solution_code = extract_code_from_response(response_content)
+                    if not solution_code:
+                        # If no code in response section, try the whole solution
+                        logger.append(f"No code found in response section, trying whole solution")
+                        solution_code = extract_code_from_solution(full_solution)
+                else:
+                    # If no response tags, extract from the whole solution
+                    solution_code = extract_code_from_solution(full_solution)
                 
+                logger.append(f"Extracted code length: {len(solution_code)} characters")
                 if not solution_code:
                     logger.append(f"❌ No code found in solution {i+1}")
                     continue
