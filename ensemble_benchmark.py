@@ -99,7 +99,7 @@ def ensemble_run_test_function(test_code: str, result: float, timeout: int = 30)
         - error_message: Error message if any
     """
     # Create a simple test case with just the result
-    test_cases = [result]
+    test_cases = []
     
     # Run the test function on the result
     success, results, test_error = run_test_function(
@@ -127,8 +127,9 @@ async def process_group(
         List of numerical values that passed the test function
     """
     main_model = get_model(config, role="main")
+    auxiliary_model = get_model(config, role="auxiliary")
     programming_agent = ProgrammingAgent(main_model)
-    testing_agent = TestingAgent(main_model)
+    testing_agent = TestingAgent(auxiliary_model)
     
     # Generate test function first
     logger.append(f"\n🧪 Generating test function for group {group_id}...")
