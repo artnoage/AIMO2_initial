@@ -229,7 +229,14 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
     execution_success, result, error_message = run_code_safely(solution_code, timeout=timeout)
     
     if not execution_success:
-        return False, error_message
+        return False, f"Solution execution failed: {error_message}"
+    
+    # Check if the result is close to the correct answer
+    is_numerically_correct = abs(result - correct_answer) <= 1e-6 if result is not None else False
+    
+    # Log this information for debugging
+    print(f"DEBUG: Solution result: {result}, Correct answer: {correct_answer}")
+    print(f"DEBUG: Numerically correct: {is_numerically_correct}")
     
     # Now create a temporary file with just the test function
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
@@ -358,6 +365,17 @@ async def process_group(
                     logger.append(f"❌ Solution {i+1} quality check failed: {quality_message}")
                     continue
                 
+                # First run the solution code directly to see what it produces
+                execution_success, result, execution_error = run_code_safely(
+                    solution_code, 
+                    timeout=config.timeout
+                )
+                
+                if execution_success:
+                    logger.append(f"✓ Solution {i+1} execution result: {result}")
+                else:
+                    logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
+                
                 # Test the solution against the test function
                 success, error_message = run_test_function(
                     test_function, 
@@ -371,10 +389,20 @@ async def process_group(
                     solutions.append({
                         'solution': full_solution,
                         'code': solution_code,
+                        'execution_result': result if execution_success else None,
                         'passed_test': True
                     })
                 else:
                     logger.append(f"❌ Solution {i+1} failed the test: {error_message}")
+                    # Still store the solution for debugging
+                    if execution_success:
+                        logger.append(f"  (Solution produced result: {result}, correct answer: {correct_answer})")
+                        solutions.append({
+                            'solution': full_solution,
+                            'code': solution_code,
+                            'execution_result': result,
+                            'passed_test': False
+                        })
             
             except Exception as e:
                 logger.append(f"❌ Error generating solution {i+1}: {str(e)}")
@@ -500,6 +528,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"\n📝 Solution {i+1}:")
             logger.append(f"├─ Passed test: {'Yes' if s.get('passed_test', False) else 'No'}")
             
+            # Show execution result if available
+            if 'execution_result' in s:
+                logger.append(f"├─ Execution result: {s['execution_result']}")
+                if correct_answer is not None:
+                    is_numerically_correct = abs(s['execution_result'] - correct_answer) <= config.tolerance if s['execution_result'] is not None else False
+                    logger.append(f"├─ Numerically correct: {'Yes' if is_numerically_correct else 'No'}")
+            
             # Show a snippet of the code
             code_lines = s['code'].split('\n')
             code_preview = '\n'.join(code_lines[:5])
@@ -527,9 +562,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'correct_answer': correct_answer,
                 'model_solution': s['solution'],
                 'model_code': s['code'],
-                'model_answer': execution_result['answer'] if execution_result else None,
-                'is_correct': execution_result['is_correct'] if execution_result else False,
+                'model_answer': execution_result['answer'] if execution_result else s.get('execution_result'),
+                'is_correct': execution_result['is_correct'] if execution_result else (
+                    s.get('execution_result') is not None and 
+                    abs(s.get('execution_result', 0) - correct_answer) <= config.tolerance
+                ),
                 'passed_test': s.get('passed_test', False),
+                'execution_result': s.get('execution_result'),
                 'group_id': i // solutions_per_group + 1,
                 'solution_id': i % solutions_per_group + 1
             })
