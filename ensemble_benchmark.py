@@ -307,7 +307,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             return None
 
         # Calculate number of groups
-        num_groups = math.ceil(config.best_of / 4)
+        num_groups = math.ceil(config.best_of / config.solutions_per_group)
         solutions_per_group = config.solutions_per_group
         
         logger.append("\n" + "="*80)
