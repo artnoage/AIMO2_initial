@@ -14,6 +14,12 @@ from utils.model_utils import *
 from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
+# Import functions from test_benchmark.py
+from test_benchmark import extract_test_function, generate_test_cases
+
+# Import functions from programming_benchmark.py and solution_utils
+from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function
+
 
 # Configure logging
 logging.basicConfig(
@@ -43,13 +49,9 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Import functions from test_benchmark.py
-from test_benchmark import extract_test_function, generate_test_cases
 
-# Import functions from programming_benchmark.py and solution_utils
-from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function
 
-def ensemble_run_test_function(test_code: str, solution_code: str, correct_answer: float, timeout: int = 30) -> Tuple[bool, str]:
+def ensemble_run_test_function(test_code: str, solution_code: str,  timeout: int = 30) -> Tuple[bool, str]:
     """
     Run the solution code to get a result, then test it with the test function
     
@@ -62,9 +64,6 @@ def ensemble_run_test_function(test_code: str, solution_code: str, correct_answe
     
     if not execution_success:
         return False, f"Solution execution failed: {error_message}"
-    
-    # Check if the result is close to the correct answer
-    is_numerically_correct = abs(result - correct_answer) <= 1e-6 if result is not None else False
     
     # Create a simple test case with just the result
     test_cases = [result]
@@ -166,7 +165,6 @@ async def process_group(
                 success, error_message = ensemble_run_test_function(
                     test_function, 
                     solution_code, 
-                    correct_answer,
                     timeout=config.timeout
                 )
                 
