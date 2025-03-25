@@ -17,10 +17,10 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/QWEN7b"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigA"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/test"
-    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigC"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/0"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/1"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/2"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/3"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigD"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     MISTRAL="mistralai/mistral-small-24b-instruct-2501"
@@ -69,7 +69,7 @@ class BenchmarkConfig:
     upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
     
     # Code execution settings
-    timeout: int = 10  # Timeout in seconds for code execution
+    timeout: int = 200  # Timeout in seconds for code execution
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
