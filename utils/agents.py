@@ -292,3 +292,70 @@ class EngineerAgent:
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 
+TESTER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to create a Python function that tests whether a given value is the correct answer to the problem.
+
+<thinking>
+In this section, analyze the problem:
+- Identify the mathematical concepts and principles involved
+- Determine what the correct answer should look like (e.g., a specific number, a range of values)
+- Consider how to verify the answer without directly solving the problem
+- Think about edge cases and numerical precision issues
+- Plan how to implement a verification function that returns True only for correct answers
+Do not write code in this section, focus on analysis and planning.
+</thinking>
+
+<response>
+Write a Python function named `test_solution(answer)` that:
+1. Takes a single parameter `answer` (a float)
+2. Returns True if the answer is correct (within reasonable numerical tolerance)
+3. Returns False otherwise
+
+Your function must:
+- Be self-contained and use only standard Python libraries (numpy, sympy, scipy are allowed)
+- Include clear comments explaining the verification logic
+- Handle numerical precision appropriately (use tolerances where needed)
+- Be efficient and avoid excessive resource usage
+
+Example format:
+
+```python
+# Test function for the problem
+import math
+import numpy as np
+
+def test_solution(answer):
+    # Verification logic with appropriate tolerance
+    # [brief explanation comment]
+    expected = ...  # The expected answer or verification calculation
+    
+    # Return True if answer matches expected value within tolerance
+    return abs(answer - expected) < 1e-6
+```
+
+Your function should NOT solve the problem directly if possible - it should verify a solution.
+</response>"""
+
+
+class TestingAgent:
+    """Agent that creates test functions for mathematical problems"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, correct_answer: Optional[str] = None, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a test function that verifies solutions to the mathematical problem"""
+        system_prompt = TESTER_SYSTEM_PROMPT
+
+        content = f"Problem:\n{problem}\n\n"
+        if correct_answer:
+            content += f"The correct answer is: {correct_answer}\n\n"
+            content += "Create a test function that returns True for this answer (within reasonable tolerance) and False for incorrect answers."
+        
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=content)
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        return (system_prompt + "\n\n" + content, response) if return_prompt else response
+
+
