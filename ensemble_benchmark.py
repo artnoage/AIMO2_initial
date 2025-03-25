@@ -47,8 +47,8 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Import functions from test_benchmark.py
-from test_benchmark import extract_test_function, generate_test_cases, run_test_function as test_run_test_function
+# Import functions from test_benchmark.py - avoid circular imports
+import test_benchmark
 
 # Import functions from programming_benchmark.py
 from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality
@@ -70,15 +70,11 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
     # Check if the result is close to the correct answer
     is_numerically_correct = abs(result - correct_answer) <= 1e-6 if result is not None else False
     
-    # Log this information for debugging
-    print(f"DEBUG: Solution result: {result} (type: {type(result)}), Correct answer: {correct_answer} (type: {type(correct_answer)})")
-    print(f"DEBUG: Numerically correct: {is_numerically_correct}, Difference: {abs(result - correct_answer) if result is not None else 'N/A'}")
-    
     # Create a simple test case with just the result
     test_cases = [result]
     
     # Run the test function on the result
-    success, results, test_error = test_run_test_function(
+    success, results, test_error = test_benchmark.run_test_function(
         test_code,
         test_cases,
         result,  # We're testing if the test function accepts the solution's result
@@ -166,7 +162,7 @@ async def process_group(
                 )
                 
                 if execution_success:
-                    logger.append(f"✓ Solution {i+1} execution result: {result}")
+                    logger.append(f"✓ Solution {i+1} execution successful")
                 else:
                     logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
                 
