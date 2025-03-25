@@ -98,10 +98,20 @@ def ensemble_run_test_function(test_code: str, result: float, timeout: int = 30)
         - success: Whether the result passes the test
         - error_message: Error message if any
     """
-    # Create a simple test case with just the result
-    test_cases = []
+    # Create test cases including the result and some incorrect values
+    test_cases = [result]  # The result we want to test
     
-    # Run the test function on the result
+    # Generate some values that are significantly different from the result
+    # to ensure the test function can discriminate between correct and incorrect answers
+    multipliers = [0.5, 2.0, -1.0, 10.0]
+    for multiplier in multipliers:
+        # Ensure the test value is different enough from the result
+        test_value = result * multiplier
+        # Make sure we don't accidentally generate the same value
+        if abs(test_value - result) > 0.1:
+            test_cases.append(test_value)
+    
+    # Run the test function on all test cases
     success, results, test_error = run_test_function(
         test_code,
         test_cases,
@@ -109,7 +119,7 @@ def ensemble_run_test_function(test_code: str, result: float, timeout: int = 30)
         timeout=timeout
     )
     
-    # If the test function accepts the result, it's a valid solution
+    # If the test function accepts the result and rejects at least one incorrect answer, it's valid
     return success, test_error if not success else ""
         
 
