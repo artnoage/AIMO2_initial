@@ -149,7 +149,7 @@ async def process_group(
                     logger.append(f"❌ Solution {i+1} quality check failed: {quality_message}")
                     continue
                 
-                # First run the solution code directly to see what it produces
+                # Run the solution code to get a result
                 execution_success, result, execution_error = run_code_safely(
                     solution_code, 
                     timeout=config.timeout
@@ -158,15 +158,6 @@ async def process_group(
                 if execution_success:
                     logger.append(f"✓ Solution {i+1} execution successful")
                 else:
-                    logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
-                
-                # First run the solution code to get a result
-                execution_success, result, execution_error = run_code_safely(
-                    solution_code, 
-                    timeout=config.timeout
-                )
-                
-                if not execution_success:
                     logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
                     continue
                 
