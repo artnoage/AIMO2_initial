@@ -84,8 +84,13 @@ async def process_group(
     group_id: int, 
     config: BenchmarkConfig, 
     logger: BenchmarkLogger
-) -> List[Dict]:
-    """Process a group of solutions with a single test function"""
+) -> List[float]:
+    """
+    Process a group of solutions with a single test function
+    
+    Returns:
+        List of numerical values that passed the test function
+    """
     main_model = get_model(config, role="main")
     programming_agent = ProgrammingAgent(main_model)
     testing_agent = TestingAgent(main_model)
@@ -116,7 +121,7 @@ async def process_group(
         logger.append(f"✓ Test function generated successfully")
         
         # Generate solutions for this group
-        solutions = []
+        numerical_results = []
         for i in range(config.solutions_per_group):
             logger.append(f"\n📝 Generating solution {i+1} for group {group_id}...")
             try:
@@ -155,7 +160,7 @@ async def process_group(
                 )
                 
                 if execution_success:
-                    logger.append(f"✓ Solution {i+1} execution successful")
+                    logger.append(f"✓ Solution {i+1} execution successful, result: {result}")
                 else:
                     logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
                     continue
@@ -168,29 +173,16 @@ async def process_group(
                 )
                 
                 if success:
-                    logger.append(f"✓ Solution {i+1} passed the test")
-                    solutions.append({
-                        'solution': full_solution,
-                        'code': solution_code,
-                        'execution_result': result if execution_success else None,
-                        'passed_test': True
-                    })
+                    logger.append(f"✓ Solution {i+1} passed the test with result: {result}")
+                    numerical_results.append(result)
                 else:
                     logger.append(f"❌ Solution {i+1} failed the test: {error_message}")
-                    # Still store the solution for debugging
-                    if execution_success:
-                        logger.append(f"  (Solution produced result: {result}, correct answer: {correct_answer})")
-                        solutions.append({
-                            'solution': full_solution,
-                            'code': solution_code,
-                            'execution_result': result,
-                            'passed_test': False
-                        })
+                    logger.append(f"  (Solution produced result: {result}, correct answer: {correct_answer})")
             
             except Exception as e:
                 logger.append(f"❌ Error generating solution {i+1}: {str(e)}")
         
-        return solutions
+        return numerical_results
         
     except Exception as e:
         logger.append(f"❌ Error in group {group_id}: {str(e)}")
@@ -247,10 +239,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"└─ Solutions per group: {solutions_per_group}")
         
         # Process each group
-        all_solutions = []
+        all_numerical_results = []
+        group_results = []
+        
         for group_id in range(num_groups):
             logger.append(f"\n\n🔍 Processing Group {group_id + 1}/{num_groups}")
-            group_solutions = await process_group(
+            numerical_values = await process_group(
                 example["problem"],
                 correct_answer,
                 group_id + 1,
@@ -258,72 +252,44 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger
             )
             
-            all_solutions.extend(group_solutions)
-            logger.append(f"Group {group_id + 1} results: {len(group_solutions)} valid solutions")
+            all_numerical_results.extend(numerical_values)
+            group_results.append(numerical_values)
+            logger.append(f"Group {group_id + 1} results: {len(numerical_values)} valid numerical values")
+            if numerical_values:
+                logger.append(f"Group {group_id + 1} values: {numerical_values}")
         
-        # Perform majority voting on all solutions that passed their tests
-        if not all_solutions:
-            logger.append(f"\n❌ No valid solutions found across all groups")
+        # Perform majority voting on all numerical values that passed their tests
+        if not all_numerical_results:
+            logger.append(f"\n❌ No valid numerical results found across all groups")
             is_correct = False
             final_answer = None
         else:
-            # Run all solutions that passed their tests
-            valid_solutions = []
-            for solution in all_solutions:
-                try:
-                    execution_success, result, error_message = run_code_safely(solution['code'], timeout=config.timeout)
-                    
-                    if execution_success and result is not None:
-                        valid_solutions.append({
-                            'solution': solution['solution'],
-                            'code': solution['code'],
-                            'answer': result,
-                            'is_correct': abs(correct_answer - result) <= config.tolerance
-                        })
-                    else:
-                        logger.append(f"❌ Solution execution failed: {error_message}")
-                except Exception as e:
-                    logger.append(f"❌ Error running solution: {str(e)}")
+            # Perform majority voting directly on the numerical values
+            answer_counts = Counter(all_numerical_results)
+            final_answer, count = answer_counts.most_common(1)[0]
             
-            # Perform majority voting
-            if not valid_solutions:
-                logger.append(f"\n❌ No solutions could be executed successfully")
-                is_correct = False
-                final_answer = None
-            else:
-                # Count answers
-                answers = [s['answer'] for s in valid_solutions]
-                answer_counts = Counter(answers)
-                final_answer, count = answer_counts.most_common(1)[0]
-                
-                # Check if the final answer is correct
-                is_correct = abs(correct_answer - final_answer) <= config.tolerance
-                
-                logger.append(f"\n📊 Ensemble Results:")
-                logger.append(f"├─ Total valid solutions: {len(valid_solutions)}/{len(all_solutions)}")
-                logger.append(f"├─ Answer distribution: {dict(answer_counts)}")
-                logger.append(f"├─ Final answer: {final_answer}")
-                logger.append(f"├─ Correct answer: {correct_answer}")
-                logger.append(f"└─ Final answer correct: {'Yes' if is_correct else 'No'}")
+            # Check if the final answer is correct
+            is_correct = abs(correct_answer - final_answer) <= config.tolerance
+            
+            logger.append(f"\n📊 Ensemble Results:")
+            logger.append(f"├─ Total valid numerical results: {len(all_numerical_results)}")
+            logger.append(f"├─ Answer distribution: {dict(answer_counts)}")
+            logger.append(f"├─ Final answer: {final_answer}")
+            logger.append(f"├─ Correct answer: {correct_answer}")
+            logger.append(f"└─ Final answer correct: {'Yes' if is_correct else 'No'}")
+            
+            # Show results by group
+            logger.append(f"\n📊 Group Results:")
+            for i, group_vals in enumerate(group_results):
+                if group_vals:
+                    group_counter = Counter(group_vals)
+                    group_most_common, group_count = group_counter.most_common(1)[0]
+                    group_correct = abs(correct_answer - group_most_common) <= config.tolerance
+                    logger.append(f"Group {i+1}: {len(group_vals)} values, most common: {group_most_common} (correct: {'Yes' if group_correct else 'No'})")
+                else:
+                    logger.append(f"Group {i+1}: No valid results")
         
-        # Add detailed solution information
-        for i, s in enumerate(all_solutions):
-            logger.append(f"\n📝 Solution {i+1}:")
-            logger.append(f"├─ Passed test: {'Yes' if s.get('passed_test', False) else 'No'}")
-            
-            # Show execution result if available
-            if 'execution_result' in s:
-                logger.append(f"├─ Execution result: {s['execution_result']}")
-                if correct_answer is not None:
-                    is_numerically_correct = abs(s['execution_result'] - correct_answer) <= config.tolerance if s['execution_result'] is not None else False
-                    logger.append(f"├─ Numerically correct: {'Yes' if is_numerically_correct else 'No'}")
-            
-            # Show a snippet of the code
-            code_lines = s['code'].split('\n')
-            code_preview = '\n'.join(code_lines[:5])
-            if len(code_lines) > 5:
-                code_preview += f"\n... ({len(code_lines) - 5} more lines)"
-            logger.append(f"└─ Code snippet:\n{code_preview}")
+        # No need to show detailed solution information since we're only working with numerical values
         
         logger.append("="*80)
         
@@ -333,27 +299,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         result_entries = []
         
-        # Add individual solution entries
-        for i, s in enumerate(all_solutions):
-            # Find the execution result if available
-            execution_result = next((vs for vs in valid_solutions if vs['code'] == s['code']), None)
+        # Add individual numerical result entries
+        for i, result in enumerate(all_numerical_results):
+            group_id = i // config.solutions_per_group + 1
+            solution_id = i % config.solutions_per_group + 1
             
             result_entries.append({
                 'id': example_id,
                 'data_type': 'training',
                 'problem': example['problem'],
                 'correct_answer': correct_answer,
-                'model_solution': s['solution'],
-                'model_code': s['code'],
-                'model_answer': execution_result['answer'] if execution_result else s.get('execution_result'),
-                'is_correct': execution_result['is_correct'] if execution_result else (
-                    s.get('execution_result') is not None and 
-                    abs(s.get('execution_result', 0) - correct_answer) <= config.tolerance
-                ),
-                'passed_test': s.get('passed_test', False),
-                'execution_result': s.get('execution_result'),
-                'group_id': i // solutions_per_group + 1,
-                'solution_id': i % solutions_per_group + 1
+                'numerical_result': result,
+                'is_correct': abs(result - correct_answer) <= config.tolerance,
+                'group_id': group_id,
+                'solution_id': solution_id
             })
         
         # Add statistics entry
@@ -361,12 +320,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'id': example_id,
             'data_type': 'statistics',
             'example_processed_successfully': True,
-            'is_correct_list': [s.get('is_correct', False) for s in valid_solutions],
+            'is_correct_list': [abs(result - correct_answer) <= config.tolerance for result in all_numerical_results],
             'is_most_common_correct': is_correct,
-            'success_rate': (sum(1 for s in valid_solutions if s.get('is_correct', False)) / len(valid_solutions) * 100) if valid_solutions else 0,
-            'total_solutions': len(all_solutions),
-            'valid_solutions': len(valid_solutions),
-            'correct_solutions': sum(1 for s in valid_solutions if s.get('is_correct', False)),
+            'success_rate': (sum(1 for result in all_numerical_results if abs(result - correct_answer) <= config.tolerance) / len(all_numerical_results) * 100) if all_numerical_results else 0,
+            'total_results': len(all_numerical_results),
+            'correct_results': sum(1 for result in all_numerical_results if abs(result - correct_answer) <= config.tolerance),
             'final_answer': final_answer,
             'ensemble_correct': is_correct
         })
@@ -383,9 +341,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [],
             'is_most_common_correct': None,
             'success_rate': 0,
-            'total_solutions': 0,
-            'valid_solutions': 0,
-            'correct_solutions': 0,
+            'total_results': 0,
+            'correct_results': 0,
             'final_answer': None,
             'ensemble_correct': None
         }]
