@@ -308,10 +308,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Calculate number of groups
         num_groups = math.ceil(config.best_of / 4)
-        solutions_per_group = config.solutions_per_group if hasattr(config, 'solutions_per_group') else 4
-        
-        # Store configuration for this run
-        config.solutions_per_group = solutions_per_group
+        solutions_per_group = config.solutions_per_group
         
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -457,11 +454,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
 async def main():
     """Main function for ensemble benchmarking of mathematical problem solving."""
-    parser = argparse.ArgumentParser(description='Benchmark model on mathematical problems using ensemble approach')
-    parser.add_argument('--solutions_per_group', type=int, default=4, help='Number of solutions to generate per group')
-    
-    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using ensemble approach', 
-                                       additional_parser=parser)
+    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using ensemble approach')
     
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)

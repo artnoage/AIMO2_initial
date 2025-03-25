@@ -58,6 +58,7 @@ class BenchmarkConfig:
     max_concurrent: int = 1
     best_of: int = 1
     completions: int = 20
+    solutions_per_group: int = 4  # Number of solutions to generate per group in ensemble benchmark
     
     # Verification settings
     tolerance: float = 1e-2  # Tolerance for numeric answer comparison
@@ -124,6 +125,8 @@ class BenchmarkConfig:
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--completions', type=int, default=20,
                           help='Number of completions to try per path (default: 15)')
+        parser.add_argument('--solutions-per-group', type=int, default=4,
+                          help='Number of solutions to generate per group in ensemble benchmark (default: 4)')
                           
         # Verification arguments
         parser.add_argument('--tolerance', type=float, default=1e-2,
