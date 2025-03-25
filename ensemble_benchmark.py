@@ -203,8 +203,17 @@ def run_code_safely(code: str, timeout: int = 30) -> Tuple[bool, Optional[float]
             return False, None, "No numeric result found in the code output"
         
         try:
-            numeric_result = float(output)
-            return True, numeric_result, ""
+            # Try to clean the output - sometimes there are multiple lines or extra characters
+            cleaned_output = output.split('\n')[-1].strip()
+            # Try to extract a number using regex
+            match = re.search(r'[-+]?\d*\.?\d+', cleaned_output)
+            if match:
+                numeric_result = float(match.group())
+                return True, numeric_result, ""
+            else:
+                # Direct conversion as fallback
+                numeric_result = float(output)
+                return True, numeric_result, ""
         except ValueError:
             return False, None, f"Could not convert output to float: {output}"
             
@@ -235,8 +244,8 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
     is_numerically_correct = abs(result - correct_answer) <= 1e-6 if result is not None else False
     
     # Log this information for debugging
-    print(f"DEBUG: Solution result: {result}, Correct answer: {correct_answer}")
-    print(f"DEBUG: Numerically correct: {is_numerically_correct}")
+    print(f"DEBUG: Solution result: {result} (type: {type(result)}), Correct answer: {correct_answer} (type: {type(correct_answer)})")
+    print(f"DEBUG: Numerically correct: {is_numerically_correct}, Difference: {abs(result - correct_answer) if result is not None else 'N/A'}")
     
     # Now create a temporary file with just the test function
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
@@ -248,10 +257,13 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
         # Add code to test the result
         test_code += "import json\n\n"
         test_code += f"answer = {result}\n"
+        test_code += "print(f'DEBUG: Testing answer: {answer} (type: {type(answer)})')\n"
         test_code += "try:\n"
         test_code += "    result = test_solution(answer)\n"
+        test_code += "    print(f'DEBUG: Test result: {result} (type: {type(result)})')\n"
         test_code += "    print(json.dumps({'success': bool(result), 'answer': answer}))\n"
         test_code += "except Exception as e:\n"
+        test_code += "    print(f'DEBUG: Test exception: {str(e)}')\n"
         test_code += "    print(json.dumps({'success': False, 'error': str(e)}))\n"
         
         temp_file.write(test_code.encode('utf-8'))
