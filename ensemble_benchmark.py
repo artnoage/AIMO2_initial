@@ -3,7 +3,6 @@ import asyncio
 import logging
 import re
 import math
-from io import StringIO
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List, Any
 from collections import Counter
@@ -15,7 +14,7 @@ from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
 # Import functions from test_benchmark.py
-from test_benchmark import extract_test_function, generate_test_cases
+from test_benchmark import extract_test_function
 
 # Import functions from programming_benchmark.py and solution_utils
 from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function
