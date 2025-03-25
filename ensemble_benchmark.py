@@ -51,20 +51,19 @@ def time_limit(seconds):
 
 
 
-def ensemble_run_test_function(test_code: str, solution_code: str,  timeout: int = 30) -> Tuple[bool, str]:
+def ensemble_run_test_function(test_code: str, result: float, timeout: int = 30) -> Tuple[bool, str]:
     """
-    Run the solution code to get a result, then test it with the test function
+    Test a result with the test function
+    
+    Args:
+        test_code: The test function code
+        result: The numeric result to test
+        timeout: Maximum execution time in seconds
     
     Returns:
-    - success: Whether the solution passes the test
-    - error_message: Error message if any
+        - success: Whether the result passes the test
+        - error_message: Error message if any
     """
-    # First run the solution code to get a result
-    execution_success, result, error_message = run_code_safely(solution_code, timeout=timeout)
-    
-    if not execution_success:
-        return False, f"Solution execution failed: {error_message}"
-    
     # Create a simple test case with just the result
     test_cases = [result]
     
@@ -72,11 +71,11 @@ def ensemble_run_test_function(test_code: str, solution_code: str,  timeout: int
     success, results, test_error = run_test_function(
         test_code,
         test_cases,
-        result,  # We're testing if the test function accepts the solution's result
+        result,  # We're testing if the test function accepts the result
         timeout=timeout
     )
     
-    # If the test function accepts the solution's result, it's a valid solution
+    # If the test function accepts the result, it's a valid solution
     return success, test_error if not success else ""
         
 
@@ -161,10 +160,20 @@ async def process_group(
                 else:
                     logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
                 
-                # Test the solution against the test function
+                # First run the solution code to get a result
+                execution_success, result, execution_error = run_code_safely(
+                    solution_code, 
+                    timeout=config.timeout
+                )
+                
+                if not execution_success:
+                    logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
+                    continue
+                
+                # Test the result against the test function
                 success, error_message = ensemble_run_test_function(
                     test_function, 
-                    solution_code, 
+                    result, 
                     timeout=config.timeout
                 )
                 
