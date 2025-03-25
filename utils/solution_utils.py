@@ -414,10 +414,10 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
             if correct_result is not True:
                 return False, parsed_results, f"Test function failed to identify correct answer: {correct_result}"
             
-            # Check if at least one incorrect answer is identified as False
+            # Check if ALL incorrect answers are identified as False
             incorrect_results = [v for k, v in parsed_results.items() if k != correct_answer]
-            if not any(result is False for result in incorrect_results):
-                return False, parsed_results, "Test function fails to reject any incorrect answers"
+            if not all(result is False for result in incorrect_results):
+                return False, parsed_results, "Test function must reject ALL incorrect answers"
             
             return True, parsed_results, ""
             

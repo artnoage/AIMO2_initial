@@ -70,22 +70,34 @@ def extract_test_function(solution: str) -> str:
 
 
 def generate_test_cases(correct_answer: float, num_cases: int = 5) -> List[float]:
-    """Generate test cases including the correct answer and some incorrect answers"""
+    """
+    Generate test cases including the correct answer and some incorrect answers.
+    The test cases should be sufficiently different from the correct answer
+    to ensure the test function properly discriminates between correct and incorrect answers.
+    """
     test_cases = [correct_answer]
     
-    # Generate some values close to the correct answer
-    for _ in range(num_cases // 2):
-        # Add small perturbations to the correct answer
-        perturbation = random.uniform(-0.1, 0.1) * abs(correct_answer)
-        if perturbation == 0:  # Avoid adding exactly 0
-            perturbation = 0.01
-        test_cases.append(correct_answer + perturbation)
+    # Generate values that are significantly different from the correct answer
+    # to ensure the test function can discriminate between correct and incorrect answers
+    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0]
     
-    # Generate some completely different values
-    for _ in range(num_cases - len(test_cases) + 1):
-        # Generate values that are significantly different
-        multiplier = random.choice([0.5, 2, 10, -1])
-        test_cases.append(correct_answer * multiplier)
+    # Add some fixed offsets for values close to 0
+    offsets = [0.1, 1.0, -0.1, -1.0, 100.0]
+    
+    for i in range(num_cases):
+        if i < len(multipliers):
+            # Use multiplier approach
+            test_value = correct_answer * multipliers[i]
+            # Make sure we don't accidentally generate the same value
+            if abs(test_value - correct_answer) <= 1e-6:
+                test_value = correct_answer + offsets[i % len(offsets)]
+        else:
+            # Use random approach as fallback
+            test_value = correct_answer * random.uniform(1.5, 10.0) * random.choice([-1, 1])
+            
+        # Ensure the test value is different from the correct answer
+        if abs(test_value - correct_answer) > 1e-6:
+            test_cases.append(test_value)
     
     return test_cases
 
