@@ -8,6 +8,7 @@ import re
 from io import StringIO
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List
+from collections import Counter
 from dotenv import load_dotenv
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
@@ -15,6 +16,40 @@ from utils.model_utils import *
 from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
+
+def calculate_answer_majority(answers, tolerance=1e-2):
+    """
+    Calculate the most common answer by counting how many answers are within tolerance
+    of each unique answer.
+    
+    Args:
+        answers: List of numeric answers
+        tolerance: Numeric tolerance for grouping similar answers
+        
+    Returns:
+        Tuple of (majority_answer, count_dict) where count_dict maps each answer to its count
+    """
+    if not answers:
+        return None, {}
+    
+    # Count how many answers are within tolerance of each answer
+    count_dict = {}
+    for i, val in enumerate(answers):
+        # Initialize count for this answer
+        if val not in count_dict:
+            count_dict[val] = 0
+        
+        # Count all answers within tolerance of this one
+        for other_val in answers:
+            if abs(val - other_val) <= tolerance:
+                count_dict[val] += 1
+    
+    # Find the answer with the highest count
+    if count_dict:
+        majority_answer = max(count_dict.items(), key=lambda x: x[1])[0]
+        return majority_answer, count_dict
+    else:
+        return None, {}
 
 # Configure logging
 logging.basicConfig(
@@ -180,14 +215,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'error_message': str(e)
                 })
         
-        # Calculate most common answer statistics
+        # Calculate most common answer statistics using tolerance-based grouping
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
         most_common_answer = None
         is_most_common_correct = False
+        answer_counts = {}
+        
         if model_answers:
-            from collections import Counter
-            most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
-            is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
+            most_common_answer, answer_counts = calculate_answer_majority(model_answers, tolerance=1e-2)
+            
+            # Check if the most common answer is correct
+            is_most_common_correct = False
+            for s in solutions:
+                if s['answer'] is not None and s['is_correct']:
+                    # Check if this answer is close to the most common answer
+                    if abs(s['answer'] - most_common_answer) <= 1e-2:
+                        is_most_common_correct = True
+                        break
 
         # Add statistics to logs
         logger.append("\n" + "="*80)
@@ -201,6 +245,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
         logger.append(f"├─ Correct solutions: {correct_count}/{config.best_of}")
         logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
+        
+        # Format the answer counts for display
+        formatted_counts = {f"{k:.6f}": v for k, v in answer_counts.items()}
+        logger.append(f"├─ Answer distribution (with tolerance 1e-2): {formatted_counts}")
         logger.append(f"├─ Most common answer: {most_common_answer}")
         logger.append(f"└─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         
