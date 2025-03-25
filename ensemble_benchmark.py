@@ -20,6 +20,41 @@ from test_benchmark import extract_test_function
 from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function
 
 
+def calculate_answer_majority(answers, tolerance=1e-2):
+    """
+    Calculate the most common answer by counting how many answers are within tolerance
+    of each unique answer.
+    
+    Args:
+        answers: List of numeric answers
+        tolerance: Numeric tolerance for grouping similar answers
+        
+    Returns:
+        Tuple of (majority_answer, count_dict) where count_dict maps each answer to its count
+    """
+    if not answers:
+        return None, {}
+    
+    # Count how many answers are within tolerance of each answer
+    count_dict = {}
+    for i, val in enumerate(answers):
+        # Initialize count for this answer
+        if val not in count_dict:
+            count_dict[val] = 0
+        
+        # Count all answers within tolerance of this one
+        for other_val in answers:
+            if abs(val - other_val) <= tolerance:
+                count_dict[val] += 1
+    
+    # Find the answer with the highest count
+    if count_dict:
+        majority_answer = max(count_dict.items(), key=lambda x: x[1])[0]
+        return majority_answer, count_dict
+    else:
+        return None, {}
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -264,16 +299,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             is_correct = False
             final_answer = None
         else:
-            # Perform majority voting directly on the numerical values
-            answer_counts = Counter(all_numerical_results)
-            final_answer, count = answer_counts.most_common(1)[0]
+            # Use tolerance-based grouping for majority voting
+            final_answer, answer_counts = calculate_answer_majority(all_numerical_results, tolerance=1e-2)
             
             # Check if the final answer is correct
             is_correct = abs(correct_answer - final_answer) <= config.tolerance
             
+            # Format the answer counts for display
+            formatted_counts = {f"{k:.6f}": v for k, v in answer_counts.items()}
+            
             logger.append(f"\n📊 Ensemble Results:")
             logger.append(f"├─ Total valid numerical results: {len(all_numerical_results)}")
-            logger.append(f"├─ Answer distribution: {dict(answer_counts)}")
+            logger.append(f"├─ Answer distribution (with tolerance 1e-2): {formatted_counts}")
             logger.append(f"├─ Final answer: {final_answer}")
             logger.append(f"├─ Correct answer: {correct_answer}")
             logger.append(f"└─ Final answer correct: {'Yes' if is_correct else 'No'}")
@@ -282,10 +319,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"\n📊 Group Results:")
             for i, group_vals in enumerate(group_results):
                 if group_vals:
-                    group_counter = Counter(group_vals)
-                    group_most_common, group_count = group_counter.most_common(1)[0]
+                    # Use tolerance-based grouping for each group
+                    group_most_common, group_counts = calculate_answer_majority(group_vals, tolerance=1e-2)
                     group_correct = abs(correct_answer - group_most_common) <= config.tolerance
-                    logger.append(f"Group {i+1}: {len(group_vals)} values, most common: {group_most_common} (correct: {'Yes' if group_correct else 'No'})")
+                    
+                    # Format the group counts for display
+                    formatted_group_counts = {f"{k:.6f}": v for k, v in group_counts.items()}
+                    
+                    logger.append(f"Group {i+1}: {len(group_vals)} values")
+                    logger.append(f"├─ Distribution: {formatted_group_counts}")
+                    logger.append(f"└─ Most common: {group_most_common} (correct: {'Yes' if group_correct else 'No'})")
                 else:
                     logger.append(f"Group {i+1}: No valid results")
         
