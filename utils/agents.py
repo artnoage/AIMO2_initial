@@ -1,4 +1,4 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
 
