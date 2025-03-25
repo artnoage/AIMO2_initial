@@ -130,18 +130,18 @@ def ensemble_run_test_function(test_code: str, result: float, timeout: int = 30)
     return success, test_error if not success else ""
         
 
-async def process_group(
+async def process_solution(
     problem: str, 
     correct_answer: float, 
-    group_id: int, 
+    solution_id: int, 
     config: BenchmarkConfig, 
     logger: BenchmarkLogger
-) -> List[float]:
+) -> Optional[float]:
     """
-    Process a group of solutions with a single test function
+    Process a single solution with its own test function
     
     Returns:
-        List of numerical values that passed the test function
+        The numerical result if it passed the test, None otherwise
     """
     main_model = get_model(config, role="main")
     auxiliary_model = get_model(config, role="auxiliary")
@@ -149,7 +149,7 @@ async def process_group(
     testing_agent = TestingAgent(auxiliary_model)
     
     # Generate test function first
-    logger.append(f"\n🧪 Generating test function for group {group_id}...")
+    logger.append(f"\n🧪 Generating test function for solution {solution_id}...")
     try:
         _, test_solution = await testing_agent.generate(
             problem, 
@@ -160,85 +160,83 @@ async def process_group(
         test_function = extract_test_function(test_solution)
         
         if not test_function:
-            logger.append(f"❌ No test function found in solution for group {group_id}")
-            return []
+            logger.append(f"❌ No test function found for solution {solution_id}")
+            return None
         
         # Check code quality for test function
         code_quality_passed, quality_message = check_code_quality(test_function)
         
         if not code_quality_passed:
             logger.append(f"❌ Test function quality check failed: {quality_message}")
-            return []
+            return None
         
         logger.append(f"✓ Test function generated successfully")
         
-        # Generate solutions for this group
-        numerical_results = []
-        for i in range(config.solutions_per_group):
-            logger.append(f"\n📝 Generating solution {i+1} for group {group_id}...")
-            try:
-                _, full_solution = await programming_agent.generate(problem, return_prompt=True)
-                
-                # Extract code from solution using the same method as programming_benchmark
-                # First check if response section exists
-                response_match = re.search(r'<response>(.*?)</response>', full_solution, re.DOTALL)
-                if response_match:
-                    response_content = response_match.group(1)
-                    solution_code = extract_code_from_response(response_content)
-                    if not solution_code:
-                        # If no code in response section, try the whole solution
-                        logger.append(f"No code found in response section, trying whole solution")
-                        solution_code = extract_code_from_response(full_solution)
-                else:
-                    # If no response tags, extract from the whole solution
-                    solution_code = extract_code_from_response(full_solution)
-                
-                logger.append(f"Extracted code length: {len(solution_code)} characters")
-                if not solution_code:
-                    logger.append(f"❌ No code found in solution {i+1}")
-                    continue
-                
-                # Check code quality
-                code_quality_passed, quality_message = check_code_quality(solution_code)
-                
-                if not code_quality_passed:
-                    logger.append(f"❌ Solution {i+1} quality check failed: {quality_message}")
-                    continue
-                
-                # Run the solution code to get a result
-                execution_success, result, execution_error = run_code_safely(
-                    solution_code, 
-                    timeout=config.timeout
-                )
-                
-                if execution_success:
-                    logger.append(f"✓ Solution {i+1} execution successful, result: {result}")
-                else:
-                    logger.append(f"❌ Solution {i+1} execution failed: {execution_error}")
-                    continue
-                
-                # Test the result against the test function
-                success, error_message = ensemble_run_test_function(
-                    test_function, 
-                    result, 
-                    timeout=config.timeout
-                )
-                
-                if success:
-                    logger.append(f"✓ Solution {i+1} passed the test with result: {result}")
-                    numerical_results.append(result)
-                else:
-                    logger.append(f"❌ Solution {i+1} failed the test: {error_message}")
-                    logger.append(f"  (Solution produced result: {result}, correct answer: {correct_answer})")
+        # Generate solution
+        logger.append(f"\n📝 Generating solution {solution_id}...")
+        try:
+            _, full_solution = await programming_agent.generate(problem, return_prompt=True)
             
-            except Exception as e:
-                logger.append(f"❌ Error generating solution {i+1}: {str(e)}")
+            # Extract code from solution using the same method as programming_benchmark
+            # First check if response section exists
+            response_match = re.search(r'<response>(.*?)</response>', full_solution, re.DOTALL)
+            if response_match:
+                response_content = response_match.group(1)
+                solution_code = extract_code_from_response(response_content)
+                if not solution_code:
+                    # If no code in response section, try the whole solution
+                    logger.append(f"No code found in response section, trying whole solution")
+                    solution_code = extract_code_from_response(full_solution)
+            else:
+                # If no response tags, extract from the whole solution
+                solution_code = extract_code_from_response(full_solution)
+            
+            logger.append(f"Extracted code length: {len(solution_code)} characters")
+            if not solution_code:
+                logger.append(f"❌ No code found in solution {solution_id}")
+                return None
+            
+            # Check code quality
+            code_quality_passed, quality_message = check_code_quality(solution_code)
+            
+            if not code_quality_passed:
+                logger.append(f"❌ Solution {solution_id} quality check failed: {quality_message}")
+                return None
+            
+            # Run the solution code to get a result
+            execution_success, result, execution_error = run_code_safely(
+                solution_code, 
+                timeout=config.timeout
+            )
+            
+            if execution_success:
+                logger.append(f"✓ Solution {solution_id} execution successful, result: {result}")
+            else:
+                logger.append(f"❌ Solution {solution_id} execution failed: {execution_error}")
+                return None
+            
+            # Test the result against the test function
+            success, error_message = ensemble_run_test_function(
+                test_function, 
+                result, 
+                timeout=config.timeout
+            )
+            
+            if success:
+                logger.append(f"✓ Solution {solution_id} passed the test with result: {result}")
+                return result
+            else:
+                logger.append(f"❌ Solution {solution_id} failed the test: {error_message}")
+                logger.append(f"  (Solution produced result: {result}, correct answer: {correct_answer})")
+                return None
         
-        return numerical_results
-        
+        except Exception as e:
+            logger.append(f"❌ Error generating solution {solution_id}: {str(e)}")
+            return None
+    
     except Exception as e:
-        logger.append(f"❌ Error in group {group_id}: {str(e)}")
-        return []
+        logger.append(f"❌ Error in solution {solution_id}: {str(e)}")
+        return None
 
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
@@ -275,10 +273,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"❌ Warning: Error converting answer to numeric value for example {str(running_id)}")
             logger.print()
             return None
-
-        # Calculate number of groups
-        num_groups = math.ceil(config.best_of / config.solutions_per_group)
-        solutions_per_group = config.solutions_per_group
         
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -287,32 +281,27 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         logger.append(f"\n📊 Configuration:")
-        logger.append(f"├─ Number of groups: {num_groups}")
-        logger.append(f"└─ Solutions per group: {solutions_per_group}")
+        logger.append(f"└─ Number of solutions: {config.best_of}")
         
-        # Process each group
+        # Process each solution
         all_numerical_results = []
-        group_results = []
         
-        for group_id in range(num_groups):
-            logger.append(f"\n\n🔍 Processing Group {group_id + 1}/{num_groups}")
-            numerical_values = await process_group(
+        for solution_id in range(config.best_of):
+            logger.append(f"\n\n🔍 Processing Solution {solution_id + 1}/{config.best_of}")
+            result = await process_solution(
                 example["problem"],
                 correct_answer,
-                group_id + 1,
+                solution_id + 1,
                 config,
                 logger
             )
             
-            all_numerical_results.extend(numerical_values)
-            group_results.append(numerical_values)
-            logger.append(f"Group {group_id + 1} results: {len(numerical_values)} valid numerical values")
-            if numerical_values:
-                logger.append(f"Group {group_id + 1} values: {numerical_values}")
+            if result is not None:
+                all_numerical_results.append(result)
         
         # Perform majority voting on all numerical values that passed their tests
         if not all_numerical_results:
-            logger.append(f"\n❌ No valid numerical results found across all groups")
+            logger.append(f"\n❌ No valid numerical results found")
             is_correct = False
             final_answer = None
         else:
@@ -331,25 +320,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(f"├─ Final answer: {final_answer}")
             logger.append(f"├─ Correct answer: {correct_answer}")
             logger.append(f"└─ Final answer correct: {'Yes' if is_correct else 'No'}")
-            
-            # Show results by group
-            logger.append(f"\n📊 Group Results:")
-            for i, group_vals in enumerate(group_results):
-                if group_vals:
-                    # Use tolerance-based grouping for each group
-                    group_most_common, group_counts = calculate_answer_majority(group_vals, tolerance=1e-2)
-                    group_correct = abs(correct_answer - group_most_common) <= config.tolerance
-                    
-                    # Format the group counts for display
-                    formatted_group_counts = {f"{k:.6f}": v for k, v in group_counts.items()}
-                    
-                    logger.append(f"Group {i+1}: {len(group_vals)} values")
-                    logger.append(f"├─ Distribution: {formatted_group_counts}")
-                    logger.append(f"└─ Most common: {group_most_common} (correct: {'Yes' if group_correct else 'No'})")
-                else:
-                    logger.append(f"Group {i+1}: No valid results")
-        
-        # No need to show detailed solution information since we're only working with numerical values
         
         logger.append("="*80)
         
@@ -361,9 +331,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         # Add individual numerical result entries
         for i, result in enumerate(all_numerical_results):
-            group_id = i // config.solutions_per_group + 1
-            solution_id = i % config.solutions_per_group + 1
-            
             result_entries.append({
                 'id': example_id,
                 'data_type': 'training',
@@ -371,8 +338,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'correct_answer': correct_answer,
                 'numerical_result': result,
                 'is_correct': abs(result - correct_answer) <= config.tolerance,
-                'group_id': group_id,
-                'solution_id': solution_id
+                'solution_id': i + 1
             })
         
         # Add statistics entry
@@ -410,7 +376,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
 async def main():
     """Main function for ensemble benchmarking of mathematical problem solving."""
-    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using ensemble approach')
+    config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using one test per solution')
     
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
