@@ -4,6 +4,7 @@ import tempfile
 import subprocess
 import os
 import sys
+import json
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
 from utils.model_utils import TimeoutException, time_limit
