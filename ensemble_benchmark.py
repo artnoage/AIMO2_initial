@@ -47,8 +47,8 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Import functions from test_benchmark.py - avoid circular imports
-import test_benchmark
+# Import functions from test_benchmark.py
+from test_benchmark import extract_test_function, generate_test_cases, run_test_function as test_run_test_function
 
 # Import functions from programming_benchmark.py
 from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality
