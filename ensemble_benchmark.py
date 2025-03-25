@@ -287,46 +287,6 @@ def run_test_function(test_code: str, solution_code: str, correct_answer: float,
         os.unlink(temp_file_path)
         return False, f"Error running test function: {str(e)}"
         
-        temp_file.write(test_code.encode('utf-8'))
-    
-    try:
-        # Run the test function with a timeout
-        with time_limit(timeout):
-            result = subprocess.run(
-                [sys.executable, temp_file_path],
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
-        
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-        
-        if result.returncode != 0:
-            return False, f"Execution error: {result.stderr}"
-        
-        # Parse the results
-        try:
-            results_dict = json.loads(result.stdout.strip())
-            
-            if not results_dict.get('success', False):
-                error_msg = results_dict.get('error', 'Unknown error')
-                return False, error_msg
-            
-            return True, ""
-            
-        except json.JSONDecodeError:
-            return False, f"Failed to parse results: {result.stdout}"
-            
-    except TimeoutException:
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-        return False, "Code execution timed out"
-    except Exception as e:
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-        return False, f"Error running test function: {str(e)}"
-
 
 async def process_group(
     problem: str, 
