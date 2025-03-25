@@ -153,7 +153,6 @@ async def process_group(
     try:
         _, test_solution = await testing_agent.generate(
             problem, 
-            correct_answer=str(correct_answer),
             return_prompt=True
         )
         
