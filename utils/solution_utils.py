@@ -366,31 +366,6 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     - results: Dictionary mapping test values to test results
     - error_message: Error message if any
     """
-    # Add safer resource limits to the code - avoid RLIMIT_NPROC which causes OpenBLAS errors
-    resource_limits = """
-import resource
-import sys
-import os
-
-# Set resource limits to prevent infinite loops
-def set_resource_limits():
-    # Limit CPU time to 10 seconds per test case
-    resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
-    # Limit memory usage to 1GB
-    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
-    
-    # Set environment variable to limit OpenBLAS threads
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
-set_resource_limits()
-"""
-    
-    # Add the resource limits to the beginning of the code
-    code = resource_limits + code
-    
     # Print debug info about the input
     print(f"DEBUG - run_test_function received: type={type(correct_answer)}, value={correct_answer}")
     
@@ -408,133 +383,104 @@ set_resource_limits()
         # If correct_answer is not infinity, add it
         if not (math.isinf(correct_answer) if hasattr(correct_answer, "__float__") else False):
             safe_test_cases.append(correct_answer)
-    # Create a temporary file with the test function
-    with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
-        temp_file_path = temp_file.name
-        
-        # Write the test function to the file with improved error handling and timeout per test case
-        test_code = code + "\n\n"
-        
-        # Add code to run the test function on all test cases with individual timeouts
-        test_code += "import sys\n"
-        test_code += "import json\n"
-        test_code += "import signal\n\n"
-        
-        # Add a per-test timeout handler
-        test_code += "class TestTimeout(Exception):\n"
-        test_code += "    pass\n\n"
-        
-        test_code += "def timeout_handler(signum, frame):\n"
-        test_code += "    raise TestTimeout('Test case took too long')\n\n"
-        
-        test_code += "def run_tests():\n"
-        test_code += "    results = {}\n"
-        test_code += "    test_cases = " + str(test_cases) + "\n"
-        test_code += "    for case in test_cases:\n"
-        test_code += "        try:\n"
-        test_code += "            # Set timeout for this specific test case (2 seconds)\n"
-        test_code += "            signal.signal(signal.SIGALRM, timeout_handler)\n"
-        test_code += "            signal.alarm(2)\n"
-        test_code += "            \n"
-        test_code += "            # Run the test\n"
-        test_code += "            result = test_solution(case)\n"
-        test_code += "            \n"
-        test_code += "            # Cancel the alarm\n"
-        test_code += "            signal.alarm(0)\n"
-        test_code += "            \n"
-        test_code += "            # Store the result\n"
-        test_code += "            results[str(case)] = bool(result)\n"
-        test_code += "        except TestTimeout:\n"
-        test_code += "            results[str(case)] = 'Timeout'\n"
-        test_code += "            # Cancel the alarm\n"
-        test_code += "            signal.alarm(0)\n"
-        test_code += "        except Exception as e:\n"
-        test_code += "            # Cancel the alarm\n"
-        test_code += "            signal.alarm(0)\n"
-        test_code += "            results[str(case)] = f'Error: {str(e)}'\n"
-        test_code += "    print(json.dumps(results))\n\n"
-        test_code += "run_tests()\n"
-        
-        temp_file.write(test_code.encode('utf-8'))
     
-    try:
-        # Use process group to ensure all child processes are terminated
-        process = subprocess.Popen(
-            [sys.executable, temp_file_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            preexec_fn=os.setsid  # Use process group
-        )
+    # Initialize results dictionary
+    results = {}
+    
+    # Test each case individually in separate processes
+    for test_case in safe_test_cases:
+        # Create a simple test script for this specific test case
+        with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
+            temp_file_path = temp_file.name
+            
+            # Create a minimal test script that just returns True/False
+            test_script = f"""
+import os
+# Limit threads for numerical libraries
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
+{code}
+
+# Run test on a single value and print result
+try:
+    result = test_solution({test_case})
+    print("TRUE" if result else "FALSE")
+except Exception as e:
+    print(f"ERROR: {{str(e)}}")
+"""
+            temp_file.write(test_script.encode('utf-8'))
         
         try:
-            stdout, stderr = process.communicate(timeout=timeout)
+            # Run the test script in a separate process with timeout
+            process = subprocess.Popen(
+                [sys.executable, temp_file_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                preexec_fn=os.setsid  # Use process group
+            )
             
-            if process.returncode != 0:
-                return False, {}, f"Execution error: {stderr}"
-            
-            # Parse the results
             try:
-                results_dict = json.loads(stdout.strip())
+                stdout, stderr = process.communicate(timeout=5)  # 5 second timeout per test case
                 
-                # Convert string keys back to floats
-                parsed_results = {}
-                for key, value in results_dict.items():
-                    try:
-                        float_key = float(key)
-                        parsed_results[float_key] = value
-                    except ValueError:
-                        parsed_results[key] = value
-                
-                # Check if the test function correctly identifies the correct answer
-                correct_result = parsed_results.get(correct_answer, None)
-                if correct_result is not True:
-                    return False, parsed_results, f"Test function failed to identify correct answer: {correct_result}"
-                
-                # Check if ALL incorrect answers are identified as False
-                incorrect_results = [v for k, v in parsed_results.items() if k != correct_answer]
-                
-                # Handle timeout and error results more gracefully
-                if not all(result is False for result in incorrect_results if isinstance(result, bool)):
-                    # Count how many incorrect answers were incorrectly identified
-                    incorrect_count = sum(1 for r in incorrect_results if r is not False and not isinstance(r, str))
+                if process.returncode != 0:
+                    results[test_case] = f"Error: {stderr}"
+                else:
+                    output = stdout.strip()
+                    if output == "TRUE":
+                        results[test_case] = True
+                    elif output == "FALSE":
+                        results[test_case] = False
+                    elif output.startswith("ERROR:"):
+                        results[test_case] = output
+                    else:
+                        results[test_case] = f"Unexpected output: {output}"
                     
-                    # If there are timeout or error results, mention them but don't fail the test
-                    timeout_count = sum(1 for r in incorrect_results if r == 'Timeout')
-                    error_count = sum(1 for r in incorrect_results if isinstance(r, str) and r != 'Timeout')
-                    
-                    if incorrect_count > 0:
-                        return False, parsed_results, f"Test function incorrectly accepted {incorrect_count} wrong answers"
-                    elif timeout_count > 0 or error_count > 0:
-                        # If we only have timeouts/errors but no incorrect acceptances, consider it a pass
-                        # but note the issues in the message
-                        message = ""
-                        if timeout_count > 0:
-                            message += f"{timeout_count} test cases timed out. "
-                        if error_count > 0:
-                            message += f"{error_count} test cases had errors. "
-                        return True, parsed_results, message.strip()
+            except subprocess.TimeoutExpired:
+                # Kill the entire process group
+                import signal
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                process.communicate()  # Clean up
+                results[test_case] = "Timeout"
                 
-                return True, parsed_results, ""
-                
-            except json.JSONDecodeError:
-                return False, {}, f"Failed to parse results: {stdout}"
-                
-        except subprocess.TimeoutExpired:
-            # Kill the entire process group
-            import signal
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            process.communicate()  # Clean up
-            return False, {}, "Code execution timed out"
-            
-    except Exception as e:
-        return False, {}, f"Error running test function: {str(e)}"
-    finally:
-        # Clean up the temporary file
-        try:
-            os.unlink(temp_file_path)
-        except:
-            pass
+        except Exception as e:
+            results[test_case] = f"Error: {str(e)}"
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+    
+    # Check if the test function correctly identifies the correct answer
+    correct_result = results.get(correct_answer, None)
+    if correct_result is not True:
+        return False, results, f"Test function failed to identify correct answer: {correct_result}"
+    
+    # Check if incorrect answers are identified as False
+    incorrect_results = [v for k, v in results.items() if k != correct_answer]
+    
+    # Count different types of results
+    incorrect_count = sum(1 for r in incorrect_results if r is True)  # Should be False
+    timeout_count = sum(1 for r in incorrect_results if r == "Timeout")
+    error_count = sum(1 for r in incorrect_results if isinstance(r, str) and r != "Timeout")
+    
+    if incorrect_count > 0:
+        return False, results, f"Test function incorrectly accepted {incorrect_count} wrong answers"
+    elif timeout_count > 0 or error_count > 0:
+        # If we only have timeouts/errors but no incorrect acceptances, consider it a pass
+        # but note the issues in the message
+        message = ""
+        if timeout_count > 0:
+            message += f"{timeout_count} test cases timed out. "
+        if error_count > 0:
+            message += f"{error_count} test cases had errors. "
+        return True, results, message.strip()
+    
+    return True, results, ""
 
 def validate_solution(solution: str, start_step: int = 0) -> Tuple[bool, str]:
     """
