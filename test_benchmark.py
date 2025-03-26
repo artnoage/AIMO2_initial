@@ -1,12 +1,8 @@
 import os
 import asyncio
 import logging
-import tempfile
-import subprocess
-import sys
 import re
 import random
-from io import StringIO
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List, Any
 from dotenv import load_dotenv
@@ -150,7 +146,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             try:
                 prompt, full_solution = await testing_agent.generate(
                     example["problem"], 
-                    correct_answer=str(correct_answer),
                     return_prompt=True
                 )
                 
