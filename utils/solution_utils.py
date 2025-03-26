@@ -396,6 +396,18 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
             # Create a minimal test script that just returns True/False
             test_script = f"""
 import os
+import signal
+import time
+
+# Set up a timeout handler within the script itself
+def timeout_handler(signum, frame):
+    raise TimeoutError("Function execution timed out")
+
+# Register the signal handler for SIGALRM
+signal.signal(signal.SIGALRM, timeout_handler)
+# Set alarm for 3 seconds (shorter than the outer timeout)
+signal.alarm(3)
+
 # Limit threads for numerical libraries
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -407,7 +419,11 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 # Run test on a single value and print result
 try:
     result = test_solution({test_case})
+    # Cancel the alarm if function completes
+    signal.alarm(0)
     print("TRUE" if result else "FALSE")
+except TimeoutError as e:
+    print("ERROR: Function execution timed out")
 except Exception as e:
     print(f"ERROR: {{str(e)}}")
 """
@@ -424,6 +440,7 @@ except Exception as e:
             )
             
             try:
+                # Use a shorter timeout for communicate to ensure we don't get stuck
                 stdout, stderr = process.communicate(timeout=5)  # 5 second timeout per test case
                 
                 if process.returncode != 0:
@@ -440,10 +457,19 @@ except Exception as e:
                         results[test_case] = f"Unexpected output: {output}"
                     
             except subprocess.TimeoutExpired:
-                # Kill the entire process group
+                # Kill the entire process group forcefully
                 import signal
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                process.communicate()  # Clean up
+                try:
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                except (ProcessLookupError, OSError):
+                    pass  # Process might already be gone
+                
+                # Try to clean up without waiting too long
+                try:
+                    process.communicate(timeout=1)  # Short timeout for cleanup
+                except subprocess.TimeoutExpired:
+                    pass  # If still hanging, just move on
+                
                 results[test_case] = "Timeout"
                 
         except Exception as e:
@@ -454,6 +480,14 @@ except Exception as e:
                 os.unlink(temp_file_path)
             except:
                 pass
+            
+            # Make sure the process is really gone
+            try:
+                if process.poll() is None:  # Process still running
+                    import signal
+                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except (NameError, ProcessLookupError, OSError):
+                pass  # Process variable might not exist or process already gone
     
     # Check if the test function correctly identifies the correct answer
     correct_result = results.get(correct_answer, None)
