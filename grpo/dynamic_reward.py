@@ -9,7 +9,7 @@ from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward
+from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward, TestProgrammingReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
@@ -32,16 +32,18 @@ class DynamicReward(BaseReward):
         self.finalization_reward = FinalizationReward(config, similarity_checker)
         self.programming_reward = ProgrammingReward(config)
         self.tutor_reward = TutorReward(config)
+        self.test_programming_reward = TestProgrammingReward(config)
         
         # Share the same stats object across all reward functions
         self.solution_reward.stats = self.stats
         self.finalization_reward.stats = self.stats
         self.programming_reward.stats = self.stats
         self.tutor_reward.stats = self.stats
+        self.test_programming_reward.stats = self.stats
         
         # Collect relevant stats from all possible rewards
         self.relevant_stats = {}
-        for reward in [self.solution_reward, self.finalization_reward, self.programming_reward, self.tutor_reward]:
+        for reward in [self.solution_reward, self.finalization_reward, self.programming_reward, self.tutor_reward, self.test_programming_reward]:
             if hasattr(reward, 'relevant_stats'):
                 for category, stats in reward.relevant_stats.items():
                     if category not in self.relevant_stats:
@@ -51,7 +53,7 @@ class DynamicReward(BaseReward):
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
             self.relevant_stats['reward_components'] = []
-        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 'tutor_reward_uses'])
+        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 'tutor_reward_uses', 'test_programming_reward_uses'])
     
     def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
         """
@@ -101,13 +103,17 @@ class DynamicReward(BaseReward):
         solution_count = sum(1 for et in example_types if et == 'solution')
         programming_count = sum(1 for et in example_types if et == 'programming')
         tutor_count = sum(1 for et in example_types if et == 'tutor')
+        test_programming_count = sum(1 for et in example_types if et == 'test_programming')
         
-        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}")
+        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}, test_programming={test_programming_count}")
         
         # Determine the majority type
         if tutor_count > 0:
             self.logger.info("Selected tutor reward (priority type)")
             return 'tutor'
+        elif test_programming_count > 0:
+            self.logger.info("Selected test programming reward (priority type)")
+            return 'test_programming'
         elif programming_count > 0 and programming_count >= finalization_count and programming_count >= solution_count:
             self.logger.info("Selected programming reward (majority type)")
             return 'programming'
@@ -153,6 +159,9 @@ class DynamicReward(BaseReward):
             elif reward_type == 'tutor':
                 reward_func = self.tutor_reward
                 self.stats.reward_components['tutor_reward_uses'] = self.stats.reward_components.get('tutor_reward_uses', 0) + 1
+            elif reward_type == 'test_programming':
+                reward_func = self.test_programming_reward
+                self.stats.reward_components['test_programming_reward_uses'] = self.stats.reward_components.get('test_programming_reward_uses', 0) + 1
             else:
                 reward_func = self.solution_reward
                 self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
@@ -217,6 +226,8 @@ class DynamicReward(BaseReward):
                 self.stats.reward_components['programming_reward_uses'] = self.stats.reward_components.get('programming_reward_uses', 0) + 1
             elif reward_type == 'tutor':
                 self.stats.reward_components['tutor_reward_uses'] = self.stats.reward_components.get('tutor_reward_uses', 0) + 1
+            elif reward_type == 'test_programming':
+                self.stats.reward_components['test_programming_reward_uses'] = self.stats.reward_components.get('test_programming_reward_uses', 0) + 1
         
         # Group completions by prompt for group context
         prompt_groups = {}
