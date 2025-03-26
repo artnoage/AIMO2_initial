@@ -87,6 +87,15 @@ class RewardStats:
             'timeout_errors': 0
         }
         
+        # Track test programming stats
+        self.test_programming_stats = {
+            'correct_tests': 0,
+            'incorrect_tests': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0
+        }
+        
         # Initialize programming-specific reward components
         self.reward_components.update({
             'syntax_rewards': 0,

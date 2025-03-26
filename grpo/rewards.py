@@ -759,6 +759,161 @@ class FinalizationReward(BaseReward):
             return 0.0
         
         
+class TestProgrammingReward(BaseReward):
+    """Reward class for test function evaluation"""
+    
+    __name__ = "test_programming_reward"
+    relevant_stats = {
+        'reward_components': [
+            'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+            'total_length_penalty', 'correct_tests', 'syntax_valid_tests', 
+            'execution_valid_tests', 'total_rewards', 'average_reward'
+        ],
+        'test_programming_stats': [
+            'correct_tests', 'incorrect_tests', 'syntax_errors', 
+            'execution_errors', 'timeout_errors'
+        ]
+    }
+    
+    def __init__(self, config: RewardConfig):
+        super().__init__(config)
+        
+        # Initialize test-programming-specific stats
+        self.stats.test_programming_stats = {
+            'correct_tests': 0,
+            'incorrect_tests': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0
+        }
+        
+        # Initialize test-programming-specific reward components
+        self.stats.reward_components.update({
+            'syntax_rewards': 0,
+            'execution_rewards': 0,
+            'correctness_rewards': 0,
+            'syntax_valid_tests': 0,
+            'execution_valid_tests': 0,
+            'correct_tests': 0
+        })
+        
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a test function solution"""
+        try:
+            # Get problem and correct answer
+            problem = kwargs.get('problem', '')
+            correct_answer = kwargs.get('answer', '')
+            
+            if not all([problem, correct_answer]):
+                self.logger.warning("Missing required inputs for test programming reward calculation")
+                return 0.0
+            
+            # Initialize reward
+            reward = 0.0
+            
+            # 1. Check for thinking and response sections
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            
+            if not has_thinking or not has_response:
+                self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
+                return 0.0
+            
+            # Extract test function from the completion
+            test_function = extract_test_function(completion)
+            if not test_function:
+                self.logger.info("No test function found in completion")
+                return reward
+            
+            self.logger.info(f"Extracted test function length: {len(test_function)} characters")
+            
+            # 2. Check code quality (syntax reward/penalty)
+            code_quality_passed, quality_message = check_code_quality(test_function)
+            if code_quality_passed:
+                syntax_reward = self.config.syntax_reward
+                reward += syntax_reward
+                self.stats.reward_components['syntax_rewards'] = self.stats.reward_components.get('syntax_rewards', 0) + 1
+                self.stats.reward_components['syntax_valid_tests'] = self.stats.reward_components.get('syntax_valid_tests', 0) + 1
+                self.logger.info(f"Applied syntax reward: +{syntax_reward:.3f}")
+            else:
+                syntax_penalty = self.config.syntax_penalty
+                reward -= syntax_penalty
+                self.logger.info(f"Applied syntax penalty: -{syntax_penalty:.3f}")
+                self.logger.info(f"Code quality check failed: {quality_message}")
+                self.stats.test_programming_stats['syntax_errors'] += 1
+                # Update total rewards and average before returning
+                self.stats.reward_components['total_rewards'] += reward
+                total_samples = self.stats.total_batches
+                self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
+                return reward  # Return early if syntax is invalid
+            
+            # 3. Generate test cases
+            try:
+                # Convert correct_answer to float if it's not already
+                if isinstance(correct_answer, str):
+                    numeric_answer, _ = extract_numeric_answer(correct_answer)
+                    if numeric_answer is not None:
+                        correct_answer = numeric_answer
+                    else:
+                        correct_answer = float(correct_answer)
+                else:
+                    correct_answer = float(correct_answer)
+                    
+                # Generate test cases including the correct answer and some incorrect answers
+                test_cases = generate_test_cases(correct_answer)
+            except (ValueError, TypeError):
+                self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
+                return reward
+            
+            # 4. Run the test function on all test cases
+            success, results, error_message = run_test_function(
+                test_function, 
+                test_cases, 
+                correct_answer,
+                timeout=self.config.timeout
+            )
+            
+            if success:
+                execution_reward = self.config.execution_reward
+                reward += execution_reward
+                self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
+                self.stats.reward_components['execution_valid_tests'] = self.stats.reward_components.get('execution_valid_tests', 0) + 1
+                self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
+                
+                # Add correctness reward for a valid test function
+                correctness_reward = self.config.correctness_reward
+                reward += correctness_reward
+                self.stats.reward_components['correctness_rewards'] = self.stats.reward_components.get('correctness_rewards', 0) + 1
+                self.stats.reward_components['correct_tests'] = self.stats.reward_components.get('correct_tests', 0) + 1
+                self.stats.test_programming_stats['correct_tests'] += 1
+                self.logger.info(f"Applied correctness reward: +{correctness_reward:.3f}")
+            else:
+                self.logger.info(f"Test function validation failed: {error_message}")
+                self.stats.test_programming_stats['incorrect_tests'] += 1
+                if "timed out" in error_message:
+                    self.stats.test_programming_stats['timeout_errors'] += 1
+                else:
+                    self.stats.test_programming_stats['execution_errors'] += 1
+            
+            # Apply length penalty
+            length_penalty = len(test_function) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
+            total_samples = self.stats.total_batches
+            self.stats.reward_components['average_reward'] = self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+            
+            return reward
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating test programming reward: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return 0.0
+
+
 class TutorReward(BaseReward):
     """Reward class for tutor evaluation of solutions and identification of errors"""
     

@@ -5,6 +5,7 @@ import subprocess
 import os
 import sys
 import json
+import random
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
 from utils.model_utils import TimeoutException, time_limit
@@ -542,6 +543,63 @@ class NumericVerifier:
         is_correct = abs(numeric_answer - correct_numeric) <= self.tolerance
             
         return is_correct, model_answer
+
+def extract_test_function(solution: str) -> str:
+    """Extract the test_solution function from the model's response"""
+    # First try to extract from response section
+    response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
+    if response_match:
+        response_content = response_match.group(1)
+        # Extract code block from response
+        code_match = re.search(r'```python(.*?)```', response_content, re.DOTALL)
+        if code_match:
+            return code_match.group(1).strip()
+    
+    # If that fails, try to extract from the whole solution
+    code_match = re.search(r'```python(.*?)```', solution, re.DOTALL)
+    if code_match:
+        return code_match.group(1).strip()
+    
+    # If no code blocks found, look for function definition directly
+    func_match = re.search(r'def test_solution\(.*?\):(.*?)(?=\n\S|\Z)', solution, re.DOTALL)
+    if func_match:
+        return "def test_solution" + func_match.group(0)
+    
+    return ""
+
+
+def generate_test_cases(correct_answer: float, num_cases: int = 5) -> List[float]:
+    """
+    Generate test cases including the correct answer and some incorrect answers.
+    The test cases should be sufficiently different from the correct answer
+    to ensure the test function properly discriminates between correct and incorrect answers.
+    """
+    test_cases = [correct_answer]
+    
+    # Generate values that are significantly different from the correct answer
+    # to ensure the test function can discriminate between correct and incorrect answers
+    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0]
+    
+    # Add some fixed offsets for values close to 0
+    offsets = [0.1, 1.0, -0.1, -1.0, 100.0]
+    
+    for i in range(num_cases):
+        if i < len(multipliers):
+            # Use multiplier approach
+            test_value = correct_answer * multipliers[i]
+            # Make sure we don't accidentally generate the same value
+            if abs(test_value - correct_answer) <= 1e-6:
+                test_value = correct_answer + offsets[i % len(offsets)]
+        else:
+            # Use random approach as fallback
+            test_value = correct_answer * random.uniform(1.5, 10.0) * random.choice([-1, 1])
+            
+        # Ensure the test value is different from the correct answer
+        if abs(test_value - correct_answer) > 1e-6:
+            test_cases.append(test_value)
+    
+    return test_cases
+
 
 def split_into_steps(solution: str) -> List[str]:
     """
