@@ -575,11 +575,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'intersection_worsened': (programming_majority_correct or standard_majority_correct) and not final_answer_correct,
             
             # Compatibility fields for ProgressTracker statistics
-            'is_correct_list': programming_correctness,  # Use programming correctness for main stats
-            'is_most_common_correct': programming_majority_correct,  # Use programming majority for main stats
-            'total_solutions': len(programming_solutions),
-            'correct_solutions': sum(programming_correctness),
-            'incorrect_solutions': len(programming_correctness) - sum(programming_correctness),
+            # Include both programming and standard solutions for "at least one correct" calculation
+            'is_correct_list': programming_correctness + standard_correctness,  # Use both approaches for main stats
+            'is_most_common_correct': final_answer_correct,  # Use final answer for main stats
+            'total_solutions': len(programming_solutions) + len(standard_solutions),
+            'correct_solutions': sum(programming_correctness) + sum(standard_correctness),
+            'incorrect_solutions': (len(programming_correctness) - sum(programming_correctness)) + 
+                                  (len(standard_correctness) - sum(standard_correctness)),
             'programming_grouped_answers': {k: [ans for _, ans in v] for k, v in programming_grouped_answers.items()},
             'standard_grouped_answers': {k: [ans for _, ans in v] for k, v in standard_grouped_answers.items()},
             
