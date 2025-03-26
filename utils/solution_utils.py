@@ -395,16 +395,7 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
             
             # Create a minimal test script that just returns True/False
             test_script = f"""
-import os
-
-# Limit threads for numerical libraries
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 {code}
-
 # Run test on a single value and print result
 try:
     result = test_solution({test_case})
@@ -426,7 +417,7 @@ except Exception as e:
             
             try:
                 # Use a shorter timeout for communicate to ensure we don't get stuck
-                stdout, stderr = process.communicate(timeout=5)  # 5 second timeout per test case
+                stdout, stderr = process.communicate(timeout=timeout/len(safe_test_cases))  # 5 second timeout per test case
                 
                 if process.returncode != 0:
                     results[test_case] = f"Error: {stderr}"

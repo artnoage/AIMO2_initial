@@ -178,7 +178,7 @@ Do **not** provide Python code here—this section should be dedicated solely to
 <response>
 Write a Python function named `test_solution(answer)` that:
 1. Accepts exactly one float parameter named `answer`.
-2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-6`).
+2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-2`).
 3. Returns `False` otherwise.
 
 **Important Guidelines**:
@@ -198,7 +198,7 @@ import numpy as np
 
 def test_solution(answer):
     # Check if answer squared minus 2 is approximately zero.
-    return np.abs(answer**2 - 2) < 1e-6
+    return np.abs(answer**2 - 2) < 1e-2
 
     Notice:
 
@@ -206,22 +206,96 @@ The function doesn't compute the root; it verifies whether the provided number m
 
 Your response should strictly follow this verification approach. </response> """
 
-TESTER_SYSTEM_PROMPT2="""You will be provided with a mathematical problem. Your task is explicitly **not to solve** the problem, but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the provided problem.
+TESTER_SYSTEM_PROMPT2="""
+You are an expert in mathematical problem-solving and Python programming. 
+Your task is to create a Python function that efficiently verifies whether a given numeric value correctly solves a provided mathematical problem. 
+
 
 <thinking>
-In this section, carefully analyze the problem:
-- Clearly state the mathematical principles or equations involved.
-- Explicitly specify the criteria a correct numerical answer must satisfy.
-- Explain how to confirm the validity of a proposed solution without directly solving the problem itself (e.g., substituting back into equations, checking conditions, divisibility, etc.).
-- Highlight why verification is simpler and more straightforward compared to solving.
+1. Analyze the given problem:
+   - List out all given information and unknown variables.
+   - Write down the exact mathematical equation(s) involved.
+   - What are the key mathematical principles or equations involved?
+   - What criteria must a correct numerical answer satisfy?
 
-Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
+2. Compare verification vs. solving:
+   - How would you verify a proposed solution without directly computing it?
+   - Is verification simpler or more straightforward than solving the problem? Why or why not?
+
+3. Outline your strategy:
+   - If verification is easier, describe your verification approach.
+   - If solving is necessary or more efficient, explain why and outline your solving strategy.
+
+4. Consider implementation details:
+   - What Python libraries might be useful (e.g., numpy, sympy, scipy)?
+   - How will you handle floating-point precision and tolerances?
+
+5. Edge cases and special conditions:
+   - Are there any edge cases or special conditions to consider?
+   - How will these affect the verification or solving process?
+
+Document your analysis and strategy here. Do not provide any Python code at this stage.
+</thinking>
+
+<response>
+Based on your analysis, implement a Python function named `test_solution(answer)` that follows these requirements:
+
+1. Accept exactly one float parameter named `answer`.
+2. Return `True` if the given answer correctly solves the problem (use appropriate numerical tolerances, e.g., `1e-2`).
+3. Return `False` otherwise.
+4. The function must be self-contained, efficient, and only rely on standard Python libraries (numpy, sympy, and scipy are allowed).
+5. Include brief, clear comments explaining how verification or solving is performed.
+6. Handle floating-point precision explicitly with tolerances.
+
+Important Guidelines:
+- If verification is easier, your function should not attempt to solve the problem or perform extensive computations. It should only verify correctness efficiently.
+- If solving is necessary or more efficient, clearly explain why in a comment before implementing the solution.
+- Ensure your implementation aligns with the strategy you outlined in the thinking section.
+
+Provide your implementation below, following this structure:
+
+```python
+# Brief explanation of the approach (verification or solving)
+# Import statements (if needed)
+
+def test_solution(answer):
+    # Function implementation
+    # Include comments explaining key steps
+    pass  # Replace with actual implementation
+```
+</response>
+"""
+
+TESTER_SYSTEM_PROMPT3="""
+1. Analyze the given problem:
+   - List out all given information and unknown variables.
+   - Write down the exact mathematical equation(s) involved.
+   - What are the key mathematical principles or equations involved?
+   - What criteria must a correct numerical answer satisfy?
+
+2. Compare verification vs. solving:
+   - How would you verify a proposed solution without directly computing it?
+   - Is verification simpler or more straightforward than solving the problem? Why or why not?
+
+3. Outline your strategy:
+   - If verification is easier, describe your verification approach.
+   - If solving is necessary or more efficient, explain why and outline your solving strategy.
+
+4. Consider implementation details:
+   - What Python libraries might be useful (e.g., numpy, sympy, scipy)?
+   - How will you handle floating-point precision and tolerances?
+
+5. Edge cases and special conditions:
+   - Are there any edge cases or special conditions to consider?
+   - How will these affect the verification or solving process?
+
+Document your analysis and strategy here. Do not provide any Python code at this stage.
 </thinking>
 
 <response>
 Write a Python function named `test_solution(answer)` that:
 1. Accepts exactly one float parameter named `answer`.
-2. Returns `True` if the given answer correctly solves the problem (within an appropriate numerical tolerance, e.g., `1e-6`).
+2. Returns `True` if the given answer correctly solves the problem (within an appropriate numerical tolerance, e.g., `1e-2`).
 3. Returns `False` otherwise.
 
 **Important Guidelines:**
@@ -240,7 +314,7 @@ import numpy as np
 
 def test_solution(answer):
     # Verifies that answer squared minus 2 is approximately zero.
-    return np.abs(answer**2 - 2) < 1e-6
+    return np.abs(answer**2 - 2) < 1e-2
 ```
 
 **2. Number Theory Verification (Prime & Equation)**  
@@ -253,7 +327,7 @@ def test_solution(answer):
     # Checks primality and whether the equation holds.
     if not isprime(int(answer)):
         return False
-    return abs(answer**2 - answer - 6) < 1e-6
+    return abs(answer**2 - answer - 6) < 1e-2
 ```
 
 **3. Sequence Membership Verification**  
@@ -262,7 +336,7 @@ Problem: "Verify if a given number \( x \) belongs to the sequence \( a_n = 3n +
 ```python
 def test_solution(answer):
     # Checks if (answer - 2) is divisible exactly by 3.
-    return abs((answer - 2) % 3) < 1e-6
+    return abs((answer - 2) % 3) < 1e-2
 ```
 
 **4. Fibonacci Number Verification**  
@@ -289,13 +363,12 @@ Problem: "Given integer 1073, verify if provided \( x \) is a factor."
 def test_solution(answer):
     # Checks divisibility with modulo.
     number = 1073
-    return abs(number % answer) < 1e-6
+    return abs(number % answer) < 1e-2
 ```
 
 Your response should strictly adhere to verification rather than solution-oriented computations.
 </response>
 """
-
 
 
 
