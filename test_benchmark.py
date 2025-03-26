@@ -14,8 +14,8 @@ from utils.agents import *
 from utils.logger import BenchmarkLogger
 # Import the generate_test_cases function from solution_utils instead of defining it here
 from utils.solution_utils import generate_test_cases
-# Import run_test_function from solution_utils
-from utils.solution_utils import run_test_function
+# Import run_test_function and test_result_with_function from solution_utils
+from utils.solution_utils import run_test_function, test_result_with_function
 
 # Configure logging
 logging.basicConfig(
@@ -45,28 +45,8 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-def extract_test_function(solution: str) -> str:
-    """Extract the test_solution function from the model's response"""
-    # First try to extract from response section
-    response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
-    if response_match:
-        response_content = response_match.group(1)
-        # Extract code block from response
-        code_match = re.search(r'```python(.*?)```', response_content, re.DOTALL)
-        if code_match:
-            return code_match.group(1).strip()
-    
-    # If that fails, try to extract from the whole solution
-    code_match = re.search(r'```python(.*?)```', solution, re.DOTALL)
-    if code_match:
-        return code_match.group(1).strip()
-    
-    # If no code blocks found, look for function definition directly
-    func_match = re.search(r'def test_solution\(.*?\):(.*?)(?=\n\S|\Z)', solution, re.DOTALL)
-    if func_match:
-        return "def test_solution" + func_match.group(0)
-    
-    return ""
+# Import extract_test_function from utils.solution_utils
+from utils.solution_utils import extract_test_function
 
 
 
