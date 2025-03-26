@@ -143,19 +143,11 @@ def main():
         loftq_config=None
     )
     
-    def prepare_test_programming_data(data: Dataset, system_prompt: str) -> Dataset:
-        """Create examples for test programming tasks using the test-specific system prompt"""
-        def format_example(example):
-            return {
-                "prompt": system_prompt + "\n\nProblem:\n" + example["problem"],
-                "answer": example["answer"],
-                "problem": example["problem"],
-                "example_type": "test_programming"
-            }
-        
-        return data.map(format_example)
-    
     def get_questions(split="train") -> Dataset:
+        """Load and prepare dataset with test programming examples"""
+        # Import the data preparation function
+        from utils.data_preparation import prepare_test_programming_data
+        
         # Load dataset
         data = load_dataset(dataset_name, split=split)
         return prepare_test_programming_data(data, TESTER_SYSTEM_PROMPT)
