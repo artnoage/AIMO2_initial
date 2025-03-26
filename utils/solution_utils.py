@@ -426,57 +426,64 @@ set_resource_limits()
         temp_file.write(test_code.encode('utf-8'))
     
     try:
-        # Run the test function with a timeout
-        with time_limit(timeout):
-            result = subprocess.run(
-                [sys.executable, temp_file_path],
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
+        # Use process group to ensure all child processes are terminated
+        process = subprocess.Popen(
+            [sys.executable, temp_file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            preexec_fn=os.setsid  # Use process group
+        )
         
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-        
-        if result.returncode != 0:
-            return False, {}, f"Execution error: {result.stderr}"
-        
-        # Parse the results
         try:
-            results_dict = json.loads(result.stdout.strip())
+            stdout, stderr = process.communicate(timeout=timeout)
             
-            # Convert string keys back to floats
-            parsed_results = {}
-            for key, value in results_dict.items():
-                try:
-                    float_key = float(key)
-                    parsed_results[float_key] = value
-                except ValueError:
-                    parsed_results[key] = value
+            if process.returncode != 0:
+                return False, {}, f"Execution error: {stderr}"
             
-            # Check if the test function correctly identifies the correct answer
-            correct_result = parsed_results.get(correct_answer, None)
-            if correct_result is not True:
-                return False, parsed_results, f"Test function failed to identify correct answer: {correct_result}"
+            # Parse the results
+            try:
+                results_dict = json.loads(stdout.strip())
+                
+                # Convert string keys back to floats
+                parsed_results = {}
+                for key, value in results_dict.items():
+                    try:
+                        float_key = float(key)
+                        parsed_results[float_key] = value
+                    except ValueError:
+                        parsed_results[key] = value
+                
+                # Check if the test function correctly identifies the correct answer
+                correct_result = parsed_results.get(correct_answer, None)
+                if correct_result is not True:
+                    return False, parsed_results, f"Test function failed to identify correct answer: {correct_result}"
+                
+                # Check if ALL incorrect answers are identified as False
+                incorrect_results = [v for k, v in parsed_results.items() if k != correct_answer]
+                if not all(result is False for result in incorrect_results):
+                    return False, parsed_results, "Test function must reject ALL incorrect answers"
+                
+                return True, parsed_results, ""
+                
+            except json.JSONDecodeError:
+                return False, {}, f"Failed to parse results: {stdout}"
+                
+        except subprocess.TimeoutExpired:
+            # Kill the entire process group
+            import signal
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process.communicate()  # Clean up
+            return False, {}, "Code execution timed out"
             
-            # Check if ALL incorrect answers are identified as False
-            incorrect_results = [v for k, v in parsed_results.items() if k != correct_answer]
-            if not all(result is False for result in incorrect_results):
-                return False, parsed_results, "Test function must reject ALL incorrect answers"
-            
-            return True, parsed_results, ""
-            
-        except json.JSONDecodeError:
-            return False, {}, f"Failed to parse results: {result.stdout}"
-            
-    except TimeoutException:
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
-        return False, {}, "Code execution timed out"
     except Exception as e:
-        # Clean up the temporary file
-        os.unlink(temp_file_path)
         return False, {}, f"Error running test function: {str(e)}"
+    finally:
+        # Clean up the temporary file
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass
 
 def validate_solution(solution: str, start_step: int = 0) -> Tuple[bool, str]:
     """
