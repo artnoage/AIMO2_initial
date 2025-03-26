@@ -450,8 +450,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 final_answer = max(intersection_counts.items(), key=lambda x: x[1])[0]
         
         if final_answer is None:
-            # If no intersection or no final answer determined, use the most common from either method
-            final_answer = programming_majority_answer if programming_majority_answer else standard_majority_answer
+            # If no intersection or no final answer determined, calculate the majority from the union of all answers
+            all_answers = programming_answers + standard_answers
+            union_majority_answer, union_answer_counts = calculate_answer_majority(all_answers, tolerance=config.tolerance)
+            final_answer = union_majority_answer
         
         # Check if final answer is correct
         final_answer_correct = False
