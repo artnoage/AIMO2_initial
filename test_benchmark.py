@@ -2,7 +2,6 @@ import os
 import asyncio
 import logging
 import re
-import random
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List, Any
 from dotenv import load_dotenv
@@ -12,6 +11,10 @@ from utils.model_utils import *
 from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
+# Import the generate_test_cases function from solution_utils instead of defining it here
+from utils.solution_utils import generate_test_cases
+# Import run_test_function from solution_utils
+from utils.solution_utils import run_test_function
 
 # Configure logging
 logging.basicConfig(
@@ -65,12 +68,6 @@ def extract_test_function(solution: str) -> str:
     return ""
 
 
-# Import the generate_test_cases function from solution_utils instead of defining it here
-from utils.solution_utils import generate_test_cases
-
-
-# Import run_test_function from solution_utils
-from utils.solution_utils import run_test_function
 
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
