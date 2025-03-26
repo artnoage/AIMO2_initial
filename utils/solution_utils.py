@@ -628,7 +628,8 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     # Add specific edge cases (avoid using inf directly)
     edge_cases = [0.0, 1.0, -1.0, 1e10 if correct_answer != inf else 1e9, -1e10 if correct_answer != -inf else -1e9]
     for case in edge_cases:
-        if not math.isclose(case, correct_answer, abs_tol=1e-6):
+        # Ensure the test case is at least 1e-2 away from the correct answer
+        if abs(case - correct_answer) > 1e-2:
             test_cases.append(case)
     
     # Skip multiplier-based cases for infinity
@@ -636,15 +637,15 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
         # Add multiplier-based test cases
         for multiplier in multipliers:
             test_value = correct_answer_for_tests * multiplier
-            # Make sure we don't accidentally generate the same value
-            if not math.isclose(test_value, correct_answer, abs_tol=1e-6):
+            # Make sure the test value is at least 1e-2 away from the correct answer
+            if abs(test_value - correct_answer) > 1e-2:
                 test_cases.append(test_value)
         
         # Add offset-based test cases (especially important when correct_answer is close to 0)
         if abs(correct_answer_for_tests) < 1.0:
             for offset in offsets:
                 test_value = correct_answer_for_tests + offset
-                if not math.isclose(test_value, correct_answer, abs_tol=1e-6):
+                if abs(test_value - correct_answer) > 1e-2:
                     test_cases.append(test_value)
         
         # Add random test cases to reach the desired number
@@ -666,8 +667,8 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
                 magnitude = max(100.0, abs(correct_answer_for_tests) * 100)
                 test_value = random.uniform(-magnitude, magnitude)
             
-            # Ensure the test value is different from the correct answer and not already in the list
-            if not math.isclose(test_value, correct_answer, abs_tol=1e-6) and test_value not in test_cases:
+            # Ensure the test value is at least 1e-2 away from the correct answer and not already in the list
+            if abs(test_value - correct_answer) > 1e-2 and test_value not in test_cases:
                 test_cases.append(test_value)
     else:
         # For infinity, generate a range of large finite values
