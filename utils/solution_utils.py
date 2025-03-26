@@ -568,37 +568,82 @@ def extract_test_function(solution: str) -> str:
     return ""
 
 
-def generate_test_cases(correct_answer: float, num_cases: int = 5) -> List[float]:
+def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[float]:
     """
-    Generate test cases including the correct answer and some incorrect answers.
+    Generate test cases including the correct answer and many incorrect answers.
     The test cases should be sufficiently different from the correct answer
     to ensure the test function properly discriminates between correct and incorrect answers.
+    
+    Args:
+        correct_answer: The correct answer to the problem
+        num_cases: Number of test cases to generate (default: 50)
+        
+    Returns:
+        List of test values including the correct answer and incorrect answers
     """
     test_cases = [correct_answer]
     
     # Generate values that are significantly different from the correct answer
     # to ensure the test function can discriminate between correct and incorrect answers
-    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0]
+    
+    # Fixed multipliers for predictable test cases
+    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0, 0.01, 20.0, -0.5, -2.0, -5.0, -10.0, 100.0, 0.001]
     
     # Add some fixed offsets for values close to 0
-    offsets = [0.1, 1.0, -0.1, -1.0, 100.0]
+    offsets = [0.1, 1.0, -0.1, -1.0, 100.0, 10.0, -10.0, 1000.0, -1000.0, 0.01, -0.01]
     
-    for i in range(num_cases):
-        if i < len(multipliers):
-            # Use multiplier approach
-            test_value = correct_answer * multipliers[i]
-            # Make sure we don't accidentally generate the same value
-            if abs(test_value - correct_answer) <= 1e-6:
-                test_value = correct_answer + offsets[i % len(offsets)]
+    # Add specific edge cases
+    edge_cases = [0.0, 1.0, -1.0, float('inf') if correct_answer != float('inf') else 1000000.0]
+    for case in edge_cases:
+        if abs(case - correct_answer) > 1e-6:
+            test_cases.append(case)
+    
+    # Add multiplier-based test cases
+    for multiplier in multipliers:
+        test_value = correct_answer * multiplier
+        # Make sure we don't accidentally generate the same value
+        if abs(test_value - correct_answer) <= 1e-6:
+            continue
+        test_cases.append(test_value)
+    
+    # Add offset-based test cases (especially important when correct_answer is close to 0)
+    if abs(correct_answer) < 1.0:
+        for offset in offsets:
+            test_value = correct_answer + offset
+            if abs(test_value - correct_answer) > 1e-6:
+                test_cases.append(test_value)
+    
+    # Add random test cases to reach the desired number
+    while len(test_cases) < num_cases + 1:  # +1 because we already have the correct answer
+        # Mix of strategies for generating diverse test values
+        strategy = random.randint(1, 3)
+        
+        if strategy == 1:
+            # Random multiplier approach
+            multiplier = random.uniform(0.001, 100.0) * random.choice([-1, 1])
+            test_value = correct_answer * multiplier
+        elif strategy == 2:
+            # Random offset approach
+            magnitude = max(1.0, abs(correct_answer) * 10)
+            offset = random.uniform(-magnitude, magnitude)
+            test_value = correct_answer + offset
         else:
-            # Use random approach as fallback
-            test_value = correct_answer * random.uniform(1.5, 10.0) * random.choice([-1, 1])
-            
-        # Ensure the test value is different from the correct answer
-        if abs(test_value - correct_answer) > 1e-6:
+            # Completely random value within a reasonable range
+            magnitude = max(100.0, abs(correct_answer) * 100)
+            test_value = random.uniform(-magnitude, magnitude)
+        
+        # Ensure the test value is different from the correct answer and not already in the list
+        if abs(test_value - correct_answer) > 1e-6 and test_value not in test_cases:
             test_cases.append(test_value)
     
-    return test_cases
+    # Shuffle the test cases to avoid patterns
+    random.shuffle(test_cases)
+    
+    # Ensure the correct answer is included
+    if correct_answer not in test_cases:
+        test_cases[0] = correct_answer
+    
+    return test_cases[:num_cases + 1]  # Limit to requested number of cases + correct answer
 
 
 def split_into_steps(solution: str) -> List[str]:

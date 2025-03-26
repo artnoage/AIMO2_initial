@@ -65,37 +65,8 @@ def extract_test_function(solution: str) -> str:
     return ""
 
 
-def generate_test_cases(correct_answer: float, num_cases: int = 5) -> List[float]:
-    """
-    Generate test cases including the correct answer and some incorrect answers.
-    The test cases should be sufficiently different from the correct answer
-    to ensure the test function properly discriminates between correct and incorrect answers.
-    """
-    test_cases = [correct_answer]
-    
-    # Generate values that are significantly different from the correct answer
-    # to ensure the test function can discriminate between correct and incorrect answers
-    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0]
-    
-    # Add some fixed offsets for values close to 0
-    offsets = [0.1, 1.0, -0.1, -1.0, 100.0]
-    
-    for i in range(num_cases):
-        if i < len(multipliers):
-            # Use multiplier approach
-            test_value = correct_answer * multipliers[i]
-            # Make sure we don't accidentally generate the same value
-            if abs(test_value - correct_answer) <= 1e-6:
-                test_value = correct_answer + offsets[i % len(offsets)]
-        else:
-            # Use random approach as fallback
-            test_value = correct_answer * random.uniform(1.5, 10.0) * random.choice([-1, 1])
-            
-        # Ensure the test value is different from the correct answer
-        if abs(test_value - correct_answer) > 1e-6:
-            test_cases.append(test_value)
-    
-    return test_cases
+# Import the generate_test_cases function from solution_utils instead of defining it here
+from utils.solution_utils import generate_test_cases
 
 
 # Import run_test_function from solution_utils
@@ -175,8 +146,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                # Generate test cases
-                test_cases = generate_test_cases(correct_answer)
+                # Generate test cases (50 by default)
+                test_cases = generate_test_cases(correct_answer, num_cases=50)
+                logger.append(f"Generated {len(test_cases)} test cases for validation")
                 
                 # Run the test function on all test cases
                 success, results, error_message = run_test_function(

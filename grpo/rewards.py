@@ -859,8 +859,9 @@ class TestProgrammingReward(BaseReward):
                 else:
                     correct_answer = float(correct_answer)
                     
-                # Generate test cases including the correct answer and some incorrect answers
-                test_cases = generate_test_cases(correct_answer)
+                # Generate test cases including the correct answer and many incorrect answers (50 by default)
+                test_cases = generate_test_cases(correct_answer, num_cases=50)
+                self.logger.info(f"Generated {len(test_cases)} test cases for validation")
             except (ValueError, TypeError):
                 self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
                 return reward
