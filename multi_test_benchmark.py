@@ -477,17 +477,6 @@ async def main():
     # Get the base config first
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using multiple test functions')
     
-    # Parse additional arguments specific to this benchmark
-    parser = argparse.ArgumentParser(description='Additional arguments for multi-test benchmark')
-    parser.add_argument('--solutions-per-group', type=int, default=8, 
-                        help='Number of solutions to generate (default: 8)')
-    
-    # Parse known args to avoid conflicts with args already processed by BenchmarkConfig
-    args, _ = parser.parse_known_args()
-    
-    # Add the solutions_per_group to the config
-    config.solutions_per_group = args.solutions_per_group
-    
     tracker = ProgressTracker(total_examples=0, config=config)
     await tracker.run_benchmark(process_example_func=process_example)
 
