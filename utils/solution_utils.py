@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import random
+import math
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
 from utils.model_utils import TimeoutException, time_limit
@@ -593,7 +594,7 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     offsets = [0.1, 1.0, -0.1, -1.0, 100.0, 10.0, -10.0, 1000.0, -1000.0, 0.01, -0.01]
     
     # Add specific edge cases
-    edge_cases = [0.0, 1.0, -1.0, float('inf') if correct_answer != float('inf') else 1000000.0]
+    edge_cases = [0.0, 1.0, -1.0, math.inf if correct_answer != math.inf else 1000000.0]
     for case in edge_cases:
         if abs(case - correct_answer) > 1e-6:
             test_cases.append(case)
