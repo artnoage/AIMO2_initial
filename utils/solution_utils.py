@@ -7,6 +7,7 @@ import sys
 import json
 import random
 import math
+from math import inf
 from typing import Optional, Dict, List, Tuple, Any
 from latex2sympy2 import latex2sympy
 from utils.model_utils import TimeoutException, time_limit
@@ -358,6 +359,8 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     - results: Dictionary mapping test values to test results
     - error_message: Error message if any
     """
+    # Print debug info about the input
+    print(f"DEBUG - run_test_function received: type={type(correct_answer)}, value={correct_answer}")
     # Create a temporary file with the test function
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
         temp_file_path = temp_file.name
@@ -582,6 +585,8 @@ def test_result_with_function(test_code: str, result: float, timeout: int = 30) 
         - success: Whether the result passes the test
         - error_message: Error message if any
     """
+    # Print debug info about the input
+    print(f"DEBUG - test_result_with_function received: type={type(result)}, value={result}")
     # Create test cases including the result and some incorrect values
     test_cases = [result]  # The result we want to test
     
@@ -639,7 +644,7 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     offsets = [0.1, 1.0, -0.1, -1.0, 100.0, 10.0, -10.0, 1000.0, -1000.0, 0.01, -0.01]
     
     # Add specific edge cases
-    edge_cases = [0.0, 1.0, -1.0, math.inf if correct_answer != math.inf else 1000000.0]
+    edge_cases = [0.0, 1.0, -1.0, inf if correct_answer != inf else 1000000.0]
     for case in edge_cases:
         if abs(case - correct_answer) > 1e-6:
             test_cases.append(case)

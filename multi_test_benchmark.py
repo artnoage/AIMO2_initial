@@ -314,6 +314,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             for i, test_function in enumerate(test_functions):
                 test_id = i + 1
+                # Print debug info about the result
+                logger.append(f"Debug - result type: {type(result)}, value: {result}")
+                
                 success, error_message = test_result_with_function(
                     test_function,
                     result,

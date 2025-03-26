@@ -128,6 +128,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 test_cases = generate_test_cases(correct_answer, num_cases=50)
                 logger.append(f"Generated {len(test_cases)} test cases for validation")
                 
+                # Print debug info about the correct answer
+                logger.append(f"Debug - correct_answer type: {type(correct_answer)}, value: {correct_answer}")
+                
                 # Run the test function on all test cases
                 success, results, error_message = run_test_function(
                     test_function, 
