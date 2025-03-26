@@ -58,21 +58,6 @@ Put your final answer in \\boxed{}</step>
 </response>
 """
 
-SIMPLE_FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-<response>
-<step>Step 1: Begin with the first calculation or operation
-Show your work clearly using LaTeX notation</step>
-
-<step>Step 2: Continue with the next logical step
-Each step should be numbered and self-contained</step>
-
-<step>Step N: In your final step, state your conclusion
-Put your final answer in \\boxed{}</step>
-</response>
-"""
-
-
-
 
 TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
 
@@ -178,6 +163,142 @@ Your instructions should be clear and concise while providing all necessary guid
 </response>"""
 
 
+TESTER_SYSTEM_PROMPT2="""You will be provided with a mathematical problem. Your task is **not to solve** this problem but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the problem.
+
+<thinking>
+In this section, carefully analyze the problem:
+- Clearly state the mathematical principles or equations involved.
+- Clearly specify the criteria a correct numerical answer must satisfy.
+- Explain how you would confirm the validity of a proposed solution without directly computing the solution itself (e.g., plugging the number back into equations, inequalities, or conditions provided by the problem).
+- Explicitly note why verification is simpler or more straightforward than solving the problem.
+
+Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
+</thinking>
+
+<response>
+Write a Python function named `test_solution(answer)` that:
+1. Accepts exactly one float parameter named `answer`.
+2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-6`).
+3. Returns `False` otherwise.
+
+**Important Guidelines**:
+- Your function must **not** attempt to solve the problem or perform extensive computations. It should only verify correctness efficiently.
+- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
+- Include brief, clear comments explaining how verification is performed.
+- Handle floating-point precision explicitly with tolerances.
+
+**Example of a verification scenario**:
+If the mathematical problem is:
+> "Find the root of the equation \( x^2 - 2 = 0 \)."
+
+Your verification function could look like this:
+
+```python
+import numpy as np
+
+def test_solution(answer):
+    # Check if answer squared minus 2 is approximately zero.
+    return np.abs(answer**2 - 2) < 1e-6
+
+    Notice:
+
+The function doesn't compute the root; it verifies whether the provided number meets the criteria (equation satisfied within tolerance).
+
+Your response should strictly follow this verification approach. </response> """
+
+TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. Your task is explicitly **not to solve** the problem, but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the provided problem.
+
+<thinking>
+In this section, carefully analyze the problem:
+- Clearly state the mathematical principles or equations involved.
+- Explicitly specify the criteria a correct numerical answer must satisfy.
+- Explain how to confirm the validity of a proposed solution without directly solving the problem itself (e.g., substituting back into equations, checking conditions, divisibility, etc.).
+- Highlight why verification is simpler and more straightforward compared to solving.
+
+Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
+</thinking>
+
+<response>
+Write a Python function named `test_solution(answer)` that:
+1. Accepts exactly one float parameter named `answer`.
+2. Returns `True` if the given answer correctly solves the problem (within an appropriate numerical tolerance, e.g., `1e-6`).
+3. Returns `False` otherwise.
+
+**Important Guidelines:**
+- Your function must **not** attempt to solve the problem or perform extensive computations. Only verification logic is required.
+- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
+- Include brief, clear comments explaining how verification is performed.
+- Explicitly handle floating-point precision with appropriate tolerances.
+
+### Illustrative Examples:
+
+**1. Algebraic Equation Verification**  
+Problem: "Check if a number solves \( x^2 - 2 = 0 \)."
+
+```python
+import numpy as np
+
+def test_solution(answer):
+    # Verifies that answer squared minus 2 is approximately zero.
+    return np.abs(answer**2 - 2) < 1e-6
+```
+
+**2. Number Theory Verification (Prime & Equation)**  
+Problem: "Check if the given positive number \( x \) is prime and satisfies \( x^2 - x - 6 = 0 \)."
+
+```python
+from sympy import isprime
+
+def test_solution(answer):
+    # Checks primality and whether the equation holds.
+    if not isprime(int(answer)):
+        return False
+    return abs(answer**2 - answer - 6) < 1e-6
+```
+
+**3. Sequence Membership Verification**  
+Problem: "Verify if a given number \( x \) belongs to the sequence \( a_n = 3n + 2 \)."
+
+```python
+def test_solution(answer):
+    # Checks if (answer - 2) is divisible exactly by 3.
+    return abs((answer - 2) % 3) < 1e-6
+```
+
+**4. Fibonacci Number Verification**  
+Problem: "Check whether a given integer \( x \) is a Fibonacci number."
+
+```python
+import math
+
+def is_perfect_square(n):
+    return math.isqrt(n)**2 == n
+
+def test_solution(answer):
+    # Uses Fibonacci property that 5x^2 ± 4 must be a perfect square.
+    x = int(answer)
+    if x < 0:
+        return False
+    return is_perfect_square(5*x**2 + 4) or is_perfect_square(5*x**2 - 4)
+```
+
+**5. Divisibility Verification**  
+Problem: "Given integer 1073, verify if provided \( x \) is a factor."
+
+```python
+def test_solution(answer):
+    # Checks divisibility with modulo.
+    number = 1073
+    return abs(number % answer) < 1e-6
+```
+
+Your response should strictly adhere to verification rather than solution-oriented computations.
+</response>
+"""
+
+
+
+
 class FinalizationAgent:
     """Agent that finalizes partial solutions"""
     
@@ -194,7 +315,7 @@ class FinalizationAgent:
                 f"Partial Solution: {partial_solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -212,7 +333,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=32000)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
@@ -237,7 +358,7 @@ class TutorAgent:
                 f"Proposed Solution:\n{solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
 
 
@@ -255,24 +376,9 @@ class ProgrammingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=32000)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
     
-class ProgrammingAgentNosystem:
-    """Agent that generates Python code to solve mathematical problems"""
-    
-    def __init__(self, model):
-        self.model = model
-        
-    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
-        """Generate Python code that solves the mathematical problem"""
-
-        prompt = [
-            HumanMessage(f"Problem:\n{problem}\n\n")
-        ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
-        return (f"Problem:\n{problem}\n\n", response) if return_prompt else response
-
 
 class EngineerAgent:
     """Agent that analyzes problems and creates prompts for programming agents"""
@@ -288,52 +394,8 @@ class EngineerAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
-
-
-TESTER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to create a Python function that tests whether a given value is the correct answer to the problem.
-
-<thinking>
-In this section, analyze the problem:
-- Identify the mathematical concepts and principles involved
-- Determine what the correct answer should look like (e.g., a specific number, a range of values)
-- Consider how to verify the answer without directly solving the problem
-- Think about edge cases and numerical precision issues
-- Plan how to implement a verification function that returns True only for correct answers
-Do not write code in this section, focus on analysis and planning.
-</thinking>
-
-<response>
-Write a Python function named `test_solution(answer)` that:
-1. Takes a single parameter `answer` (a float)
-2. Returns True if the answer is correct (within reasonable numerical tolerance)
-3. Returns False otherwise
-
-Your function must:
-- Be self-contained and use only standard Python libraries (numpy, sympy, scipy are allowed)
-- Include clear comments explaining the verification logic
-- Handle numerical precision appropriately (use tolerances where needed)
-- Be efficient and avoid excessive resource usage
-
-Example format:
-
-```python
-# Test function for the problem
-import math
-import numpy as np
-
-def test_solution(answer):
-    # Verification logic with appropriate tolerance
-    # [brief explanation comment]
-    expected = ...  # The expected answer or verification calculation
-    
-    # Return True if answer matches expected value within tolerance
-    return abs(answer - expected) < 1e-6
-```
-
-Your function should NOT solve the problem directly if possible - it should verify a solution.
-</response>"""
 
 
 class TestingAgent:
@@ -342,20 +404,17 @@ class TestingAgent:
     def __init__(self, model):
         self.model = model
         
-    async def generate(self, problem: str, correct_answer: Optional[str] = None, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a test function that verifies solutions to the mathematical problem"""
         system_prompt = TESTER_SYSTEM_PROMPT
 
         content = f"Problem:\n{problem}\n\n"
-        if correct_answer:
-            content += f"The correct answer is: {correct_answer}\n\n"
-            content += "Create a test function that returns True for this answer (within reasonable tolerance) and False for incorrect answers."
         
         prompt = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=content)
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 

@@ -14,10 +14,11 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from utils.data_preparation import prepare_programming_data
 # Import system prompts from agents.py
 from utils.agents import TESTER_SYSTEM_PROMPT
 from rewards import TestProgrammingReward
+from utils.data_preparation import prepare_test_programming_data
+
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""
@@ -145,8 +146,6 @@ def main():
     
     def get_questions(split="train") -> Dataset:
         """Load and prepare dataset with test programming examples"""
-        # Import the data preparation function
-        from utils.data_preparation import prepare_test_programming_data
         
         # Load dataset
         data = load_dataset(dataset_name, split=split)

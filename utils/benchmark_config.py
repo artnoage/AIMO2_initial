@@ -17,10 +17,10 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/0"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/1"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/2"
-    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/3"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_0/20250324_220234"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_1/20250324_214416"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250324_215025"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_3/20250324_203240"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigD"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     MISTRAL="mistralai/mistral-small-24b-instruct-2501"
@@ -119,13 +119,13 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=32,
+        parser.add_argument('--max-concurrent', type=int, default=64,
                           help='Maximum number of concurrent problems (default: 64)')
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--completions', type=int, default=20,
                           help='Number of completions to try per path (default: 15)')
-        parser.add_argument('--solutions-per-group', type=int, default=4,
+        parser.add_argument('--solutions_per_group', type=int, default=4,
                           help='Number of solutions to generate per group in ensemble benchmark (default: 4)')
                           
         # Verification arguments

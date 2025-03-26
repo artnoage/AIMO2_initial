@@ -144,9 +144,8 @@ async def process_solution(
         The numerical result if it passed the test, None otherwise
     """
     main_model = get_model(config, role="main")
-    auxiliary_model = get_model(config, role="auxiliary")
     programming_agent = ProgrammingAgent(main_model)
-    testing_agent = TestingAgent(auxiliary_model)
+    testing_agent = TestingAgent(main_model)
     
     # Generate test function first
     logger.append(f"\n🧪 Generating test function for solution {solution_id}...")

@@ -12,11 +12,7 @@ from utils.model_utils import *
 from utils.solution_utils import *
 from utils.agents import *
 from utils.logger import BenchmarkLogger
-# Import the generate_test_cases function from solution_utils instead of defining it here
-from utils.solution_utils import generate_test_cases
-# Import run_test_function and test_result_with_function from solution_utils
-from utils.solution_utils import run_test_function, test_result_with_function
-
+from utils.solution_utils import generate_test_cases, run_test_function
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

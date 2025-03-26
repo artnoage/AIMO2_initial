@@ -145,7 +145,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_3"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigD"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -193,7 +193,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=6000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -238,13 +238,13 @@ def main():
         # Load the base dataset
          # Load the base dataset
         data1 = load_dataset(dataset_name,split="train")
-        data1=data1.shuffle(seed=34)
+        data1=data1.shuffle(seed=134)
         data1=data1.select(range(2500))
         data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
         data2=data2.select(range(500))
-        data2=data2.shuffle(seed=34)
+        data2=data2.shuffle(seed=134)
         data = concatenate_datasets([data1,data2])
-        data = data.shuffle(seed=34)
+        data = data.shuffle(seed=134)
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
@@ -285,11 +285,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=14,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=16,
-        num_generations=14,
+        num_generations=8,
         max_prompt_length=800,
-        max_completion_length=3200,
+        max_completion_length=5200,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
