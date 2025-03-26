@@ -361,6 +361,21 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     """
     # Print debug info about the input
     print(f"DEBUG - run_test_function received: type={type(correct_answer)}, value={correct_answer}")
+    
+    # Handle infinity values in test cases
+    safe_test_cases = []
+    for case in test_cases:
+        if math.isinf(case) if hasattr(case, "__float__") else False:
+            # Skip infinity values as they can cause issues in test functions
+            continue
+        safe_test_cases.append(case)
+    
+    # If we filtered out all test cases (unlikely), add some safe values
+    if not safe_test_cases:
+        safe_test_cases = [0.0, 1.0, -1.0, 1000.0, -1000.0]
+        # If correct_answer is not infinity, add it
+        if not (math.isinf(correct_answer) if hasattr(correct_answer, "__float__") else False):
+            safe_test_cases.append(correct_answer)
     # Create a temporary file with the test function
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
         temp_file_path = temp_file.name
@@ -587,7 +602,19 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     Returns:
         List of test values including the correct answer and incorrect answers
     """
-    test_cases = [correct_answer]
+    # Handle special cases first
+    is_infinity = math.isinf(correct_answer) if hasattr(correct_answer, "__float__") else False
+    
+    # For infinity, use a large finite number instead
+    if is_infinity:
+        if correct_answer > 0:  # positive infinity
+            correct_answer_for_tests = 1e10  # Use a very large number
+        else:  # negative infinity
+            correct_answer_for_tests = -1e10  # Use a very negative number
+    else:
+        correct_answer_for_tests = correct_answer
+    
+    test_cases = [correct_answer]  # Always include the actual correct answer
     
     # Generate values that are significantly different from the correct answer
     # to ensure the test function can discriminate between correct and incorrect answers
@@ -598,49 +625,64 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     # Add some fixed offsets for values close to 0
     offsets = [0.1, 1.0, -0.1, -1.0, 100.0, 10.0, -10.0, 1000.0, -1000.0, 0.01, -0.01]
     
-    # Add specific edge cases
-    edge_cases = [0.0, 1.0, -1.0, inf if correct_answer != inf else 1000000.0]
+    # Add specific edge cases (avoid using inf directly)
+    edge_cases = [0.0, 1.0, -1.0, 1e10 if correct_answer != inf else 1e9, -1e10 if correct_answer != -inf else -1e9]
     for case in edge_cases:
-        if abs(case - correct_answer) > 1e-6:
+        if not math.isclose(case, correct_answer, abs_tol=1e-6):
             test_cases.append(case)
     
-    # Add multiplier-based test cases
-    for multiplier in multipliers:
-        test_value = correct_answer * multiplier
-        # Make sure we don't accidentally generate the same value
-        if abs(test_value - correct_answer) <= 1e-6:
-            continue
-        test_cases.append(test_value)
-    
-    # Add offset-based test cases (especially important when correct_answer is close to 0)
-    if abs(correct_answer) < 1.0:
-        for offset in offsets:
-            test_value = correct_answer + offset
-            if abs(test_value - correct_answer) > 1e-6:
+    # Skip multiplier-based cases for infinity
+    if not is_infinity:
+        # Add multiplier-based test cases
+        for multiplier in multipliers:
+            test_value = correct_answer_for_tests * multiplier
+            # Make sure we don't accidentally generate the same value
+            if not math.isclose(test_value, correct_answer, abs_tol=1e-6):
                 test_cases.append(test_value)
-    
-    # Add random test cases to reach the desired number
-    while len(test_cases) < num_cases + 1:  # +1 because we already have the correct answer
-        # Mix of strategies for generating diverse test values
-        strategy = random.randint(1, 3)
         
-        if strategy == 1:
-            # Random multiplier approach
-            multiplier = random.uniform(0.001, 100.0) * random.choice([-1, 1])
-            test_value = correct_answer * multiplier
-        elif strategy == 2:
-            # Random offset approach
-            magnitude = max(1.0, abs(correct_answer) * 10)
-            offset = random.uniform(-magnitude, magnitude)
-            test_value = correct_answer + offset
-        else:
-            # Completely random value within a reasonable range
-            magnitude = max(100.0, abs(correct_answer) * 100)
-            test_value = random.uniform(-magnitude, magnitude)
+        # Add offset-based test cases (especially important when correct_answer is close to 0)
+        if abs(correct_answer_for_tests) < 1.0:
+            for offset in offsets:
+                test_value = correct_answer_for_tests + offset
+                if not math.isclose(test_value, correct_answer, abs_tol=1e-6):
+                    test_cases.append(test_value)
         
-        # Ensure the test value is different from the correct answer and not already in the list
-        if abs(test_value - correct_answer) > 1e-6 and test_value not in test_cases:
-            test_cases.append(test_value)
+        # Add random test cases to reach the desired number
+        while len(test_cases) < num_cases + 1:  # +1 because we already have the correct answer
+            # Mix of strategies for generating diverse test values
+            strategy = random.randint(1, 3)
+            
+            if strategy == 1:
+                # Random multiplier approach
+                multiplier = random.uniform(0.001, 100.0) * random.choice([-1, 1])
+                test_value = correct_answer_for_tests * multiplier
+            elif strategy == 2:
+                # Random offset approach
+                magnitude = max(1.0, abs(correct_answer_for_tests) * 10)
+                offset = random.uniform(-magnitude, magnitude)
+                test_value = correct_answer_for_tests + offset
+            else:
+                # Completely random value within a reasonable range
+                magnitude = max(100.0, abs(correct_answer_for_tests) * 100)
+                test_value = random.uniform(-magnitude, magnitude)
+            
+            # Ensure the test value is different from the correct answer and not already in the list
+            if not math.isclose(test_value, correct_answer, abs_tol=1e-6) and test_value not in test_cases:
+                test_cases.append(test_value)
+    else:
+        # For infinity, generate a range of large finite values
+        large_values = [1e6, 1e7, 1e8, 1e9, -1e6, -1e7, -1e8, -1e9]
+        for val in large_values:
+            if val not in test_cases:
+                test_cases.append(val)
+                
+        # Add more random large values to reach the desired number
+        while len(test_cases) < num_cases + 1:
+            magnitude = random.randint(4, 9)  # 10^4 to 10^9
+            sign = random.choice([-1, 1])
+            test_value = sign * (10 ** magnitude)
+            if test_value not in test_cases:
+                test_cases.append(test_value)
     
     # Shuffle the test cases to avoid patterns
     random.shuffle(test_cases)
