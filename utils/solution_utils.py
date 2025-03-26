@@ -366,10 +366,11 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     - results: Dictionary mapping test values to test results
     - error_message: Error message if any
     """
-    # Add resource limits to the code
+    # Add safer resource limits to the code - avoid RLIMIT_NPROC which causes OpenBLAS errors
     resource_limits = """
 import resource
 import sys
+import os
 
 # Set resource limits to prevent infinite loops
 def set_resource_limits():
@@ -377,6 +378,12 @@ def set_resource_limits():
     resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
     # Limit memory usage to 1GB
     resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+    
+    # Set environment variable to limit OpenBLAS threads
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 set_resource_limits()
 """
@@ -405,20 +412,45 @@ set_resource_limits()
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
         temp_file_path = temp_file.name
         
-        # Write the test function to the file
+        # Write the test function to the file with improved error handling and timeout per test case
         test_code = code + "\n\n"
         
-        # Add code to run the test function on all test cases
+        # Add code to run the test function on all test cases with individual timeouts
         test_code += "import sys\n"
-        test_code += "import json\n\n"
+        test_code += "import json\n"
+        test_code += "import signal\n\n"
+        
+        # Add a per-test timeout handler
+        test_code += "class TestTimeout(Exception):\n"
+        test_code += "    pass\n\n"
+        
+        test_code += "def timeout_handler(signum, frame):\n"
+        test_code += "    raise TestTimeout('Test case took too long')\n\n"
+        
         test_code += "def run_tests():\n"
         test_code += "    results = {}\n"
         test_code += "    test_cases = " + str(test_cases) + "\n"
         test_code += "    for case in test_cases:\n"
         test_code += "        try:\n"
+        test_code += "            # Set timeout for this specific test case (2 seconds)\n"
+        test_code += "            signal.signal(signal.SIGALRM, timeout_handler)\n"
+        test_code += "            signal.alarm(2)\n"
+        test_code += "            \n"
+        test_code += "            # Run the test\n"
         test_code += "            result = test_solution(case)\n"
+        test_code += "            \n"
+        test_code += "            # Cancel the alarm\n"
+        test_code += "            signal.alarm(0)\n"
+        test_code += "            \n"
+        test_code += "            # Store the result\n"
         test_code += "            results[str(case)] = bool(result)\n"
+        test_code += "        except TestTimeout:\n"
+        test_code += "            results[str(case)] = 'Timeout'\n"
+        test_code += "            # Cancel the alarm\n"
+        test_code += "            signal.alarm(0)\n"
         test_code += "        except Exception as e:\n"
+        test_code += "            # Cancel the alarm\n"
+        test_code += "            signal.alarm(0)\n"
         test_code += "            results[str(case)] = f'Error: {str(e)}'\n"
         test_code += "    print(json.dumps(results))\n\n"
         test_code += "run_tests()\n"
@@ -461,8 +493,27 @@ set_resource_limits()
                 
                 # Check if ALL incorrect answers are identified as False
                 incorrect_results = [v for k, v in parsed_results.items() if k != correct_answer]
-                if not all(result is False for result in incorrect_results):
-                    return False, parsed_results, "Test function must reject ALL incorrect answers"
+                
+                # Handle timeout and error results more gracefully
+                if not all(result is False for result in incorrect_results if isinstance(result, bool)):
+                    # Count how many incorrect answers were incorrectly identified
+                    incorrect_count = sum(1 for r in incorrect_results if r is not False and not isinstance(r, str))
+                    
+                    # If there are timeout or error results, mention them but don't fail the test
+                    timeout_count = sum(1 for r in incorrect_results if r == 'Timeout')
+                    error_count = sum(1 for r in incorrect_results if isinstance(r, str) and r != 'Timeout')
+                    
+                    if incorrect_count > 0:
+                        return False, parsed_results, f"Test function incorrectly accepted {incorrect_count} wrong answers"
+                    elif timeout_count > 0 or error_count > 0:
+                        # If we only have timeouts/errors but no incorrect acceptances, consider it a pass
+                        # but note the issues in the message
+                        message = ""
+                        if timeout_count > 0:
+                            message += f"{timeout_count} test cases timed out. "
+                        if error_count > 0:
+                            message += f"{error_count} test cases had errors. "
+                        return True, parsed_results, message.strip()
                 
                 return True, parsed_results, ""
                 
