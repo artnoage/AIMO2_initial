@@ -396,17 +396,6 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
             # Create a minimal test script that just returns True/False
             test_script = f"""
 import os
-import signal
-import time
-
-# Set up a timeout handler within the script itself
-def timeout_handler(signum, frame):
-    raise TimeoutError("Function execution timed out")
-
-# Register the signal handler for SIGALRM
-signal.signal(signal.SIGALRM, timeout_handler)
-# Set alarm for 3 seconds (shorter than the outer timeout)
-signal.alarm(3)
 
 # Limit threads for numerical libraries
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -419,11 +408,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 # Run test on a single value and print result
 try:
     result = test_solution({test_case})
-    # Cancel the alarm if function completes
-    signal.alarm(0)
     print("TRUE" if result else "FALSE")
-except TimeoutError as e:
-    print("ERROR: Function execution timed out")
 except Exception as e:
     print(f"ERROR: {{str(e)}}")
 """
