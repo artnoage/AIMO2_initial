@@ -289,29 +289,36 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
         temp_file.write(code.encode('utf-8'))
     
     try:
-        # Run the code with timeout
-        with time_limit(timeout):
-            # Use subprocess to run the code
-            result = subprocess.run(
-                [sys.executable, temp_file_path],
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
+        # Use process group to ensure all child processes are terminated
+        process = subprocess.Popen(
+            [sys.executable, temp_file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            preexec_fn=os.setsid  # Use process group
+        )
+        
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
             
-            if result.returncode != 0:
-                return False, None, f"Execution error: {result.stderr}"
+            if process.returncode != 0:
+                return False, None, f"Execution error: {stderr}"
             
             # Try to parse the output as a float
-            output = result.stdout.strip()
+            output = stdout.strip()
             try:
                 answer = float(output)
                 return True, answer, "Success"
             except ValueError:
                 return False, None, f"Output is not a valid number: '{output}'"
-    
-    except TimeoutException:
-        return False, None, "Code execution timed out"
+                
+        except subprocess.TimeoutExpired:
+            # Kill the entire process group
+            import signal
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process.communicate()  # Clean up
+            return False, None, "Code execution timed out"
+            
     except Exception as e:
         return False, None, f"Error running code: {str(e)}"
     finally:
@@ -359,6 +366,24 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     - results: Dictionary mapping test values to test results
     - error_message: Error message if any
     """
+    # Add resource limits to the code
+    resource_limits = """
+import resource
+import sys
+
+# Set resource limits to prevent infinite loops
+def set_resource_limits():
+    # Limit CPU time to 10 seconds per test case
+    resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
+    # Limit memory usage to 1GB
+    resource.setrlimit(resource.RLIMIT_AS, (1024 * 1024 * 1024, 1024 * 1024 * 1024))
+
+set_resource_limits()
+"""
+    
+    # Add the resource limits to the beginning of the code
+    code = resource_limits + code
+    
     # Print debug info about the input
     print(f"DEBUG - run_test_function received: type={type(correct_answer)}, value={correct_answer}")
     
