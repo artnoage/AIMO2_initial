@@ -572,51 +572,6 @@ def extract_test_function(solution: str) -> str:
     return ""
 
 
-def test_result_with_function(test_code: str, result: float, timeout: int = 30) -> Tuple[bool, str]:
-    """
-    Test a result with a test function
-    
-    Args:
-        test_code: The test function code
-        result: The numeric result to test
-        timeout: Maximum execution time in seconds
-    
-    Returns:
-        - success: Whether the result passes the test
-        - error_message: Error message if any
-    """
-    # Print debug info about the input
-    print(f"DEBUG - test_result_with_function received: type={type(result)}, value={result}")
-    # Create test cases including the result and some incorrect values
-    test_cases = [result]  # The result we want to test
-    
-    # Generate values that are significantly different from the result
-    # to ensure the test function can discriminate between correct and incorrect answers
-    multipliers = [0.5, 2.0, -1.0, 10.0, 0.1, 5.0]
-    offsets = [0.1, 1.0, -0.1, -1.0, 100.0]
-    
-    for i, multiplier in enumerate(multipliers):
-        # Ensure the test value is different enough from the result
-        test_value = result * multiplier
-        
-        # For values close to zero, use offsets instead of multipliers
-        if abs(test_value - result) <= 1e-6:
-            test_value = result + offsets[i % len(offsets)]
-            
-        # Make sure we don't accidentally generate the same value
-        if abs(test_value - result) > 1e-6:
-            test_cases.append(test_value)
-    
-    # Run the test function on all test cases
-    success, results, test_error = run_test_function(
-        test_code,
-        test_cases,
-        result,  # We're testing if the test function accepts the result
-        timeout=timeout
-    )
-    
-    # If the test function accepts the result and rejects ALL incorrect answers, it's valid
-    return success, test_error if not success else ""
 
 
 def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[float]:

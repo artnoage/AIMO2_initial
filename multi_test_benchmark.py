@@ -17,7 +17,7 @@ from utils.logger import BenchmarkLogger
 from test_benchmark import extract_test_function
 
 # Import functions from programming_benchmark.py and solution_utils
-from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function, test_result_with_function
+from utils.solution_utils import extract_code_from_response, run_code_safely, check_code_quality, run_test_function, generate_test_cases
 
 
 def calculate_answer_majority(answers, tolerance=1e-2):
@@ -317,9 +317,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Print debug info about the result
                 logger.append(f"Debug - result type: {type(result)}, value: {result}")
                 
-                success, error_message = test_result_with_function(
+                # Generate test cases for this result
+                test_cases = generate_test_cases(result, num_cases=10)
+                
+                # Run the test function on all test cases
+                success, results, error_message = run_test_function(
                     test_function,
-                    result,
+                    test_cases,
+                    result,  # We're testing if the test function accepts the result
                     timeout=config.timeout
                 )
                 
