@@ -163,7 +163,7 @@ Your instructions should be clear and concise while providing all necessary guid
 </response>"""
 
 
-TESTER_SYSTEM_PROMPT2="""You will be provided with a mathematical problem. Your task is **not to solve** this problem but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the problem.
+TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. Your task is **not to solve** this problem but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the problem.
 
 <thinking>
 In this section, carefully analyze the problem:
@@ -206,7 +206,7 @@ The function doesn't compute the root; it verifies whether the provided number m
 
 Your response should strictly follow this verification approach. </response> """
 
-TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. Your task is explicitly **not to solve** the problem, but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the provided problem.
+TESTER_SYSTEM_PROMPT2="""You will be provided with a mathematical problem. Your task is explicitly **not to solve** the problem, but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the provided problem.
 
 <thinking>
 In this section, carefully analyze the problem:
