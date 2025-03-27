@@ -25,7 +25,8 @@ from utils.agents import (
     FINALIZATION_SYSTEM_PROMPT,
     PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT,
-    TESTER_SYSTEM_PROMPT
+    TESTER_SYSTEM_PROMPT,
+    ARCHITECT_SYSTEM_PROMPT
 )
 
 
@@ -240,11 +241,12 @@ def main():
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.2,
-            'programming': 0.4,
+            'solution': 0.25,
+            'programming': 0.25,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.4,
+            'test_programming': 0.25,
+            'architect': 0.25
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -255,6 +257,7 @@ def main():
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
+            ARCHITECT_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 

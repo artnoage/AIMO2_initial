@@ -117,7 +117,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
                 # Generate test cases (20 by default) with error handling
                 try:
-                    test_cases = generate_test_cases(correct_answer, num_cases=20)
+                    test_cases = generate_test_cases(correct_answer, num_cases=50)
                     logger.append(f"Generated {len(test_cases)} test cases for validation")
                 except Exception as e:
                     logger.append(f"❌ Error generating test cases: {str(e)}")

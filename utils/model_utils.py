@@ -248,20 +248,6 @@ class CustomChat2:
             
         return formatted_prompt
     
-    def _extract_thinking_section(self, text):
-        """Extract the thinking section from the response"""
-        thinking_pattern = re.compile(r'<thinking>(.*?)</thinking>', re.DOTALL)
-        thinking_match = thinking_pattern.search(text)
-        
-        if thinking_match:
-            return thinking_match.group(1)
-        return None
-    
-    def _modify_thinking_with_wait(self, thinking_content):
-        """Add '...no wait a second' to the thinking content"""
-        if thinking_content:
-            return thinking_content + "...no wait a second."
-        return None
     
     def _create_modified_prompt(self, original_messages, first_response, modified_thinking):
         """Create a new prompt with the modified thinking section"""

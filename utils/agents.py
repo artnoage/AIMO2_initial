@@ -89,8 +89,9 @@ If an incorrect step was found, provide the corrected solution starting from tha
 </response>"""
 
 
-PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. 
-Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
+PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem, that you need to solve using Python code.
+
+Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
 In this section, explicitly detail your thought process step-by-step:
@@ -130,7 +131,51 @@ result = ...
 print(result)  # Just the number, no text
 </response>"""
 
-ENGINEER_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
+
+PROGRAMMER_SYSTEM_PROMPT_SUB="""You will be given a mathematical problem and some general instructions.
+Your general task is to write a Python program that solves the problem.
+Your output must include two clearly separated sections: **Thinking** and **Response**.
+
+
+<thinking>
+In this section, explicitly detail your thought process step-by-step:
+- Carefully analyze the problem and identify the mathematical concepts involved.
+- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
+- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
+- Clearly state your intended method before beginning any code implementation.
+Do not provide any Python code in this section, only your reasoning and approach.
+</thinking>
+
+<response>
+In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
+2. Include clear comments explaining each step of your approach within the code itself.
+3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+4. Gracefully handle potential errors or edge cases.
+5. Be efficient and avoid excessive resource usage.
+
+Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
+
+Example format:
+
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [brief explanation comment]
+...
+
+# Step 2: Solve using appropriate method
+# [brief explanation comment]
+...
+
+# Calculate and print the final answer
+result = ...
+print(result)  # Just the number, no text
+</response>"""
+
+ARCHITECT_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
 
 Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
@@ -165,66 +210,50 @@ Your instructions should be clear and concise while providing all necessary guid
 
 
 
-TESTER_SYSTEM_PROMPT="""
-You are an expert in mathematical problem-solving and Python programming. 
-Your task is to create a Python function that efficiently verifies whether a given numeric value correctly solves a provided mathematical problem. 
-Your reply must include two clearly separated sections: **Thinking** and **Response**.
+TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. 
+Your task is **not necessarily solve** this problem but rather to create a Python function that **efficiently verifies** whether a given 
+numeric value (float) correctly solves the problem.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-1. Analyze the given problem:
-   - List out all given information and unknown variables.
-   - Write down the exact mathematical equation(s) involved.
-   - What are the key mathematical principles or equations involved?
-   - What criteria must a correct numerical answer satisfy?
-
-2. Compare verification vs. solving:
-   - How would you verify a proposed solution without directly computing it?
-   - Is verification simpler or more straightforward than solving the problem? Why or why not?
-
-3. Outline your strategy:
-   - If verification is easier, describe your verification approach.
-   - If solving is necessary or more efficient, explain why and outline your solving strategy.
-
-4. Consider implementation details:
-   - What Python libraries might be useful (e.g., numpy, sympy, scipy)?
-   - How will you handle floating-point precision and tolerances?
-
-5. Edge cases and special conditions:
-   - Are there any edge cases or special conditions to consider?
-   - How will these affect the verification or solving process?
-
-Document your analysis and strategy here. Do not provide any Python code at this stage.
+In this section, carefully analyze the problem:
+- Clearly state the mathematical principles or equations involved.
+- Clearly specify the criteria a correct numerical answer must satisfy.
+- Explain how you would confirm the validity of a proposed solution without necessarily directly computing the solution itself 
+(e.g., plugging the number back into equations, inequalities, or conditions provided by the problem).
+- As a fallback solution if you cant find an easy way to verify the answer, you can provide a simple Python code that computes the solution and compares it with the given answer.
+Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
 </thinking>
 
 <response>
-Based on your analysis, implement a Python function named `test_solution(answer)` that follows these requirements:
+Write a Python function named `test_solution(answer)` that:
+1. Accepts exactly one float parameter named `answer`.
+2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-2`).
+3. Returns `False` otherwise.
 
-1. Accept exactly one float parameter named `answer`.
-2. Return `True` if the given answer correctly solves the problem (use appropriate numerical tolerances, e.g., `1e-2`).
-3. Return `False` otherwise.
-4. The function must be self-contained, efficient, and only rely on standard Python libraries (numpy, sympy, and scipy are allowed).
-5. Include brief, clear comments explaining how verification or solving is performed.
-6. Handle floating-point precision explicitly with tolerances.
+**Important Guidelines**:
+- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
+- Include brief, clear comments explaining how verification is performed.
+- Handle floating-point precision explicitly with tolerances.
 
-Important Guidelines:
-- If verification is easier, your function should not attempt to solve the problem or perform extensive computations. It should only verify correctness efficiently.
-- If solving is necessary or more efficient, clearly explain why in a comment before implementing the solution.
-- Ensure your implementation aligns with the strategy you outlined in the thinking section.
+**Example of a verification scenario**:
+If the mathematical problem is:
+> "Find the root of the equation \( x^2 - 2 = 0 \)."
 
-Provide your implementation below, following this structure:
+Your verification function could look like this:
 
 ```python
-# Brief explanation of the approach (verification or solving)
-# Import statements (if needed)
+import numpy as np
 
 def test_solution(answer):
-    # Function implementation
-    # Include comments explaining key steps
-    pass  # Replace with actual implementation
-```
-</response>
-"""
+    # Check if answer squared minus 2 is approximately zero.
+    return np.abs(answer**2 - 2) < 1e-2
 
+    Notice:
+
+The function doesn't compute the root; it verifies whether the provided number meets the criteria (equation satisfied within tolerance).
+
+Your response should strictly follow this verification approach. </response> """
 
 
 
@@ -309,7 +338,7 @@ class ProgrammingAgent:
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
     
 
-class EngineerAgent:
+class ArchitectAgent:
     """Agent that analyzes problems and creates prompts for programming agents"""
     
     def __init__(self, model):
@@ -317,7 +346,7 @@ class EngineerAgent:
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate engineering analysis and prompt for a programming agent"""
-        system_prompt = ENGINEER_SYSTEM_PROMPT
+        system_prompt = ARCHITECT_SYSTEM_PROMPT
 
         prompt = [
             SystemMessage(content=system_prompt),

@@ -11,9 +11,10 @@ class RewardConfig:
     timeout: int = 300
     
     # Model settings (from BenchmarkConfig)
-    main: str = "LOCAL_0"  # Main model to use
-    main_port: int = 8000  # Port for main model server
-    main_temp: float = 0.7  # Temperature for main model generation
+    main: str = "LOCAL_0"  # Main model to use for solving problems
+    main_template: int = 1  # Main model to use for solving problems
+    main_port: int = 8007  # Port for main model server
+    main_temp: float = 0  # Temperature for main model generation
     
     # Completion reward parameters
     step_continuity_reward: float = 0.5
