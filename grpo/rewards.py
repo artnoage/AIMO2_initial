@@ -10,6 +10,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.model_utils import *
 from utils.benchmark_config import BenchmarkConfig, ModelOption
+from utils.agents import ARCHITECT_SYSTEM_PROMPT, PROGRAMMER_SYSTEM_PROMPT
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution, 
     extract_code_from_response, check_code_quality, generate_test_cases, run_test_function, run_code_safely)
