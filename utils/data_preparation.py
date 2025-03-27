@@ -54,6 +54,21 @@ def prepare_test_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return test_programming_data
 
+def prepare_architect_data(data: Dataset, system_prompt: str) -> Dataset:
+    """Create examples for architect/engineering tasks using the architect-specific system prompt"""
+    logger.info("Creating architect examples...")
+    architect_data = data.map(lambda x: {
+        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x.get('answer', x.get('correct_answer', '')),
+        'problem': x['problem'],
+        'partial_solution': '',
+        'full_solution': '',
+        'is_correct': None,
+        'wrong_step': None,
+        'example_type': 'architect'
+    })
+    return architect_data
+
 def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for tutor tasks using the tutor-specific system prompt"""
     logger.info("Creating tutor examples...")
@@ -353,28 +368,30 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     return finalization_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
-                          programming_system_prompt: str, tutor_system_prompt: str ,
-                          test_programming_system_prompt: str,
+                          programming_system_prompt: str, tutor_system_prompt: str,
+                          test_programming_system_prompt: str, architect_system_prompt: str = None,
                          tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 1500) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
-    - 25% solution examples
-    - 25% programming examples
+    - 20% solution examples
+    - 20% programming examples
     - 20% finalization examples
     - 15% tutor examples
     - 15% test programming examples
+    - 10% architect examples
     
     If any distribution value is 0, no examples of that type will be generated.
     """
     # Default distribution if not provided
     if distribution is None:
         distribution = {
-            'solution': 0.25,
-            'programming': 0.25,
+            'solution': 0.20,
+            'programming': 0.20,
             'finalization': 0.20,
             'tutor': 0.15,
-            'test_programming': 0.15
+            'test_programming': 0.15,
+            'architect': 0.10
         }
     
     # Check if we have model_solutions in the dataset
@@ -405,6 +422,11 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     if test_programming_system_prompt and distribution.get('test_programming', 0) > 0:
         test_programming_data = prepare_test_programming_data(data, test_programming_system_prompt)
     
+    # Create architect examples if architect_system_prompt is provided and distribution is non-zero
+    architect_data = None
+    if architect_system_prompt and distribution.get('architect', 0) > 0:
+        architect_data = prepare_architect_data(data, architect_system_prompt)
+    
     # Calculate the target number of examples for each type
     total_examples = len(data)
     solution_target = int(total_examples * distribution.get('solution', 0))
@@ -412,6 +434,7 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     finalization_target = int(total_examples * distribution.get('finalization', 0))
     tutor_target = int(total_examples * distribution.get('tutor', 0)) if tutor_data else 0
     test_programming_target = int(total_examples * distribution.get('test_programming', 0)) if test_programming_data else 0
+    architect_target = int(total_examples * distribution.get('architect', 0)) if architect_data else 0
     
     # Function to count example types in a dataset
     def count_types(dataset):
@@ -434,6 +457,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         logger.info(f"Created {len(tutor_data)} tutor examples (target: {tutor_target})")
     if test_programming_data:
         logger.info(f"Created {len(test_programming_data)} test programming examples (target: {test_programming_target})")
+    if architect_data:
+        logger.info(f"Created {len(architect_data)} architect examples (target: {architect_target})")
     
     # Shuffle and select examples for each type
     if solution_data:
@@ -456,6 +481,10 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         test_programming_data = test_programming_data.shuffle(seed=46)
         test_programming_data = test_programming_data.select(range(min(test_programming_target, len(test_programming_data))))
     
+    if architect_data:
+        architect_data = architect_data.shuffle(seed=47)
+        architect_data = architect_data.select(range(min(architect_target, len(architect_data))))
+    
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
     if solution_data:
@@ -468,6 +497,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         logger.info(f"Tutor dataset: {count_types(tutor_data)}")
     if test_programming_data:
         logger.info(f"Test programming dataset: {count_types(test_programming_data)}")
+    if architect_data:
+        logger.info(f"Architect dataset: {count_types(architect_data)}")
     
     # Combine all datasets
     datasets_to_combine = []
@@ -481,6 +512,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         datasets_to_combine.append(tutor_data)
     if test_programming_data:
         datasets_to_combine.append(test_programming_data)
+    if architect_data:
+        datasets_to_combine.append(architect_data)
     
     combined_data = concatenate_datasets(datasets_to_combine)
     
