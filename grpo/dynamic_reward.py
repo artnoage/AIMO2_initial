@@ -50,6 +50,15 @@ class DynamicReward(BaseReward):
                         self.relevant_stats[category] = []
                     self.relevant_stats[category].extend(stats)
         
+        # Ensure test_programming_stats are included in relevant stats
+        if 'test_programming_stats' not in self.relevant_stats:
+            self.relevant_stats['test_programming_stats'] = []
+        self.relevant_stats['test_programming_stats'].extend([
+            'correct_tests', 'incorrect_tests', 'syntax_errors', 
+            'execution_errors', 'timeout_errors', 'test_function_success_rate',
+            'average_test_cases_passed', 'total_test_cases_evaluated', 'test_cases_passed'
+        ])
+        
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
             self.relevant_stats['reward_components'] = []

@@ -93,7 +93,11 @@ class RewardStats:
             'incorrect_tests': 0,
             'syntax_errors': 0,
             'execution_errors': 0,
-            'timeout_errors': 0
+            'timeout_errors': 0,
+            'test_function_success_rate': 0.0,
+            'average_test_cases_passed': 0.0,
+            'total_test_cases_evaluated': 0,
+            'test_cases_passed': 0
         }
         
         # Track test programming stats
@@ -102,7 +106,11 @@ class RewardStats:
             'incorrect_tests': 0,
             'syntax_errors': 0,
             'execution_errors': 0,
-            'timeout_errors': 0
+            'timeout_errors': 0,
+            'test_function_success_rate': 0.0,
+            'average_test_cases_passed': 0.0,
+            'total_test_cases_evaluated': 0,
+            'test_cases_passed': 0
         }
         
         # Initialize programming-specific reward components
