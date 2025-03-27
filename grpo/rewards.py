@@ -11,7 +11,7 @@ sys.path.append(project_root)
 from utils.model_utils import *
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution, 
-    extract_code_from_response, check_code_quality, extract_test_function, generate_test_cases, run_test_function, run_code_safely)
+    extract_code_from_response, check_code_quality, generate_test_cases, run_test_function, run_code_safely)
 from utils.similarity_checker import SolutionSimilarityChecker
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
@@ -820,7 +820,7 @@ class TestProgrammingReward(BaseReward):
                 return 0.0
             
             # Extract test function from the completion
-            test_function = extract_test_function(completion)
+            test_function = extract_code_from_response(completion)
             if not test_function:
                 self.logger.info("No test function found in completion")
                 return reward

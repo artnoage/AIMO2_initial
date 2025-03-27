@@ -95,7 +95,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 )
                 
                 # Extract the test function from the solution
-                test_function = extract_test_function(full_solution)
+                test_function = extract_code_from_response(full_solution)
                 
                 if not test_function:
                     logger.append(f"❌ No test function found in solution for attempt {attempt+1}")

@@ -353,8 +353,8 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     return finalization_data
 
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
-                          programming_system_prompt: str, tutor_system_prompt: str = None,
-                          test_programming_system_prompt: str = None,
+                          programming_system_prompt: str, tutor_system_prompt: str ,
+                          test_programming_system_prompt: str,
                          tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 1500) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.

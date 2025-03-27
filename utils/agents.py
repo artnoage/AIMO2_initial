@@ -40,7 +40,7 @@ Make sure all your steps follow logically from the partial solution and that eac
 </response>"""
 
 FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-
+Your output must include two clearly separated sections: **Thinking** and **Response**.
 <thinking>
 First, analyze the problem in depth and outline your approach.
 This section should capture your reasoning, including any abstract thoughts or potential strategies.
@@ -63,7 +63,7 @@ TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions an
 
 You will be given a mathematical problem along with a proposed solution to analyze.
 
-Your response must include two clearly separated sections: **Thinking** and **Response**.
+Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
 Analyze the solution carefully, reasoning through the steps to assess correctness.
@@ -89,7 +89,8 @@ If an incorrect step was found, provide the corrected solution starting from tha
 </response>"""
 
 
-PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
+PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. 
+Your task is to respond explicitly in two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
 In this section, explicitly detail your thought process step-by-step:
@@ -131,7 +132,7 @@ print(result)  # Just the number, no text
 
 ENGINEER_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
 
-Your response must include two clearly separated sections: a **thinking** section and a **response** section.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
 In this section, analyze the problem:
@@ -163,53 +164,11 @@ Your instructions should be clear and concise while providing all necessary guid
 </response>"""
 
 
-TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. Your task is **not to solve** this problem but rather to create a Python function that **efficiently verifies** whether a given numeric value (float) correctly solves the problem.
 
-<thinking>
-In this section, carefully analyze the problem:
-- Clearly state the mathematical principles or equations involved.
-- Clearly specify the criteria a correct numerical answer must satisfy.
-- Explain how you would confirm the validity of a proposed solution without directly computing the solution itself (e.g., plugging the number back into equations, inequalities, or conditions provided by the problem).
-- Explicitly note why verification is simpler or more straightforward than solving the problem.
-
-Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
-</thinking>
-
-<response>
-Write a Python function named `test_solution(answer)` that:
-1. Accepts exactly one float parameter named `answer`.
-2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-2`).
-3. Returns `False` otherwise.
-
-**Important Guidelines**:
-- Your function must **not** attempt to solve the problem or perform extensive computations. It should only verify correctness efficiently.
-- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
-- Include brief, clear comments explaining how verification is performed.
-- Handle floating-point precision explicitly with tolerances.
-
-**Example of a verification scenario**:
-If the mathematical problem is:
-> "Find the root of the equation \( x^2 - 2 = 0 \)."
-
-Your verification function could look like this:
-
-```python
-import numpy as np
-
-def test_solution(answer):
-    # Check if answer squared minus 2 is approximately zero.
-    return np.abs(answer**2 - 2) < 1e-2
-
-    Notice:
-
-The function doesn't compute the root; it verifies whether the provided number meets the criteria (equation satisfied within tolerance).
-
-Your response should strictly follow this verification approach. </response> """
-
-TESTER_SYSTEM_PROMPT2="""
+TESTER_SYSTEM_PROMPT="""
 You are an expert in mathematical problem-solving and Python programming. 
 Your task is to create a Python function that efficiently verifies whether a given numeric value correctly solves a provided mathematical problem. 
-
+Your reply must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
 1. Analyze the given problem:
@@ -266,109 +225,7 @@ def test_solution(answer):
 </response>
 """
 
-TESTER_SYSTEM_PROMPT3="""
-1. Analyze the given problem:
-   - List out all given information and unknown variables.
-   - Write down the exact mathematical equation(s) involved.
-   - What are the key mathematical principles or equations involved?
-   - What criteria must a correct numerical answer satisfy?
 
-2. Compare verification vs. solving:
-   - How would you verify a proposed solution without directly computing it?
-   - Is verification simpler or more straightforward than solving the problem? Why or why not?
-
-3. Outline your strategy:
-   - If verification is easier, describe your verification approach.
-   - If solving is necessary or more efficient, explain why and outline your solving strategy.
-
-4. Consider implementation details:
-   - What Python libraries might be useful (e.g., numpy, sympy, scipy)?
-   - How will you handle floating-point precision and tolerances?
-
-5. Edge cases and special conditions:
-   - Are there any edge cases or special conditions to consider?
-   - How will these affect the verification or solving process?
-
-Document your analysis and strategy here. Do not provide any Python code at this stage.
-</thinking>
-
-<response>
-Write a Python function named `test_solution(answer)` that:
-1. Accepts exactly one float parameter named `answer`.
-2. Returns `True` if the given answer correctly solves the problem (within an appropriate numerical tolerance, e.g., `1e-2`).
-3. Returns `False` otherwise.
-
-**Important Guidelines:**
-- Your function must **not** attempt to solve the problem or perform extensive computations. Only verification logic is required.
-- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
-- Include brief, clear comments explaining how verification is performed.
-- Explicitly handle floating-point precision with appropriate tolerances.
-
-### Illustrative Examples:
-
-**1. Algebraic Equation Verification**  
-Problem: "Check if a number solves \( x^2 - 2 = 0 \)."
-
-```python
-import numpy as np
-
-def test_solution(answer):
-    # Verifies that answer squared minus 2 is approximately zero.
-    return np.abs(answer**2 - 2) < 1e-2
-```
-
-**2. Number Theory Verification (Prime & Equation)**  
-Problem: "Check if the given positive number \( x \) is prime and satisfies \( x^2 - x - 6 = 0 \)."
-
-```python
-from sympy import isprime
-
-def test_solution(answer):
-    # Checks primality and whether the equation holds.
-    if not isprime(int(answer)):
-        return False
-    return abs(answer**2 - answer - 6) < 1e-2
-```
-
-**3. Sequence Membership Verification**  
-Problem: "Verify if a given number \( x \) belongs to the sequence \( a_n = 3n + 2 \)."
-
-```python
-def test_solution(answer):
-    # Checks if (answer - 2) is divisible exactly by 3.
-    return abs((answer - 2) % 3) < 1e-2
-```
-
-**4. Fibonacci Number Verification**  
-Problem: "Check whether a given integer \( x \) is a Fibonacci number."
-
-```python
-import math
-
-def is_perfect_square(n):
-    return math.isqrt(n)**2 == n
-
-def test_solution(answer):
-    # Uses Fibonacci property that 5x^2 ± 4 must be a perfect square.
-    x = int(answer)
-    if x < 0:
-        return False
-    return is_perfect_square(5*x**2 + 4) or is_perfect_square(5*x**2 - 4)
-```
-
-**5. Divisibility Verification**  
-Problem: "Given integer 1073, verify if provided \( x \) is a factor."
-
-```python
-def test_solution(answer):
-    # Checks divisibility with modulo.
-    number = 1073
-    return abs(number % answer) < 1e-2
-```
-
-Your response should strictly adhere to verification rather than solution-oriented computations.
-</response>
-"""
 
 
 
@@ -434,7 +291,6 @@ class TutorAgent:
         response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
 
-
 class ProgrammingAgent:
     """Agent that generates Python code to solve mathematical problems"""
     
@@ -489,5 +345,6 @@ class TestingAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
+
 
 

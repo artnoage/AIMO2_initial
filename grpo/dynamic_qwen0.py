@@ -24,7 +24,8 @@ from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
     FINALIZATION_SYSTEM_PROMPT,
     PROGRAMMER_SYSTEM_PROMPT,
-    TUTOR_SYSTEM_PROMPT
+    TUTOR_SYSTEM_PROMPT,
+    TESTER_SYSTEM_PROMPT
 )
 
 
@@ -146,7 +147,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250324_215025"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -194,22 +195,13 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=6000,
+        max_seq_length=7000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
+        gpu_memory_utilization=0.65,
         max_lora_rank=64)
         
-    # Function to count tokens in a string
-    def count_tokens(text):
-        return len(tokenizer.encode(text))
-        
-    # Calculate token counts for system prompts
-    solver_prompt_tokens = count_tokens(FULLSOLUTION_SYSTEM_PROMPT)
-    finalization_prompt_tokens = count_tokens(FINALIZATION_SYSTEM_PROMPT)
-    logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
-    logger.info(f"Finalization system prompt: {finalization_prompt_tokens} tokens")
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -248,10 +240,11 @@ def main():
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.5,
-            'programming': 0.5,
+            'solution': 0.2,
+            'programming': 0.4,
             'finalization': 0,
-            'tutor': 0
+            'tutor': 0,
+            'test_programming': 0.4,
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -261,6 +254,7 @@ def main():
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
+            TESTER_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 
@@ -285,7 +279,7 @@ def main():
         per_device_train_batch_size=8,
         gradient_accumulation_steps=16,
         num_generations=8,
-        max_prompt_length=800,
+        max_prompt_length=1800,
         max_completion_length=5200,
         num_train_epochs=1,
         save_steps=50,
