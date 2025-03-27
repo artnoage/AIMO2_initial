@@ -127,13 +127,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 # Print debug info about the correct answer
                 logger.append(f"Debug - correct_answer type: {type(correct_answer)}, value: {correct_answer}")
                 
-                # Run the test function on all test cases
-                success, results, error_message = run_test_function(
-                    test_function, 
-                    test_cases, 
-                    correct_answer,
-                    timeout=config.timeout
-                )
+                # Run the test function on all test cases with an additional timeout wrapper
+                try:
+                    with time_limit(config.timeout + 30):  # Add 30 seconds buffer to the configured timeout
+                        success, results, error_message = run_test_function(
+                            test_function, 
+                            test_cases, 
+                            correct_answer,
+                            timeout=config.timeout
+                        )
+                except TimeoutException:
+                    logger.append(f"❌ Global timeout exceeded when running test function")
+                    success = False
+                    results = {}
+                    error_message = "Global timeout exceeded when running test function"
                 
                 solutions.append({
                     'solution': full_solution,
