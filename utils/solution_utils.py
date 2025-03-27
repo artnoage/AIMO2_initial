@@ -628,6 +628,98 @@ def extract_test_function(solution: str) -> str:
 
 
 
+# Helper function for run_test_function - must be at module level for pickling
+def _run_single_test(args):
+    """
+    Run a single test case in a separate process.
+    
+    Args:
+        args: Tuple containing (test_case, code, timeout, num_test_cases)
+        
+    Returns:
+        Tuple of (test_case, result)
+    """
+    test_case, code, timeout, num_test_cases = args
+    
+    # Create a simple test script for this specific test case
+    with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
+        temp_file_path = temp_file.name
+        
+        # Create a minimal test script that just returns True/False
+        test_script = f"""
+{code}
+# Run test on a single value and print result
+try:
+    result = test_solution({test_case})
+    print("TRUE" if result else "FALSE")
+except Exception as e:
+    print(f"ERROR: {{str(e)}}")
+"""
+        temp_file.write(test_script.encode('utf-8'))
+    
+    try:
+        # Calculate per-test timeout
+        per_test_timeout = max(1, timeout / num_test_cases)
+        
+        # Run the test script in a separate process with timeout
+        process = subprocess.Popen(
+            [sys.executable, temp_file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            preexec_fn=os.setsid  # Use process group
+        )
+        
+        try:
+            # Use a shorter timeout for communicate
+            stdout, stderr = process.communicate(timeout=per_test_timeout)
+            
+            if process.returncode != 0:
+                return test_case, f"Error: {stderr}"
+            else:
+                output = stdout.strip()
+                if output == "TRUE":
+                    return test_case, True
+                elif output == "FALSE":
+                    return test_case, False
+                elif output.startswith("ERROR:"):
+                    return test_case, output
+                else:
+                    return test_case, f"Unexpected output: {output}"
+                
+        except subprocess.TimeoutExpired:
+            # Kill the entire process group forcefully
+            import signal
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            except (ProcessLookupError, OSError):
+                pass  # Process might already be gone
+            
+            # Try to clean up without waiting too long
+            try:
+                process.communicate(timeout=1)  # Short timeout for cleanup
+            except subprocess.TimeoutExpired:
+                pass  # If still hanging, just move on
+            
+            return test_case, "Timeout"
+            
+    except Exception as e:
+        return test_case, f"Error: {str(e)}"
+    finally:
+        # Clean up the temporary file
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass
+        
+        # Make sure the process is really gone
+        try:
+            if process.poll() is None:  # Process still running
+                import signal
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except (NameError, ProcessLookupError, OSError):
+            pass  # Process variable might not exist or process already gone
+
 def run_test_function(code: str, test_cases: List[float], correct_answer: float, timeout: int = 30, max_workers: int = None) -> Tuple[bool, Dict[float, bool], str]:
     """
     Run the test function on multiple test cases in parallel using multiprocessing
@@ -669,94 +761,16 @@ def run_test_function(code: str, test_cases: List[float], correct_answer: float,
     if max_workers is None:
         max_workers = min(multiprocessing.cpu_count(), len(safe_test_cases))
     
-    # Function to run a single test case in a separate process
-    def run_single_test(test_case):
-        # Create a simple test script for this specific test case
-        with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
-            temp_file_path = temp_file.name
-            
-            # Create a minimal test script that just returns True/False
-            test_script = f"""
-{code}
-# Run test on a single value and print result
-try:
-    result = test_solution({test_case})
-    print("TRUE" if result else "FALSE")
-except Exception as e:
-    print(f"ERROR: {{str(e)}}")
-"""
-            temp_file.write(test_script.encode('utf-8'))
-        
-        try:
-            # Calculate per-test timeout
-            per_test_timeout = max(1, timeout / len(safe_test_cases))
-            
-            # Run the test script in a separate process with timeout
-            process = subprocess.Popen(
-                [sys.executable, temp_file_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                preexec_fn=os.setsid  # Use process group
-            )
-            
-            try:
-                # Use a shorter timeout for communicate
-                stdout, stderr = process.communicate(timeout=per_test_timeout)
-                
-                if process.returncode != 0:
-                    return test_case, f"Error: {stderr}"
-                else:
-                    output = stdout.strip()
-                    if output == "TRUE":
-                        return test_case, True
-                    elif output == "FALSE":
-                        return test_case, False
-                    elif output.startswith("ERROR:"):
-                        return test_case, output
-                    else:
-                        return test_case, f"Unexpected output: {output}"
-                    
-            except subprocess.TimeoutExpired:
-                # Kill the entire process group forcefully
-                import signal
-                try:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                except (ProcessLookupError, OSError):
-                    pass  # Process might already be gone
-                
-                # Try to clean up without waiting too long
-                try:
-                    process.communicate(timeout=1)  # Short timeout for cleanup
-                except subprocess.TimeoutExpired:
-                    pass  # If still hanging, just move on
-                
-                return test_case, "Timeout"
-                
-        except Exception as e:
-            return test_case, f"Error: {str(e)}"
-        finally:
-            # Clean up the temporary file
-            try:
-                os.unlink(temp_file_path)
-            except:
-                pass
-            
-            # Make sure the process is really gone
-            try:
-                if process.poll() is None:  # Process still running
-                    import signal
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            except (NameError, ProcessLookupError, OSError):
-                pass  # Process variable might not exist or process already gone
-    
     # Initialize results dictionary
     results = {}
+    
+    # Prepare arguments for the worker function
+    args_list = [(case, code, timeout, len(safe_test_cases)) for case in safe_test_cases]
     
     # Use ProcessPoolExecutor to run tests in parallel
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all test cases to the executor
-        future_to_case = {executor.submit(run_single_test, case): case for case in safe_test_cases}
+        future_to_case = {executor.submit(_run_single_test, args): args[0] for args in args_list}
         
         # Process results as they complete
         for future in as_completed(future_to_case, timeout=timeout):
