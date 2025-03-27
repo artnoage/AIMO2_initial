@@ -570,34 +570,6 @@ class ProgrammingReward(BaseReward):
             reward -= length_penalty
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
             
-            # Calculate and update test function success metrics
-            if success:
-                # Count test cases that passed/failed
-                passed_cases = sum(1 for result in results.values() if result is True)
-                total_cases = len(results)
-                
-                # Update test case statistics
-                self.stats.test_programming_stats['test_cases_passed'] += passed_cases
-                self.stats.test_programming_stats['total_test_cases_evaluated'] += total_cases
-                
-                # Calculate and update success rate
-                total_tests = self.stats.test_programming_stats['correct_tests'] + self.stats.test_programming_stats['incorrect_tests']
-                if total_tests > 0:
-                    self.stats.test_programming_stats['test_function_success_rate'] = (
-                        self.stats.test_programming_stats['correct_tests'] / total_tests
-                    )
-                
-                # Calculate and update average test cases passed
-                if self.stats.test_programming_stats['total_test_cases_evaluated'] > 0:
-                    self.stats.test_programming_stats['average_test_cases_passed'] = (
-                        self.stats.test_programming_stats['test_cases_passed'] / 
-                        self.stats.test_programming_stats['total_test_cases_evaluated']
-                    )
-                
-                # Log detailed test case results
-                self.logger.info(f"Test function passed {passed_cases}/{total_cases} test cases")
-                self.logger.info(f"Current test function success rate: {self.stats.test_programming_stats['test_function_success_rate']:.2%}")
-            
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
@@ -928,6 +900,34 @@ class TestProgrammingReward(BaseReward):
             length_penalty = len(test_function) * self.config.length_penalty_factor
             reward -= length_penalty
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Calculate and update test function success metrics
+            if success:
+                # Count test cases that passed/failed
+                passed_cases = sum(1 for result in results.values() if result is True)
+                total_cases = len(results)
+                
+                # Update test case statistics
+                self.stats.test_programming_stats['test_cases_passed'] += passed_cases
+                self.stats.test_programming_stats['total_test_cases_evaluated'] += total_cases
+                
+                # Calculate and update success rate
+                total_tests = self.stats.test_programming_stats['correct_tests'] + self.stats.test_programming_stats['incorrect_tests']
+                if total_tests > 0:
+                    self.stats.test_programming_stats['test_function_success_rate'] = (
+                        self.stats.test_programming_stats['correct_tests'] / total_tests
+                    )
+                
+                # Calculate and update average test cases passed
+                if self.stats.test_programming_stats['total_test_cases_evaluated'] > 0:
+                    self.stats.test_programming_stats['average_test_cases_passed'] = (
+                        self.stats.test_programming_stats['test_cases_passed'] / 
+                        self.stats.test_programming_stats['total_test_cases_evaluated']
+                    )
+                
+                # Log detailed test case results
+                self.logger.info(f"Test function passed {passed_cases}/{total_cases} test cases")
+                self.logger.info(f"Current test function success rate: {self.stats.test_programming_stats['test_function_success_rate']:.2%}")
             
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
