@@ -115,9 +115,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     })
                     continue
                 
-                # Generate test cases (20 by default)
-                test_cases = generate_test_cases(correct_answer, num_cases=20)
-                logger.append(f"Generated {len(test_cases)} test cases for validation")
+                # Generate test cases (20 by default) with error handling
+                try:
+                    test_cases = generate_test_cases(correct_answer, num_cases=20)
+                    logger.append(f"Generated {len(test_cases)} test cases for validation")
+                except Exception as e:
+                    logger.append(f"❌ Error generating test cases: {str(e)}")
+                    logger.append("Using fallback test cases")
+                    # Simple fallback if generate_test_cases fails completely
+                    test_cases = [correct_answer, correct_answer + 1, correct_answer - 1, 
+                                 0, 1, -1, 10, -10, 100, -100]
                 
                 # Print debug info about the correct answer
                 logger.append(f"Debug - correct_answer type: {type(correct_answer)}, value: {correct_answer}")

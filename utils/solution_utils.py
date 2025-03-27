@@ -798,6 +798,51 @@ def generate_test_cases(correct_answer: float, num_cases: int = 50) -> List[floa
     Returns:
         List of test values including the correct answer and incorrect answers
     """
+    # Add retry mechanism with timeout
+    max_retries = 3
+    for retry in range(max_retries):
+        try:
+            with time_limit(10):  # 10 second timeout
+                return _generate_test_cases_impl(correct_answer, num_cases)
+        except TimeoutException:
+            if retry < max_retries - 1:
+                print(f"Test case generation timed out, retrying ({retry+1}/{max_retries})...")
+            else:
+                print(f"Test case generation timed out after {max_retries} attempts, using fallback test cases")
+                # Fallback to a simple set of test cases
+                return _generate_fallback_test_cases(correct_answer)
+        except Exception as e:
+            print(f"Error generating test cases: {str(e)}, using fallback test cases")
+            return _generate_fallback_test_cases(correct_answer)
+    
+    # Should never reach here, but just in case
+    return _generate_fallback_test_cases(correct_answer)
+
+def _generate_fallback_test_cases(correct_answer: float) -> List[float]:
+    """Generate a simple set of fallback test cases when the main generator fails"""
+    test_cases = [correct_answer]  # Always include the correct answer
+    
+    # Add some basic test cases that are different from the correct answer
+    basic_cases = [0.0, 1.0, -1.0, 2.0, -2.0, 10.0, -10.0, 100.0, -100.0]
+    for case in basic_cases:
+        if abs(case - correct_answer) > 1e-2:
+            test_cases.append(case)
+    
+    # Add a few cases near the correct answer
+    if not math.isinf(correct_answer) if hasattr(correct_answer, "__float__") else False:
+        test_cases.append(correct_answer + 0.1)
+        test_cases.append(correct_answer - 0.1)
+        test_cases.append(correct_answer * 1.1)
+        test_cases.append(correct_answer * 0.9)
+    
+    # Ensure we have at least 10 test cases
+    while len(test_cases) < 10:
+        test_cases.append(random.uniform(-1000, 1000))
+    
+    return test_cases
+
+def _generate_test_cases_impl(correct_answer: float, num_cases: int = 50) -> List[float]:
+    """Implementation of test case generation logic"""
     # Handle special cases first
     is_infinity = math.isinf(correct_answer) if hasattr(correct_answer, "__float__") else False
     
