@@ -25,8 +25,10 @@ from utils.agents import (
     FINALIZATION_SYSTEM_PROMPT,
     PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT,
-    TESTER_SYSTEM_PROMPT
+    TESTER_SYSTEM_PROMPT,
+    ARCHITECT_SYSTEM_PROMPT
 )
+
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -146,7 +148,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250324_215025"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -201,15 +203,6 @@ def main():
         gpu_memory_utilization=0.65,
         max_lora_rank=64)
         
-    # Function to count tokens in a string
-    def count_tokens(text):
-        return len(tokenizer.encode(text))
-        
-    # Calculate token counts for system prompts
-    solver_prompt_tokens = count_tokens(FULLSOLUTION_SYSTEM_PROMPT)
-    finalization_prompt_tokens = count_tokens(FINALIZATION_SYSTEM_PROMPT)
-    logger.info(f"Solver system prompt: {solver_prompt_tokens} tokens")
-    logger.info(f"Finalization system prompt: {finalization_prompt_tokens} tokens")
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -238,21 +231,22 @@ def main():
         
         # Load the base dataset
         data1 = load_dataset(dataset_name,split="train")
-        data1=data1.shuffle(seed=124)
+        data1=data1.shuffle(seed=341)
         data1=data1.select(range(2500))
         data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
         data2=data2.select(range(500))
-        data2=data2.shuffle(seed=124)
+        data2=data2.shuffle(seed= 341)
         data = concatenate_datasets([data1,data2])
-        data = data.shuffle(seed=124)
+        data=data.shuffle(seed=341)
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.2,
-            'programming': 0.4,
+            'solution': 0.25,
+            'programming': 0.25,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.4,
+            'test_programming': 0.25,
+            'architect': 0.25
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -263,15 +257,13 @@ def main():
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
+            ARCHITECT_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
-    # Shuffle the combined dataset
-    #formatted_dataset = formatted_dataset.shuffle(seed=172)
-    # Use a reasonable number of examples
-    #formatted_dataset = formatted_dataset.select(range(3000))
+
    
         
     # GRPO specific training arguments
