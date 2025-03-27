@@ -357,7 +357,7 @@ def has_boxed_answer(solution: str) -> bool:
 
 # Function removed - functionality merged into validate_solution with start_step parameter
 
-def run_test_function(code: str, test_cases: List[float], correct_answer: float, timeout: int = 30) -> Tuple[bool, Dict[float, bool], str]:
+def s_run_test_function(code: str, test_cases: List[float], correct_answer: float, timeout: int = 30) -> Tuple[bool, Dict[float, bool], str]:
     """
     Run the test function on multiple test cases
     
@@ -628,7 +628,7 @@ def extract_test_function(solution: str) -> str:
 
 
 
-def p_run_test_function(code: str, test_cases: List[float], correct_answer: float, timeout: int = 30, max_workers: int = None) -> Tuple[bool, Dict[float, bool], str]:
+def run_test_function(code: str, test_cases: List[float], correct_answer: float, timeout: int = 30, max_workers: int = None) -> Tuple[bool, Dict[float, bool], str]:
     """
     Run the test function on multiple test cases in parallel using multiprocessing
     
