@@ -100,6 +100,18 @@ class RewardStats:
             'test_cases_passed': 0
         }
         
+        # Track architect stats
+        self.architect_stats = {
+            'correct_architectures': 0,
+            'incorrect_architectures': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0,
+            'programming_success_rate': 0.0,
+            'average_programming_score': 0.0,
+            'total_programming_attempts': 0
+        }
+        
         # Track test programming stats
         self.test_programming_stats = {
             'correct_tests': 0,

@@ -759,6 +759,224 @@ class FinalizationReward(BaseReward):
             return 0.0
         
         
+class ArchitectReward(BaseReward):
+    """Reward class for architect prompt evaluation"""
+    
+    __name__ = "architect_reward"
+    relevant_stats = {
+        'reward_components': [
+            'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+            'total_length_penalty', 'correct_architectures', 'syntax_valid_architectures', 
+            'execution_valid_architectures', 'total_rewards', 'average_reward'
+        ],
+        'architect_stats': [
+            'correct_architectures', 'incorrect_architectures', 'syntax_errors', 
+            'execution_errors', 'timeout_errors', 'programming_success_rate',
+            'average_programming_score', 'total_programming_attempts'
+        ]
+    }
+    
+    def __init__(self, config: RewardConfig):
+        super().__init__(config)
+        
+        # Initialize architect-specific stats
+        self.stats.architect_stats = {
+            'correct_architectures': 0,
+            'incorrect_architectures': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0,
+            'programming_success_rate': 0.0,
+            'average_programming_score': 0.0,
+            'total_programming_attempts': 0
+        }
+        
+        # Initialize architect-specific reward components
+        self.stats.reward_components.update({
+            'syntax_rewards': 0,
+            'execution_rewards': 0,
+            'correctness_rewards': 0,
+            'syntax_valid_architectures': 0,
+            'execution_valid_architectures': 0,
+            'correct_architectures': 0
+        })
+        
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for an architect prompt by testing it with a programming model"""
+        try:
+            # Get problem and correct answer
+            problem = kwargs.get('problem', '')
+            correct_answer = kwargs.get('answer', '')
+            
+            if not all([problem, correct_answer]):
+                self.logger.warning("Missing required inputs for architect reward calculation")
+                return 0.0
+            
+            # Initialize reward
+            reward = 0.0
+            
+            # 1. Check for thinking and response sections
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            
+            if not has_thinking or not has_response:
+                self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
+                return 0.0
+            
+            # Extract response section from the architect's completion
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if not response_match:
+                self.logger.info("No response section found in architect completion")
+                return 0.0
+            
+            architect_response = response_match.group(1).strip()
+            
+            # 2. Check response quality (syntax reward)
+            # Simple check: response should have some minimum length and structure
+            if len(architect_response) > 100 and "Recommended Approach" in architect_response:
+                syntax_reward = self.config.syntax_reward
+                reward += syntax_reward
+                self.stats.reward_components['syntax_rewards'] = self.stats.reward_components.get('syntax_rewards', 0) + 1
+                self.stats.reward_components['syntax_valid_architectures'] = self.stats.reward_components.get('syntax_valid_architectures', 0) + 1
+                self.logger.info(f"Applied syntax reward: +{syntax_reward:.3f}")
+            else:
+                syntax_penalty = self.config.syntax_penalty
+                reward -= syntax_penalty
+                self.logger.info(f"Applied syntax penalty: -{syntax_penalty:.3f}")
+                self.logger.info(f"Architect response quality check failed: too short or missing key sections")
+                self.stats.architect_stats['syntax_errors'] += 1
+                # Update total rewards and average before returning
+                self.stats.reward_components['total_rewards'] += reward
+                total_samples = self.stats.total_batches
+                self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
+                return reward  # Return early if syntax is invalid
+            
+            # 3. Test the architect's prompt with a programming model
+            try:
+                # Create a programming prompt using the architect's guidance
+                programming_prompt = f"{PROGRAMMER_SYSTEM_PROMPT}\n\nProblem:\n{problem}\n\nEngineering Guidance:\n{architect_response}"
+                
+                # Get a model for programming (use the same model as configured)
+                programming_model = get_model(self.config)
+                
+                # Create a programming agent
+                programming_agent = ProgrammingAgent(programming_model)
+                
+                # Generate a programming solution
+                programming_solution = await programming_agent.generate(programming_prompt)
+                
+                # Extract code from the programming solution
+                response_match = re.search(r'<response>(.*?)</response>', programming_solution, re.DOTALL)
+                if response_match:
+                    response_content = response_match.group(1)
+                    code = extract_code_from_response(response_content)
+                    if not code:
+                        # If no code in response section, try the whole solution
+                        self.logger.info(f"No code found in response section, trying whole solution")
+                        code = extract_code_from_response(programming_solution)
+                else:
+                    # If no response tags, extract from the whole solution
+                    code = extract_code_from_response(programming_solution)
+                
+                self.logger.info(f"Extracted code length: {len(code) if code else 0} characters")
+                
+                if not code:
+                    self.logger.info(f"No code found in programming solution")
+                    self.stats.architect_stats['execution_errors'] += 1
+                    return reward  # Return early if no code found
+                
+                # Check code quality
+                code_quality_passed, quality_message = check_code_quality(code)
+                
+                if not code_quality_passed:
+                    self.logger.info(f"Code quality check failed: {quality_message}")
+                    self.stats.architect_stats['syntax_errors'] += 1
+                    return reward  # Return early if code quality check fails
+                
+                # Run the code and check if it produces a valid output
+                execution_success, result, error_message = run_code_safely(code, timeout=self.config.timeout)
+                
+                if execution_success and result is not None:
+                    execution_reward = self.config.execution_reward
+                    reward += execution_reward
+                    self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
+                    self.stats.reward_components['execution_valid_architectures'] = self.stats.reward_components.get('execution_valid_architectures', 0) + 1
+                    self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
+                    
+                    # Update architect stats for successful execution
+                    self.stats.architect_stats['total_programming_attempts'] += 1
+                else:
+                    self.logger.info(f"Code execution failed: {error_message}")
+                    if "timed out" in error_message:
+                        self.stats.architect_stats['timeout_errors'] += 1
+                    else:
+                        self.stats.architect_stats['execution_errors'] += 1
+                    # Update total rewards and average before returning
+                    self.stats.reward_components['total_rewards'] += reward
+                    total_samples = self.stats.total_batches
+                    self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
+                    return reward  # Return early if execution fails
+                
+                # 4. Check if the result matches the correct answer
+                # Convert correct_answer to float if possible for comparison
+                try:
+                    if isinstance(correct_answer, str):
+                        numeric_answer, _ = extract_numeric_answer(correct_answer)
+                        if numeric_answer is not None:
+                            correct_answer = numeric_answer
+                        else:
+                            correct_answer = float(correct_answer)
+                    else:
+                        correct_answer = float(correct_answer)
+                except (ValueError, TypeError):
+                    self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
+                    return reward
+                
+                # Compare with tolerance
+                is_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+                if is_correct:
+                    correctness_reward = self.config.correctness_reward
+                    reward += correctness_reward
+                    self.stats.reward_components['correctness_rewards'] = self.stats.reward_components.get('correctness_rewards', 0) + 1
+                    self.stats.reward_components['correct_architectures'] = self.stats.reward_components.get('correct_architectures', 0) + 1
+                    self.stats.architect_stats['correct_architectures'] += 1
+                    self.logger.info(f"Applied correctness reward: +{correctness_reward:.3f}")
+                    
+                    # Update programming success rate
+                    total_architectures = self.stats.architect_stats['correct_architectures'] + self.stats.architect_stats['incorrect_architectures']
+                    if total_architectures > 0:
+                        self.stats.architect_stats['programming_success_rate'] = (
+                            self.stats.architect_stats['correct_architectures'] / total_architectures
+                        )
+                else:
+                    self.stats.architect_stats['incorrect_architectures'] += 1
+                    self.logger.info(f"Incorrect answer: expected {correct_answer}, got {result}")
+                
+            except Exception as e:
+                self.logger.error(f"Error testing architect prompt: {str(e)}")
+                import traceback
+                self.logger.error(traceback.format_exc())
+                self.stats.architect_stats['execution_errors'] += 1
+            
+            # Apply length penalty
+            length_penalty = len(architect_response) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
+            total_samples = self.stats.total_batches
+            self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
+            
+            return reward
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating architect reward: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return 0.0
+
+
 class TestProgrammingReward(BaseReward):
     """Reward class for test function evaluation"""
     

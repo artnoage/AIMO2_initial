@@ -9,7 +9,7 @@ from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.model_utils import *
 from utils.solution_utils import *
-from utils.agents import *
+from utils.agents import *, ARCHITECT_SYSTEM_PROMPT, PROGRAMMER_SYSTEM_PROMPT
 from utils.logger import BenchmarkLogger
 
 # Configure logging
