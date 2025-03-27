@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.model_utils import *
+from utils.benchmark_config import BenchmarkConfig, ModelOption
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution, 
     extract_code_from_response, check_code_quality, generate_test_cases, run_test_function, run_code_safely)
@@ -856,8 +857,17 @@ class ArchitectReward(BaseReward):
                 # Create a programming prompt using the architect's guidance
                 programming_prompt = f"{PROGRAMMER_SYSTEM_PROMPT}\n\nProblem:\n{problem}\n\nEngineering Guidance:\n{architect_response}"
                 
-                # Get a model for programming (use the same model as configured)
-                programming_model = get_model(self.config)
+                # Get a model for programming using the config's main model settings
+                from utils.benchmark_config import BenchmarkConfig, ModelOption
+                
+                # Create a benchmark config with the reward config's model settings
+                benchmark_config = BenchmarkConfig()
+                benchmark_config.main = self.config.main
+                benchmark_config.main_port = self.config.main_port
+                benchmark_config.main_temp = self.config.main_temp
+                
+                # Get the model using the benchmark config
+                programming_model = get_model(benchmark_config)
                 
                 # Create a programming agent
                 programming_agent = ProgrammingAgent(programming_model)
