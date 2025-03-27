@@ -41,11 +41,6 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Import extract_test_function from utils.solution_utils
-from utils.solution_utils import extract_test_function
-
-
-
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with test function verification"""
