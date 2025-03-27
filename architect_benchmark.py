@@ -21,46 +21,6 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem, and some guidance from a software architect. Your task is to respond explicitly 
-in two clearly separated sections: a **thinking** section and a **response** section.
-
-<thinking>
-In this section, explicitly detail your thought process step-by-step:
-- Carefully analyze the problem and identify the mathematical concepts involved.
-- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
-- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
-- Clearly state your intended method before beginning any code implementation.
-Do not provide any Python code in this section, only your reasoning and approach.
-</thinking>
-
-<response>
-In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step of your approach within the code itself.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-4. Gracefully handle potential errors or edge cases.
-5. Be efficient and avoid excessive resource usage.
-
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem
-import math
-
-# Step 1: Parse the problem
-# [brief explanation comment]
-...
-
-# Step 2: Solve using appropriate method
-# [brief explanation comment]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
-</response>"""
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example using the Engineer-Programmer pipeline approach (one-to-one):
@@ -88,8 +48,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         main_model = get_model(config, role="main")
         
         # Initialize agents
-        engineer_agent = EngineerAgent(main_model)
-        programming_agent = ProgrammingAgentNosystem(main_model)
+        engineer_agent = ArchitectAgent(main_model)
+        programming_agent = ProgrammingAgent(main_model)
         
         # Generate MULTIPLE engineering analyses and prompts, each with ONE programming solution
         engineer_analyses = []
@@ -114,7 +74,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     engineer_response = "Please solve this problem using appropriate Python libraries and techniques."
                 
                 # Combine the original problem with the engineer's guidance
-                combined_prompt = SIMPLE_FULLSOLUTION_SYSTEM_PROMPT+f"Problem:\n{example['problem']}\n\nEngineering Guidance:\n{engineer_response}"
+                combined_prompt = PROGRAMMER_SYSTEM_PROMPT+f"Problem:\n{example['problem']}\n\nEngineering Guidance:\n{engineer_response}"
                 
                 # Generate ONE programming solution for this engineer prompt
                 prompt, current_solution = await programming_agent.generate(combined_prompt, return_prompt=True)
