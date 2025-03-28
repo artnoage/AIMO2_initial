@@ -357,24 +357,35 @@ def main():
                 "enabled": "auto"
             },
             "zero_optimization": {
-                "stage": 3,
+                "stage": 2,
                 "offload_optimizer": {
                     "device": "cpu",
                     "pin_memory": True
                 },
-                "offload_param": {
-                    "device": "cpu",
-                    "pin_memory": True
-                },
+                "allgather_partitions": True,
+                "allgather_bucket_size": 2e8,
                 "overlap_comm": True,
-                "contiguous_gradients": True,
-                "sub_group_size": 1e9,
-                "reduce_bucket_size": "auto",
-                "stage3_prefetch_bucket_size": "auto",
-                "stage3_param_persistence_threshold": "auto",
-                "stage3_max_live_parameters": 1e9,
-                "stage3_max_reuse_distance": 1e9,
-                "stage3_gather_16bit_weights_on_model_save": True
+                "reduce_scatter": True,
+                "reduce_bucket_size": 2e8,
+                "contiguous_gradients": True
+            },
+            "optimizer": {
+                "type": "AdamW",
+                "params": {
+                    "lr": 2e-6,
+                    "betas": [0.9, 0.99],
+                    "eps": 1e-8,
+                    "weight_decay": 0.1
+                }
+            },
+            "scheduler": {
+                "type": "WarmupDecayLR",
+                "params": {
+                    "warmup_min_lr": 0,
+                    "warmup_max_lr": 2e-6,
+                    "warmup_num_steps": 100,
+                    "total_num_steps": 1000
+                }
             },
             "gradient_accumulation_steps": 16,
             "gradient_clipping": 0.1,
@@ -392,13 +403,14 @@ def main():
     logger.info("Setting up training arguments...")
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=2e-6,
-        adam_beta1=0.9,
-        adam_beta2=0.99,
-        weight_decay=0.1,
-        warmup_ratio=0.1,
-        lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        # We'll let DeepSpeed handle these parameters
+        # learning_rate=2e-6,
+        # adam_beta1=0.9,
+        # adam_beta2=0.99,
+        # weight_decay=0.1,
+        # warmup_ratio=0.1,
+        # lr_scheduler_type="cosine",
+        optim=None,  # Let DeepSpeed handle the optimizer
         logging_steps=1,
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
