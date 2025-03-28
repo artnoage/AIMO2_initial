@@ -337,55 +337,42 @@ def main():
     formatted_dataset = get_questions()
     logger.info("Formatted dataset created")
     
-    # Create DeepSpeed config file if it doesn't exist
+    # Create Accelerate DeepSpeed config file if it doesn't exist
     ds_config_path = "ds_config.yaml"
     if not os.path.exists(ds_config_path):
-        logger.info("Creating DeepSpeed config file...")
+        logger.info("Creating Accelerate DeepSpeed config file...")
+        
+        # Create config in Accelerate format
+        import yaml
         ds_config = {
-            "fp16": {
-                "enabled": "auto",
-                "loss_scale": 0,
-                "loss_scale_window": 1000,
-                "initial_scale_power": 16,
-                "hysteresis": 2,
-                "min_loss_scale": 1
-            },
-            "bf16": {
-                "enabled": "auto"
-            },
-            "zero_optimization": {
-                "stage": 3,
-                "offload_optimizer": {
-                    "device": "cpu",
-                    "pin_memory": True
-                },
-                "offload_param": {
-                    "device": "cpu",
-                    "pin_memory": True
-                },
-                "overlap_comm": True,
-                "contiguous_gradients": True,
-                "sub_group_size": 1e9,
-                "reduce_bucket_size": "auto",
-                "stage3_prefetch_bucket_size": "auto",
-                "stage3_param_persistence_threshold": "auto",
-                "stage3_max_live_parameters": 1e9,
-                "stage3_max_reuse_distance": 1e9,
-                "stage3_gather_16bit_weights_on_model_save": True
+            "compute_environment": "LOCAL_MACHINE",
+            "deepspeed_config": {
+                "gradient_accumulation_steps": 16,
+                "gradient_clipping": 0.1,
+                "offload_optimizer_device": "cpu",
+                "offload_param_device": "cpu",
+                "zero3_init_flag": True,
+                "zero3_save_16bit_model": True,
+                "zero_stage": 3
             },
             "distributed_type": "DEEPSPEED",
-            "gradient_accumulation_steps": 16,
-            "gradient_clipping": 0.1,
-            "steps_per_print": 10,
-            "train_batch_size": "auto",
-            "train_micro_batch_size_per_gpu": 8,
-            "wall_clock_breakdown": False
+            "downcast_bf16": "no",
+            "machine_rank": 0,
+            "main_training_function": "main",
+            "mixed_precision": "bf16" if torch.cuda.is_bf16_supported() else "fp16",
+            "num_machines": 1,
+            "num_processes": torch.cuda.device_count(),
+            "rdzv_backend": "static",
+            "same_network": True,
+            "tpu_env": [],
+            "tpu_use_cluster": False,
+            "tpu_use_sudo": False,
+            "use_cpu": False
         }
         
-        import json
         with open(ds_config_path, 'w') as f:
-            json.dump(ds_config, f, indent=4)
-        logger.info(f"DeepSpeed config file created at {ds_config_path}")
+            yaml.dump(ds_config, f, default_flow_style=False)
+        logger.info(f"Accelerate DeepSpeed config file created at {ds_config_path}")
     
     # GRPO specific training arguments with DeepSpeed integration
     logger.info("Setting up training arguments...")
@@ -415,7 +402,6 @@ def main():
         # DeepSpeed integration
         deepspeed=ds_config_path,
         local_rank=-1,  # Will be set by deepspeed launcher
-        distributed_type="DEEPSPEED",
     )
     logger.info("Training arguments set up")
     
