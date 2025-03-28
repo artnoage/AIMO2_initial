@@ -11,7 +11,8 @@ git config --global user.name "artnoage"
 git config --global user.email "artnoage@gmail.com"
 CUDA_VISIBLE_DEVICES=3 python grpo_training/group_qwen3.py
 git clone https://github.com/artnoage/AIMO2_initial.git
-
+"unsloth/Qwen2.5-Coder-32B-Instruct"
+"Metaskepsis/W"
 python auxilary/hf_loader.py --type model --load down --path models/Coder --repo_name unsloth/Qwen2.5-Coder-32B-Instruct
 
 python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-of 1 --split train[:1000] 

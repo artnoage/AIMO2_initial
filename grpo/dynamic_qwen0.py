@@ -10,7 +10,7 @@ import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 
-
+from dotenv import load_dotenv
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +29,7 @@ from utils.agents import (
     ARCHITECT_SYSTEM_PROMPT
 )
 
-
+load_dotenv()
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
