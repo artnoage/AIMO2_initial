@@ -340,9 +340,9 @@ def main():
     # Create DeepSpeed config file if it doesn't exist
     ds_config_path = "ds_config.json"
     if not os.path.exists(ds_config_path):
-        logger.info("Creating DeepSpeed config file...")
+        logger.info("Creating DeepSpeed config file with FSDP...")
         
-        # Create config in DeepSpeed format
+        # Create config in DeepSpeed format with FSDP
         import json
         ds_config = {
             "fp16": {
@@ -356,18 +356,14 @@ def main():
             "bf16": {
                 "enabled": "auto"
             },
-            "zero_optimization": {
-                "stage": 2,
-                "offload_optimizer": {
-                    "device": "cpu",
-                    "pin_memory": True
-                },
-                "allgather_partitions": True,
-                "allgather_bucket_size": 2e8,
+            "fsdp": {
+                "enabled": True,
+                "offload_params": True,
+                "offload_optimizer": True,
                 "overlap_comm": True,
-                "reduce_scatter": True,
-                "reduce_bucket_size": 2e8,
-                "contiguous_gradients": True
+                "mixed_precision": True,
+                "activation_checkpointing": True,
+                "sharding_strategy": "FULL_SHARD"
             },
             "optimizer": {
                 "type": "AdamW",
@@ -397,10 +393,10 @@ def main():
         
         with open(ds_config_path, 'w') as f:
             json.dump(ds_config, f, indent=4)
-        logger.info(f"DeepSpeed config file created at {ds_config_path}")
+        logger.info(f"DeepSpeed config file with FSDP created at {ds_config_path}")
     
-    # GRPO specific training arguments with DeepSpeed integration
-    logger.info("Setting up training arguments...")
+    # GRPO specific training arguments with DeepSpeed FSDP integration
+    logger.info("Setting up training arguments with FSDP...")
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
         # We'll use minimal optimizer settings since DeepSpeed config handles most of it
@@ -425,8 +421,10 @@ def main():
         report_to="wandb",
         output_dir=output_dir,
         
-        # DeepSpeed integration
+        # DeepSpeed integration with FSDP
         deepspeed=ds_config_path,
+        fsdp="full_shard",
+        fsdp_transformer_layer_cls_to_wrap="LlamaDecoderLayer",
         local_rank=-1  # Will be set by deepspeed launcher
     )
     logger.info("Training arguments set up")

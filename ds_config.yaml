@@ -10,18 +10,14 @@
   "bf16": {
     "enabled": "auto"
   },
-  "zero_optimization": {
-    "stage": 2,
-    "offload_optimizer": {
-      "device": "cpu",
-      "pin_memory": true
-    },
-    "allgather_partitions": true,
-    "allgather_bucket_size": 2e8,
+  "fsdp": {
+    "enabled": true,
+    "offload_params": true,
+    "offload_optimizer": true,
     "overlap_comm": true,
-    "reduce_scatter": true,
-    "reduce_bucket_size": 2e8,
-    "contiguous_gradients": true
+    "mixed_precision": true,
+    "activation_checkpointing": true,
+    "sharding_strategy": "FULL_SHARD"
   },
   "optimizer": {
     "type": "AdamW",
