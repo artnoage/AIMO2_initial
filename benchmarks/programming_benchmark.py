@@ -1,15 +1,14 @@
 import os
 import asyncio
 import logging
-import tempfile
-import subprocess
 import sys
 import re
-from io import StringIO
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List
-from collections import Counter
 from dotenv import load_dotenv
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.model_utils import *

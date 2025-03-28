@@ -5,6 +5,9 @@ import re
 from typing import Optional, Dict, List, Tuple
 from collections import Counter
 from dotenv import load_dotenv
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 from utils.benchmark_config import BenchmarkConfig
 from utils.progress_tracker import ProgressTracker
 from utils.model_utils import *

@@ -198,10 +198,10 @@ def main():
         model_name=model_name,
         max_seq_length=7000,
         fast_inference=True,
-        load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.65,
-        max_lora_rank=64)
+        max_lora_rank=64,
+        gpu_memory_utilization = 0.55, # Reduce if out of memory
+        float8_kv_cache = True)
         
     
     # Configure LoRA
