@@ -3,7 +3,7 @@ pip install latex2sympy2 scipy matplotlib numpy sympy scipy networkx mpmath gmpy
 python -m venv myenv
 sudo apt install build-essential
 touch ~/.no_auto_tmux
-wget https://repo.anaconda.com/archive/Anaconda3-latest-Linux-x86_64.sh
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Anaconda3-latest-Linux-x86_64.sh
 source ~/.bashrc
 
