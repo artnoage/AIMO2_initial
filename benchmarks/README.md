@@ -33,25 +33,49 @@ All benchmarks share these common features:
 
 ## Usage
 
-Run any benchmark with the `--help` flag to see available options:
+Run any benchmark script directly:
 
 ```bash
-python -m benchmarks.standard_benchmark --help
-```
-
-Example usage:
-
-```bash
-python -m benchmarks.programming_benchmark --model OPENAI_GPT4 --dataset Metaskepsis/validation_set_filtered --best_of 3
+python -m benchmarks.standard_benchmark
 ```
 
 ## Configuration
 
 Benchmarks use the `BenchmarkConfig` class from `utils.benchmark_config` for configuration. Key parameters include:
-- `model`: The model to use (e.g., OPENAI_GPT4, ANTHROPIC_CLAUDE, etc.)
-- `dataset`: HuggingFace dataset to use for benchmarking
-- `best_of`: Number of solutions to generate per problem
-- `max_examples`: Maximum number of examples to process
-- `max_concurrent`: Maximum number of concurrent requests
-- `timeout`: Timeout for code execution in seconds
-- `tolerance`: Numeric tolerance for answer verification
+
+### Model Selection
+- `--main`: Main model to use (e.g., LOCAL_0, CLAUDE, GPT)
+- `--auxiliary`: Auxiliary model for judging or secondary tasks
+- `--auxiliary2`: Second auxiliary model (optional)
+- `--main-temp`: Temperature for main model (default: 0.7)
+- `--auxiliary-temp`: Temperature for auxiliary model (default: 0.7)
+- `--main-port`: Port for main model server (for local models)
+- `--auxiliary-port`: Port for auxiliary model server
+
+### Dataset Options
+- `--dataset`: HuggingFace dataset to use (default: Metaskepsis/Numina)
+- `--split`: Dataset split to use (train/validation/test)
+- `--source`: Filter problems by source
+- `--seed`: Seed for dataset operations
+
+### Execution Settings
+- `--max-concurrent`: Maximum number of concurrent problems (default: 64)
+- `--best-of`: Number of attempts per problem (default: 1)
+- `--completions`: Number of completions to try per path (default: 20)
+- `--timeout`: Timeout in seconds for code execution (default: 10)
+- `--tolerance`: Tolerance for numeric answer comparison (default: 1e-2)
+
+### Output Settings
+- `--produce-statistics`: Generate detailed statistics file
+- `--create-dataset`: Create a HuggingFace dataset from results
+- `--upload-dataset`: Upload the created dataset to HuggingFace Hub
+
+## Example Usage
+
+```bash
+python -m benchmarks.programming_benchmark --main GPT --auxiliary CLAUDE --dataset Metaskepsis/Numina --best-of 3 --max-concurrent 32
+```
+
+```bash
+python -m benchmarks.standard_benchmark --main LOCAL_0 --main-port 8000 --main-temp 0.9 --dataset Metaskepsis/Numina --split validation
+```
