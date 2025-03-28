@@ -355,14 +355,29 @@ def main():
     
     # Initialize trainer with reward function
     logger.info("Initializing GRPOTrainer...")
-    trainer = GRPOTrainer(
-        model=model,
-        processing_class=tokenizer,
-        reward_funcs=[reward_func],
-        args=training_args,
-        train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
-    )
+    # If using DataParallel, we need to pass the unwrapped model to the trainer
+    # but keep the wrapped model for forward passes
+    if num_gpus > 1:
+        unwrapped_model = model.module
+        trainer = GRPOTrainer(
+            model=unwrapped_model,
+            processing_class=tokenizer,
+            reward_funcs=[reward_func],
+            args=training_args,
+            train_dataset=formatted_dataset,
+            callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
+        )
+        # Store the DataParallel model for use during training
+        trainer.model_wrapped = model
+    else:
+        trainer = GRPOTrainer(
+            model=model,
+            processing_class=tokenizer,
+            reward_funcs=[reward_func],
+            args=training_args,
+            train_dataset=formatted_dataset,
+            callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
+        )
     logger.info("GRPOTrainer initialized")
     
     # Log dataset information before training
@@ -421,7 +436,8 @@ def main():
         # Save the model using standard Hugging Face methods
         if num_gpus > 1:
             # If using DataParallel, save the module
-            model.module.save_pretrained(model_output_dir)
+            unwrapped_model = model.module
+            unwrapped_model.save_pretrained(model_output_dir)
         else:
             model.save_pretrained(model_output_dir)
         
