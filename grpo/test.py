@@ -403,14 +403,14 @@ def main():
     logger.info("Setting up training arguments...")
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        # We'll let DeepSpeed handle these parameters
-        # learning_rate=2e-6,
-        # adam_beta1=0.9,
-        # adam_beta2=0.99,
-        # weight_decay=0.1,
-        # warmup_ratio=0.1,
-        # lr_scheduler_type="cosine",
-        optim=None,  # Let DeepSpeed handle the optimizer
+        # We'll use minimal optimizer settings since DeepSpeed config handles most of it
+        learning_rate=2e-6,
+        adam_beta1=0.9,
+        adam_beta2=0.99,
+        weight_decay=0.1,
+        warmup_ratio=0.1,
+        lr_scheduler_type="cosine",
+        optim="adamw_torch",  # Must specify a valid optimizer
         logging_steps=1,
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
