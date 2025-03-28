@@ -62,7 +62,9 @@ def main():
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                         "gate_proj", "up_proj", "down_proj"],
         bias="none",
-        task_type=TaskType.CAUSAL_LM
+        task_type=TaskType.CAUSAL_LM,
+        # Don't use auto_mapping which tries to find TransformerBlock
+        modules_to_save=None
     )
 
     # Initialize reward function components
@@ -118,6 +120,8 @@ def main():
         processing_class=tokenizer,
         reward_funcs=[reward_func],
         train_dataset=dataset,
+        # Disable FSDP which is causing the TransformerBlock error
+        fsdp_config=None
     )
 
     # Start training
