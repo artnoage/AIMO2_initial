@@ -338,7 +338,7 @@ def main():
     logger.info("Formatted dataset created")
     
     # Create DeepSpeed config file if it doesn't exist
-    ds_config_path = "ds_config.json"
+    ds_config_path = "ds_config.yaml"
     if not os.path.exists(ds_config_path):
         logger.info("Creating DeepSpeed config file...")
         ds_config = {
@@ -373,6 +373,7 @@ def main():
                 "stage3_max_reuse_distance": 1e9,
                 "stage3_gather_16bit_weights_on_model_save": True
             },
+            "distributed_type": "DEEPSPEED",
             "gradient_accumulation_steps": 16,
             "gradient_clipping": 0.1,
             "steps_per_print": 10,
@@ -414,6 +415,7 @@ def main():
         # DeepSpeed integration
         deepspeed=ds_config_path,
         local_rank=-1,  # Will be set by deepspeed launcher
+        distributed_type="DEEPSPEED",
     )
     logger.info("Training arguments set up")
     
