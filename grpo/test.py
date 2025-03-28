@@ -47,11 +47,15 @@ def main():
     if hasattr(config, 'device_map'):
         delattr(config, 'device_map')  # Just in case
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    # Load model with DeepSpeed Zero-3 compatible settings
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         config=config,
         trust_remote_code=True,
-        torch_dtype="auto"
+        torch_dtype="auto",
+        # Explicitly set these to None/False to avoid DeepSpeed conflicts
+        device_map=None,
+        low_cpu_mem_usage=False
     )
     lora_config = LoraConfig(
         r=64,
@@ -105,7 +109,7 @@ def main():
         num_generations=8,
         max_prompt_length=1800,
         max_completion_length=5200,
-        deepspeed="ds_config_zero3.json",
+        deepspeed="grpo/ds_config_zero3.json",  # Use full path to config
     )
 
     trainer = GRPOTrainer(
