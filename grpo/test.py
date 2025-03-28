@@ -174,6 +174,13 @@ def setup_multi_gpu(gpu_ids="auto"):
     print(f"Number of GPUs: {num_gpus}")
     for i in range(torch.cuda.device_count()):
         print(f"GPU {i}: {torch.cuda.get_device_name(i)}")
+        # Print memory info for each GPU
+        print(f"  Memory: {torch.cuda.get_device_properties(i).total_memory / 1e9:.2f} GB")
+    
+    # Set PyTorch to use cudnn benchmark for faster training
+    if torch.cuda.is_available() and num_gpus > 0:
+        torch.backends.cudnn.benchmark = True
+        print("CUDNN benchmark enabled")
     
     return num_gpus
 
@@ -258,13 +265,15 @@ def main():
     if num_gpus > 1:
         logger.info(f"Wrapping model with DataParallel to use {num_gpus} GPUs")
         # Move model to GPU first
-        model = model.to('cuda')
-        # Wrap with DataParallel
-        model = DataParallel(model)
+        model = model.to('cuda:0')  # Explicitly place on first GPU
+        # Wrap with DataParallel and specify device_ids explicitly
+        device_ids = list(range(num_gpus))
+        logger.info(f"Using device IDs: {device_ids}")
+        model = DataParallel(model, device_ids=device_ids)
         logger.info("Model wrapped with DataParallel")
     elif num_gpus == 1:
         logger.info("Moving model to single GPU")
-        model = model.to('cuda')
+        model = model.to('cuda:0')  # Explicitly specify device
     
     
     def get_questions(split="train") -> Dataset:
@@ -344,6 +353,9 @@ def main():
         output_dir=output_dir,
         # DataParallel specific settings
         dataloader_num_workers=4,
+        # Explicitly set device to use all GPUs
+        local_rank=-1,  # For distributed training (-1 means not distributed)
+        ddp_find_unused_parameters=False if num_gpus > 1 else None,
     )
     logger.info("Training arguments set up")
     
@@ -355,10 +367,14 @@ def main():
     
     # Initialize trainer with reward function
     logger.info("Initializing GRPOTrainer...")
-    # If using DataParallel, we need to pass the unwrapped model to the trainer
-    # but keep the wrapped model for forward passes
+    
+    # For multi-GPU training, we need to handle DataParallel properly
     if num_gpus > 1:
+        logger.info("Setting up trainer for multi-GPU training")
+        # Get the unwrapped model for the trainer
         unwrapped_model = model.module
+        
+        # Create the trainer with the unwrapped model
         trainer = GRPOTrainer(
             model=unwrapped_model,
             processing_class=tokenizer,
@@ -367,9 +383,16 @@ def main():
             train_dataset=formatted_dataset,
             callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
         )
+        
         # Store the DataParallel model for use during training
         trainer.model_wrapped = model
+        
+        # Log GPU memory usage before training
+        for i in range(num_gpus):
+            logger.info(f"GPU {i} memory allocated: {torch.cuda.memory_allocated(i) / 1e9:.2f} GB")
+            logger.info(f"GPU {i} memory reserved: {torch.cuda.memory_reserved(i) / 1e9:.2f} GB")
     else:
+        logger.info("Setting up trainer for single-GPU training")
         trainer = GRPOTrainer(
             model=model,
             processing_class=tokenizer,
