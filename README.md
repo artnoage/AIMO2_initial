@@ -1,140 +1,141 @@
-# Mathematical Problem-Solving Benchmark Suite & Training Data Framework
+# Mathematical Problem-Solving Framework
 
-A comprehensive framework for evaluating mathematical problem-solving capabilities of language models and generating high-quality training data for reinforcement learning (RL).
+A comprehensive framework for evaluating and improving mathematical problem-solving capabilities of language models through benchmarking, reinforcement learning, and dataset processing.
 
-## Overview
+## Project Structure
 
-This suite provides tools for:
+The project is organized into three main components:
 
-1. **Solution Generation & Verification**: Generate and validate mathematical solutions with step-by-step reasoning
-2. **Tournament Evaluation**: Compare solutions through tournament-style competitions
-3. **Progress Tracking**: Monitor and analyze benchmark performance
-4. **Dataset Processing**: Tools for filtering and preparing mathematical problem datasets
-5. **RL Training Data Generation**: Create training examples for improving model reasoning and problem-solving
+### 1. [Benchmarks](/benchmarks)
+Evaluation scripts for different mathematical problem-solving capabilities:
+- **Standard Benchmark**: Step-by-step mathematical solutions with answer verification
+- **Programming Benchmark**: Python code generation for mathematical problems
+- **Test Benchmark**: Test function creation for solution verification
+- **Architect Benchmark**: Architectural analysis and planning for complex problems
+- **Tutor Benchmark**: Error identification and correction in mathematical solutions
+- **Step Benchmark**: Step-by-step solution analysis to identify reasoning errors
 
-## Key Components
+### 2. [GRPO Training](/grpo)
+Generative Reinforcement Policy Optimization scripts for training models:
+- **Dynamic Training**: Multi-task training with dynamic reward selection
+- **Task-Specific Training**: Specialized training for solutions, programming, testing, tutoring
+- **Reward Functions**: Customized rewards for different mathematical tasks
+- **Statistics Tracking**: Detailed monitoring of training progress and reward distributions
 
-### Benchmarking Tools
-- **benchmark.py**: Main benchmarking script for evaluating model performance
-- **tournament_benchmark.py**: Tournament-style evaluation of solutions
+### 3. [Utilities](/utils) and [Auxiliary Tools](/auxilary)
+Support modules and data processing tools:
+- **Agent Implementations**: Specialized agents for different mathematical tasks
+- **Model Utilities**: Interfaces for local and API-based language models
+- **Solution Validation**: Mathematical answer verification and step analysis
+- **Dataset Processing**: Filtering, merging, and preparation of training data
+- **Progress Tracking**: Monitoring and reporting of benchmark performance
 
-### Dataset Utilities
-- **process_dataset.py**: Processes datasets to ensure high-quality examples with valid answers
-- **filtering.py**: Filters dataset entries based on various criteria
-- **merge_json.py**: Merges multiple JSON files into a single dataset
-- **shuffle_dataset.py**: Shuffles and reassigns IDs to dataset examples
+## Key Features
 
-### Training Data Generation
-- **adversarial_generator.py**: Generates pairs of correct and incorrect solutions using multiple agents
-- **alternating_generator.py**: Alternates between solver and adversarial agents to create training examples
+### Comprehensive Benchmarking
+- Evaluate mathematical problem-solving with step-by-step verification
+- Test code generation for mathematical problems
+- Assess error identification and correction abilities
+- Compare multiple solution approaches
+- Track detailed performance metrics across different model types
 
-### Agents
-- **Analysis Agent**: Provides problem analysis and approach strategies
-- **Step Agent**: Generates individual solution steps
-- **Completion Agent**: Completes partial solutions
-- **Judge Agent**: Evaluates and compares solution quality
-- **Loki Agent**: Generates deliberately incorrect but convincing solutions
+### Advanced Training Framework
+- Multi-task reinforcement learning with dynamic rewards
+- Parameter-efficient fine-tuning with LoRA adapters
+- Integration with Unsloth for efficient training
+- Wandb logging for experiment tracking
+- Diverse reward components for solution quality, correctness, and style
 
-### Utilities
-- **Numeric Verification**: Validates mathematical answers with configurable tolerance
-- **Step Analysis**: Validates solution structure and step coherence
-- **Progress Tracking**: Real-time statistics and performance monitoring
-- **Tournament Management**: Organizes solution competitions with judging
+### Extensive Data Processing
+- Dataset filtering and validation for high-quality training
+- Answer extraction and verification from LaTeX expressions
+- Multiple-choice problem detection and handling
+- Solution similarity analysis for diversity measurement
+- HuggingFace dataset integration for easy sharing and loading
+
+## Usage Examples
+
+### Running Benchmarks
+
+```bash
+# Standard mathematical solutions benchmark
+python -m benchmarks.standard_benchmark --main LOCAL_0 --main-port 8000 --dataset Metaskepsis/Numina
+
+# Programming solutions benchmark
+python -m benchmarks.programming_benchmark --main GPT --auxiliary CLAUDE --best-of 3
+
+# Tutor benchmark for error identification
+python -m benchmarks.tutor_benchmark --main LOCAL_0 --main-port 8000 --max-concurrent 32
+```
+
+### Training Models with GRPO
+
+```bash
+# Multi-task training with dynamic rewards
+python -m grpo.dynamic_qwen0
+
+# Programming-specific training
+python -m grpo.programming_qwen0
+
+# Tutor training for error identification
+python -m grpo.tutor_grpo
+```
+
+### Processing Datasets
+
+```bash
+# Filter a dataset based on criteria
+python -m auxilary.filter_dataset --repo-name Metaskepsis/Olympiads_hard --output-dir olympiads_filtered
+
+# Merge multiple JSON files
+python -m auxilary.merge_json results_folder --output merged.json
+
+# Create a validation dataset
+python -m auxilary.create_validation_set
+```
+
+## Configuration
+
+### Model Configuration
+Models can be configured through command-line arguments:
+- Local models via port specification (`--main-port`, `--auxiliary-port`)
+- Cloud models through API keys (set via environment variables)
+- Model temperatures and other parameters for generation quality
+
+### Benchmark Configuration
+Benchmarks support various configuration options:
+- Dataset selection and filtering
+- Concurrency and timeout settings
+- Answer tolerance for numeric verification
+- Output formats and statistics generation
+
+### Training Configuration
+Training scripts configure:
+- Learning rates and optimization parameters
+- Batch sizes and sequence lengths
+- Reward components and weights
+- Checkpoint frequency and model saving
 
 ## Requirements
 
 - Python 3.8+
-- Key packages: asyncio, sympy, latex2sympy2, aiohttp, tqdm, datasets
+- PyTorch
+- Transformers and Unsloth for training
+- Datasets library for HuggingFace integration
+- Sympy for mathematical expression evaluation
 - OpenRouter API key (for cloud model access)
 
-## Configuration
+## Documentation
 
-The suite supports both local and cloud-based models through a flexible configuration system:
-
-```python
-config = BenchmarkConfig(
-    main="LOCAL",              # Main solving model
-    auxiliary="LOCAL_2",       # Auxiliary/judging model
-    main_port=8000,           # Local model ports
-    auxiliary_port=6000,
-    max_concurrent=256,       # Concurrent processing
-    best_of=40,              # Solutions per problem
-    completions=35,          # Completion attempts
-    tolerance=1e-6           # Answer comparison tolerance
-)
-```
-
-### Model Options
-- Local deployments (ports 8000/6000)
-- OpenRouter API models (requires API key)
-- Multiple model types (Claude, GPT, Gemini, etc.)
-
-## Usage
-
-### 1. Environment Setup
-
-```bash
-export OPENROUTER_API_KEY=your_key_here  # If using cloud models
-```
-
-### 2. Running Benchmarks
-
-Standard benchmark:
-```bash
-python benchmark.py --main LOCAL --auxiliary LOCAL_2 --max-concurrent 256
-```
-
-Tournament evaluation:
-```bash
-python tournament_benchmark.py --main LOCAL --auxiliary LOCAL_2 --best-of 40
-```
-
-### 3. Dataset Processing
-
-Process and filter dataset:
-```bash
-python auxilary/process_dataset.py --dataset input_dataset --output-dir processed
-```
-
-Filter entries:
-```bash
-python auxilary/filtering.py input.json output.json --types light dark --success-rate-above 0.8
-```
-
-Merge multiple files:
-```bash
-python auxilary/merge_json.py results_folder --output merged.json
-```
-
-Shuffle dataset:
-```bash
-python auxilary/shuffle_dataset.py input.json output.json --seed 42
-```
-
-## Features
-
-### Solution Validation
-- Step-by-step structure verification
-- LaTeX mathematical notation support
-- Numeric answer comparison with tolerance
-- Multiple-choice problem detection
-
-### Progress Tracking
-- Real-time statistics
-- Success rate monitoring
-- Judge accuracy tracking
-- Tournament performance analysis
-
-### Dataset Support
-- HuggingFace dataset integration
-- Local dataset caching
-- Filtered problem selection
-- Progress persistence
+Each directory contains its own README with detailed information:
+- [Benchmarks README](/benchmarks/README.md): Details on benchmark types and configuration
+- [GRPO README](/grpo/README.md): Information on training scripts and reward functions
+- [Utils README](/utils/README.md): Documentation for utility modules
+- [Auxiliary README](/auxilary/README.md): Guide to dataset processing and model management
 
 ## Contributing
 
 Contributions welcome! Please:
-
 1. Fork the repository
 2. Create a feature branch
 3. Submit a Pull Request
