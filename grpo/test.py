@@ -48,13 +48,11 @@ def main():
         delattr(config, 'device_map')  # Just in case
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    config=config,
-    trust_remote_code=True,
-    torch_dtype="auto",
-    low_cpu_mem_usage=False,
-    device_map=None
-)
+        model_name,
+        config=config,
+        trust_remote_code=True,
+        torch_dtype="auto"
+    )
     lora_config = LoraConfig(
         r=64,
         lora_alpha=64,
