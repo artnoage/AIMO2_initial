@@ -855,7 +855,7 @@ class ArchitectReward(BaseReward):
             # 3. Test the architect's prompt with a programming model
             try:
                 # Create a programming prompt using the architect's guidance
-                programming_prompt = f"{PROGRAMMER_SYSTEM_PROMPT_SUB}\n\nProblem:\n{problem}\n\nEngineering Guidance:\n{architect_response}"
+                programming_prompt = f"{PROGRAMMER_SYSTEM_PROMPT_SUB}\n\nProblem:\n{problem}\n\nArchitect's Guidance:\n{architect_response}"
                 
                 # Get the model using the benchmark config
                 programming_model = get_model(self.config,role="main")
