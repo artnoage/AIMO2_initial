@@ -14,7 +14,7 @@ class RewardConfig:
     main: str = "LOCAL_0"  # Main model to use for solving problems
     main_template: int = 1  # Template for main model
     main_port: int = 8007  # Port for main model server
-    main_temp: float = 0  # Temperature for main model generation
+    main_temp: float = 0.7  # Temperature for main model generation
 
     # Auxiliary model settings
     auxiliary: str = "LOCAL_0"  # Auxiliary model to use for solving problems

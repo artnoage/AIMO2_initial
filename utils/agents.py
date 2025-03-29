@@ -148,11 +148,10 @@ Do not provide any Python code in this section, only your reasoning and approach
 
 <response>
 In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step of your approach within the code itself.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-4. Gracefully handle potential errors or edge cases.
-5. Be efficient and avoid excessive resource usage.
+1. Include clear comments explaining each step of your approach within the code itself.
+2. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+3. Gracefully handle potential errors or edge cases.
+4. Be efficient and avoid excessive resource usage.
 
 Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
 
@@ -175,8 +174,8 @@ result = ...
 print(result)  # Just the number, no text
 </response>"""
 
-ARCHITECT_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
-
+ARCHITECT_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. 
+Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
 Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>

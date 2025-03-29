@@ -148,7 +148,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250324_215025"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -280,7 +280,7 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=8,
-        gradient_accumulation_steps=16,
+        gradient_accumulation_steps=8,
         num_generations=8,
         max_prompt_length=1800,
         max_completion_length=5200,

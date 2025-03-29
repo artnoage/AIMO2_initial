@@ -148,7 +148,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250324_215025"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -198,10 +198,10 @@ def main():
         model_name=model_name,
         max_seq_length=7000,
         fast_inference=True,
+        load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        max_lora_rank=64,
-        gpu_memory_utilization = 0.55, # Reduce if out of memory
-        float8_kv_cache = True)
+        gpu_memory_utilization=0.65,
+        max_lora_rank=64)
         
     
     # Configure LoRA
@@ -231,13 +231,13 @@ def main():
         
         # Load the base dataset
         data1 = load_dataset(dataset_name,split="train")
-        data1=data1.shuffle(seed=341)
+        data1=data1.shuffle(seed=1341)
         data1=data1.select(range(2500))
         data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
         data2=data2.select(range(500))
-        data2=data2.shuffle(seed= 341)
+        data2=data2.shuffle(seed= 1341)
         data = concatenate_datasets([data1,data2])
-        data=data.shuffle(seed=341)
+        data=data.shuffle(seed=1341)
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
