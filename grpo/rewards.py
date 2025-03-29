@@ -803,7 +803,7 @@ class ArchitectReward(BaseReward):
         })
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for an architect prompt by testing it with a programming model"""
+        """Calculate reward for an architect prompt by testing it with a programming model multiple times"""
         try:
             # Get problem and correct answer
             problem = kwargs.get('problem', '')
@@ -852,73 +852,23 @@ class ArchitectReward(BaseReward):
                 self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
                 return reward  # Return early if syntax is invalid
             
-            # 3. Test the architect's prompt with a programming model
+            # 3. Test the architect's prompt with a programming model multiple times
             try:
                 # Create a programming prompt using the architect's guidance
                 programming_prompt = f"{PROGRAMMER_SYSTEM_PROMPT_SUB}\n\nProblem:\n{problem}\n\nArchitect's Guidance:\n{architect_response}"
                 
                 # Get the model using the benchmark config
-                programming_model = get_model(self.config,role="main")
+                programming_model = get_model(self.config, role="main")
                 
                 # Create a programming agent
                 programming_agent = ProgrammingAgent(programming_model)
                 
-                # Generate a programming solution
-                programming_solution = await programming_agent.generate(programming_prompt)
+                # Make multiple calls to the model and track success rate
+                num_attempts = 5  # Number of attempts to make
+                successful_attempts = 0
                 
-                # Extract code from the programming solution
-                response_match = re.search(r'<response>(.*?)</response>', programming_solution, re.DOTALL)
-                if response_match:
-                    response_content = response_match.group(1)
-                    code = extract_code_from_response(response_content)
-                    if not code:
-                        # If no code in response section, try the whole solution
-                        self.logger.info(f"No code found in response section, trying whole solution")
-                        code = extract_code_from_response(programming_solution)
-                else:
-                    # If no response tags, extract from the whole solution
-                    code = extract_code_from_response(programming_solution)
+                self.logger.info(f"Making {num_attempts} attempts with the programming model")
                 
-                self.logger.info(f"Extracted code length: {len(code) if code else 0} characters")
-                
-                if not code:
-                    self.logger.info(f"No code found in programming solution")
-                    self.stats.architect_stats['execution_errors'] += 1
-                    return reward  # Return early if no code found
-                
-                # Check code quality
-                code_quality_passed, quality_message = check_code_quality(code)
-                
-                if not code_quality_passed:
-                    self.logger.info(f"Code quality check failed: {quality_message}")
-                    self.stats.architect_stats['syntax_errors'] += 1
-                    return reward  # Return early if code quality check fails
-                
-                # Run the code and check if it produces a valid output
-                execution_success, result, error_message = run_code_safely(code, timeout=self.config.timeout)
-                
-                if execution_success and result is not None:
-                    execution_reward = self.config.execution_reward
-                    reward += execution_reward
-                    self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
-                    self.stats.reward_components['execution_valid_architectures'] = self.stats.reward_components.get('execution_valid_architectures', 0) + 1
-                    self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
-                    
-                    # Update architect stats for successful execution
-                    self.stats.architect_stats['total_programming_attempts'] += 1
-                else:
-                    self.logger.info(f"Code execution failed: {error_message}")
-                    if "timed out" in error_message:
-                        self.stats.architect_stats['timeout_errors'] += 1
-                    else:
-                        self.stats.architect_stats['execution_errors'] += 1
-                    # Update total rewards and average before returning
-                    self.stats.reward_components['total_rewards'] += reward
-                    total_samples = self.stats.total_batches
-                    self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
-                    return reward  # Return early if execution fails
-                
-                # 4. Check if the result matches the correct answer
                 # Convert correct_answer to float if possible for comparison
                 try:
                     if isinstance(correct_answer, str):
@@ -933,15 +883,82 @@ class ArchitectReward(BaseReward):
                     self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
                     return reward
                 
-                # Compare with tolerance
-                is_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
-                if is_correct:
-                    correctness_reward = self.config.correctness_reward
+                for attempt in range(num_attempts):
+                    self.logger.info(f"Attempt {attempt+1}/{num_attempts}")
+                    
+                    # Generate a programming solution
+                    programming_solution = await programming_agent.generate(programming_prompt)
+                    
+                    # Extract code from the programming solution
+                    response_match = re.search(r'<response>(.*?)</response>', programming_solution, re.DOTALL)
+                    if response_match:
+                        response_content = response_match.group(1)
+                        code = extract_code_from_response(response_content)
+                        if not code:
+                            # If no code in response section, try the whole solution
+                            self.logger.info(f"No code found in response section, trying whole solution")
+                            code = extract_code_from_response(programming_solution)
+                    else:
+                        # If no response tags, extract from the whole solution
+                        code = extract_code_from_response(programming_solution)
+                    
+                    self.logger.info(f"Extracted code length: {len(code) if code else 0} characters")
+                    
+                    if not code:
+                        self.logger.info(f"No code found in programming solution")
+                        self.stats.architect_stats['execution_errors'] += 1
+                        continue  # Skip to next attempt
+                    
+                    # Check code quality
+                    code_quality_passed, quality_message = check_code_quality(code)
+                    
+                    if not code_quality_passed:
+                        self.logger.info(f"Code quality check failed: {quality_message}")
+                        self.stats.architect_stats['syntax_errors'] += 1
+                        continue  # Skip to next attempt
+                    
+                    # Run the code and check if it produces a valid output
+                    execution_success, result, error_message = run_code_safely(code, timeout=self.config.timeout)
+                    
+                    if execution_success and result is not None:
+                        # Update architect stats for successful execution
+                        self.stats.architect_stats['total_programming_attempts'] += 1
+                        
+                        # Compare with tolerance
+                        is_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+                        if is_correct:
+                            successful_attempts += 1
+                            self.logger.info(f"Attempt {attempt+1} successful: result={result}, expected={correct_answer}")
+                        else:
+                            self.logger.info(f"Attempt {attempt+1} incorrect: result={result}, expected={correct_answer}")
+                    else:
+                        self.logger.info(f"Code execution failed: {error_message}")
+                        if "timed out" in error_message:
+                            self.stats.architect_stats['timeout_errors'] += 1
+                        else:
+                            self.stats.architect_stats['execution_errors'] += 1
+                
+                # Calculate success rate
+                success_rate = successful_attempts / num_attempts
+                self.logger.info(f"Success rate: {successful_attempts}/{num_attempts} = {success_rate:.2f}")
+                
+                # Apply execution reward based on at least one successful execution
+                if successful_attempts > 0:
+                    execution_reward = self.config.execution_reward
+                    reward += execution_reward
+                    self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
+                    self.stats.reward_components['execution_valid_architectures'] = self.stats.reward_components.get('execution_valid_architectures', 0) + 1
+                    self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
+                
+                # Apply correctness reward based on success rate
+                if success_rate > 0:
+                    # Scale the correctness reward by the success rate
+                    correctness_reward = self.config.correctness_reward * success_rate
                     reward += correctness_reward
                     self.stats.reward_components['correctness_rewards'] = self.stats.reward_components.get('correctness_rewards', 0) + 1
                     self.stats.reward_components['correct_architectures'] = self.stats.reward_components.get('correct_architectures', 0) + 1
                     self.stats.architect_stats['correct_architectures'] += 1
-                    self.logger.info(f"Applied correctness reward: +{correctness_reward:.3f}")
+                    self.logger.info(f"Applied correctness reward (scaled by success rate): +{correctness_reward:.3f}")
                     
                     # Update programming success rate
                     total_architectures = self.stats.architect_stats['correct_architectures'] + self.stats.architect_stats['incorrect_architectures']
@@ -951,7 +968,7 @@ class ArchitectReward(BaseReward):
                         )
                 else:
                     self.stats.architect_stats['incorrect_architectures'] += 1
-                    self.logger.info(f"Incorrect answer: expected {correct_answer}, got {result}")
+                    self.logger.info(f"No successful attempts")
                 
             except Exception as e:
                 self.logger.error(f"Error testing architect prompt: {str(e)}")
