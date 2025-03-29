@@ -186,17 +186,17 @@ class BaseReward(ABC):
             self.logger.error(traceback.format_exc())
             rewards = [0.0] * len(completions)
         
-        # Apply tanh normalization (z-score followed by tanh)
+        # Check if any rewards are high enough to be considered good
         if len(rewards) > 1:
-            # Calculate mean and standard deviation
+            # Calculate max reward
             self.logger.info(f"Rewards before: {rewards}")
             
-            # If mean is negative, clip all rewards from below by zero
-            mean_reward = sum(rewards) / len(rewards)
-            if mean_reward < 0:
-                self.logger.info(f"Mean reward is negative ({mean_reward:.6f}), clipping all rewards to non-negative values")
-                rewards = [max(0.0, r) for r in rewards]
-                self.logger.info(f"Rewards after clipping: {rewards}")
+            # If max reward is below threshold, set all rewards to zero
+            max_reward = max(rewards) if rewards else 0
+            if max_reward < 2.0:
+                self.logger.info(f"Max reward is below threshold ({max_reward:.6f} < 2.0), setting all rewards to zero")
+                rewards = [0.0] * len(rewards)
+                self.logger.info(f"Rewards after adjustment: {rewards}")
         
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions, example_type=kwargs.get('example_type', []))
