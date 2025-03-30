@@ -189,12 +189,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 programming_results.append(None)
                 programming_correctness.append(False)
         
-        # Initial majority vote on programming solutions
+        # Initial majority vote on ALL programming solutions (before test validation)
         initial_answer_counts = Counter([str(ans) for ans in programming_results if ans is not None])
         initial_majority = initial_answer_counts.most_common(1)
         initial_majority_answer = initial_majority[0][0] if initial_majority else None
+        initial_majority_count = initial_majority[0][1] if initial_majority else 0
+        initial_majority_percentage = (initial_majority_count / len([r for r in programming_results if r is not None])) * 100 if initial_majority else 0
         
-        logger.append(f"Initial majority answer: {initial_majority_answer}")
+        # Check if the initial majority answer is correct
+        initial_majority_correct = False
+        if initial_majority_answer:
+            try:
+                if isinstance(correct_answer, (int, float)):
+                    initial_majority_correct = abs(float(initial_majority_answer) - correct_answer) <= config.tolerance
+                else:
+                    initial_majority_correct = str(initial_majority_answer).strip() == str(correct_answer).strip()
+            except:
+                pass
+        
+        logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
+        logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
         
         # Second phase: Generate test functions for each programming solution
         test_functions = []
@@ -280,6 +294,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         final_answer_counts = Counter([str(ans) for ans in verified_results])
         final_majority = final_answer_counts.most_common(1)
         final_majority_answer = final_majority[0][0] if final_majority else None
+        final_majority_count = final_majority[0][1] if final_majority else 0
+        final_majority_percentage = (final_majority_count / len(verified_results)) * 100 if verified_results else 0
+        
+        # Check if the final majority answer is correct
+        final_majority_correct = False
+        if final_majority_answer:
+            try:
+                if isinstance(correct_answer, (int, float)):
+                    final_majority_correct = abs(float(final_majority_answer) - correct_answer) <= config.tolerance
+                else:
+                    final_majority_correct = str(final_majority_answer).strip() == str(correct_answer).strip()
+            except:
+                pass
         
         # Calculate statistics
         initial_success_rate = sum(programming_correctness) / len(programming_correctness) * 100 if programming_correctness else 0
@@ -319,8 +346,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Initial success rate: {initial_success_rate:.1f}%")
         logger.append(f"├─ Test success rate: {test_success_rate:.1f}%")
         logger.append(f"├─ Verified success rate: {verified_success_rate:.1f}%")
-        logger.append(f"├─ Initial majority answer: {initial_majority_answer}")
-        logger.append(f"└─ Final majority answer (verified): {final_majority_answer}")
+        logger.append(f"├─ Initial majority vote:")
+        logger.append(f"│  ├─ Answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}%)")
+        logger.append(f"│  └─ Correct: {'✓' if initial_majority_correct else '✗'}")
+        logger.append(f"└─ Final majority vote (verified):")
+        logger.append(f"   ├─ Answer: {final_majority_answer} ({final_majority_count} votes, {final_majority_percentage:.1f}%)")
+        logger.append(f"   └─ Correct: {'✓' if final_majority_correct else '✗'}")
         
         logger.append("="*80)
         
@@ -393,7 +424,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'programming_correctness': programming_correctness,
             'programming_results': programming_results,
             'initial_success_rate': initial_success_rate,
+            
+            # Initial majority vote (before test validation)
             'initial_majority_answer': initial_majority_answer,
+            'initial_majority_count': initial_majority_count,
+            'initial_majority_percentage': initial_majority_percentage,
+            'initial_majority_correct': initial_majority_correct,
             
             # Test statistics
             'test_passed': test_passed,
@@ -403,14 +439,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'verified_correct': [c and t for c, t in zip(programming_correctness, test_passed)],
             'verified_success_rate': verified_success_rate,
             'verified_results': verified_results,
+            
+            # Final majority vote (after test validation)
             'final_majority_answer': final_majority_answer,
+            'final_majority_count': final_majority_count,
+            'final_majority_percentage': final_majority_percentage,
+            'final_majority_correct': final_majority_correct,
             
             # Compatibility fields for ProgressTracker statistics
             'is_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],
-            'is_most_common_correct': bool(final_majority_answer and 
-                                          any(str(r) == final_majority_answer and c and t 
-                                              for r, c, t in zip(programming_results, programming_correctness, test_passed)
-                                              if r is not None)),
+            'is_most_common_correct': final_majority_correct,
             'total_solutions': len(programming_solutions),
             'correct_solutions': verified_correct_count,
             'incorrect_solutions': len(programming_solutions) - verified_correct_count
