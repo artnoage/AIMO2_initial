@@ -236,6 +236,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         if model_answers:
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
+            
+        # Store the initial majority answer for comparison
+        initial_majority_answer = most_common_answer
+        is_initial_majority_correct = is_most_common_correct
 
         # Calculate thinking length statistics
         thinking_lengths = [s['thinking_length'] for s in solutions]
@@ -265,8 +269,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Correct/incorrect: {[1 if s['is_correct'] and s['answer'] is not None else 0 for s in solutions]}")
         logger.append(f"├─ Correct solutions: {correct_count}/{config.best_of}")
         logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
-        logger.append(f"├─ Standard majority answer: {most_common_answer}")
-        logger.append(f"├─ Standard majority correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append(f"├─ Initial majority answer: {initial_majority_answer}")
+        logger.append(f"├─ Initial majority correct? {'Yes' if is_initial_majority_correct else 'No'}")
         logger.append(f"\n📊 Length-Weighted Majority Results:")
         logger.append(f"├─ Linear (1/length):")
         logger.append(f"│  ├─ Answer: {linear_weighted_answer}")
@@ -284,6 +288,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"│  ├─ Answer: {log_weighted_answer}")
         logger.append(f"│  ├─ Confidence: {log_confidence:.2f}")
         logger.append(f"│  └─ Correct? {'Yes' if is_log_weighted_correct else 'No'}")
+        logger.append(f"├─ Final majority answer: {most_common_answer}")
+        logger.append(f"└─ Final majority correct? {'Yes' if is_most_common_correct else 'No'}")
         logger.append(f"\n📊 Thinking Length Statistics:")
         logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
         logger.append(f"├─ Avg correct thinking length: {avg_correct_thinking:.1f} chars")
@@ -325,11 +331,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'data_type': 'statistics',
             'example_processed_successfully': True,
             'is_correct_list': [s['is_correct'] for s in solutions],
-            'is_most_common_correct': is_most_common_correct,
+            'is_initial_majority_correct': is_initial_majority_correct,
+            'initial_majority_answer': initial_majority_answer,
             'is_linear_weighted_correct': is_linear_weighted_correct,
             'is_quadratic_weighted_correct': is_quadratic_weighted_correct,
             'is_sqrt_weighted_correct': is_sqrt_weighted_correct,
             'is_log_weighted_correct': is_log_weighted_correct,
+            'is_final_majority_correct': is_most_common_correct,
+            'final_majority_answer': most_common_answer,
             'linear_weighted_answer': linear_weighted_answer,
             'quadratic_weighted_answer': quadratic_weighted_answer,
             'sqrt_weighted_answer': sqrt_weighted_answer,
@@ -358,11 +367,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'data_type': 'statistics',
             'example_processed_successfully': False,
             'is_correct_list': [],
-            'is_most_common_correct': None,
+            'is_initial_majority_correct': None,
+            'initial_majority_answer': None,
             'is_linear_weighted_correct': None,
             'is_quadratic_weighted_correct': None,
             'is_sqrt_weighted_correct': None,
             'is_log_weighted_correct': None,
+            'is_final_majority_correct': None,
+            'final_majority_answer': None,
             'linear_weighted_answer': None,
             'quadratic_weighted_answer': None,
             'sqrt_weighted_answer': None,
