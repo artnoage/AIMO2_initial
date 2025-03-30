@@ -59,6 +59,70 @@ Put your final answer in \\boxed{}</step>
 """
 
 
+SIMPLE_SOLUTION_SYSTEM_PROMPT=""" You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+Your output must include two clearly separated sections: **Thinking** and **Response**.
+<thinking>
+Here you put any thoughts you have about the problem. Treat this part 
+as scratchpad. You can write anything you want. You can correct and you can backtrack.
+This section should capture your reasoning, including any abstract thoughts or potential strategies.
+Feel free to refine or correct your ideas as you work toward the solution.
+You create your own context to answer the question.
+</thinking>
+<response>
+<step>Step 1: Begin with the first calculation or operation
+Show your work clearly using LaTeX notation</step>
+
+<step>Step 2: Continue with the next logical step
+Each step should be numbered and self-contained</step>
+
+<step>Step N: In your final step, state your conclusion
+Put your final answer in \\boxed{}</step>
+</response>"""
+
+
+
+PROGRAMMER_SYSTEM_PROMPT2="""You will be given a mathematical problem, that you need to solve using Python code.
+
+Your output must include two clearly separated sections: **Thinking** and **Response**.
+
+<thinking>
+Here you put any thoughts you have about the problem. Treat this part 
+as scratchpad. You can write anything you want. You can correct and you can backtrack.
+This section should capture your reasoning, including any abstract thoughts or potential strategies.
+Feel free to refine or correct your ideas as you work toward the solution.
+You create your own context to answer the question.
+</thinking>
+
+<response>
+In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
+1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
+2. Include clear comments explaining each step of your approach within the code itself.
+3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+4. Gracefully handle potential errors or edge cases.
+5. Be efficient and avoid excessive resource usage.
+
+Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
+
+Example format:
+
+```python
+# Solution for the problem
+import math
+
+# Step 1: Parse the problem
+# [brief explanation comment]
+...
+
+# Step 2: Solve using appropriate method
+# [brief explanation comment]
+...
+
+# Calculate and print the final answer
+result = ...
+print(result)  # Just the number, no text
+</response>"""
+
+
 TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
 
 You will be given a mathematical problem along with a proposed solution to analyze.
@@ -209,7 +273,7 @@ Your instructions should be clear and concise while providing all necessary guid
 
 
 
-TESTER_SYSTEM_PROMPT="""You will be provided with a mathematical problem. 
+TESTER_SYSTEM_PROMPT=""" You will be provided with a mathematical problem. 
 Your task is **not necessarily solve** this problem but rather to create a Python function that **efficiently verifies** whether a given 
 numeric value (float) correctly solves the problem.
 Your output must include two clearly separated sections: a **thinking** section and a **response** section.
@@ -252,7 +316,8 @@ def test_solution(answer):
 
 The function doesn't compute the root; it verifies whether the provided number meets the criteria (equation satisfied within tolerance).
 
-Your response should strictly follow this verification approach. </response> """
+Your response should strictly follow this verification approach. 
+</response> """
 
 
 
@@ -294,6 +359,37 @@ class FullSolutionAgent:
         response = await get_model_response(self.model, prompt, max_tokens=20000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
+class SimpleSolutionAgent:
+    """Agent that provides complete solutions with analysis and steps"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a complete solution with analysis and steps"""
+        system_prompt = SIMPLE_SOLUTION_SYSTEM_PROMPT
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
+    
+class ProgrammingAgent2:
+    """Agent that provides complete solutions with analysis and steps"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a complete solution with analysis and steps"""
+        system_prompt = PROGRAMMER_SYSTEM_PROMPT2
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=20000)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 class TutorAgent:
     """Agent that evaluates mathematical solutions and identifies the first wrong step"""
