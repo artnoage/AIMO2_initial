@@ -28,10 +28,14 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-def calculate_similarity_weighted_majority(solutions: List[Dict], similarity_matrix: torch.Tensor) -> Tuple[Optional[str], float]:
+def calculate_confidence_boosted_similarity(solutions: List[Dict], similarity_matrix: torch.Tensor) -> Tuple[Optional[str], float]:
     """
-    Calculate the majority answer weighted by thinking similarity.
-    Solutions with higher average similarity to other solutions get more weight.
+    Calculate the majority answer using a confidence-boosted similarity approach.
+    
+    This method combines:
+    1. Solution similarity (how similar a solution's thinking is to others)
+    2. Solution confidence signals (length of reasoning, verification steps, etc.)
+    3. Answer consistency (how many solutions arrived at the same answer)
     
     Args:
         solutions: List of solution dictionaries with 'answer' and 'solution' keys
@@ -48,26 +52,63 @@ def calculate_similarity_weighted_majority(solutions: List[Dict], similarity_mat
     # Extract valid solutions
     valid_solutions = [solutions[i] for i in valid_indices]
     
-    # Calculate average similarity for each solution
-    # For each solution, compute its average similarity to all other solutions
-    avg_similarities = []
+    # Calculate similarity component: average similarity to other solutions
+    similarity_scores = []
     for i in valid_indices:
-        # Get all similarities for this solution (excluding self-similarity)
         similarities = [similarity_matrix[i, j].item() for j in valid_indices if i != j]
-        # Calculate average similarity
         avg_similarity = sum(similarities) / len(similarities) if similarities else 0.0
-        avg_similarities.append(avg_similarity)
+        similarity_scores.append(avg_similarity)
     
-    # Use average similarities as weights
-    weights = avg_similarities
+    # Calculate confidence component based on solution characteristics
+    confidence_scores = []
+    for i, idx in enumerate(valid_indices):
+        solution = solutions[idx]
+        thinking = solution['thinking']
+        
+        # Factors that might indicate confidence:
+        # 1. Length of reasoning (longer reasoning often indicates more thorough work)
+        length_factor = min(1.0, len(thinking) / 1000)  # Cap at 1.0
+        
+        # 2. Presence of verification steps (checking work indicates confidence)
+        verification_factor = 0.2 if "verify" in thinking.lower() or "check" in thinking.lower() else 0.0
+        
+        # 3. Structured approach (step-by-step solutions tend to be more reliable)
+        structure_factor = 0.2 if thinking.count("\n") > 5 else 0.0
+        
+        # 4. Mathematical notation density (more math symbols often indicates formal reasoning)
+        math_symbols = sum(1 for c in thinking if c in "+-*/=^()[]{}∫∑∏√")
+        math_factor = min(0.3, math_symbols / 100)
+        
+        # Combine confidence factors
+        confidence_score = 0.3 + (0.7 * (length_factor + verification_factor + structure_factor + math_factor) / 4)
+        confidence_scores.append(confidence_score)
+    
+    # Calculate answer consistency component
+    answer_counts = {}
+    for s in valid_solutions:
+        answer_str = str(s['answer'])
+        answer_counts[answer_str] = answer_counts.get(answer_str, 0) + 1
+    
+    consistency_scores = []
+    for s in valid_solutions:
+        answer_str = str(s['answer'])
+        # Solutions with more common answers get higher consistency scores
+        consistency_scores.append(answer_counts[answer_str] / len(valid_solutions))
+    
+    # Combine all components into final weights
+    # Weight formula: 0.5*similarity + 0.3*confidence + 0.2*consistency
+    combined_weights = []
+    for i in range(len(valid_solutions)):
+        weight = (0.5 * similarity_scores[i]) + (0.3 * confidence_scores[i]) + (0.2 * consistency_scores[i])
+        combined_weights.append(weight)
     
     # Normalize weights to sum to 1
-    total_weight = sum(weights)
+    total_weight = sum(combined_weights)
     if total_weight == 0:
         # Fallback to equal weights if all weights are zero
         weights = [1.0 / len(valid_solutions)] * len(valid_solutions)
     else:
-        weights = [w / total_weight for w in weights]
+        weights = [w / total_weight for w in combined_weights]
     
     # Count weighted votes for each answer
     answer_weights = {}
@@ -189,16 +230,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Compute similarity matrix
         similarity_matrix = similarity_checker.compute_similarity_matrix(thinking_texts)
         
-        # Calculate similarity-weighted majority answer
-        similarity_weighted_answer, confidence = calculate_similarity_weighted_majority(solutions, similarity_matrix)
-        is_similarity_weighted_correct = False
+        # Calculate confidence-boosted similarity majority answer
+        confidence_boosted_answer, confidence = calculate_confidence_boosted_similarity(solutions, similarity_matrix)
+        is_confidence_boosted_correct = False
         
-        # Check if the similarity-weighted answer is correct
-        if similarity_weighted_answer is not None:
+        # Check if the confidence-boosted answer is correct
+        if confidence_boosted_answer is not None:
             verifier = NumericVerifier(tolerance=config.tolerance)
             for s in solutions:
-                if s['answer'] is not None and str(s['answer']) == similarity_weighted_answer:
-                    is_similarity_weighted_correct = s['is_correct']
+                if s['answer'] is not None and str(s['answer']) == confidence_boosted_answer:
+                    is_confidence_boosted_correct = s['is_correct']
                     break
         
         # Calculate initial majority answer (standard majority voting)
@@ -209,9 +250,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             initial_majority_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_initial_majority_correct = any(str(s['answer']) == initial_majority_answer and s['is_correct'] for s in solutions)
         
-        # After applying similarity weighting, the final majority answer is the similarity-weighted one
-        final_majority_answer = similarity_weighted_answer
-        is_final_majority_correct = is_similarity_weighted_correct
+        # After applying confidence boosting, the final majority answer is the confidence-boosted one
+        final_majority_answer = confidence_boosted_answer
+        is_final_majority_correct = is_confidence_boosted_correct
 
         # Calculate thinking length statistics
         thinking_lengths = [len(s['thinking']) for s in solutions]
@@ -253,9 +294,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
         logger.append(f"├─ Initial majority answer: {initial_majority_answer}")
         logger.append(f"├─ Initial majority correct? {'Yes' if is_initial_majority_correct else 'No'}")
-        logger.append(f"├─ Similarity-weighted majority answer: {similarity_weighted_answer}")
-        logger.append(f"├─ Similarity-weighted confidence: {confidence:.2f}")
-        logger.append(f"├─ Similarity-weighted correct? {'Yes' if is_similarity_weighted_correct else 'No'}")
+        logger.append(f"├─ Confidence-boosted majority answer: {confidence_boosted_answer}")
+        logger.append(f"├─ Confidence-boosted confidence: {confidence:.2f}")
+        logger.append(f"├─ Confidence-boosted correct? {'Yes' if is_confidence_boosted_correct else 'No'}")
         logger.append(f"├─ Final majority answer: {final_majority_answer}")
         logger.append(f"├─ Final majority correct? {'Yes' if is_final_majority_correct else 'No'}")
         logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
@@ -308,9 +349,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_initial_majority_correct': is_initial_majority_correct,
             'initial_majority_answer': initial_majority_answer,
-            'is_similarity_weighted_correct': is_similarity_weighted_correct,
-            'similarity_weighted_answer': similarity_weighted_answer,
-            'similarity_weighted_confidence': confidence,
+            'is_confidence_boosted_correct': is_confidence_boosted_correct,
+            'confidence_boosted_answer': confidence_boosted_answer,
+            'confidence_boosted_confidence': confidence,
             'is_final_majority_correct': is_final_majority_correct,
             'final_majority_answer': final_majority_answer,
             'success_rate': (correct_count/config.best_of)*100,

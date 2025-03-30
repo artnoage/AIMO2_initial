@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import sys
 import torch
 from collections import Counter, defaultdict
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
@@ -28,19 +29,19 @@ logging.basicConfig(
 os.environ["OPENAI_BASE_URL"] = "https://openrouter.ai/api/v1"
 load_dotenv()
 
-def calculate_consensus_weighted_majority(solutions: List[Dict], similarity_matrix: torch.Tensor, 
-                                         threshold: float = 0.7) -> Tuple[Optional[str], float]:
+def hierarchical_clustering_with_representative(solutions: List[Dict], similarity_matrix: torch.Tensor, 
+                                              distance_threshold: float = 0.3) -> Tuple[Optional[str], float]:
     """
-    Calculate the majority answer weighted by consensus similarity.
-    Solutions that are similar to more other solutions (above threshold) get more weight.
+    Use hierarchical clustering to group similar solutions, then select the most representative
+    solution from the largest cluster as the final answer.
     
     Args:
         solutions: List of solution dictionaries with 'answer' and 'solution' keys
         similarity_matrix: Tensor of pairwise similarities between solutions
-        threshold: Similarity threshold to consider two solutions as "in agreement"
+        distance_threshold: Maximum distance to merge clusters (1 - similarity)
         
     Returns:
-        Tuple of (majority_answer, confidence_score)
+        Tuple of (representative_answer, confidence_score)
     """
     # Filter out None answers
     valid_indices = [i for i, s in enumerate(solutions) if s['answer'] is not None]
@@ -50,78 +51,155 @@ def calculate_consensus_weighted_majority(solutions: List[Dict], similarity_matr
     # Extract valid solutions
     valid_solutions = [solutions[i] for i in valid_indices]
     
-    # Calculate consensus count for each solution
-    # For each solution, count how many other solutions it has high similarity with
-    consensus_counts = []
+    # Convert similarity matrix to distance matrix (1 - similarity)
+    # Only include valid indices
+    distance_matrix = []
     for i in valid_indices:
-        # Count solutions with similarity above threshold
-        similar_count = sum(1 for j in valid_indices if i != j and similarity_matrix[i, j].item() >= threshold)
-        consensus_counts.append(similar_count)
+        row = [1.0 - similarity_matrix[i, j].item() for j in valid_indices]
+        distance_matrix.append(row)
     
-    # Use consensus counts as weights
-    weights = consensus_counts
+    # Convert to numpy array for hierarchical clustering
+    distance_array = np.array(distance_matrix)
     
-    # Normalize weights to sum to 1
-    total_weight = sum(weights)
-    if total_weight == 0:
-        # Fallback to equal weights if all weights are zero
-        weights = [1.0 / len(valid_solutions)] * len(valid_solutions)
-    else:
-        weights = [w / total_weight for w in weights]
+    # Perform hierarchical clustering
+    from scipy.cluster.hierarchy import linkage, fcluster
     
-    # Count weighted votes for each answer
-    answer_weights = {}
-    for solution, weight in zip(valid_solutions, weights):
-        answer_str = str(solution['answer'])
-        if answer_str in answer_weights:
-            answer_weights[answer_str] += weight
-        else:
-            answer_weights[answer_str] = weight
+    # Use complete linkage (maximum distance between clusters)
+    Z = linkage(distance_array, method='complete')
     
-    # Find the answer with the highest weight
-    if not answer_weights:
+    # Form flat clusters at the specified distance threshold
+    clusters = fcluster(Z, distance_threshold, criterion='distance')
+    
+    # Group solutions by cluster
+    cluster_groups = defaultdict(list)
+    for i, cluster_id in enumerate(clusters):
+        cluster_groups[cluster_id].append(i)
+    
+    # Find the largest cluster
+    largest_cluster_id = max(cluster_groups.keys(), key=lambda k: len(cluster_groups[k]))
+    largest_cluster = cluster_groups[largest_cluster_id]
+    
+    # If there's a tie for largest cluster, use the one with more correct solutions if known
+    if sum(1 for k in cluster_groups if len(cluster_groups[k]) == len(largest_cluster)) > 1:
+        # Check if we have correctness information
+        if any('is_correct' in valid_solutions[i] for i in range(len(valid_solutions))):
+            # Find cluster with most correct solutions
+            correct_counts = {}
+            for cluster_id, members in cluster_groups.items():
+                correct_counts[cluster_id] = sum(1 for i in members 
+                                               if valid_solutions[i].get('is_correct', False))
+            
+            # If there are any correct solutions, use that cluster
+            if any(correct_counts.values()):
+                largest_cluster_id = max(correct_counts.keys(), key=lambda k: correct_counts[k])
+                largest_cluster = cluster_groups[largest_cluster_id]
+    
+    # Find the most representative solution in the largest cluster
+    # (the one with highest average similarity to other solutions in the cluster)
+    if not largest_cluster:
         return None, 0.0
     
-    majority_answer, confidence = max(answer_weights.items(), key=lambda x: x[1])
-    return majority_answer, confidence
+    representative_idx = -1
+    highest_avg_similarity = -1
+    
+    for i in largest_cluster:
+        # Calculate average similarity to other solutions in the cluster
+        similarities = [1.0 - distance_array[i][j] for j in largest_cluster if i != j]
+        avg_similarity = sum(similarities) / len(similarities) if similarities else 0.0
+        
+        if avg_similarity > highest_avg_similarity:
+            highest_avg_similarity = avg_similarity
+            representative_idx = i
+    
+    if representative_idx == -1:
+        return None, 0.0
+    
+    # Get the answer from the representative solution
+    representative_answer = str(valid_solutions[representative_idx]['answer'])
+    
+    # Calculate confidence based on:
+    # 1. Size of largest cluster relative to all solutions
+    size_confidence = len(largest_cluster) / len(valid_solutions)
+    
+    # 2. Average similarity within the cluster
+    within_cluster_similarities = []
+    for i in largest_cluster:
+        for j in largest_cluster:
+            if i != j:
+                within_cluster_similarities.append(1.0 - distance_array[i][j])
+    
+    similarity_confidence = sum(within_cluster_similarities) / len(within_cluster_similarities) if within_cluster_similarities else 0.0
+    
+    # 3. Agreement on the answer within the cluster
+    answer_counts = {}
+    for i in largest_cluster:
+        ans = str(valid_solutions[i]['answer'])
+        answer_counts[ans] = answer_counts.get(ans, 0) + 1
+    
+    # Calculate what percentage of the cluster agrees with the representative answer
+    agreement_confidence = answer_counts.get(representative_answer, 0) / len(largest_cluster)
+    
+    # Combine confidence factors
+    confidence = (0.4 * size_confidence) + (0.3 * similarity_confidence) + (0.3 * agreement_confidence)
+    
+    return representative_answer, confidence
 
-def find_solution_clusters(solutions: List[Dict], similarity_matrix: torch.Tensor, 
-                          threshold: float = 0.7) -> List[List[int]]:
+def visualize_hierarchical_clustering(solutions: List[Dict], similarity_matrix: torch.Tensor) -> str:
     """
-    Group solutions into clusters based on similarity.
+    Create a text-based visualization of the hierarchical clustering.
     
     Args:
         solutions: List of solution dictionaries
         similarity_matrix: Tensor of pairwise similarities between solutions
-        threshold: Similarity threshold to consider two solutions as part of the same cluster
         
     Returns:
-        List of clusters, where each cluster is a list of solution indices
+        String containing ASCII visualization of the clustering
     """
-    n = len(solutions)
-    # Track which solutions have been assigned to clusters
-    assigned = [False] * n
-    clusters = []
+    # Filter out None answers
+    valid_indices = [i for i, s in enumerate(solutions) if s['answer'] is not None]
+    if not valid_indices:
+        return "No valid solutions to cluster"
     
-    # Process each unassigned solution
-    for i in range(n):
-        if assigned[i]:
-            continue
-            
-        # Start a new cluster with this solution
-        cluster = [i]
-        assigned[i] = True
+    # Convert similarity matrix to distance matrix (1 - similarity)
+    distance_matrix = []
+    for i in valid_indices:
+        row = [1.0 - similarity_matrix[i, j].item() for j in valid_indices]
+        distance_matrix.append(row)
+    
+    # Convert to numpy array for hierarchical clustering
+    distance_array = np.array(distance_matrix)
+    
+    # Perform hierarchical clustering
+    from scipy.cluster.hierarchy import linkage, dendrogram
+    
+    # Use complete linkage (maximum distance between clusters)
+    Z = linkage(distance_array, method='complete')
+    
+    # Create a string buffer to capture the ASCII dendrogram
+    from io import StringIO
+    buffer = StringIO()
+    
+    # Generate ASCII dendrogram
+    dendrogram(Z, truncate_mode='level', p=3, show_leaf_counts=True, no_labels=True)
+    
+    # Create a simple text representation
+    result = ["Hierarchical Clustering Visualization:"]
+    result.append("(Solutions grouped by similarity of thinking)")
+    result.append("")
+    
+    # Add a simple representation of the dendrogram
+    max_height = max(Z[:, 2])
+    for i, row in enumerate(Z):
+        left, right, height, _ = row
+        # Scale height to fit in console
+        scaled_height = int((height / max_height) * 10)
         
-        # Find all similar solutions
-        for j in range(n):
-            if not assigned[j] and i != j and similarity_matrix[i, j].item() >= threshold:
-                cluster.append(j)
-                assigned[j] = True
-                
-        clusters.append(cluster)
+        # Create a simple branch visualization
+        branch = "│" * scaled_height + "┐"
+        result.append(f"Merge {i+1}: Solutions {int(left)} and {int(right)} at distance {height:.2f}")
+        result.append(branch)
     
-    # Sort clusters by size (largest first)
-    return sorted(clusters, key=len, reverse=True)
+    return "\n".join(result)
 
 async def process_example(example: Dict, running_id: int, example_id: int, config: BenchmarkConfig) -> Optional[Dict]:
     """Process a single example with configured verification and consensus-weighted majority voting"""
@@ -227,26 +305,26 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Compute similarity matrix
         similarity_matrix = similarity_checker.compute_similarity_matrix(thinking_texts)
         
-        # Try different threshold values for consensus
-        thresholds = [0.5, 0.6, 0.7, 0.8, 0.9]
-        consensus_results = {}
+        # Try different distance thresholds for hierarchical clustering
+        distance_thresholds = [0.2, 0.3, 0.4, 0.5, 0.6]
+        hierarchical_results = {}
         
-        for threshold in thresholds:
-            # Calculate consensus-weighted majority answer
-            consensus_answer, confidence = calculate_consensus_weighted_majority(
-                solutions, similarity_matrix, threshold=threshold
+        for threshold in distance_thresholds:
+            # Calculate hierarchical clustering representative answer
+            representative_answer, confidence = hierarchical_clustering_with_representative(
+                solutions, similarity_matrix, distance_threshold=threshold
             )
             
-            # Check if the consensus-weighted answer is correct
+            # Check if the representative answer is correct
             is_correct = False
-            if consensus_answer is not None:
+            if representative_answer is not None:
                 for s in solutions:
-                    if s['answer'] is not None and str(s['answer']) == consensus_answer:
+                    if s['answer'] is not None and str(s['answer']) == representative_answer:
                         is_correct = s['is_correct']
                         break
                         
-            consensus_results[threshold] = {
-                'answer': consensus_answer,
+            hierarchical_results[threshold] = {
+                'answer': representative_answer,
                 'confidence': confidence,
                 'is_correct': is_correct
             }
@@ -255,30 +333,30 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         best_threshold = None
         best_confidence = -1
         
-        for threshold, result in consensus_results.items():
+        for threshold, result in hierarchical_results.items():
             if result['is_correct'] and result['confidence'] > best_confidence:
                 best_threshold = threshold
                 best_confidence = result['confidence']
                 
-        if best_threshold is None and any(result['answer'] is not None for result in consensus_results.values()):
+        if best_threshold is None and any(result['answer'] is not None for result in hierarchical_results.values()):
             # If no correct answer found, use the threshold with highest confidence
             best_threshold = max(
-                [(t, r['confidence']) for t, r in consensus_results.items() if r['answer'] is not None],
+                [(t, r['confidence']) for t, r in hierarchical_results.items() if r['answer'] is not None],
                 key=lambda x: x[1],
-                default=(0.7, 0)
+                default=(0.3, 0)
             )[0]
         
         # If still no best threshold, use default
         if best_threshold is None:
-            best_threshold = 0.7
+            best_threshold = 0.3
             
-        # Get the consensus answer with the best threshold
-        consensus_weighted_answer = consensus_results[best_threshold]['answer']
-        consensus_confidence = consensus_results[best_threshold]['confidence']
-        is_consensus_weighted_correct = consensus_results[best_threshold]['is_correct']
+        # Get the hierarchical clustering answer with the best threshold
+        hierarchical_answer = hierarchical_results[best_threshold]['answer']
+        hierarchical_confidence = hierarchical_results[best_threshold]['confidence']
+        is_hierarchical_correct = hierarchical_results[best_threshold]['is_correct']
         
-        # Find solution clusters
-        clusters = find_solution_clusters(solutions, similarity_matrix, threshold=best_threshold)
+        # Create hierarchical clustering visualization
+        clustering_visualization = visualize_hierarchical_clustering(solutions, similarity_matrix)
         
         # Calculate initial majority answer (standard majority voting)
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
@@ -288,9 +366,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             initial_majority_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_initial_majority_correct = any(str(s['answer']) == initial_majority_answer and s['is_correct'] for s in solutions)
         
-        # After applying consensus weighting, the final majority answer is the consensus-weighted one
-        final_majority_answer = consensus_weighted_answer
-        is_final_majority_correct = is_consensus_weighted_correct
+        # After applying hierarchical clustering, the final majority answer is the hierarchical representative
+        final_majority_answer = hierarchical_answer
+        is_final_majority_correct = is_hierarchical_correct
 
         # Calculate thinking length statistics
         thinking_lengths = [len(s['thinking']) for s in solutions]
@@ -332,10 +410,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Success rate: {(correct_count/config.best_of)*100:.1f}%")
         logger.append(f"├─ Initial majority answer: {initial_majority_answer}")
         logger.append(f"├─ Initial majority correct? {'Yes' if is_initial_majority_correct else 'No'}")
-        logger.append(f"├─ Best threshold: {best_threshold}")
-        logger.append(f"├─ Consensus-weighted majority answer: {consensus_weighted_answer}")
-        logger.append(f"├─ Consensus-weighted confidence: {consensus_confidence:.2f}")
-        logger.append(f"├─ Consensus-weighted correct? {'Yes' if is_consensus_weighted_correct else 'No'}")
+        logger.append(f"├─ Best distance threshold: {best_threshold}")
+        logger.append(f"├─ Hierarchical clustering answer: {hierarchical_answer}")
+        logger.append(f"├─ Hierarchical clustering confidence: {hierarchical_confidence:.2f}")
+        logger.append(f"├─ Hierarchical clustering correct? {'Yes' if is_hierarchical_correct else 'No'}")
         logger.append(f"├─ Final majority answer: {final_majority_answer}")
         logger.append(f"├─ Final majority correct? {'Yes' if is_final_majority_correct else 'No'}")
         logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
@@ -348,13 +426,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             logger.append(correct_consensus_hist)
             logger.append(incorrect_consensus_hist)
             
-        # Print solution clusters
-        logger.append("\n📊 Solution Clusters:")
-        for i, cluster in enumerate(clusters):
-            cluster_answers = [str(solutions[idx]['answer']) for idx in cluster if solutions[idx]['answer'] is not None]
-            most_common = Counter(cluster_answers).most_common(1)[0][0] if cluster_answers else "None"
-            correct = any(solutions[idx]['is_correct'] for idx in cluster)
-            logger.append(f"Cluster {i+1} (size: {len(cluster)}, answer: {most_common}, correct: {'Yes' if correct else 'No'})")
+        # Print hierarchical clustering visualization
+        logger.append("\n📊 Hierarchical Clustering:")
+        logger.append(clustering_visualization)
             
         # Print similarity matrix in a readable format
         logger.append("\n📊 Similarity Matrix:")
@@ -396,10 +470,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_correct_list': [s['is_correct'] for s in solutions],
             'is_initial_majority_correct': is_initial_majority_correct,
             'initial_majority_answer': initial_majority_answer,
-            'is_consensus_weighted_correct': is_consensus_weighted_correct,
-            'consensus_weighted_answer': consensus_weighted_answer,
-            'consensus_weighted_confidence': consensus_confidence,
-            'best_threshold': best_threshold,
+            'is_hierarchical_correct': is_hierarchical_correct,
+            'hierarchical_answer': hierarchical_answer,
+            'hierarchical_confidence': hierarchical_confidence,
+            'best_distance_threshold': best_threshold,
             'is_final_majority_correct': is_final_majority_correct,
             'final_majority_answer': final_majority_answer,
             'success_rate': (correct_count/config.best_of)*100,
@@ -411,8 +485,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'avg_correct_thinking': avg_correct_thinking,
             'avg_incorrect_thinking': avg_incorrect_thinking,
             'all_solutions_correct': all(s['is_correct'] for s in solutions),
-            'cluster_count': len(clusters),
-            'largest_cluster_size': len(clusters[0]) if clusters else 0
+            'hierarchical_clustering_used': True
         })
         
         return result_entries
