@@ -3,6 +3,7 @@ import asyncio
 import logging
 import sys
 import re
+import numpy as np
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
@@ -232,6 +233,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         is_most_common_correct = True
                         break
 
+        # Calculate thinking length statistics
+        thinking_lengths = [get_thinking_length(s['solution']) for s in solutions]
+        correct_thinking_lengths = [length for length, s in zip(thinking_lengths, solutions) if s['is_correct']]
+        incorrect_thinking_lengths = [length for length, s in zip(thinking_lengths, solutions) if not s['is_correct']]
+        
+        avg_thinking_length = sum(thinking_lengths) / len(thinking_lengths) if thinking_lengths else 0
+        avg_correct_thinking = sum(correct_thinking_lengths) / len(correct_thinking_lengths) if correct_thinking_lengths else 0
+        avg_incorrect_thinking = sum(incorrect_thinking_lengths) / len(incorrect_thinking_lengths) if incorrect_thinking_lengths else 0
+        
+        # Create thinking length distribution visualization
+        if thinking_lengths:
+            # Create a simple ASCII histogram
+            correct_hist = create_ascii_histogram(correct_thinking_lengths, "Correct solutions thinking length")
+            incorrect_hist = create_ascii_histogram(incorrect_thinking_lengths, "Incorrect solutions thinking length")
+        
         # Add statistics to logs
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -249,7 +265,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         formatted_counts = {f"{k:.6f}": v for k, v in answer_counts.items()}
         logger.append(f"├─ Answer distribution (with tolerance 1e-2): {formatted_counts}")
         logger.append(f"├─ Most common answer: {most_common_answer}")
-        logger.append(f"└─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append(f"├─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
+        logger.append(f"├─ Avg correct thinking length: {avg_correct_thinking:.1f} chars")
+        logger.append(f"└─ Avg incorrect thinking length: {avg_incorrect_thinking:.1f} chars")
+        
+        # Add thinking length distributions
+        if thinking_lengths:
+            logger.append("\n📊 Thinking Length Distributions:")
+            logger.append(correct_hist)
+            logger.append(incorrect_hist)
         
         # Add code quality and execution details
         for i, s in enumerate(solutions):
@@ -329,6 +354,46 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'all_solutions_correct': None
         }]
 
+
+def create_ascii_histogram(data: List[int], title: str) -> str:
+    """Create a simple ASCII histogram for the given data"""
+    if not data:
+        return f"{title}:\n  No data available"
+    
+    # Create bins
+    min_val = min(data) if data else 0
+    max_val = max(data) if data else 0
+    
+    if min_val == max_val:
+        return f"{title}:\n  All values are {min_val}"
+    
+    # Create 5 bins
+    bin_width = max(1, (max_val - min_val) // 5)
+    bins = list(range(min_val, max_val + bin_width, bin_width))
+    
+    # Count values in each bin
+    hist = [0] * (len(bins) - 1)
+    for val in data:
+        for i in range(len(bins) - 1):
+            if bins[i] <= val < bins[i+1]:
+                hist[i] += 1
+                break
+        # Handle the last bin edge case
+        if val == bins[-1]:
+            hist[-1] += 1
+    
+    # Create ASCII representation
+    result = [f"{title} (n={len(data)}):\n"]
+    max_count = max(hist) if hist else 0
+    scale = min(40, max_count)  # Scale to fit in console
+    
+    for i in range(len(hist)):
+        bin_label = f"{bins[i]}-{bins[i+1]-1}" if bins[i+1]-1 > bins[i] else f"{bins[i]}"
+        bar_length = int((hist[i] / max_count) * scale) if max_count > 0 else 0
+        bar = "█" * bar_length
+        result.append(f"  {bin_label.rjust(10)}: {bar} ({hist[i]})")
+    
+    return "\n".join(result)
 
 async def main():
     """Main function for benchmarking mathematical problem solving with programming solutions."""

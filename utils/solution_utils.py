@@ -175,6 +175,11 @@ def extract_thinking_section(solution: str) -> Optional[str]:
     if match:
         return match.group(1).strip()
     return None
+
+def get_thinking_length(solution: str) -> int:
+    """Get the length of the thinking section in characters"""
+    thinking = extract_thinking_section(solution)
+    return len(thinking) if thinking else 0
     
 def extract_response_section(solution: str) -> Optional[str]:
     """Extract content from <response> tags"""
