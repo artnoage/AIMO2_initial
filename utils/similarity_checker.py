@@ -8,33 +8,46 @@ from transformers import AutoTokenizer, AutoModel
 
 class SolutionSimilarityChecker:
     """Handles embedding and similarity computation for solutions"""
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.config = config
-        self.logger = logging.getLogger(f'similarity_{config.model_type}')
+        self.logger = logging.getLogger('similarity_checker')
         
         # Set environment variable to get better CUDA error messages
         os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
         
+        # Default configuration values if no config is provided
+        embedding_model = "sentence-transformers/all-mpnet-base-v2"
+        embedding_max_length = 512
+        embedding_device = "cpu"
+        embedding_fallback_to_cpu = True
+        
+        # Use config values if provided
+        if config:
+            embedding_model = getattr(config, 'embedding_model', embedding_model)
+            embedding_max_length = getattr(config, 'embedding_max_length', embedding_max_length)
+            embedding_device = getattr(config, 'embedding_device', embedding_device)
+            embedding_fallback_to_cpu = getattr(config, 'embedding_fallback_to_cpu', embedding_fallback_to_cpu)
+        
         # Try to use GPU first, with fallback to CPU if needed
         try:
             # Determine device
-            if config.embedding_device == "auto":
+            if embedding_device == "auto":
                 self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             else:
-                self.device = torch.device(config.embedding_device)
+                self.device = torch.device(embedding_device)
                 
-            self.logger.info(f"Loading similarity model: {config.embedding_model} on {self.device}")
+            self.logger.info(f"Loading similarity model: {embedding_model} on {self.device}")
             
             # Load tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
-                config.embedding_model,
+                embedding_model,
                 use_fast=True,  # Use faster tokenizer implementation
                 cache_dir="./.cache/huggingface"  # Cache models locally
             )
             
             # Load model directly to target device with optimizations
             self.model = AutoModel.from_pretrained(
-                config.embedding_model,
+                embedding_model,
                 cache_dir="./.cache/huggingface",
                 torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32,  # Use half precision on GPU
                 low_cpu_mem_usage=True  # Optimize memory usage
@@ -42,14 +55,14 @@ class SolutionSimilarityChecker:
             
             # Check if configured max_length exceeds model's capacity
             model_max_length = self.tokenizer.model_max_length
-            if config.embedding_max_length > model_max_length:
+            if embedding_max_length > model_max_length:
                 self.logger.warning(
-                    f"Configured embedding_max_length ({config.embedding_max_length}) exceeds model's "
+                    f"Configured embedding_max_length ({embedding_max_length}) exceeds model's "
                     f"maximum context length ({model_max_length}). Using model's maximum instead."
                 )
                 self.max_length = model_max_length
             else:
-                self.max_length = config.embedding_max_length
+                self.max_length = embedding_max_length
             
             # Explicitly disable gradient computation
             for param in self.model.parameters():
@@ -68,7 +81,7 @@ class SolutionSimilarityChecker:
             
         except Exception as e:
             self.logger.error(f"Error loading similarity model on {self.device}: {str(e)}")
-            if config.embedding_fallback_to_cpu and self.device.type == 'cuda':
+            if embedding_fallback_to_cpu and self.device.type == 'cuda':
                 self.logger.info("Falling back to CPU")
                 self.device = torch.device("cpu")
                 
@@ -90,7 +103,7 @@ class SolutionSimilarityChecker:
                 raise
         
         # Set batch size - smaller for GPU to avoid OOM
-        self.batch_size = config.embedding_batch_size
+        self.batch_size = getattr(config, 'embedding_batch_size', 8) if config else 8
         if self.device.type == 'cuda':
             self.batch_size = max(1, self.batch_size)
             self.logger.info(f"Using batch size {self.batch_size} for {self.device.type}")
