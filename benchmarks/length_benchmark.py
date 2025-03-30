@@ -186,17 +186,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     is_length_weighted_correct = s['is_correct']
                     break
         
-        # Calculate standard majority answer for comparison
+        # Calculate initial majority answer (standard majority voting)
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
-        most_common_answer = None
-        is_most_common_correct = False
+        initial_majority_answer = None
+        is_initial_majority_correct = False
         if model_answers:
-            most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
-            is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
-            
-        # Store the initial majority answer for comparison
-        initial_majority_answer = most_common_answer
-        is_initial_majority_correct = is_most_common_correct
+            initial_majority_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
+            is_initial_majority_correct = any(str(s['answer']) == initial_majority_answer and s['is_correct'] for s in solutions)
+        
+        # After applying length weighting, the final majority answer is the length-weighted one
+        final_majority_answer = length_weighted_answer
+        is_final_majority_correct = is_length_weighted_correct
 
         # Calculate thinking length statistics
         thinking_lengths = [s['thinking_length'] for s in solutions]
@@ -231,8 +231,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Length-weighted majority answer: {length_weighted_answer}")
         logger.append(f"├─ Length-weighted confidence: {confidence:.2f}")
         logger.append(f"├─ Length-weighted correct? {'Yes' if is_length_weighted_correct else 'No'}")
-        logger.append(f"├─ Final majority answer: {most_common_answer}")
-        logger.append(f"├─ Final majority correct? {'Yes' if is_most_common_correct else 'No'}")
+        logger.append(f"├─ Final majority answer: {final_majority_answer}")
+        logger.append(f"├─ Final majority correct? {'Yes' if is_final_majority_correct else 'No'}")
         logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
         logger.append(f"├─ Avg correct thinking length: {avg_correct_thinking:.1f} chars")
         logger.append(f"└─ Avg incorrect thinking length: {avg_incorrect_thinking:.1f} chars")
@@ -278,8 +278,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'is_length_weighted_correct': is_length_weighted_correct,
             'length_weighted_answer': length_weighted_answer,
             'length_weighted_confidence': confidence,
-            'is_final_majority_correct': is_most_common_correct,
-            'final_majority_answer': most_common_answer,
+            'is_final_majority_correct': is_final_majority_correct,
+            'final_majority_answer': final_majority_answer,
             'success_rate': (correct_count/config.best_of)*100,
             'total_solutions': len(solutions),
             'correct_solutions': correct_count,
