@@ -112,14 +112,14 @@ class ProgressTracker:
                     
             # Check most common verdict - separate initial and final
             if r.get('is_most_common_correct', False):
-                # For traditional benchmark
+                # For traditional benchmark (backward compatibility)
                 initial_most_common_correct += 1
                 final_most_common_correct += 1
             else:
-                # For tutor solution benchmark
-                if r.get('initial_majority_correct', False):
+                # For benchmarks with separate initial and final majority
+                if r.get('is_initial_majority_correct', False):
                     initial_most_common_correct += 1
-                if r.get('final_majority_correct', False):
+                if r.get('is_final_majority_correct', False):
                     final_most_common_correct += 1
                 # For hybrid benchmark
                 if r.get('most_common_correct', False):
