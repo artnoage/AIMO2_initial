@@ -30,7 +30,7 @@ class ModelOption(Enum):
 
 @dataclass
 class BenchmarkConfig:
-    """Unified configuration for benchmarking with optional numeric verification and code execution"""
+    """Unified configuration for benchmarking with optional numeric verification, code execution, and similarity analysis"""
     # Model settings
     main: str = "LOCAL_0"
     auxiliary: str = "LOCAL_1"  # If None, uses same as main
@@ -71,6 +71,14 @@ class BenchmarkConfig:
     
     # Code execution settings
     timeout: int = 200  # Timeout in seconds for code execution
+    
+    # Embedding model settings for similarity analysis
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
+    embedding_max_length: int = 512
+    embedding_device: str = "auto"  # Use GPU when available
+    embedding_batch_size: int = 8
+    embedding_fallback_to_cpu: bool = True
+    embedding_compute_on_cpu: bool = False
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':
