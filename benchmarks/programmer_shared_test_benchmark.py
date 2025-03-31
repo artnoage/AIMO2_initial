@@ -336,10 +336,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             test_passed = [False for _ in programming_solutions]
             logger.append("❌ No valid test functions available, skipping test validation")
         
-        # Final majority vote only on solutions that passed the shared test AND are correct
+        # Final majority vote only on solutions that passed the shared test (regardless of correctness)
         verified_results = [
-            result for result, passed, is_correct in zip(programming_results, test_passed, programming_correctness)
-            if passed and is_correct and result is not None
+            result for result, passed in zip(programming_results, test_passed)
+            if passed and result is not None
         ]
         
         final_answer_counts = Counter([str(ans) for ans in verified_results])
