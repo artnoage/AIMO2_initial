@@ -153,7 +153,7 @@ class ProgressTracker:
         
         # Calculate how many problems have above average correct solutions
         for count in problem_correct_counts:
-            if count > stats['avg_correct']:
+            if count >= stats['avg_correct']:
                 initial_above_avg += 1
                 final_above_avg += 1  # For backward compatibility if no separate final counts
         
