@@ -66,6 +66,27 @@ class ProgressTracker:
         stats['successfully_processed'] = successfully_processed
         stats['processing_success_rate'] = (successfully_processed / total * 100) if total > 0 else 0
         
+        # Test verification statistics (for programmer_test benchmarks)
+        test_entries = [r for r in entries if 'test_passed' in r or 'verified_correct' in r]
+        if test_entries:
+            # Count test statistics
+            test_passed_count = sum(1 for r in test_entries if r.get('test_passed') is not None and any(r.get('test_passed', [])))
+            verified_correct_count = sum(1 for r in test_entries if r.get('verified_correct') is not None and any(r.get('verified_correct', [])))
+            
+            stats['test_passed_count'] = test_passed_count
+            stats['test_passed_rate'] = (test_passed_count / len(test_entries) * 100) if test_entries else 0
+            stats['verified_correct_count'] = verified_correct_count
+            stats['verified_correct_rate'] = (verified_correct_count / len(test_entries) * 100) if test_entries else 0
+            
+            # Track improvement from testing
+            initial_correct = sum(1 for r in test_entries if r.get('initial_success_rate', 0) > 0)
+            final_correct = sum(1 for r in test_entries if r.get('verified_success_rate', 0) > 0)
+            
+            stats['initial_correct_count'] = initial_correct
+            stats['final_correct_count'] = final_correct
+            stats['testing_improvement'] = final_correct - initial_correct
+            stats['testing_improvement_rate'] = ((final_correct - initial_correct) / len(test_entries) * 100) if test_entries else 0
+        
         # Calculate correct verdicts
         at_least_one = 0
         total_correct = 0
