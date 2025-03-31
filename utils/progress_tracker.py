@@ -115,19 +115,13 @@ class ProgressTracker:
                     at_least_one += 1
                 total_correct += matches_count
                 
-                # Calculate if above average (more than the average number of correct solutions per problem)
-                if matches_count > 0 and matches_count >= stats.get('avg_correct', 0):
-                    initial_above_avg += 1
+                # Store the count of correct solutions for this problem
+                problem_correct_counts.append(matches_count)
             
             # Process final solutions
             final_matches = None
             if 'final_correctness' in r and isinstance(r['final_correctness'], list):
                 final_matches = r['final_correctness']
-                # Calculate if above average for final solutions
-                if len(final_matches) > 0:
-                    final_matches_count = sum(1 for match in final_matches if match)
-                    if final_matches_count > 0 and final_matches_count >= stats.get('avg_correct', 0):
-                        final_above_avg += 1
             elif not 'final_correctness' in r and initial_matches:
                 # If no final solutions, use initial for backward compatibility
                 final_above_avg = initial_above_avg
