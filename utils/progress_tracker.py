@@ -124,7 +124,8 @@ class ProgressTracker:
                 final_matches = r['final_correctness']
             elif not 'final_correctness' in r and initial_matches:
                 # If no final solutions, use initial for backward compatibility
-                final_above_avg = initial_above_avg
+                # This will be handled in the second pass
+                pass
                     
             # Check most common verdict - separate initial and final
             if r.get('is_most_common_correct', False):
