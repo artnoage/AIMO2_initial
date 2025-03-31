@@ -154,10 +154,24 @@ class ProgressTracker:
         # Calculate how many problems have above average correct solutions
         # Above average should mean the problem has more correct solutions than the average
         # AND at least one correct solution
-        for count in problem_correct_counts:
-            if count > 0 and count >= stats['avg_correct']:
-                initial_above_avg += 1
-                final_above_avg += 1  # For backward compatibility if no separate final counts
+        avg_correct = stats.get('avg_correct', 0)
+        
+        # Only count problems with at least one correct solution
+        valid_counts = [count for count in problem_correct_counts if count > 0]
+        
+        # Calculate a new average based only on problems with at least one correct solution
+        if valid_counts:
+            valid_avg = sum(valid_counts) / len(valid_counts)
+            
+            # Count problems that have more correct solutions than the valid average
+            for count in problem_correct_counts:
+                if count > 0 and count > valid_avg:
+                    initial_above_avg += 1
+                    final_above_avg += 1  # For backward compatibility if no separate final counts
+        else:
+            # If no problems have correct solutions, none are above average
+            initial_above_avg = 0
+            final_above_avg = 0
         
         stats['initial_above_avg'] = initial_above_avg
         stats['final_above_avg'] = final_above_avg
