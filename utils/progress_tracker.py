@@ -413,6 +413,27 @@ class ProgressTracker:
             f"- Problems where final most common answer is correct: {batch_stats['final_most_common_correct']}/{batch_stats['total']} "
             f"({(batch_stats['final_most_common_correct']/batch_stats['total']*100):.1f}%)\n"
         )
+            
+        # Add test verification statistics if present
+        if 'test_passed_count' in batch_stats:
+            stats_str += (
+                f"\nTest Verification Statistics:\n"
+                f"- Solutions passing tests: {batch_stats['test_passed_count']}/{batch_stats['total']} "
+                f"({batch_stats['test_passed_rate']:.1f}%)\n"
+                f"- Solutions both correct and passing tests: {batch_stats['verified_correct_count']}/{batch_stats['total']} "
+                f"({batch_stats['verified_correct_rate']:.1f}%)\n"
+            )
+                
+            if 'testing_improvement' in batch_stats:
+                improvement = batch_stats['testing_improvement']
+                sign = "+" if improvement >= 0 else ""
+                stats_str += (
+                    f"- Testing improvement: {sign}{improvement} examples ({batch_stats['testing_improvement_rate']:.1f}%)\n"
+                    f"- Initial correct count: {batch_stats['initial_correct_count']}/{batch_stats['total']} "
+                    f"({(batch_stats['initial_correct_count']/batch_stats['total']*100):.1f}%)\n"
+                    f"- Final verified correct count: {batch_stats['final_correct_count']}/{batch_stats['total']} "
+                    f"({(batch_stats['final_correct_count']/batch_stats['total']*100):.1f}%)\n"
+                )
         
         # Tutor solution benchmark statistics if present
         if 'initial_solution_correct_count' in batch_stats:
@@ -557,6 +578,27 @@ class ProgressTracker:
                 f"- Problems where final most common answer is correct: {acc_stats['final_most_common_correct']}/{acc_stats['total']} "
                 f"({(acc_stats['final_most_common_correct']/acc_stats['total']*100):.1f}%)\n"
             )
+            
+            # Add test verification statistics if present in accumulated stats
+            if 'test_passed_count' in acc_stats:
+                stats_str += (
+                    f"\nTest Verification Statistics:\n"
+                    f"- Solutions passing tests: {acc_stats['test_passed_count']}/{acc_stats['total']} "
+                    f"({acc_stats['test_passed_rate']:.1f}%)\n"
+                    f"- Solutions both correct and passing tests: {acc_stats['verified_correct_count']}/{acc_stats['total']} "
+                    f"({acc_stats['verified_correct_rate']:.1f}%)\n"
+                )
+                
+                if 'testing_improvement' in acc_stats:
+                    improvement = acc_stats['testing_improvement']
+                    sign = "+" if improvement >= 0 else ""
+                    stats_str += (
+                        f"- Testing improvement: {sign}{improvement} examples ({acc_stats['testing_improvement_rate']:.1f}%)\n"
+                        f"- Initial correct count: {acc_stats['initial_correct_count']}/{acc_stats['total']} "
+                        f"({(acc_stats['initial_correct_count']/acc_stats['total']*100):.1f}%)\n"
+                        f"- Final verified correct count: {acc_stats['final_correct_count']}/{acc_stats['total']} "
+                        f"({(acc_stats['final_correct_count']/acc_stats['total']*100):.1f}%)\n"
+                    )
             
             # Tutor solution benchmark statistics if present in accumulated stats
             if 'initial_solution_correct_count' in acc_stats:
@@ -757,6 +799,27 @@ class ProgressTracker:
             f"- Problems where final most common answer is correct: {final_stats['final_most_common_correct']}/{total} "
             f"({(final_stats['final_most_common_correct']/total*100) if total > 0 else 0:.1f}%)\n"
         )
+        
+        # Add test verification statistics if present in final stats
+        if 'test_passed_count' in final_stats:
+            stats_str += (
+                f"\nTest Verification Statistics:\n"
+                f"- Solutions passing tests: {final_stats['test_passed_count']}/{total} "
+                f"({final_stats['test_passed_rate']:.1f}%)\n"
+                f"- Solutions both correct and passing tests: {final_stats['verified_correct_count']}/{total} "
+                f"({final_stats['verified_correct_rate']:.1f}%)\n"
+            )
+            
+            if 'testing_improvement' in final_stats:
+                improvement = final_stats['testing_improvement']
+                sign = "+" if improvement >= 0 else ""
+                stats_str += (
+                    f"- Testing improvement: {sign}{improvement} examples ({final_stats['testing_improvement_rate']:.1f}%)\n"
+                    f"- Initial correct count: {final_stats['initial_correct_count']}/{total} "
+                    f"({(final_stats['initial_correct_count']/total*100) if total > 0 else 0:.1f}%)\n"
+                    f"- Final verified correct count: {final_stats['final_correct_count']}/{total} "
+                    f"({(final_stats['final_correct_count']/total*100) if total > 0 else 0:.1f}%)\n"
+                )
 
         # Tutor solution benchmark statistics if present
         if 'initial_solution_correct_count' in final_stats:
