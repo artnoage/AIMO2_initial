@@ -499,13 +499,23 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'final_majority_percentage': final_majority_percentage,
             'final_majority_correct': final_majority_correct,
             
-            # Compatibility fields for ProgressTracker statistics - using verified results
-            'is_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],  # Verified correctness (after test validation)
-            'is_most_common_correct': final_majority_correct,  # Final majority correctness
+            # Initial correctness statistics (before test validation)
+            'initial_correctness': programming_correctness,
+            'initial_majority_correct': initial_majority_correct,
+            'initial_success_rate': initial_success_rate,
             
-            # Additional fields for final validation statistics
-            'verified_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],  # After test validation
-            'verified_most_common_correct': final_majority_correct,  # Final majority correctness
+            # Test validation statistics
+            'test_passed': test_passed,
+            'test_success_rate': test_success_rate,
+            
+            # Final correctness statistics (after test validation)
+            'final_correctness': [c and t for c, t in zip(programming_correctness, test_passed)],
+            'final_majority_correct': final_majority_correct,
+            'verified_success_rate': verified_success_rate,
+            
+            # Compatibility fields for ProgressTracker statistics
+            'is_correct_list': programming_correctness,  # Initial correctness (for backward compatibility)
+            'is_most_common_correct': initial_majority_correct,  # Initial majority correctness
             
             'total_solutions': len(programming_solutions),
             'correct_solutions': verified_correct_count,  # Verified correct solutions
