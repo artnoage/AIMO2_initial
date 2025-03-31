@@ -488,7 +488,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'test_success_rate': test_success_rate,
             
             # Verified statistics (solutions that are correct AND pass their tests)
-            'verified_correct': [c and t for c, t in zip(programming_correctness, test_passed)],
+            'verified_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],
             'verified_success_rate': verified_success_rate,
             'verified_results': verified_results,
             
@@ -515,6 +515,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Compatibility fields for ProgressTracker statistics
             'is_correct_list': programming_correctness,  # Initial correctness (for backward compatibility)
             'is_most_common_correct': initial_majority_correct,  # Initial majority correctness
+            'verified_correct': [c and t for c, t in zip(programming_correctness, test_passed)],  # For progress tracker
             
             'total_solutions': len(programming_solutions),
             'correct_solutions': verified_correct_count,  # Verified correct solutions
