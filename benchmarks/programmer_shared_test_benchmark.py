@@ -297,8 +297,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                     test_function, 
                                     test_cases, 
                                     correct_answer,
-                                    timeout=config.timeout,
-                                    solution_code=code  # Pass the solution code to be tested
+                                    timeout=config.timeout
                                 )
                         except TimeoutException:
                             logger.append(f"❌ Global timeout exceeded when testing solution {i+1} with test {test_num+1}")
