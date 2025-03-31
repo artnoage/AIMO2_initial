@@ -192,115 +192,149 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
         logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
         
-        # Second phase: Generate a SINGLE test function to validate all solutions
-        # We'll use the problem and the expected answer to create a generic test
-        test_function = ""
-        test_success = False
+        # Second phase: Generate FOUR test functions to validate all solutions
+        # We'll use the problem and the expected answer to create generic tests
+        test_functions = []
+        test_successes = []
         
-        try:
-            logger.append(f"Generating a single test function for all solutions...")
-            # Create a prompt that includes the problem and the expected answer
-            test_prompt = f"Problem:\n{example['problem']}\n\nExpected Answer: {correct_answer}"
-            
-            _, test_solution = await testing_agent.generate(test_prompt, return_prompt=True)
-            
-            # Extract the test function
-            test_function = extract_code_from_response(test_solution)
-            
-            if not test_function:
-                logger.append(f"❌ No test function found in the solution")
-            else:
+        for test_attempt in range(4):  # Generate 4 different test functions
+            try:
+                logger.append(f"Generating test function {test_attempt+1} of 4...")
+                # Create a prompt that includes the problem and the expected answer
+                test_prompt = f"Problem:\n{example['problem']}\n\nExpected Answer: {correct_answer}"
+                
+                _, test_solution = await testing_agent.generate(test_prompt, return_prompt=True)
+                
+                # Extract the test function
+                test_function = extract_code_from_response(test_solution)
+                
+                if not test_function:
+                    logger.append(f"❌ No test function found in test attempt {test_attempt+1}")
+                    test_functions.append("")
+                    test_successes.append(False)
+                    continue
+                
                 # Check test function quality
                 code_quality_passed, quality_message = check_code_quality(test_function)
                 
                 if not code_quality_passed:
-                    logger.append(f"❌ Test function quality check failed: {quality_message}")
+                    logger.append(f"❌ Test function {test_attempt+1} quality check failed: {quality_message}")
+                    test_functions.append(test_function)
+                    test_successes.append(False)
+                    continue
+                
+                # Generate test cases
+                try:
+                    test_cases = generate_test_cases(correct_answer, num_cases=50)
+                except Exception as e:
+                    logger.append(f"❌ Error generating test cases for test {test_attempt+1}: {str(e)}")
+                    # Simple fallback if generate_test_cases fails
+                    test_cases = [correct_answer, correct_answer + 1, correct_answer - 1, 
+                                 0, 1, -1, 10, -10, 100, -100]
+                
+                # Run the test function on a sample test case to validate it
+                try:
+                    with time_limit(config.timeout + 30):
+                        success, results, error_message = run_test_function(
+                            test_function, 
+                            [correct_answer],  # Just test with the correct answer
+                            correct_answer,
+                            timeout=config.timeout
+                        )
+                        test_successes.append(success)
+                except TimeoutException:
+                    logger.append(f"❌ Global timeout exceeded when validating test function {test_attempt+1}")
+                    test_successes.append(False)
+                    error_message = "Global timeout exceeded when validating test function"
+                
+                test_functions.append(test_function)
+                
+                if not test_successes[-1]:
+                    logger.append(f"❌ Test function {test_attempt+1} validation failed: {error_message}")
                 else:
-                    # Generate test cases
-                    try:
-                        test_cases = generate_test_cases(correct_answer, num_cases=50)
-                    except Exception as e:
-                        logger.append(f"❌ Error generating test cases: {str(e)}")
-                        # Simple fallback if generate_test_cases fails
-                        test_cases = [correct_answer, correct_answer + 1, correct_answer - 1, 
-                                     0, 1, -1, 10, -10, 100, -100]
+                    logger.append(f"✓ Test function {test_attempt+1} validation successful")
                     
-                    # Run the test function on a sample test case to validate it
-                    try:
-                        with time_limit(config.timeout + 30):
-                            success, results, error_message = run_test_function(
-                                test_function, 
-                                [correct_answer],  # Just test with the correct answer
-                                correct_answer,
-                                timeout=config.timeout
-                            )
-                            test_success = success
-                    except TimeoutException:
-                        logger.append(f"❌ Global timeout exceeded when validating test function")
-                        test_success = False
-                        error_message = "Global timeout exceeded when validating test function"
-                    
-                    if not test_success:
-                        logger.append(f"❌ Test function validation failed: {error_message}")
-        except Exception as e:
-            logger.append(f"❌ Error generating test function: {str(e)}")
+            except Exception as e:
+                logger.append(f"❌ Error generating test function {test_attempt+1}: {str(e)}")
+                test_functions.append("")
+                test_successes.append(False)
         
-        # Apply the single test function to all programming solutions
-        test_results = []
-        test_passed = []
+        # Apply the four test functions to all programming solutions
+        # A solution passes if it passes at least one of the four tests
+        test_results = []  # List of lists, each inner list contains results for one solution against all tests
+        test_passed = []   # List of booleans, True if solution passed at least one test
         
-        if test_function and test_success:
+        # Check if we have any valid test functions
+        valid_test_functions = [(func, idx) for idx, (func, success) in enumerate(zip(test_functions, test_successes)) if func and success]
+        
+        if valid_test_functions:
             for i, (code, result) in enumerate(zip(programming_codes, programming_results)):
                 if not code or result is None:
-                    test_results.append({})
+                    test_results.append([{} for _ in range(4)])
                     test_passed.append(False)
                     continue
                 
-                try:
-                    logger.append(f"Testing solution {i+1} with the shared test function...")
-                    
-                    # Generate test cases
+                solution_test_results = []
+                solution_test_passed = False
+                
+                for test_idx, (test_function, test_num) in enumerate(valid_test_functions):
                     try:
-                        test_cases = generate_test_cases(correct_answer, num_cases=50)
+                        logger.append(f"Testing solution {i+1} with test function {test_num+1}...")
+                        
+                        # Generate test cases
+                        try:
+                            test_cases = generate_test_cases(correct_answer, num_cases=50)
+                        except Exception as e:
+                            logger.append(f"❌ Error generating test cases: {str(e)}")
+                            # Simple fallback if generate_test_cases fails
+                            test_cases = [correct_answer, correct_answer + 1, correct_answer - 1, 
+                                         0, 1, -1, 10, -10, 100, -100]
+                        
+                        # Run the test function on all test cases for this solution
+                        try:
+                            with time_limit(config.timeout + 30):
+                                success, results, error_message = run_test_function(
+                                    test_function, 
+                                    test_cases, 
+                                    correct_answer,
+                                    timeout=config.timeout,
+                                    solution_code=code  # Pass the solution code to be tested
+                                )
+                        except TimeoutException:
+                            logger.append(f"❌ Global timeout exceeded when testing solution {i+1} with test {test_num+1}")
+                            success = False
+                            results = {}
+                            error_message = "Global timeout exceeded when testing solution"
+                        
+                        solution_test_results.append(results)
+                        
+                        if success:
+                            logger.append(f"✓ Solution {i+1} passed test function {test_num+1}")
+                            solution_test_passed = True  # Mark as passed if at least one test passes
+                        else:
+                            logger.append(f"✗ Solution {i+1} failed test function {test_num+1}: {error_message}")
+                        
                     except Exception as e:
-                        logger.append(f"❌ Error generating test cases: {str(e)}")
-                        # Simple fallback if generate_test_cases fails
-                        test_cases = [correct_answer, correct_answer + 1, correct_answer - 1, 
-                                     0, 1, -1, 10, -10, 100, -100]
-                    
-                    # Run the test function on all test cases for this solution
-                    try:
-                        with time_limit(config.timeout + 30):
-                            success, results, error_message = run_test_function(
-                                test_function, 
-                                test_cases, 
-                                correct_answer,
-                                timeout=config.timeout,
-                                solution_code=code  # Pass the solution code to be tested
-                            )
-                    except TimeoutException:
-                        logger.append(f"❌ Global timeout exceeded when testing solution {i+1}")
-                        success = False
-                        results = {}
-                        error_message = "Global timeout exceeded when testing solution"
-                    
-                    test_results.append(results)
-                    test_passed.append(success)
-                    
-                    if success:
-                        logger.append(f"✓ Solution {i+1} passed the test")
-                    else:
-                        logger.append(f"✗ Solution {i+1} failed the test: {error_message}")
-                    
-                except Exception as e:
-                    logger.append(f"❌ Error testing solution {i+1}: {str(e)}")
-                    test_results.append({})
-                    test_passed.append(False)
+                        logger.append(f"❌ Error testing solution {i+1} with test {test_num+1}: {str(e)}")
+                        solution_test_results.append({})
+                
+                # Fill in any missing results if we have fewer than 4 valid test functions
+                while len(solution_test_results) < 4:
+                    solution_test_results.append({})
+                
+                test_results.append(solution_test_results)
+                test_passed.append(solution_test_passed)
+                
+                if solution_test_passed:
+                    logger.append(f"✓ Solution {i+1} passed at least one test")
+                else:
+                    logger.append(f"✗ Solution {i+1} failed all tests")
+                
         else:
-            # If we couldn't generate a valid test function, mark all solutions as not tested
-            test_results = [{} for _ in programming_solutions]
+            # If we couldn't generate any valid test functions, mark all solutions as not tested
+            test_results = [[{} for _ in range(4)] for _ in programming_solutions]
             test_passed = [False for _ in programming_solutions]
-            logger.append("❌ No valid test function available, skipping test validation")
+            logger.append("❌ No valid test functions available, skipping test validation")
         
         # Final majority vote only on solutions that passed the shared test
         verified_results = [
@@ -344,17 +378,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         
-        # Test function information
-        logger.append(f"\n🧪 Shared Test Function:")
-        if test_function:
-            test_lines = test_function.split('\n')
-            test_preview = '\n'.join(test_lines[:5])
-            if len(test_lines) > 5:
-                test_preview += f"\n... ({len(test_lines) - 5} more lines)"
-            logger.append(f"├─ Preview: {test_preview}")
-            logger.append(f"└─ Valid: {'✓' if test_success else '✗'}")
-        else:
-            logger.append("❌ No test function generated")
+        # Test functions information
+        logger.append(f"\n🧪 Shared Test Functions:")
+        valid_test_count = sum(test_successes)
+        logger.append(f"├─ Valid test functions: {valid_test_count}/4")
+        
+        for i, (test_func, is_valid) in enumerate(zip(test_functions, test_successes)):
+            if test_func:
+                test_lines = test_func.split('\n')
+                test_preview = '\n'.join(test_lines[:3])  # Show fewer lines to keep output compact
+                if len(test_lines) > 3:
+                    test_preview += f"\n... ({len(test_lines) - 3} more lines)"
+                logger.append(f"├─ Test {i+1}: {'✓' if is_valid else '✗'}")
+                logger.append(f"│  └─ Preview: {test_preview}")
+            else:
+                logger.append(f"├─ Test {i+1}: ❌ No test function generated")
         
         # Programming solutions statistics
         logger.append(f"\n💻 Programming Solutions:")
@@ -382,16 +420,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Create result entries
         result_entries = []
         
-        # Add test entry (only one for all solutions)
-        result_entries.append({
-            'id': example_id,
-            'data_type': 'training',
-            'role': 'tester',
-            'problem': example['problem'],
-            'correct_answer': correct_answer,
-            'test_function': test_function,
-            'is_valid': test_success
-        })
+        # Add test entries (four test functions)
+        for i, (test_function, is_valid) in enumerate(zip(test_functions, test_successes)):
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'tester',
+                'problem': example['problem'],
+                'correct_answer': correct_answer,
+                'test_function': test_function,
+                'is_valid': is_valid,
+                'test_number': i + 1
+            })
         
         # Add programming entries
         for i, (prog_solution, prog_code, prog_result, prog_correct, test_result, test_pass) in enumerate(zip(
@@ -409,7 +449,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'model_code': prog_code,
                 'model_result': prog_result,
                 'is_correct': prog_correct,
-                'test_passed': test_pass,
+                'test_passed': test_pass,  # True if passed at least one test
                 'verified_correct': prog_correct and test_pass,
                 'attempt_number': i + 1
             })
@@ -420,9 +460,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'data_type': 'statistics',
             'example_processed_successfully': True,
             
-            # Test function statistics
-            'test_function': test_function,
-            'test_function_valid': test_success,
+            # Test functions statistics
+            'test_functions': test_functions,
+            'test_functions_valid': test_successes,
+            'valid_test_count': sum(test_successes),
             
             # Programming solutions statistics
             'programming_solutions_count': len(programming_solutions),
