@@ -87,13 +87,14 @@ class ProgressTracker:
             stats['testing_improvement'] = final_correct - initial_correct
             stats['testing_improvement_rate'] = ((final_correct - initial_correct) / len(test_entries) * 100) if test_entries else 0
         
-        # Calculate correct verdicts
+        # First pass: calculate total correct solutions and at_least_one
         at_least_one = 0
         total_correct = 0
-        initial_above_avg = 0
-        final_above_avg = 0
         initial_most_common_correct = 0
         final_most_common_correct = 0
+        
+        # Track per-problem correct counts for above-average calculation
+        problem_correct_counts = []
         
         for r in entries:
             # Process initial solutions
@@ -114,8 +115,8 @@ class ProgressTracker:
                     at_least_one += 1
                 total_correct += matches_count
                 
-                # Calculate if above average (more than half of solutions are correct)
-                if len(initial_matches) > 0 and matches_count / len(initial_matches) > 0.5:
+                # Calculate if above average (more than the average number of correct solutions per problem)
+                if matches_count > 0 and matches_count >= stats.get('avg_correct', 0):
                     initial_above_avg += 1
             
             # Process final solutions
@@ -125,7 +126,7 @@ class ProgressTracker:
                 # Calculate if above average for final solutions
                 if len(final_matches) > 0:
                     final_matches_count = sum(1 for match in final_matches if match)
-                    if final_matches_count / len(final_matches) > 0.5:
+                    if final_matches_count > 0 and final_matches_count >= stats.get('avg_correct', 0):
                         final_above_avg += 1
             elif not 'final_correctness' in r and initial_matches:
                 # If no final solutions, use initial for backward compatibility
@@ -147,8 +148,20 @@ class ProgressTracker:
                     initial_most_common_correct += 1
                     final_most_common_correct += 1
                 
+        # Calculate average correct solutions per problem
         stats['at_least_one'] = at_least_one
         stats['avg_correct'] = total_correct / total if total > 0 else 0
+        
+        # Second pass: calculate above-average statistics
+        initial_above_avg = 0
+        final_above_avg = 0
+        
+        # Calculate how many problems have above average correct solutions
+        for count in problem_correct_counts:
+            if count > stats['avg_correct']:
+                initial_above_avg += 1
+                final_above_avg += 1  # For backward compatibility if no separate final counts
+        
         stats['initial_above_avg'] = initial_above_avg
         stats['final_above_avg'] = final_above_avg
         stats['initial_most_common_correct'] = initial_most_common_correct
