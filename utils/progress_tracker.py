@@ -79,13 +79,13 @@ class ProgressTracker:
             stats['verified_correct_rate'] = (verified_correct_count / len(test_entries) * 100) if test_entries else 0
             
             # Track improvement from testing
-            initial_correct = sum(1 for r in test_entries if r.get('initial_success_rate', 0) > 0)
-            final_correct = sum(1 for r in test_entries if r.get('verified_success_rate', 0) > 0)
+            initial_correct_count = sum(1 for r in test_entries if r.get('initial_majority_correct', False))
+            final_correct_count = sum(1 for r in test_entries if r.get('final_majority_correct', False))
             
-            stats['initial_correct_count'] = initial_correct
-            stats['final_correct_count'] = final_correct
-            stats['testing_improvement'] = final_correct - initial_correct
-            stats['testing_improvement_rate'] = ((final_correct - initial_correct) / len(test_entries) * 100) if test_entries else 0
+            stats['initial_correct_count'] = initial_correct_count
+            stats['final_correct_count'] = final_correct_count
+            stats['testing_improvement'] = final_correct_count - initial_correct_count
+            stats['testing_improvement_rate'] = ((final_correct_count - initial_correct_count) / len(test_entries) * 100) if test_entries else 0
         
         # First pass: calculate total correct solutions and at_least_one
         at_least_one = 0
