@@ -864,7 +864,7 @@ class ArchitectReward(BaseReward):
                 programming_agent = ProgrammingAgent(programming_model)
                 
                 # Make multiple calls to the model and track success rate
-                num_attempts = 5  # Number of attempts to make
+                num_attempts = 10  # Number of attempts to make
                 successful_attempts = 0
                 
                 self.logger.info(f"Making {num_attempts} attempts with the programming model")

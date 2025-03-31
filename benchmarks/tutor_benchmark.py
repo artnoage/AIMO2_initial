@@ -49,11 +49,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Get models for solution and tutor agents
         main_model = get_model(config, role="main")
-        auxiliary_model = get_model(config, role="auxiliary")
         
         # Initialize agents
         solution_agent = FullSolutionAgent(main_model)
-        tutor_agent = TutorAgent(auxiliary_model)
+        tutor_agent = TutorAgent(main_model)
         
         # Generate multiple initial solutions if best_of > 1
         initial_solutions = []

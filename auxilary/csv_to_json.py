@@ -34,7 +34,7 @@ def convert_csv_to_json(csv_file_path, output_file_path=None):
             entry = {
                 'id': row['id'],
                 'problem': row['problem'],
-                'correct_solution': row['correct_answer']
+                'answer': row['correct_answer']
             }
             entries.append(entry)
     

@@ -88,12 +88,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         # Get models
         main_model = get_model(config, role="main")
-        config.main_temp=0
-        main_model2 = get_model(config, role="main")
         # Initialize agents
         architect_agent = ArchitectAgent(main_model)
+        testing_agent = TestingAgent(main_model)
+        config.main_temp=0
+        main_model2 = get_model(config, role="main")
         programming_agent = ProgrammingAgent(main_model2)
-        testing_agent = TestingAgent(main_model2)
+        
         
         # Generate architect analysis first (only once)
         logger.append(f"Generating architect analysis for problem {running_id + 1}...")

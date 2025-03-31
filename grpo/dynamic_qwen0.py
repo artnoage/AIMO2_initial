@@ -149,7 +149,7 @@ def main():
     # Configuration
     model_type = "dynamic_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/validation_set_mini"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -230,23 +230,18 @@ def main():
         
         
         # Load the base dataset
-        data1 = load_dataset(dataset_name,split="train")
-        data1=data1.shuffle(seed=141)
-        data1=data1.select(range(2500))
-        data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
-        data2=data2.select(range(500))
-        data2=data2.shuffle(seed= 141)
-        data = concatenate_datasets([data1,data2])
+        data = load_dataset(dataset_name,split="train")
         data=data.shuffle(seed=141)
+       
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.25,
-            'programming': 0.25,
+            'solution': 1,
+            'programming': 1,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.25,
-            'architect': 0.25
+            'test_programming': 1,
+            'architect': 1
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -284,7 +279,7 @@ def main():
         num_generations=8,
         max_prompt_length=1800,
         max_completion_length=5200,
-        num_train_epochs=1,
+        num_train_epochs=3,
         save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",
