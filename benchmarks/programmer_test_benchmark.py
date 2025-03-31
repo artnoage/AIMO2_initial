@@ -404,17 +404,17 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'final_majority_percentage': final_majority_percentage,
             'final_majority_correct': final_majority_correct,
             
-            # Compatibility fields for ProgressTracker statistics - BOTH initial and final
-            'is_correct_list': programming_correctness,  # Initial correctness (before test validation)
-            'is_most_common_correct': initial_majority_correct,  # Initial majority correctness
+            # Compatibility fields for ProgressTracker statistics - using verified results
+            'is_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],  # Verified correctness (after test validation)
+            'is_most_common_correct': final_majority_correct,  # Final majority correctness
             
             # Additional fields for final validation statistics
             'verified_correct_list': [c and t for c, t in zip(programming_correctness, test_passed)],  # After test validation
             'verified_most_common_correct': final_majority_correct,  # Final majority correctness
             
             'total_solutions': len(programming_solutions),
-            'correct_solutions': sum(programming_correctness),  # Initial correct solutions
-            'incorrect_solutions': len(programming_solutions) - sum(programming_correctness),  # Initial incorrect solutions
+            'correct_solutions': verified_correct_count,  # Verified correct solutions
+            'incorrect_solutions': len(programming_solutions) - verified_correct_count,  # Verified incorrect solutions
             'verified_correct_solutions': verified_correct_count,  # Final correct solutions (after test validation)
             'verified_incorrect_solutions': len(programming_solutions) - verified_correct_count  # Final incorrect solutions
         })
