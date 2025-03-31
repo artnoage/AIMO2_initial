@@ -192,14 +192,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
         logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
         
-        # Second phase: Generate FOUR test functions to validate all solutions
+        # Second phase: Generate EIGHT test functions to validate all solutions
         # We'll use the problem and the expected answer to create generic tests
         test_functions = []
         test_successes = []
         
-        for test_attempt in range(4):  # Generate 4 different test functions
+        for test_attempt in range(8):  # Generate 8 different test functions
             try:
-                logger.append(f"Generating test function {test_attempt+1} of 4...")
+                logger.append(f"Generating test function {test_attempt+1} of 8...")
                 # Create a prompt that includes the problem and the expected answer
                 test_prompt = f"Problem:\n{example['problem']}\n\nExpected Answer: {correct_answer}"
                 
@@ -318,8 +318,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         logger.append(f"❌ Error testing solution {i+1} with test {test_num+1}: {str(e)}")
                         solution_test_results.append({})
                 
-                # Fill in any missing results if we have fewer than 4 valid test functions
-                while len(solution_test_results) < 4:
+                # Fill in any missing results if we have fewer than 8 valid test functions
+                while len(solution_test_results) < 8:
                     solution_test_results.append({})
                 
                 test_results.append(solution_test_results)
@@ -332,7 +332,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 
         else:
             # If we couldn't generate any valid test functions, mark all solutions as not tested
-            test_results = [[{} for _ in range(4)] for _ in programming_solutions]
+            test_results = [[{} for _ in range(8)] for _ in programming_solutions]
             test_passed = [False for _ in programming_solutions]
             logger.append("❌ No valid test functions available, skipping test validation")
         
@@ -388,7 +388,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Test functions information
         logger.append(f"\n🧪 Shared Test Functions:")
         valid_test_count = sum(test_successes)
-        logger.append(f"├─ Valid test functions: {valid_test_count}/4")
+        logger.append(f"├─ Valid test functions: {valid_test_count}/8")
         
         for i, (test_func, is_valid) in enumerate(zip(test_functions, test_successes)):
             if test_func:
