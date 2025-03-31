@@ -134,9 +134,9 @@ class ProgressTracker:
                 final_most_common_correct += 1
             else:
                 # For benchmarks with separate initial and final majority
-                if r.get('is_initial_majority_correct', False):
+                if r.get('initial_majority_correct', False):
                     initial_most_common_correct += 1
-                if r.get('is_final_majority_correct', False):
+                if r.get('final_majority_correct', False):
                     final_most_common_correct += 1
                 # For hybrid benchmark
                 if r.get('most_common_correct', False):
