@@ -878,20 +878,19 @@ class TestProgrammingReward(BaseReward):
     }
 
 
-class DualProofReward(BaseReward):
-    """Reward class for dual proof evaluation (logical proof + programming solution)"""
+class TestProgrammingReward(BaseReward):
+    """Reward class for test function evaluation"""
     
-    __name__ = "dual_proof_reward"
+    __name__ = "test_programming_reward"
     relevant_stats = {
         'reward_components': [
-            'proof_rewards', 'code_rewards', 'structure_rewards',
-            'total_length_penalty', 'correct_proofs', 'correct_code', 
-            'correct_dual_solutions', 'total_rewards', 'average_reward'
+            'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+            'total_length_penalty', 'correct_tests', 'syntax_valid_tests', 
+            'execution_valid_tests', 'total_rewards', 'average_reward'
         ],
-        'dual_proof_stats': [
-            'correct_proofs', 'incorrect_proofs', 'correct_code', 
-            'incorrect_code', 'correct_dual_solutions', 'structure_errors',
-            'syntax_errors', 'execution_errors', 'timeout_errors'
+        'test_programming_stats': [
+            'correct_tests', 'incorrect_tests', 'syntax_errors', 
+            'execution_errors', 'timeout_errors'
         ]
     }
     
@@ -1088,6 +1087,207 @@ class TutorReward(BaseReward):
             'correct_verdict_rewards': 0,
             'correct_fix_rewards': 0
         })
+        
+    def _extract_evaluation(self, completion: str) -> bool:
+        """Extract whether the tutor evaluated the solution as correct or incorrect"""
+        # First check for verdict tags
+        verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
+        if verdict_match:
+            verdict_content = verdict_match.group(1).strip().lower()
+            # Check for positive indicators
+            if any(word in verdict_content for word in ['correct', 'right', 'valid', 'solution is good']):
+                return True
+            # Check for negative indicators
+            elif any(word in verdict_content for word in ['incorrect', 'wrong', 'error', 'mistake']):
+                return False
+            # Check for "step X" pattern which indicates an error
+            elif re.search(r'step\s+\d+', verdict_content):
+                return False
+        
+        # Default to None if we can't determine
+        return None
+        
+    def _extract_wrong_step(self, completion: str) -> Optional[int]:
+        """
+        Extract which step the tutor identified as wrong.
+        If the verdict contains exactly one integer, return that integer.
+        Otherwise return None.
+        """
+        # First check for verdict tags
+        verdict_match = re.search(r'<verdict>(.*?)</verdict>', completion, re.DOTALL)
+        if verdict_match:
+            verdict_content = verdict_match.group(1).strip()
+            
+            # Find all integers in the verdict
+            integers = re.findall(r'\b\d+\b', verdict_content)
+            
+            # If there's exactly one integer, return it
+            if len(integers) == 1:
+                try:
+                    return int(integers[0])
+                except (ValueError, IndexError):
+                    pass
+        return None
+
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a tutor evaluation"""
+        try:
+            # Get problem, full solution, and wrong step information
+            problem = kwargs.get('problem', '')
+            full_solution = kwargs.get('full_solution', '')
+            is_correct = kwargs.get('is_correct')
+            
+            # Try to convert wrong_step to int, default to None if not possible
+            wrong_step = kwargs.get('wrong_step', None)
+            if wrong_step is not None:
+                try:
+                    wrong_step = int(wrong_step)
+                except (ValueError, TypeError):
+                    self.logger.warning(f"Could not convert wrong_step to int: {wrong_step}")
+                    wrong_step = None
+            
+            if not all([problem, full_solution]):
+                self.logger.warning("Missing required inputs for tutor reward calculation")
+                return 0.0
+                
+            # If is_correct is None, we need to infer it from the model's evaluation
+            if is_correct is None:
+                self.logger.info("No ground truth 'is_correct' value provided, will infer from model evaluation")
+            
+            # Initialize reward
+            reward = 0.0
+            
+            # Check for thinking and response tags
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            
+            if not has_thinking or not has_response:
+                self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
+                return 0.0
+            
+            # Extract response section
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if not response_match:
+                self.logger.info("Could not extract response section")
+                return 0.0
+            
+            response_content = response_match.group(1)
+            
+            # Check for verdict tags in the response
+            verdict_match = re.search(r'<verdict>(.*?)</verdict>', response_content, re.DOTALL)
+            if not verdict_match:
+                self.logger.info("No verdict tags found in response")
+                return 0.0
+            
+            verdict_content = verdict_match.group(1).strip()
+            
+            # Check if the verdict is correct
+            verdict_is_correct = False
+            
+            # Extract the model's evaluation of the solution using the helper methods
+            model_says_correct = self._extract_evaluation(completion)
+            identified_step = self._extract_wrong_step(completion)
+            
+            if is_correct:
+                # Solution is correct, verdict should indicate correctness
+                if model_says_correct:
+                    verdict_is_correct = True
+                    self.stats.tutor_stats['correct_verdicts'] += 1
+                    self.logger.info("Correct verdict for correct solution")
+                else:
+                    self.stats.tutor_stats['incorrect_verdicts'] += 1
+                    self.logger.info(f"Incorrect verdict for correct solution: {verdict_content}")
+            else:
+                # Solution has error, verdict should be "Step X"
+                if identified_step is not None:
+                    if wrong_step is not None and identified_step == wrong_step:
+                        verdict_is_correct = True
+                        self.stats.tutor_stats['correct_verdicts'] += 1
+                        self.logger.info(f"Correct verdict identifying wrong step {wrong_step}")
+                    else:
+                        self.stats.tutor_stats['incorrect_verdicts'] += 1
+                        self.logger.info(f"Incorrect verdict: identified step {identified_step}, actual wrong step {wrong_step}")
+                else:
+                    self.stats.tutor_stats['incorrect_verdicts'] += 1
+                    self.logger.info(f"Incorrect verdict format for solution with error: {verdict_content}")
+            
+            # Award points for correct verdict
+            if verdict_is_correct is True:  # Explicitly check for True since it could be None
+                verdict_reward = self.config.tutor_verdict_reward
+                reward += verdict_reward
+                self.stats.reward_components['correct_verdict_rewards'] = self.stats.reward_components.get('correct_verdict_rewards', 0) + 1
+                self.logger.info(f"Applied verdict reward: +{verdict_reward:.3f}")
+            
+            # If the solution has an error or we don't know, check the finalization
+            if is_correct is False or (is_correct is None and not model_says_correct):
+                # Extract finalization section
+                finalization_match = re.search(r'<finalization>(.*?)</finalization>', response_content, re.DOTALL)
+                if finalization_match:
+                    finalization_content = finalization_match.group(1).strip()
+                    
+                    # If finalization is not empty, check if it produces the correct answer
+                    if finalization_content:
+                        # Extract the answer from the finalization
+                        model_answer = extract_answer_from_solution(finalization_content)
+                        if model_answer is not None:
+                            # Get the correct answer from the original problem
+                            correct_answer = kwargs.get('answer', '')
+                            
+                            # Convert to numeric values
+                            model_numeric, _ = extract_numeric_answer(model_answer)
+                            correct_numeric, _ = extract_numeric_answer(correct_answer)
+                            
+                            if model_numeric is not None and correct_numeric is not None:
+                                # Check if the fixed solution is correct
+                                fix_is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+                                
+                                if fix_is_correct:
+                                    # Award points for correct fix
+                                    fix_reward = self.config.tutor_fix_reward
+                                    
+                                    # If both the verdict and fix are correct, award bonus points
+                                    if verdict_is_correct:
+                                        fix_reward = self.config.tutor_combined_reward
+                                    
+                                    reward += fix_reward
+                                    self.stats.reward_components['correct_fix_rewards'] = self.stats.reward_components.get('correct_fix_rewards', 0) + 1
+                                    self.stats.tutor_stats['correct_fixes'] += 1
+                                    self.logger.info(f"Applied fix reward: +{fix_reward:.3f}")
+                                else:
+                                    self.stats.tutor_stats['incorrect_fixes'] += 1
+                                    self.logger.info(f"Incorrect fix: expected {correct_numeric}, got {model_numeric}")
+                            else:
+                                self.logger.info("Could not extract numeric values from fix or correct answer")
+                        else:
+                            self.logger.info("No boxed answer found in finalization")
+                    else:
+                        self.logger.info("Empty finalization section")
+                else:
+                    self.logger.info("No finalization tags found in response")
+            
+            # Apply length penalty
+            length_penalty = len(completion) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = \
+                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
+            total_samples = self.stats.total_batches
+            self.stats.reward_components['average_reward'] = self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+            
+            # Log detailed reward breakdown
+            self.logger.info(f"Tutor reward breakdown: verdict_correct={verdict_is_correct} ({self.config.tutor_verdict_reward if verdict_is_correct else 0}), " +
+                            f"fix_reward={fix_reward if 'fix_reward' in locals() else 0}, " +
+                            f"length_penalty={length_penalty:.4f}, total={reward:.4f}")
+            
+            return reward
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating tutor reward: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return 0.0
 
 
 class DualProofReward(BaseReward):
