@@ -149,7 +149,7 @@ def main():
     # Configuration
     model_type = "dynamic_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
-    dataset_name = "Metaskepsis/validation_set_mini"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -196,21 +196,21 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=7000,
+        max_seq_length=8000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.65,
-        max_lora_rank=64)
+        gpu_memory_utilization=0.55,
+        max_lora_rank=128)
         
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -236,12 +236,12 @@ def main():
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 1,
-            'programming': 1,
+            'solution': 0.1,
+            'programming': 0.1,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 1,
-            'architect': 1
+            'test_programming': 0.1,
+            'architect': 0
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -268,7 +268,7 @@ def main():
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.1,
+        warmup_ratio=0.01,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
@@ -278,7 +278,7 @@ def main():
         gradient_accumulation_steps=8,
         num_generations=8,
         max_prompt_length=1800,
-        max_completion_length=5200,
+        max_completion_length=6200,
         num_train_epochs=3,
         save_steps=50,
         max_grad_norm=0.1,
