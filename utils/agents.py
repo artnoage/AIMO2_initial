@@ -255,6 +255,42 @@ The function doesn't compute the root; it verifies whether the provided number m
 Your response should strictly follow this verification approach. 
 </response> """
 
+DUAL_PROOF_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to solve it using both logical reasoning and programming.
+
+Your output must include two clearly separated sections: **Thinking** and **Response**.
+
+<thinking>
+In this section, carefully analyze the problem:
+- Identify the key mathematical concepts and principles involved
+- Break down the problem into logical steps
+- Consider both a formal mathematical approach and a computational approach
+- Outline your solution strategy for both approaches
+- Think about edge cases, potential pitfalls, and how to handle them
+</thinking>
+
+<response>
+Your response must include both a logical proof and a programming solution:
+
+<proof>
+Provide a formal mathematical proof or solution:
+- Use clear, step-by-step logical reasoning
+- Include any necessary mathematical notation (using LaTeX where appropriate)
+- Ensure each step follows logically from the previous ones
+- Conclude with the final answer in a \boxed{} environment
+</proof>
+
+<code>
+Provide a complete, self-contained Python program that solves the problem:
+- Include necessary imports (numpy, sympy, scipy are allowed)
+- Use clear variable names and add comments explaining your approach
+- Implement an efficient algorithm based on your thinking
+- Print only the final numeric answer (no text)
+- Handle potential edge cases appropriately
+</code>
+
+Both solutions should arrive at the same answer, though they may use different approaches.
+</response>"""
+
 
 
 
@@ -375,5 +411,24 @@ class TestingAgent:
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
+
+class DualProofAgent:
+    """Agent that provides both logical proof and programming solution"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate both a logical proof and a programming solution for the problem"""
+        system_prompt = DUAL_PROOF_SYSTEM_PROMPT
+
+        content = f"Problem:\n{problem}\n\n"
+        
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=content)
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 
