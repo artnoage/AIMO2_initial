@@ -112,6 +112,19 @@ class RewardStats:
             'total_programming_attempts': 0
         }
         
+        # Track dual proof stats
+        self.dual_proof_stats = {
+            'correct_proofs': 0,
+            'incorrect_proofs': 0,
+            'correct_code': 0,
+            'incorrect_code': 0,
+            'correct_dual_solutions': 0,
+            'structure_errors': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0
+        }
+        
         # Initialize programming-specific reward components
         self.reward_components.update({
             'syntax_rewards': 0,
