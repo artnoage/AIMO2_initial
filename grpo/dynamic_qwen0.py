@@ -18,7 +18,6 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from dynamic_reward import DynamicReward
-from utils.similarity_checker import SolutionSimilarityChecker
 from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
@@ -175,11 +174,8 @@ def main():
         }
     )
     
-    # Initialize similarity checker first
-    similarity_checker = SolutionSimilarityChecker(reward_config)
-    
     # Initialize dynamic reward function
-    reward_func = DynamicReward(reward_config, similarity_checker)
+    reward_func = DynamicReward(reward_config)
     logger.info("\nInitialized DynamicReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     

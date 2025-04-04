@@ -13,10 +13,10 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from utils.data_preparation import prepare_programming_data
+from utils.data_preparation import prepare_dual_proof_data
 # Import system prompts from agents.py
 from utils.agents import DUAL_PROOF_SYSTEM_PROMPT
-from rewards import ProgrammingReward
+from rewards import DualProofReward
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""
@@ -130,8 +130,8 @@ def main():
     )
     
     # Initialize reward function
-    reward_func = ProgrammingReward(reward_config)
-    logger.info("\nInitialized ProgrammingReward for Dual Proof:")
+    reward_func = DualProofReward(reward_config)
+    logger.info("\nInitialized DualProofReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
     # Load model

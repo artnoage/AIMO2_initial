@@ -16,21 +16,19 @@ class DynamicReward(BaseReward):
     
     __name__ = "dynamic_reward"
     
-    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker = None):
+    def __init__(self, config: RewardConfig, similarity_checker=None):
         """
-        Initialize with configuration and similarity checker
+        Initialize with configuration
         
         Args:
             config: RewardConfig for rewards
-            similarity_checker: Optional similarity checker for rewards that need it
+            similarity_checker: Kept for backward compatibility but not used
         """
         super().__init__(config)
-        self.similarity_checker = similarity_checker
         
         # Create instances of all possible reward functions
-        # Note: similarity_checker is still passed but not used for rewards
-        self.solution_reward = SolutionReward(config, similarity_checker)
-        self.finalization_reward = FinalizationReward(config, similarity_checker)
+        self.solution_reward = SolutionReward(config)
+        self.finalization_reward = FinalizationReward(config)
         self.programming_reward = ProgrammingReward(config)
         self.tutor_reward = TutorReward(config)
         self.test_programming_reward = TestProgrammingReward(config)

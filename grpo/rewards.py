@@ -13,7 +13,6 @@ from utils.agents import *
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution, 
     extract_code_from_response, check_code_quality, generate_test_cases, run_test_function, run_code_safely)
-from utils.similarity_checker import SolutionSimilarityChecker
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
@@ -220,9 +219,8 @@ class SolutionReward(BaseReward):
         ]
     }
     
-    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker):
+    def __init__(self, config: RewardConfig, similarity_checker=None):
         super().__init__(config)
-        self.similarity_checker = similarity_checker
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -308,18 +306,6 @@ class SolutionReward(BaseReward):
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
-            # Extract response parts from completions for similarity calculation
-            response_parts = []
-            for comp in group_completions:
-                response_match = re.search(r'<response>(.*?)</response>', comp, re.DOTALL)
-                if response_match:
-                    response_parts.append(response_match.group(1))
-                else:
-                    # If no response tags, use the whole completion
-                    response_parts.append(comp)
-                    
-            # Calculate similarity matrix for group using only response parts
-            similarity_matrix = self.similarity_checker.compute_similarity_matrix(response_parts)
             
             # Calculate correctness for all completions in group
             all_results = []
@@ -527,9 +513,8 @@ class FinalizationReward(BaseReward):
         'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed']
     }
     
-    def __init__(self, config: RewardConfig, similarity_checker: SolutionSimilarityChecker = None):
+    def __init__(self, config: RewardConfig, similarity_checker=None):
         super().__init__(config)
-        self.similarity_checker = similarity_checker
 
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a solution completion"""
