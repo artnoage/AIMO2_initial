@@ -26,7 +26,8 @@ from utils.agents import (
     PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT,
     TESTER_SYSTEM_PROMPT,
-    ARCHITECT_SYSTEM_PROMPT
+    ARCHITECT_SYSTEM_PROMPT,
+    DUAL_PROOF_SYSTEM_PROMPT
 )
 
 load_dotenv()
@@ -241,7 +242,8 @@ def main():
             'finalization': 0,
             'tutor': 0,
             'test_programming': 0.1,
-            'architect': 0
+            'architect': 0,
+            'dual_proof': 0.1
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -254,7 +256,8 @@ def main():
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
             tokenizer, 
-            distribution)
+            distribution,
+            dual_proof_system_prompt=DUAL_PROOF_SYSTEM_PROMPT)
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()

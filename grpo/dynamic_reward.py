@@ -9,7 +9,7 @@ from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward, TestProgrammingReward, ArchitectReward
+from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward, TestProgrammingReward, ArchitectReward, DualProofReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
@@ -34,6 +34,7 @@ class DynamicReward(BaseReward):
         self.tutor_reward = TutorReward(config)
         self.test_programming_reward = TestProgrammingReward(config)
         self.architect_reward = ArchitectReward(config)
+        self.dual_proof_reward = DualProofReward(config)
         
         # Share the same stats object across all reward functions
         self.solution_reward.stats = self.stats
@@ -42,10 +43,11 @@ class DynamicReward(BaseReward):
         self.tutor_reward.stats = self.stats
         self.test_programming_reward.stats = self.stats
         self.architect_reward.stats = self.stats
+        self.dual_proof_reward.stats = self.stats
         
         # Collect relevant stats from all possible rewards
         self.relevant_stats = {}
-        for reward in [self.solution_reward, self.finalization_reward, self.programming_reward, self.tutor_reward, self.test_programming_reward, self.architect_reward]:
+        for reward in [self.solution_reward, self.finalization_reward, self.programming_reward, self.tutor_reward, self.test_programming_reward, self.architect_reward, self.dual_proof_reward]:
             if hasattr(reward, 'relevant_stats'):
                 for category, stats in reward.relevant_stats.items():
                     if category not in self.relevant_stats:
@@ -70,10 +72,19 @@ class DynamicReward(BaseReward):
             'average_programming_score', 'total_programming_attempts'
         ])
         
+        # Ensure dual_proof_stats are included in relevant stats
+        if 'dual_proof_stats' not in self.relevant_stats:
+            self.relevant_stats['dual_proof_stats'] = []
+        self.relevant_stats['dual_proof_stats'].extend([
+            'correct_proofs', 'incorrect_proofs', 'correct_code', 
+            'incorrect_code', 'correct_dual_solutions', 'structure_errors',
+            'syntax_errors', 'execution_errors', 'timeout_errors'
+        ])
+        
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
             self.relevant_stats['reward_components'] = []
-        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses'])
+        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 'dual_proof_reward_uses'])
     
     def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
         """
@@ -116,7 +127,7 @@ class DynamicReward(BaseReward):
             example_types: List of normalized example type strings
             
         Returns:
-            String indicating which reward to use: 'solution', 'finalization', 'programming', or 'tutor'
+            String indicating which reward to use: 'solution', 'finalization', 'programming', 'tutor', etc.
         """
         # Count the different types in the batch
         finalization_count = sum(1 for et in example_types if et == 'finalization')
@@ -125,11 +136,15 @@ class DynamicReward(BaseReward):
         tutor_count = sum(1 for et in example_types if et == 'tutor')
         test_programming_count = sum(1 for et in example_types if et == 'test_programming')
         architect_count = sum(1 for et in example_types if et == 'architect')
+        dual_proof_count = sum(1 for et in example_types if et == 'dual_proof')
         
-        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}, test_programming={test_programming_count}, architect={architect_count}")
+        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}, test_programming={test_programming_count}, architect={architect_count}, dual_proof={dual_proof_count}")
         
         # Determine the majority type
-        if tutor_count > 0:
+        if dual_proof_count > 0:
+            self.logger.info("Selected dual proof reward (priority type)")
+            return 'dual_proof'
+        elif tutor_count > 0:
             self.logger.info("Selected tutor reward (priority type)")
             return 'tutor'
         elif test_programming_count > 0:
@@ -189,6 +204,9 @@ class DynamicReward(BaseReward):
             elif reward_type == 'architect':
                 reward_func = self.architect_reward
                 self.stats.reward_components['architect_reward_uses'] = self.stats.reward_components.get('architect_reward_uses', 0) + 1
+            elif reward_type == 'dual_proof':
+                reward_func = self.dual_proof_reward
+                self.stats.reward_components['dual_proof_reward_uses'] = self.stats.reward_components.get('dual_proof_reward_uses', 0) + 1
             else:
                 reward_func = self.solution_reward
                 self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
@@ -257,6 +275,8 @@ class DynamicReward(BaseReward):
                 self.stats.reward_components['test_programming_reward_uses'] = self.stats.reward_components.get('test_programming_reward_uses', 0) + 1
             elif reward_type == 'architect':
                 self.stats.reward_components['architect_reward_uses'] = self.stats.reward_components.get('architect_reward_uses', 0) + 1
+            elif reward_type == 'dual_proof':
+                self.stats.reward_components['dual_proof_reward_uses'] = self.stats.reward_components.get('dual_proof_reward_uses', 0) + 1
         
         # Group completions by prompt for group context
         prompt_groups = {}
