@@ -237,7 +237,7 @@ Write a Python function named `test_solution(answer)` that:
 
 **Example of a verification scenario**:
 If the mathematical problem is:
-> "Find the root of the equation \( x^2 - 2 = 0 \)."
+> "Find the root of the equation \\( x^2 - 2 = 0 \\)."
 
 Your verification function could look like this:
 
