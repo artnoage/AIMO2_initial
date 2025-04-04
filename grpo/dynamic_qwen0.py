@@ -161,7 +161,7 @@ def main():
     # Setup
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
     # Initialize wandb
     wandb.init(
@@ -171,7 +171,6 @@ def main():
             "model_type": reward_config.model_type,
             "dataset": dataset_name,
             "base_reward": 3.0,
-            "diversity_bonus": 0.3,
             "step_continuity_reward": 0.5
         }
     )

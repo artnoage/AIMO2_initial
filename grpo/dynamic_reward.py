@@ -28,6 +28,7 @@ class DynamicReward(BaseReward):
         self.similarity_checker = similarity_checker
         
         # Create instances of all possible reward functions
+        # Note: similarity_checker is still passed but not used for rewards
         self.solution_reward = SolutionReward(config, similarity_checker)
         self.finalization_reward = FinalizationReward(config, similarity_checker)
         self.programming_reward = ProgrammingReward(config)
@@ -84,7 +85,15 @@ class DynamicReward(BaseReward):
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
             self.relevant_stats['reward_components'] = []
-        self.relevant_stats['reward_components'].extend(['solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 'dual_proof_reward_uses'])
+        self.relevant_stats['reward_components'].extend([
+            'solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 
+            'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 
+            'dual_proof_reward_uses'
+        ])
+        
+        # Remove similarity stats from relevant stats
+        if 'similarity_stats' in self.relevant_stats:
+            del self.relevant_stats['similarity_stats']
     
     def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
         """

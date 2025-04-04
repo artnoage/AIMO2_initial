@@ -60,22 +60,10 @@ class RewardStats:
             'wrong_step_missed': 0
         }
         
-        # Track group-specific stats
+        # Track group-specific stats (without similarity metrics)
         self.group_stats = {
-            'unique_solutions': 0,
-            'similar_solutions': 0,
             'correct_answers': 0,
-            'incorrect_answers': 0,
-            'total_similarity': 0.0,
-            'diversity_bonuses': 0,
-            'similarity_penalties': 0
-        }
-        
-        # Track similarity stats
-        self.similarity_stats = {
-            'unique_completions': 0,
-            'similar_completions': 0,
-            'total_similarity': 0.0
+            'incorrect_answers': 0
         }
         
         # Track programming stats
@@ -233,8 +221,12 @@ class RewardStats:
         if not hasattr(self, 'reward_type_usage'):
             self.reward_type_usage = {
                 'solution': 0,
-                'completion': 0,
-                'programming': 0
+                'finalization': 0,
+                'programming': 0,
+                'tutor': 0,
+                'test_programming': 0,
+                'architect': 0,
+                'dual_proof': 0
             }
         
         # Track the reward type that was used
@@ -405,12 +397,20 @@ class RewardStats:
                 # Skip if category doesn't exist
                 continue
                 
+            # Skip similarity_stats category
+            if category == 'similarity_stats':
+                continue
+                
             # Add section header
             section_name = category.replace('_', ' ').title()
             summary.append(f"\n{section_name}:")
             
             # Add relevant stats
             for stat_name in stat_names:
+                # Skip similarity-related stats
+                if 'similarity' in stat_name or 'diversity' in stat_name:
+                    continue
+                    
                 if stat_name not in stats_dict:
                     continue
                     
