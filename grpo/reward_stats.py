@@ -22,6 +22,7 @@ class RewardStats:
         self.min_reward = float('inf')
         self.max_reward = float('-inf')
         self.all_rewards = []  # Store all rewards for dynamic binning
+        self.current_reward_type = None  # Track the current reward type being used
         
         # Track step validation stats
         self.step_stats = {
@@ -201,12 +202,12 @@ class RewardStats:
         # Update reward type usage stats
         reward_type = kwargs.get('reward_type')
         if reward_type:
-            if reward_type == 'solution':
-                self.reward_components['solution_reward_uses'] += 1
-            elif reward_type == 'completion':
-                self.reward_components['completion_reward_uses'] += 1
-            elif reward_type == 'programming':
-                self.reward_components['programming_reward_uses'] += 1
+            # Store the current reward type
+            self.current_reward_type = reward_type
+            
+            # Update usage counter
+            if hasattr(self, 'reward_type_usage') and reward_type in self.reward_type_usage:
+                self.reward_type_usage[reward_type] += 1
         
         # Initialize example type tracking if not already present
         if not hasattr(self, 'example_types'):
@@ -362,7 +363,6 @@ class RewardStats:
                 'reward_components': list(self.reward_components.keys()),
                 'group_stats': list(self.group_stats.keys()),
                 'step_stats': list(self.step_stats.keys()),
-                'similarity_stats': list(self.similarity_stats.keys()),
                 'programming_stats': list(self.programming_stats.keys())
             }
             
@@ -373,10 +373,25 @@ class RewardStats:
             if hasattr(self, 'reward_type_usage'):
                 relevant_stats['reward_type_usage'] = list(self.reward_type_usage.keys())
         
+        # Get the current reward type being used
+        current_reward_type = None
+        for reward_type, count in self.reward_type_usage.items():
+            if count > 0:
+                current_reward_type = reward_type
+                break
+        
         # Build sections based on relevant stats
         for category, stat_names in relevant_stats.items():
             if not stat_names:
                 continue
+            
+            # Skip categories that don't match the current reward type
+            if current_reward_type and category.endswith('_stats'):
+                category_prefix = category.replace('_stats', '')
+                if category_prefix != current_reward_type and category_prefix != 'reward' and category != 'reward_components':
+                    # Only show stats relevant to the current reward type
+                    if current_reward_type + '_stats' != category:
+                        continue
             
             # Get the stats dictionary for this category
             if category == 'reward_components':
@@ -385,10 +400,22 @@ class RewardStats:
                 stats_dict = self.group_stats
             elif category == 'step_stats':
                 stats_dict = self.step_stats
-            elif category == 'similarity_stats':
-                stats_dict = self.similarity_stats
             elif category == 'programming_stats':
                 stats_dict = self.programming_stats
+            elif category == 'tutor_stats':
+                stats_dict = self.tutor_stats
+            elif category == 'test_programming_stats':
+                stats_dict = self.test_programming_stats
+            elif category == 'architect_stats':
+                stats_dict = self.architect_stats
+            elif category == 'dual_proof_stats':
+                stats_dict = self.dual_proof_stats
+            elif category == 'solution_stats':
+                # Map to existing dictionaries
+                stats_dict = {**self.reward_components, **self.group_stats}
+            elif category == 'finalization_stats':
+                # Map to existing dictionaries
+                stats_dict = {**self.reward_components, **self.step_stats}
             elif category == 'example_types' and hasattr(self, 'example_types'):
                 stats_dict = self.example_types
             elif category == 'reward_type_usage' and hasattr(self, 'reward_type_usage'):
@@ -396,11 +423,7 @@ class RewardStats:
             else:
                 # Skip if category doesn't exist
                 continue
-                
-            # Skip similarity_stats category
-            if category == 'similarity_stats':
-                continue
-                
+            
             # Add section header
             section_name = category.replace('_', ' ').title()
             summary.append(f"\n{section_name}:")

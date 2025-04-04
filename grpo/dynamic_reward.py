@@ -44,41 +44,64 @@ class DynamicReward(BaseReward):
         self.architect_reward.stats = self.stats
         self.dual_proof_reward.stats = self.stats
         
-        # Collect relevant stats from all possible rewards
-        self.relevant_stats = {}
-        for reward in [self.solution_reward, self.finalization_reward, self.programming_reward, self.tutor_reward, self.test_programming_reward, self.architect_reward, self.dual_proof_reward]:
-            if hasattr(reward, 'relevant_stats'):
-                for category, stats in reward.relevant_stats.items():
-                    if category not in self.relevant_stats:
-                        self.relevant_stats[category] = []
-                    self.relevant_stats[category].extend(stats)
-        
-        # Ensure test_programming_stats are included in relevant stats
-        if 'test_programming_stats' not in self.relevant_stats:
-            self.relevant_stats['test_programming_stats'] = []
-        self.relevant_stats['test_programming_stats'].extend([
-            'correct_tests', 'incorrect_tests', 'syntax_errors', 
-            'execution_errors', 'timeout_errors', 'test_function_success_rate',
-            'average_test_cases_passed', 'total_test_cases_evaluated', 'test_cases_passed'
-        ])
-        
-        # Ensure architect_stats are included in relevant stats
-        if 'architect_stats' not in self.relevant_stats:
-            self.relevant_stats['architect_stats'] = []
-        self.relevant_stats['architect_stats'].extend([
-            'correct_architectures', 'incorrect_architectures', 'syntax_errors', 
-            'execution_errors', 'timeout_errors', 'programming_success_rate',
-            'average_programming_score', 'total_programming_attempts'
-        ])
-        
-        # Ensure dual_proof_stats are included in relevant stats
-        if 'dual_proof_stats' not in self.relevant_stats:
-            self.relevant_stats['dual_proof_stats'] = []
-        self.relevant_stats['dual_proof_stats'].extend([
-            'correct_proofs', 'incorrect_proofs', 'correct_code', 
-            'incorrect_code', 'correct_dual_solutions', 'structure_errors',
-            'syntax_errors', 'execution_errors', 'timeout_errors'
-        ])
+        # Create a clean separation of stats by reward type
+        self.relevant_stats = {
+            # Common stats for all rewards
+            'reward_components': [
+                'solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 
+                'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 
+                'dual_proof_reward_uses', 'total_rewards', 'average_reward', 'total_length_penalty'
+            ],
+            
+            # Solution reward specific stats
+            'solution_stats': [
+                'base_rewards', 'validation_rewards', 'correct_answers', 'incorrect_answers'
+            ],
+            
+            # Finalization reward specific stats
+            'finalization_stats': [
+                'base_rewards', 'step_continuity_rewards', 'correct_step_numbering', 
+                'incorrect_step_numbering', 'total_steps_completed'
+            ],
+            
+            # Programming reward specific stats
+            'programming_stats': [
+                'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+                'syntax_valid_solutions', 'execution_valid_solutions', 'correct_solutions',
+                'incorrect_solutions', 'syntax_errors', 'execution_errors', 'timeout_errors'
+            ],
+            
+            # Tutor reward specific stats
+            'tutor_stats': [
+                'base_rewards', 'correct_verdict_rewards', 'correct_fix_rewards',
+                'correct_verdicts', 'incorrect_verdicts', 'correct_fixes', 'incorrect_fixes'
+            ],
+            
+            # Test programming reward specific stats
+            'test_programming_stats': [
+                'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+                'syntax_valid_tests', 'execution_valid_tests', 'correct_tests',
+                'incorrect_tests', 'syntax_errors', 'execution_errors', 'timeout_errors',
+                'test_function_success_rate', 'average_test_cases_passed', 
+                'total_test_cases_evaluated', 'test_cases_passed'
+            ],
+            
+            # Architect reward specific stats
+            'architect_stats': [
+                'syntax_rewards', 'execution_rewards', 'correctness_rewards',
+                'syntax_valid_architectures', 'execution_valid_architectures', 'correct_architectures',
+                'incorrect_architectures', 'syntax_errors', 'execution_errors', 'timeout_errors',
+                'programming_success_rate', 'average_programming_score', 'total_programming_attempts'
+            ],
+            
+            # Dual proof reward specific stats
+            'dual_proof_stats': [
+                'proof_rewards', 'code_rewards', 'structure_rewards',
+                'correct_proofs', 'correct_code', 'correct_dual_solutions',
+                'incorrect_proofs', 'incorrect_code', 'structure_errors',
+                'syntax_errors', 'execution_errors', 'timeout_errors'
+            ]
+        }
         
         # Add dynamic reward specific stats
         if 'reward_components' not in self.relevant_stats:
@@ -88,10 +111,6 @@ class DynamicReward(BaseReward):
             'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 
             'dual_proof_reward_uses'
         ])
-        
-        # Remove similarity stats from relevant stats
-        if 'similarity_stats' in self.relevant_stats:
-            del self.relevant_stats['similarity_stats']
     
     def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
         """
@@ -265,9 +284,9 @@ class DynamicReward(BaseReward):
         reward_type = self._select_reward_type(example_types)
         self.logger.info(f"Using {reward_type} reward for entire batch of {len(completions)} examples")
         
-        # Update stats with example types
+        # Update stats with example types and current reward type
         if hasattr(self, 'stats'):
-            self.stats.update([], example_type=example_types)
+            self.stats.update([], example_type=example_types, reward_type=reward_type)
             
             # Update the reward type usage
             if reward_type == 'solution':
@@ -284,6 +303,9 @@ class DynamicReward(BaseReward):
                 self.stats.reward_components['architect_reward_uses'] = self.stats.reward_components.get('architect_reward_uses', 0) + 1
             elif reward_type == 'dual_proof':
                 self.stats.reward_components['dual_proof_reward_uses'] = self.stats.reward_components.get('dual_proof_reward_uses', 0) + 1
+            
+            # Store the current reward type for use in get_summary
+            self.stats.current_reward_type = reward_type
         
         # Group completions by prompt for group context
         prompt_groups = {}
