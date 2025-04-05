@@ -1579,54 +1579,74 @@ class TestDrivenProgrammerReward(BaseReward):
             
             # Check implementation quality (syntax)
             implementation_quality_passed, implementation_quality_message = check_code_quality(implementation)
+            implementation_correct = False
+            
             if not implementation_quality_passed:
                 self.logger.info(f"Implementation quality check failed: {implementation_quality_message}")
                 self.stats.test_driven_programmer_stats['syntax_errors'] += 1
-                return reward  # Return with just the test reward if applicable
-            
-            # Run the implementation and check if it produces a valid output
-            execution_success, result, error_message = run_code_safely(implementation, timeout=self.config.timeout)
-            implementation_correct = False
-            
-            if not execution_success or result is None:
-                self.logger.info(f"Implementation execution failed: {error_message}")
-                if "timed out" in error_message:
-                    self.stats.test_driven_programmer_stats['timeout_errors'] += 1
-                else:
-                    self.stats.test_driven_programmer_stats['execution_errors'] += 1
-                return reward  # Return with just the test reward if applicable
-            
-            # Check if the implementation result matches the correct answer
-            try:
-                if isinstance(correct_answer, str):
-                    numeric_answer, _ = extract_numeric_answer(correct_answer)
-                    if numeric_answer is not None:
-                        correct_answer = numeric_answer
-                    else:
-                        correct_answer = float(correct_answer)
-                else:
-                    correct_answer = float(correct_answer)
-            except (ValueError, TypeError):
-                self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
-                return reward  # Return with just the test reward if applicable
-            
-            # Compare with tolerance
-            implementation_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
-            if implementation_correct:
-                # Award 1/4 of base reward for correct implementation
-                implementation_reward = self.config.base_reward / 4
-                reward += implementation_reward
-                self.stats.reward_components['implementation_rewards'] = self.stats.reward_components.get('implementation_rewards', 0) + 1
-                self.stats.reward_components['correct_implementations'] = self.stats.reward_components.get('correct_implementations', 0) + 1
-                self.stats.test_driven_programmer_stats['correct_implementations'] += 1
-                self.logger.info(f"Applied implementation reward: +{implementation_reward:.3f}")
+                # Continue with test evaluation even if implementation has syntax errors
             else:
-                self.stats.test_driven_programmer_stats['incorrect_implementations'] += 1
-                self.logger.info(f"Incorrect implementation result: expected {correct_answer}, got {result}")
+                # Run the implementation and check if it produces a valid output
+                execution_success, result, error_message = run_code_safely(implementation, timeout=self.config.timeout)
+                
+                if execution_success and result is not None:
+                    # Check if the implementation result matches the correct answer
+                    try:
+                        if isinstance(correct_answer, str):
+                            numeric_answer, _ = extract_numeric_answer(correct_answer)
+                            if numeric_answer is not None:
+                                correct_answer = numeric_answer
+                            else:
+                                correct_answer = float(correct_answer)
+                        else:
+                            correct_answer = float(correct_answer)
+                            
+                        # Compare with tolerance
+                        implementation_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+                        if implementation_correct:
+                            # Award 1/4 of base reward for correct implementation
+                            implementation_reward = self.config.base_reward / 4
+                            reward += implementation_reward
+                            self.stats.reward_components['implementation_rewards'] = self.stats.reward_components.get('implementation_rewards', 0) + 1
+                            self.stats.reward_components['correct_implementations'] = self.stats.reward_components.get('correct_implementations', 0) + 1
+                            self.stats.test_driven_programmer_stats['correct_implementations'] += 1
+                            self.logger.info(f"Applied implementation reward: +{implementation_reward:.3f}")
+                        else:
+                            self.stats.test_driven_programmer_stats['incorrect_implementations'] += 1
+                            self.logger.info(f"Incorrect implementation result: expected {correct_answer}, got {result}")
+                    except (ValueError, TypeError):
+                        self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
+                else:
+                    self.logger.info(f"Implementation execution failed: {error_message}")
+                    if "timed out" in error_message:
+                        self.stats.test_driven_programmer_stats['timeout_errors'] += 1
+                    else:
+                        self.stats.test_driven_programmer_stats['execution_errors'] += 1
             
-            # 5. Try to run tests against the implementation
-            # Combine test and implementation into a single file for execution
-            combined_code = f"""
+            # 5. Evaluate the test suite independently
+            # First, try to run the test suite on its own to check syntax and basic functionality
+            test_only_code = f"""
+{test_content}
+
+# Dummy implementation that returns the correct answer
+def solution():
+    return {correct_answer}
+
+# Run tests if this file is executed directly
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
+"""
+            
+            test_syntax_success, _, test_syntax_error = run_code_safely(test_only_code, timeout=self.config.timeout)
+            
+            if test_syntax_success:
+                self.logger.info("Test suite runs successfully with a dummy implementation")
+                
+                # Now try to run the tests with the actual implementation if it's syntactically valid
+                if implementation_quality_passed:
+                    # Combine test and implementation into a single file for execution
+                    combined_code = f"""
 {test_content}
 
 # Implementation
@@ -1637,30 +1657,51 @@ if __name__ == '__main__':
     import unittest
     unittest.main()
 """
-            
-            # Run the combined code to see if tests pass
-            test_execution_success, _, test_error_message = run_code_safely(combined_code, timeout=self.config.timeout)
-            
-            if test_execution_success:
-                # Tests ran without errors, award test reward
-                test_reward = self.config.base_reward / 4
-                reward += test_reward
-                self.stats.reward_components['test_rewards'] = self.stats.reward_components.get('test_rewards', 0) + 1
-                self.stats.reward_components['correct_tests'] = self.stats.reward_components.get('correct_tests', 0) + 1
-                self.stats.test_driven_programmer_stats['correct_tests'] += 1
-                test_correct = True
-                self.logger.info(f"Applied test reward: +{test_reward:.3f}")
+                    
+                    # Run the combined code to see if tests pass
+                    test_execution_success, _, test_error_message = run_code_safely(combined_code, timeout=self.config.timeout)
+                    
+                    if test_execution_success:
+                        # Tests ran without errors with the actual implementation
+                        test_correct = True
+                    else:
+                        self.logger.info(f"Tests failed with the actual implementation: {test_error_message}")
+                        # This is expected if the implementation is incorrect but tests are good
+                        if not implementation_correct:
+                            # If implementation is wrong but tests caught it, that's good!
+                            test_correct = True
+                            self.logger.info("Tests correctly identified an incorrect implementation")
+                        else:
+                            # If implementation is correct but tests fail, tests are wrong
+                            test_correct = False
+                            self.logger.info("Tests incorrectly fail on a correct implementation")
+                else:
+                    # If implementation has syntax errors, we can't run the tests with it
+                    # But the tests themselves are syntactically valid, which is good
+                    test_correct = True
+                    self.logger.info("Tests are syntactically valid, but can't be run with invalid implementation")
                 
-                # If both tests and implementation are correct, award additional bonus
-                if implementation_correct:
-                    bonus_reward = self.config.base_reward / 2  # Additional 1/2 of base reward for having both correct
-                    reward += bonus_reward
-                    self.stats.reward_components['correct_test_driven_solutions'] = self.stats.reward_components.get('correct_test_driven_solutions', 0) + 1
-                    self.stats.test_driven_programmer_stats['correct_test_driven_solutions'] += 1
-                    self.logger.info(f"Applied test-driven solution bonus: +{bonus_reward:.3f}")
+                if test_correct:
+                    # Award 1/4 of base reward for correct tests
+                    test_reward = self.config.base_reward / 4
+                    reward += test_reward
+                    self.stats.reward_components['test_rewards'] = self.stats.reward_components.get('test_rewards', 0) + 1
+                    self.stats.reward_components['correct_tests'] = self.stats.reward_components.get('correct_tests', 0) + 1
+                    self.stats.test_driven_programmer_stats['correct_tests'] += 1
+                    self.logger.info(f"Applied test reward: +{test_reward:.3f}")
+                else:
+                    self.stats.test_driven_programmer_stats['incorrect_tests'] += 1
             else:
+                self.logger.info(f"Test suite has runtime errors: {test_syntax_error}")
                 self.stats.test_driven_programmer_stats['incorrect_tests'] += 1
-                self.logger.info(f"Test execution failed: {test_error_message}")
+            
+            # 6. Award bonus if both components are correct
+            if implementation_correct and test_correct:
+                bonus_reward = self.config.base_reward / 2  # Additional 1/2 of base reward for having both correct
+                reward += bonus_reward
+                self.stats.reward_components['correct_test_driven_solutions'] = self.stats.reward_components.get('correct_test_driven_solutions', 0) + 1
+                self.stats.test_driven_programmer_stats['correct_test_driven_solutions'] += 1
+                self.logger.info(f"Applied test-driven solution bonus: +{bonus_reward:.3f}")
             
             # Apply length penalty
             length_penalty = len(completion) * self.config.length_penalty_factor
