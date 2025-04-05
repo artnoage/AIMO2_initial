@@ -279,7 +279,11 @@ except Exception as e:
         logger.append(f"\n📊 Statistics:")
         logger.append(f"├─ Implementation correct: {'✓' if implementation_correct else '✗'}")
         logger.append(f"├─ Test suite correct: {'✓' if test_correct else '✗'}")
-        logger.append(f"└─ Combined solution works: {'✓' if combined_correct else '✗'}")
+        logger.append(f"├─ Combined solution works: {'✓' if combined_correct else '✗'}")
+        if final_answer is not None:
+            logger.append(f"└─ Final answer: {final_answer} (source: {answer_source})")
+        else:
+            logger.append(f"└─ Final answer: None")
         
         logger.append("="*80)
         
@@ -302,8 +306,33 @@ except Exception as e:
             'implementation_result': implementation_result,
             'implementation_correct': implementation_correct,
             'test_correct': test_correct,
-            'combined_correct': combined_correct
+            'combined_correct': combined_correct,
+            'final_answer': final_answer,
+            'answer_source': answer_source
         })
+        
+        # Determine final answer using fallback logic
+        final_answer = None
+        answer_source = None
+        
+        if implementation_correct and test_correct:
+            # Both implementation is correct and passes tests
+            final_answer = implementation_result
+            answer_source = "verified_implementation"
+            logger.append(f"✅ Using verified implementation answer: {final_answer}")
+        elif implementation_correct:
+            # Implementation is correct but tests fail or are incorrect
+            final_answer = implementation_result
+            answer_source = "implementation_fallback"
+            logger.append(f"⚠️ Fallback to correct implementation answer: {final_answer}")
+        elif implementation_result is not None:
+            # Implementation produces a result but it's incorrect
+            final_answer = implementation_result
+            answer_source = "implementation_fallback_incorrect"
+            logger.append(f"⚠️ Fallback to incorrect implementation answer: {final_answer}")
+        else:
+            # No usable answer
+            logger.append(f"❌ No usable answer found")
         
         # Add statistics entry
         result_entries.append({
@@ -313,14 +342,17 @@ except Exception as e:
             'test_success': test_correct,
             'implementation_success': implementation_correct,
             'combined_success': combined_correct,
+            'final_answer': final_answer,
+            'answer_source': answer_source,
+            'final_answer_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
             
             # Compatibility fields for ProgressTracker statistics
-            'is_correct': implementation_correct or test_correct,  # Consider success if either component is correct
+            'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
             'is_most_common_correct': implementation_correct,  # For backward compatibility
             
             'total_solutions': 1,
-            'correct_solutions': 1 if implementation_correct or test_correct else 0,
-            'incorrect_solutions': 0 if implementation_correct or test_correct else 1,
+            'correct_solutions': 1 if (final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance) else 0,
+            'incorrect_solutions': 0 if (final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance) else 1,
             'verified_correct_solutions': 1 if implementation_correct and test_correct else 0,
             'verified_incorrect_solutions': 1 if not (implementation_correct and test_correct) else 0
         })
