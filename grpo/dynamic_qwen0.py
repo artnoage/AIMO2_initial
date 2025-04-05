@@ -26,7 +26,8 @@ from utils.agents import (
     TUTOR_SYSTEM_PROMPT,
     TESTER_SYSTEM_PROMPT,
     ARCHITECT_SYSTEM_PROMPT,
-    DUAL_PROOF_SYSTEM_PROMPT
+    DUAL_PROOF_SYSTEM_PROMPT,
+    TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT
 )
 
 load_dotenv()
@@ -238,7 +239,8 @@ def main():
             'tutor': 0,
             'test_programming': 0.1,
             'architect': 0,
-            'dual_proof': 0.1
+            'dual_proof': 0.1,
+            'test_driven_programmer': 0.1
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -251,6 +253,7 @@ def main():
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
             DUAL_PROOF_SYSTEM_PROMPT,
+            TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 

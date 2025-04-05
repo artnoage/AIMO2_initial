@@ -9,7 +9,7 @@ from utils.solution_utils import *
 from utils.similarity_checker import SolutionSimilarityChecker
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward, TestProgrammingReward, ArchitectReward, DualProofReward
+from grpo.rewards import BaseReward, SolutionReward, FinalizationReward, ProgrammingReward, TutorReward, TestProgrammingReward, ArchitectReward, DualProofReward, TestDrivenProgrammerReward
 
 class DynamicReward(BaseReward):
     """A reward class that dynamically selects between SolutionReward and CompletionReward based on context"""
@@ -34,6 +34,7 @@ class DynamicReward(BaseReward):
         self.test_programming_reward = TestProgrammingReward(config)
         self.architect_reward = ArchitectReward(config)
         self.dual_proof_reward = DualProofReward(config)
+        self.test_driven_programmer_reward = TestDrivenProgrammerReward(config)
         
         # Share the same stats object across all reward functions
         self.solution_reward.stats = self.stats
@@ -43,6 +44,7 @@ class DynamicReward(BaseReward):
         self.test_programming_reward.stats = self.stats
         self.architect_reward.stats = self.stats
         self.dual_proof_reward.stats = self.stats
+        self.test_driven_programmer_reward.stats = self.stats
         
         # Create a clean separation of stats by reward type
         self.relevant_stats = {
@@ -50,7 +52,7 @@ class DynamicReward(BaseReward):
             'reward_components': [
                 'solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 
                 'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 
-                'dual_proof_reward_uses', 'total_rewards', 'average_reward', 'total_length_penalty'
+                'dual_proof_reward_uses', 'test_driven_programmer_reward_uses', 'total_rewards', 'average_reward', 'total_length_penalty'
             ],
             
             # Solution reward specific stats
@@ -100,6 +102,14 @@ class DynamicReward(BaseReward):
                 'correct_proofs', 'correct_code', 'correct_dual_solutions',
                 'incorrect_proofs', 'incorrect_code', 'structure_errors',
                 'syntax_errors', 'execution_errors', 'timeout_errors'
+            ],
+            
+            # Test-driven programmer reward specific stats
+            'test_driven_programmer_stats': [
+                'test_rewards', 'implementation_rewards', 'structure_rewards',
+                'correct_tests', 'correct_implementations', 'correct_test_driven_solutions',
+                'incorrect_tests', 'incorrect_implementations', 'structure_errors',
+                'syntax_errors', 'execution_errors', 'timeout_errors', 'test_coverage'
             ]
         }
         
@@ -109,7 +119,7 @@ class DynamicReward(BaseReward):
         self.relevant_stats['reward_components'].extend([
             'solution_reward_uses', 'finalization_reward_uses', 'programming_reward_uses', 
             'tutor_reward_uses', 'test_programming_reward_uses', 'architect_reward_uses', 
-            'dual_proof_reward_uses'
+            'dual_proof_reward_uses', 'test_driven_programmer_reward_uses'
         ])
     
     def _extract_example_types(self, batch_kwargs: Dict) -> List[str]:
@@ -163,11 +173,15 @@ class DynamicReward(BaseReward):
         test_programming_count = sum(1 for et in example_types if et == 'test_programming')
         architect_count = sum(1 for et in example_types if et == 'architect')
         dual_proof_count = sum(1 for et in example_types if et == 'dual_proof')
+        test_driven_programmer_count = sum(1 for et in example_types if et == 'test_driven_programmer')
         
-        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}, test_programming={test_programming_count}, architect={architect_count}, dual_proof={dual_proof_count}")
+        self.logger.info(f"Type counts in batch: finalization={finalization_count}, solution={solution_count}, programming={programming_count}, tutor={tutor_count}, test_programming={test_programming_count}, architect={architect_count}, dual_proof={dual_proof_count}, test_driven_programmer={test_driven_programmer_count}")
         
         # Determine the majority type
-        if dual_proof_count > 0:
+        if test_driven_programmer_count > 0:
+            self.logger.info("Selected test-driven programmer reward (priority type)")
+            return 'test_driven_programmer'
+        elif dual_proof_count > 0:
             self.logger.info("Selected dual proof reward (priority type)")
             return 'dual_proof'
         elif tutor_count > 0:
@@ -233,6 +247,9 @@ class DynamicReward(BaseReward):
             elif reward_type == 'dual_proof':
                 reward_func = self.dual_proof_reward
                 self.stats.reward_components['dual_proof_reward_uses'] = self.stats.reward_components.get('dual_proof_reward_uses', 0) + 1
+            elif reward_type == 'test_driven_programmer':
+                reward_func = self.test_driven_programmer_reward
+                self.stats.reward_components['test_driven_programmer_reward_uses'] = self.stats.reward_components.get('test_driven_programmer_reward_uses', 0) + 1
             else:
                 reward_func = self.solution_reward
                 self.stats.reward_components['solution_reward_uses'] = self.stats.reward_components.get('solution_reward_uses', 0) + 1
@@ -303,6 +320,8 @@ class DynamicReward(BaseReward):
                 self.stats.reward_components['architect_reward_uses'] = self.stats.reward_components.get('architect_reward_uses', 0) + 1
             elif reward_type == 'dual_proof':
                 self.stats.reward_components['dual_proof_reward_uses'] = self.stats.reward_components.get('dual_proof_reward_uses', 0) + 1
+            elif reward_type == 'test_driven_programmer':
+                self.stats.reward_components['test_driven_programmer_reward_uses'] = self.stats.reward_components.get('test_driven_programmer_reward_uses', 0) + 1
             
             # Store the current reward type for use in get_summary
             self.stats.current_reward_type = reward_type
