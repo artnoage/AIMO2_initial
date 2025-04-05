@@ -233,7 +233,7 @@ try:
         if implementation_success:
             # Try to extract a number from the output
             import re
-            numbers = re.findall(r'[-+]?\d*\.\d+|\d+', implementation_output)
+            numbers = re.findall(r'[-+]?\\d*\\.\\d+|\\d+', implementation_output)
             if numbers:
                 try:
                     result = float(numbers[-1])  # Take the last number as the result
@@ -276,6 +276,29 @@ except Exception as e:
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         
+        # Determine final answer using fallback logic
+        final_answer = None
+        answer_source = None
+        
+        if implementation_correct and test_correct:
+            # Both implementation is correct and passes tests
+            final_answer = implementation_result
+            answer_source = "verified_implementation"
+            logger.append(f"✅ Using verified implementation answer: {final_answer}")
+        elif implementation_correct:
+            # Implementation is correct but tests fail or are incorrect
+            final_answer = implementation_result
+            answer_source = "implementation_fallback"
+            logger.append(f"⚠️ Fallback to correct implementation answer: {final_answer}")
+        elif implementation_result is not None:
+            # Implementation produces a result but it's incorrect
+            final_answer = implementation_result
+            answer_source = "implementation_fallback_incorrect"
+            logger.append(f"⚠️ Fallback to incorrect implementation answer: {final_answer}")
+        else:
+            # No usable answer
+            logger.append(f"❌ No usable answer found")
+            
         logger.append(f"\n📊 Statistics:")
         logger.append(f"├─ Implementation correct: {'✓' if implementation_correct else '✗'}")
         logger.append(f"├─ Test suite correct: {'✓' if test_correct else '✗'}")
@@ -310,10 +333,6 @@ except Exception as e:
             'final_answer': final_answer,
             'answer_source': answer_source
         })
-        
-        # Determine final answer using fallback logic
-        final_answer = None
-        answer_source = None
         
         if implementation_correct and test_correct:
             # Both implementation is correct and passes tests
