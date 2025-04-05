@@ -1722,7 +1722,7 @@ try:
         if implementation_success:
             # Try to extract a number from the output
             import re
-            numbers = re.findall(r'[-+]?\d*\.\d+|\d+', implementation_output)
+            numbers = re.findall(r'[-+]?\\d*\\.\\d+|\\d+', implementation_output)
             if numbers:
                 try:
                     result = float(numbers[-1])  # Take the last number as the result
