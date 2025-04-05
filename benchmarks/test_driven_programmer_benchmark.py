@@ -51,6 +51,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
     1. Generate both test suite and implementation in a single response
     2. Evaluate both components independently
     3. Check if they work together
+    4. Generate multiple solutions if best_of > 1 and select the best one
     """
     logger = BenchmarkLogger()
     try:
@@ -91,57 +92,71 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         # Initialize agent
         test_driven_programmer_agent = TestDrivenProgrammerAgent(main_model)
         
-        # Generate test-driven programmer solution
-        logger.append(f"Generating test-driven programmer solution...")
-        prompt, solution = await test_driven_programmer_agent.generate(example["problem"], return_prompt=True)
+        # Generate multiple test-driven programmer solutions
+        solutions = []
+        test_contents = []
+        implementations = []
+        implementation_results = []
+        implementation_correctness = []
+        test_correctness = []
+        combined_correctness = []
+        final_answers = []
+        answer_sources = []
         
-        # Extract test and implementation sections
-        test_match = re.search(r'<test>(.*?)</test>', solution, re.DOTALL)
-        implementation_match = re.search(r'<implementation>(.*?)</implementation>', solution, re.DOTALL)
+        # First phase: Generate multiple solutions
+        for attempt in range(config.best_of):
+            try:
+                logger.append(f"Generating test-driven programmer solution {attempt+1}...")
+                prompt, solution = await test_driven_programmer_agent.generate(example["problem"], return_prompt=True)
+                
+                # Extract test and implementation sections
+                test_match = re.search(r'<test>(.*?)</test>', solution, re.DOTALL)
+                implementation_match = re.search(r'<implementation>(.*?)</implementation>', solution, re.DOTALL)
+                
+                if not test_match or not implementation_match:
+                    logger.append(f"❌ Missing test or implementation section in solution {attempt+1}")
+                    solutions.append(solution)
+                    test_contents.append("")
+                    implementations.append("")
+                    implementation_results.append(None)
+                    implementation_correctness.append(False)
+                    test_correctness.append(False)
+                    combined_correctness.append(False)
+                    final_answers.append(None)
+                    answer_sources.append("invalid_solution")
+                    continue
+                
+                test_content = test_match.group(1)
+                implementation = implementation_match.group(1)
         
-        if not test_match or not implementation_match:
-            logger.append(f"❌ Missing test or implementation section in solution")
-            logger.print()
-            return [{
-                'id': example_id,
-                'data_type': 'statistics',
-                'example_processed_successfully': False,
-                'test_success': False,
-                'implementation_success': False,
-                'combined_success': False
-            }]
+                # Evaluate implementation
+                implementation_quality_passed, quality_message = check_code_quality(implementation)
+                implementation_correct = False
+                implementation_result = None
+                
+                if implementation_quality_passed:
+                    logger.append(f"Implementation syntax check passed for attempt {attempt+1}")
+                    execution_success, result, error_message = run_code_safely(implementation, timeout=config.timeout)
+                    
+                    if execution_success and result is not None:
+                        implementation_result = result
+                        implementation_correct = abs(correct_answer - result) <= config.tolerance
+                        logger.append(f"Implementation result {attempt+1}: {result} (expected: {correct_answer})")
+                        logger.append(f"Implementation correct: {'✓' if implementation_correct else '✗'}")
+                    else:
+                        logger.append(f"❌ Implementation execution failed for attempt {attempt+1}: {error_message}")
+                else:
+                    logger.append(f"❌ Implementation syntax check failed for attempt {attempt+1}: {quality_message}")
+                
+                # Evaluate test suite
+                test_quality_passed, test_quality_message = check_code_quality(test_content)
+                test_correct = False
         
-        test_content = test_match.group(1)
-        implementation = implementation_match.group(1)
-        
-        # Evaluate implementation
-        implementation_quality_passed, quality_message = check_code_quality(implementation)
-        implementation_correct = False
-        implementation_result = None
-        
-        if implementation_quality_passed:
-            logger.append(f"Implementation syntax check passed")
-            execution_success, result, error_message = run_code_safely(implementation, timeout=config.timeout)
-            
-            if execution_success and result is not None:
-                implementation_result = result
-                implementation_correct = abs(correct_answer - result) <= config.tolerance
-                logger.append(f"Implementation result: {result} (expected: {correct_answer})")
-                logger.append(f"Implementation correct: {'✓' if implementation_correct else '✗'}")
-            else:
-                logger.append(f"❌ Implementation execution failed: {error_message}")
-        else:
-            logger.append(f"❌ Implementation syntax check failed: {quality_message}")
-        
-        # Evaluate test suite
-        test_quality_passed, test_quality_message = check_code_quality(test_content)
-        test_correct = False
-        
-        if test_quality_passed:
-            logger.append(f"Test syntax check passed")
-            
-            # Test if the test_solution function works correctly
-            test_only_code = f"""
+                if test_quality_passed:
+                    logger.append(f"Test syntax check passed for attempt {attempt+1}")
+                    
+                    # Test if the test_solution function works correctly
+                    test_only_code = f"""
 {test_content}
 
 # Test if the test_solution function works with the correct answer
@@ -165,25 +180,25 @@ except Exception as e:
 
 print(f"Overall test function success: {{success}}")
 """
-            
-            test_syntax_success, test_output, test_syntax_error = run_code_safely(test_only_code, timeout=config.timeout)
-            
-            if test_syntax_success and "Overall test function success: True" in test_output:
-                logger.append(f"Test function works correctly with correct and incorrect answers")
-                test_correct = True
-            else:
-                logger.append(f"❌ Test function validation failed: {test_syntax_error}")
-                if test_output:
-                    logger.append(f"Test output: {test_output}")
-        else:
-            logger.append(f"❌ Test syntax check failed: {test_quality_message}")
+                    
+                    test_syntax_success, test_output, test_syntax_error = run_code_safely(test_only_code, timeout=config.timeout)
+                    
+                    if test_syntax_success and "Overall test function success: True" in test_output:
+                        logger.append(f"Test function works correctly with correct and incorrect answers for attempt {attempt+1}")
+                        test_correct = True
+                    else:
+                        logger.append(f"❌ Test function validation failed for attempt {attempt+1}: {test_syntax_error}")
+                        if test_output:
+                            logger.append(f"Test output: {test_output}")
+                else:
+                    logger.append(f"❌ Test syntax check failed for attempt {attempt+1}: {test_quality_message}")
+                
+                # Evaluate combined solution
+                combined_correct = False
         
-        # Evaluate combined solution
-        combined_correct = False
-        
-        if implementation_quality_passed and test_quality_passed:
-            # Combine test and implementation
-            combined_code = f"""
+                if implementation_quality_passed and test_quality_passed:
+                    # Combine test and implementation
+                    combined_code = f"""
 {test_content}
 
 # Implementation
@@ -247,26 +262,149 @@ except Exception as e:
     print(f"Error in combined execution: {{e}}")
     combined_correct = False
 """
-            
-            combined_success, combined_output, combined_error = run_code_safely(combined_code, timeout=config.timeout)
-            
-            if combined_success:
-                logger.append(f"Combined solution execution successful")
-                if "Test result: True" in combined_output:
-                    logger.append(f"Implementation passes the test function")
-                    combined_correct = True
+                    
+                    combined_success, combined_output, combined_error = run_code_safely(combined_code, timeout=config.timeout)
+                    
+                    if combined_success:
+                        logger.append(f"Combined solution execution successful for attempt {attempt+1}")
+                        if "Test result: True" in combined_output:
+                            logger.append(f"Implementation passes the test function for attempt {attempt+1}")
+                            combined_correct = True
+                        else:
+                            logger.append(f"Implementation fails the test function for attempt {attempt+1}")
+                            # If implementation is correct but tests fail, that's a test issue
+                            if implementation_correct:
+                                logger.append(f"Tests incorrectly fail on a correct implementation for attempt {attempt+1}")
+                            # If implementation is wrong and tests fail, that could be good (tests catching errors)
+                            elif not implementation_correct:
+                                logger.append(f"Tests correctly identify an incorrect implementation for attempt {attempt+1}")
+                                # This is actually good test behavior
+                                test_correct = True
+                    else:
+                        logger.append(f"❌ Combined solution failed for attempt {attempt+1}: {combined_error}")
+        
+                # Determine final answer using fallback logic
+                final_answer = None
+                answer_source = None
+                
+                if implementation_correct and test_correct:
+                    # Both implementation is correct and passes tests
+                    final_answer = implementation_result
+                    answer_source = "verified_implementation"
+                    logger.append(f"✅ Using verified implementation answer for attempt {attempt+1}: {final_answer}")
+                elif implementation_correct:
+                    # Implementation is correct but tests fail or are incorrect
+                    final_answer = implementation_result
+                    answer_source = "implementation_fallback"
+                    logger.append(f"⚠️ Fallback to correct implementation answer for attempt {attempt+1}: {final_answer}")
+                elif implementation_result is not None:
+                    # Implementation produces a result but it's incorrect
+                    final_answer = implementation_result
+                    answer_source = "implementation_fallback_incorrect"
+                    logger.append(f"⚠️ Fallback to incorrect implementation answer for attempt {attempt+1}: {final_answer}")
                 else:
-                    logger.append(f"Implementation fails the test function")
-                    # If implementation is correct but tests fail, that's a test issue
-                    if implementation_correct:
-                        logger.append(f"Tests incorrectly fail on a correct implementation")
-                    # If implementation is wrong and tests fail, that could be good (tests catching errors)
-                    elif not implementation_correct:
-                        logger.append(f"Tests correctly identify an incorrect implementation")
-                        # This is actually good test behavior
-                        test_correct = True
-            else:
-                logger.append(f"❌ Combined solution failed: {combined_error}")
+                    # No usable answer
+                    logger.append(f"❌ No usable answer found for attempt {attempt+1}")
+                
+                # Store all results
+                solutions.append(solution)
+                test_contents.append(test_content)
+                implementations.append(implementation)
+                implementation_results.append(implementation_result)
+                implementation_correctness.append(implementation_correct)
+                test_correctness.append(test_correct)
+                combined_correctness.append(combined_correct)
+                final_answers.append(final_answer)
+                answer_sources.append(answer_source)
+                
+            except Exception as e:
+                logger.append(f"❌ Error in test-driven programmer attempt {attempt+1}: {str(e)}")
+                solutions.append(f"Error: {str(e)}")
+                test_contents.append("")
+                implementations.append("")
+                implementation_results.append(None)
+                implementation_correctness.append(False)
+                test_correctness.append(False)
+                combined_correctness.append(False)
+                final_answers.append(None)
+                answer_sources.append("error")
+        
+        # Select the best solution based on priority:
+        # 1. Solutions with correct implementation and correct tests
+        # 2. Solutions with correct implementation
+        # 3. Solutions with correct tests
+        # 4. Any solution with a final answer
+        
+        best_index = -1
+        
+        # Priority 1: Correct implementation and correct tests
+        for i, (impl_correct, test_correct) in enumerate(zip(implementation_correctness, test_correctness)):
+            if impl_correct and test_correct:
+                best_index = i
+                logger.append(f"Selected solution {i+1} with correct implementation and tests")
+                break
+        
+        # Priority 2: Correct implementation
+        if best_index == -1:
+            for i, correct in enumerate(implementation_correctness):
+                if correct:
+                    best_index = i
+                    logger.append(f"Selected solution {i+1} with correct implementation")
+                    break
+        
+        # Priority 3: Correct tests
+        if best_index == -1:
+            for i, correct in enumerate(test_correctness):
+                if correct:
+                    best_index = i
+                    logger.append(f"Selected solution {i+1} with correct tests")
+                    break
+        
+        # Priority 4: Any solution with a final answer
+        if best_index == -1:
+            for i, answer in enumerate(final_answers):
+                if answer is not None:
+                    best_index = i
+                    logger.append(f"Selected solution {i+1} with a final answer")
+                    break
+        
+        # If no good solution found, use the first one
+        if best_index == -1 and len(solutions) > 0:
+            best_index = 0
+            logger.append(f"No good solution found, defaulting to first solution")
+        
+        # Use the best solution
+        if best_index != -1:
+            solution = solutions[best_index]
+            test_content = test_contents[best_index]
+            implementation = implementations[best_index]
+            implementation_result = implementation_results[best_index]
+            implementation_correct = implementation_correctness[best_index]
+            test_correct = test_correctness[best_index]
+            combined_correct = combined_correctness[best_index]
+            final_answer = final_answers[best_index]
+            answer_source = answer_sources[best_index]
+            
+            logger.append(f"Using solution {best_index+1} as the final solution")
+        else:
+            logger.append(f"❌ No valid solutions found")
+            logger.print()
+            return [{
+                'id': example_id,
+                'data_type': 'statistics',
+                'example_processed_successfully': False,
+                'test_success': False,
+                'implementation_success': False,
+                'combined_success': False
+            }]
+        
+        # Count correct solutions
+        total_solutions = len(solutions)
+        correct_solutions = sum(1 for ans in final_answers 
+                               if ans is not None and abs(ans - correct_answer) <= config.tolerance)
+        verified_correct_solutions = sum(1 for impl_corr, test_corr in 
+                                        zip(implementation_correctness, test_correctness)
+                                        if impl_corr and test_corr)
         
         # Add statistics to logs
         logger.append("\n" + "="*80)
@@ -276,33 +414,35 @@ except Exception as e:
         logger.append(f"{example['problem'][:200]}...")
         logger.append(f"\n✓ Expected Answer: {correct_answer}")
         
-        # Determine final answer using fallback logic
-        final_answer = None
-        answer_source = None
-        
-        if implementation_correct and test_correct:
-            # Both implementation is correct and passes tests
-            final_answer = implementation_result
-            answer_source = "verified_implementation"
-            logger.append(f"✅ Using verified implementation answer: {final_answer}")
-        elif implementation_correct:
-            # Implementation is correct but tests fail or are incorrect
-            final_answer = implementation_result
-            answer_source = "implementation_fallback"
-            logger.append(f"⚠️ Fallback to correct implementation answer: {final_answer}")
-        elif implementation_result is not None:
-            # Implementation produces a result but it's incorrect
-            final_answer = implementation_result
-            answer_source = "implementation_fallback_incorrect"
-            logger.append(f"⚠️ Fallback to incorrect implementation answer: {final_answer}")
-        else:
-            # No usable answer
-            logger.append(f"❌ No usable answer found")
-            
         logger.append(f"\n📊 Statistics:")
+        
+        # Solution statistics
+        logger.append(f"\n💻 Test-Driven Programmer Solutions:")
+        for i, (impl_corr, test_corr, comb_corr, final_ans, source) in enumerate(zip(
+            implementation_correctness, test_correctness, combined_correctness, final_answers, answer_sources)):
+            
+            impl_status = "✓" if impl_corr else "✗"
+            test_status = "✓" if test_corr else "✗"
+            comb_status = "✓" if comb_corr else "✗"
+            best_marker = " [BEST]" if i == best_index else ""
+            
+            logger.append(f"├─ Solution {i+1}{best_marker}:")
+            logger.append(f"│  ├─ Implementation: {impl_status} (Result: {implementation_results[i]})")
+            logger.append(f"│  ├─ Test: {test_status}")
+            logger.append(f"│  ├─ Combined: {comb_status}")
+            logger.append(f"│  └─ Final: {final_ans} (source: {source})")
+        
+        # Overall statistics
+        logger.append(f"\n📈 Overall Statistics:")
+        logger.append(f"├─ Total solutions: {total_solutions}")
+        logger.append(f"├─ Correct solutions: {correct_solutions} ({(correct_solutions/total_solutions)*100:.1f}%)")
+        logger.append(f"├─ Verified correct solutions: {verified_correct_solutions} ({(verified_correct_solutions/total_solutions)*100:.1f}%)")
+        
+        # Best solution statistics
+        logger.append(f"\n🏆 Best Solution (#{best_index+1}):")
         logger.append(f"├─ Implementation correct: {'✓' if implementation_correct else '✗'}")
-        logger.append(f"├─ Test suite correct: {'✓' if test_correct else '✗'}")
-        logger.append(f"├─ Combined solution works: {'✓' if combined_correct else '✗'}")
+        logger.append(f"├─ Test correct: {'✓' if test_correct else '✗'}")
+        logger.append(f"├─ Combined works: {'✓' if combined_correct else '✗'}")
         if final_answer is not None:
             logger.append(f"└─ Final answer: {final_answer} (source: {answer_source})")
         else:
@@ -316,42 +456,73 @@ except Exception as e:
         # Create result entries
         result_entries = []
         
-        # Add test-driven programmer entry
-        result_entries.append({
-            'id': example_id,
-            'data_type': 'training',
-            'role': 'test_driven_programmer',
-            'problem': example['problem'],
-            'correct_answer': correct_answer,
-            'model_solution': solution,
-            'test_content': test_content,
-            'implementation': implementation,
-            'implementation_result': implementation_result,
-            'implementation_correct': implementation_correct,
-            'test_correct': test_correct,
-            'combined_correct': combined_correct,
-            'final_answer': final_answer,
-            'answer_source': answer_source
-        })
+        # Add all test-driven programmer entries
+        for i, (solution_i, test_i, impl_i, impl_res_i, impl_corr_i, 
+                test_corr_i, comb_corr_i, final_ans_i, source_i) in enumerate(zip(
+                    solutions, test_contents, implementations, implementation_results, 
+                    implementation_correctness, test_correctness, combined_correctness, 
+                    final_answers, answer_sources)):
+            
+            result_entries.append({
+                'id': example_id,
+                'data_type': 'training',
+                'role': 'test_driven_programmer',
+                'problem': example['problem'],
+                'correct_answer': correct_answer,
+                'model_solution': solution_i,
+                'test_content': test_i,
+                'implementation': impl_i,
+                'implementation_result': impl_res_i,
+                'implementation_correct': impl_corr_i,
+                'test_correct': test_corr_i,
+                'combined_correct': comb_corr_i,
+                'final_answer': final_ans_i,
+                'answer_source': source_i,
+                'attempt_number': i + 1,
+                'is_best_solution': i == best_index
+            })
         
-        if implementation_correct and test_correct:
-            # Both implementation is correct and passes tests
-            final_answer = implementation_result
-            answer_source = "verified_implementation"
-            logger.append(f"✅ Using verified implementation answer: {final_answer}")
-        elif implementation_correct:
-            # Implementation is correct but tests fail or are incorrect
-            final_answer = implementation_result
-            answer_source = "implementation_fallback"
-            logger.append(f"⚠️ Fallback to correct implementation answer: {final_answer}")
-        elif implementation_result is not None:
-            # Implementation produces a result but it's incorrect
-            final_answer = implementation_result
-            answer_source = "implementation_fallback_incorrect"
-            logger.append(f"⚠️ Fallback to incorrect implementation answer: {final_answer}")
-        else:
-            # No usable answer
-            logger.append(f"❌ No usable answer found")
+        # Calculate statistics exactly as in dual_proof_benchmark.py
+        
+        # Initial majority vote on ALL programming solutions (before test validation)
+        initial_answer_counts = Counter([str(ans) for ans in final_answers if ans is not None])
+        initial_majority = initial_answer_counts.most_common(1)
+        initial_majority_answer = initial_majority[0][0] if initial_majority else None
+        initial_majority_count = initial_majority[0][1] if initial_majority else 0
+        initial_majority_percentage = (initial_majority_count / len([r for r in final_answers if r is not None])) * 100 if initial_majority else 0
+        
+        # Check if the initial majority answer is correct
+        initial_majority_correct = False
+        if initial_majority_answer:
+            try:
+                if isinstance(correct_answer, (int, float)):
+                    initial_majority_correct = abs(float(initial_majority_answer) - correct_answer) <= config.tolerance
+                else:
+                    initial_majority_correct = str(initial_majority_answer).strip() == str(correct_answer).strip()
+            except:
+                pass
+        
+        logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
+        logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
+        
+        # For test-driven programmer, we don't have a separate test phase, so we use the same values for final
+        final_majority_answer = initial_majority_answer
+        final_majority_count = initial_majority_count
+        final_majority_percentage = initial_majority_percentage
+        final_majority_correct = initial_majority_correct
+        
+        # Create is_correct_list for compatibility with ProgressTracker
+        is_correct_list = [
+            ans is not None and abs(ans - correct_answer) <= config.tolerance 
+            for ans in final_answers
+        ]
+        
+        # Calculate success rates
+        initial_success_rate = sum(is_correct_list) / len(is_correct_list) * 100 if is_correct_list else 0
+        verified_correct_count = sum(1 for impl_corr, test_corr in 
+                                    zip(implementation_correctness, test_correctness)
+                                    if impl_corr and test_corr)
+        verified_success_rate = verified_correct_count / len(solutions) * 100 if solutions else 0
         
         # Add statistics entry
         result_entries.append({
@@ -364,16 +535,68 @@ except Exception as e:
             'final_answer': final_answer,
             'answer_source': answer_source,
             'final_answer_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
+            'best_solution_index': best_index,
+            
+            # Solution statistics
+            'all_implementation_correctness': implementation_correctness,
+            'all_test_correctness': test_correctness,
+            'all_combined_correctness': combined_correctness,
+            'all_final_answers': final_answers,
+            
+            # Use exactly the same structure as in dual_proof_benchmark.py
+            'example_processed_successfully': True,
+            
+            # Programming solutions statistics
+            'programming_solutions_count': len(solutions),
+            'programming_correctness': is_correct_list,
+            'programming_results': final_answers,
+            'initial_success_rate': initial_success_rate,
+            
+            # Initial majority vote (before test validation)
+            'initial_majority_answer': initial_majority_answer,
+            'initial_majority_count': initial_majority_count,
+            'initial_majority_percentage': initial_majority_percentage,
+            'initial_majority_correct': initial_majority_correct,
+            
+            # Test statistics
+            'test_passed': test_correctness,  # Using test correctness as a proxy for test passing
+            'test_success_rate': sum(test_correctness) / len(test_correctness) * 100 if test_correctness else 0,
+            
+            # Verified statistics (solutions that are correct AND pass their tests)
+            'verified_correct': [c and t for c, t in zip(is_correct_list, test_correctness)],
+            'verified_success_rate': verified_success_rate,
+            'verified_results': [ans for ans, test_corr in zip(final_answers, test_correctness) if test_corr and ans is not None],
+            
+            # Final majority vote (after test validation)
+            'final_majority_answer': final_majority_answer,
+            'final_majority_count': final_majority_count,
+            'final_majority_percentage': final_majority_percentage,
+            'final_majority_correct': final_majority_correct,
+            
+            # Initial correctness statistics (before test validation)
+            'initial_correctness': is_correct_list,
+            'initial_majority_correct': initial_majority_correct,
+            'initial_success_rate': initial_success_rate,
+            
+            # Test validation statistics
+            'test_passed': test_correctness,
+            'test_success_rate': sum(test_correctness) / len(test_correctness) * 100 if test_correctness else 0,
+            
+            # Final correctness statistics (after test validation)
+            'final_correctness': [c and t for c, t in zip(is_correct_list, test_correctness)],
+            'final_majority_correct': final_majority_correct,
+            'verified_success_rate': verified_success_rate,
             
             # Compatibility fields for ProgressTracker statistics
+            'is_correct_list': is_correct_list,
             'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
-            'is_most_common_correct': implementation_correct,  # For backward compatibility
+            'is_most_common_correct': initial_majority_correct,
             
-            'total_solutions': 1,
-            'correct_solutions': 1 if (final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance) else 0,
-            'incorrect_solutions': 0 if (final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance) else 1,
-            'verified_correct_solutions': 1 if implementation_correct and test_correct else 0,
-            'verified_incorrect_solutions': 1 if not (implementation_correct and test_correct) else 0
+            'total_solutions': total_solutions,
+            'correct_solutions': correct_solutions,
+            'incorrect_solutions': total_solutions - correct_solutions,
+            'verified_correct_solutions': verified_correct_count,
+            'verified_incorrect_solutions': total_solutions - verified_correct_count
         })
         
         return result_entries
