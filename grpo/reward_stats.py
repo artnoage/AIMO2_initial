@@ -227,7 +227,8 @@ class RewardStats:
                 'tutor': 0,
                 'test_programming': 0,
                 'architect': 0,
-                'dual_proof': 0
+                'dual_proof': 0,
+                'test_driven_programmer': 0
             }
         
         # Track the reward type that was used

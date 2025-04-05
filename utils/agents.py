@@ -272,6 +272,40 @@ Provide a complete, self-contained Python program that solves the problem:
 Both solutions should arrive at the same answer, though they may use different approaches.
 </response>"""
 
+TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to solve it using a test-driven programming approach.
+
+Your output must include two clearly separated sections: **Thinking** and **Response**.
+
+<thinking>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+</thinking>
+
+<response>
+Your response must include both a test suite and an implementation:
+
+<test>
+Provide a complete test suite for the solution:
+- Include necessary imports (unittest, pytest, numpy, etc.)
+- Write comprehensive test cases that verify correctness
+- Test edge cases and normal cases
+- Include at least one test for the final answer
+- Make sure tests are clear and well-documented
+</test>
+
+<implementation>
+Provide a complete, self-contained Python program that solves the problem:
+- Include necessary imports (numpy, sympy, scipy are allowed)
+- Use clear variable names and add comments explaining your approach
+- Implement an efficient algorithm based on your thinking
+- Print only the final numeric answer (no text)
+- Ensure your implementation passes all the tests you've written
+</implementation>
+
+Both the tests and implementation should work together to solve the problem correctly.
+</response>"""
+
 
 
 
@@ -402,6 +436,26 @@ class DualProofAgent:
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate both a logical proof and a programming solution for the problem"""
         system_prompt = DUAL_PROOF_SYSTEM_PROMPT
+
+        content = f"Problem:\n{problem}\n\n"
+        
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=content)
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        return (system_prompt + "\n\n" + content, response) if return_prompt else response
+
+
+class TestDrivenProgrammerAgent:
+    """Agent that provides both test suite and implementation for a problem"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate both a test suite and an implementation for the problem"""
+        system_prompt = TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT
 
         content = f"Problem:\n{problem}\n\n"
         

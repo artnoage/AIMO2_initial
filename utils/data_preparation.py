@@ -69,6 +69,21 @@ def prepare_dual_proof_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return dual_proof_data
 
+def prepare_test_driven_programmer_data(data: Dataset, system_prompt: str) -> Dataset:
+    """Create examples for test-driven programmer tasks using the test-driven-programmer-specific system prompt"""
+    logger.info("Creating test-driven programmer examples...")
+    test_driven_programmer_data = data.map(lambda x: {
+        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+        'answer': x.get('answer', x.get('correct_answer', '')),
+        'problem': x['problem'],
+        'partial_solution': '',
+        'full_solution': '',
+        'is_correct': None,
+        'wrong_step': None,
+        'example_type': 'test_driven_programmer'
+    })
+    return test_driven_programmer_data
+
 def prepare_architect_data(data: Dataset, system_prompt: str) -> Dataset:
     """Create examples for architect/engineering tasks using the architect-specific system prompt"""
     logger.info("Creating architect examples...")
@@ -385,7 +400,7 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                           programming_system_prompt: str, tutor_system_prompt: str,
                           test_programming_system_prompt: str, architect_system_prompt: str,
-                          dual_proof_system_prompt: str,
+                          dual_proof_system_prompt: str, test_driven_programmer_system_prompt: str,
                          tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 2000) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
@@ -393,10 +408,11 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     - 20% solution examples
     - 15% programming examples
     - 15% finalization examples
-    - 15% tutor examples
-    - 15% test programming examples
+    - 10% tutor examples
+    - 10% test programming examples
     - 10% architect examples
     - 10% dual proof examples
+    - 10% test-driven programmer examples
     
     If any distribution value is 0, no examples of that type will be generated.
     """
@@ -406,10 +422,11 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
             'solution': 0.20,
             'programming': 0.15,
             'finalization': 0.15,
-            'tutor': 0.15,
-            'test_programming': 0.15,
+            'tutor': 0.10,
+            'test_programming': 0.10,
             'architect': 0.10,
-            'dual_proof': 0.10
+            'dual_proof': 0.10,
+            'test_driven_programmer': 0.10
         }
     
     # Check if we have model_solutions in the dataset
@@ -450,6 +467,11 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     if dual_proof_system_prompt and distribution.get('dual_proof', 0) > 0:
         dual_proof_data = prepare_dual_proof_data(data, dual_proof_system_prompt)
     
+    # Create test-driven programmer examples if test_driven_programmer_system_prompt is provided and distribution is non-zero
+    test_driven_programmer_data = None
+    if test_driven_programmer_system_prompt and distribution.get('test_driven_programmer', 0) > 0:
+        test_driven_programmer_data = prepare_test_driven_programmer_data(data, test_driven_programmer_system_prompt)
+    
     # Calculate the target number of examples for each type
     total_examples = len(data)
     solution_target = int(total_examples * distribution.get('solution', 0))
@@ -459,6 +481,7 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     test_programming_target = int(total_examples * distribution.get('test_programming', 0)) if test_programming_data else 0
     architect_target = int(total_examples * distribution.get('architect', 0)) if architect_data else 0
     dual_proof_target = int(total_examples * distribution.get('dual_proof', 0)) if dual_proof_data else 0
+    test_driven_programmer_target = int(total_examples * distribution.get('test_driven_programmer', 0)) if test_driven_programmer_data else 0
     
     # Function to count example types in a dataset
     def count_types(dataset):
@@ -485,6 +508,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         logger.info(f"Created {len(architect_data)} architect examples (target: {architect_target})")
     if dual_proof_data:
         logger.info(f"Created {len(dual_proof_data)} dual proof examples (target: {dual_proof_target})")
+    if test_driven_programmer_data:
+        logger.info(f"Created {len(test_driven_programmer_data)} test-driven programmer examples (target: {test_driven_programmer_target})")
     
     # Shuffle and select examples for each type
     if solution_data:
@@ -515,6 +540,10 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         dual_proof_data = dual_proof_data.shuffle(seed=148)
         dual_proof_data = dual_proof_data.select(range(min(dual_proof_target, len(dual_proof_data))))
     
+    if test_driven_programmer_data:
+        test_driven_programmer_data = test_driven_programmer_data.shuffle(seed=149)
+        test_driven_programmer_data = test_driven_programmer_data.select(range(min(test_driven_programmer_target, len(test_driven_programmer_data))))
+    
     # Log type distribution before combining
     logger.info("Dataset type distribution before combining:")
     if solution_data:
@@ -531,6 +560,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         logger.info(f"Architect dataset: {count_types(architect_data)}")
     if dual_proof_data:
         logger.info(f"Dual proof dataset: {count_types(dual_proof_data)}")
+    if test_driven_programmer_data:
+        logger.info(f"Test-driven programmer dataset: {count_types(test_driven_programmer_data)}")
     
     # Combine all datasets
     datasets_to_combine = []
@@ -548,6 +579,8 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
         datasets_to_combine.append(architect_data)
     if dual_proof_data:
         datasets_to_combine.append(dual_proof_data)
+    if test_driven_programmer_data:
+        datasets_to_combine.append(test_driven_programmer_data)
     
     combined_data = concatenate_datasets(datasets_to_combine)
     

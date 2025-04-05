@@ -1306,6 +1306,24 @@ class DualProofReward(BaseReward):
             'syntax_errors', 'execution_errors', 'timeout_errors'
         ]
     }
+
+
+class TestDrivenProgrammerReward(BaseReward):
+    """Reward class for test-driven programmer evaluation (test suite + implementation)"""
+    
+    __name__ = "test_driven_programmer_reward"
+    relevant_stats = {
+        'reward_components': [
+            'test_rewards', 'implementation_rewards', 'structure_rewards',
+            'total_length_penalty', 'correct_tests', 'correct_implementations', 
+            'correct_test_driven_solutions', 'total_rewards', 'average_reward'
+        ],
+        'test_driven_programmer_stats': [
+            'correct_tests', 'incorrect_tests', 'correct_implementations', 
+            'incorrect_implementations', 'correct_test_driven_solutions', 'structure_errors',
+            'syntax_errors', 'execution_errors', 'timeout_errors', 'test_coverage'
+        ]
+    }
     
     def __init__(self, config: RewardConfig):
         super().__init__(config)
@@ -1689,6 +1707,213 @@ class DualProofReward(BaseReward):
             
         except Exception as e:
             self.logger.error(f"Error calculating dual proof reward: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return 0.0
+
+
+    def __init__(self, config: RewardConfig):
+        super().__init__(config)
+        
+        # Initialize test-driven-programmer-specific stats
+        self.stats.test_driven_programmer_stats = {
+            'correct_tests': 0,
+            'incorrect_tests': 0,
+            'correct_implementations': 0,
+            'incorrect_implementations': 0,
+            'correct_test_driven_solutions': 0,
+            'structure_errors': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0,
+            'test_coverage': 0.0
+        }
+        
+        # Initialize test-driven-programmer-specific reward components
+        self.stats.reward_components.update({
+            'test_rewards': 0,
+            'implementation_rewards': 0,
+            'structure_rewards': 0,
+            'correct_tests': 0,
+            'correct_implementations': 0,
+            'correct_test_driven_solutions': 0
+        })
+        
+    async def calculate_reward(self, completion: str, **kwargs) -> float:
+        """Calculate reward for a test-driven programmer solution (test suite + implementation)"""
+        try:
+            # Get problem and correct answer
+            problem = kwargs.get('problem', '')
+            correct_answer = kwargs.get('answer', '')
+            
+            if not all([problem, correct_answer]):
+                self.logger.warning("Missing required inputs for test-driven programmer reward calculation")
+                return 0.0
+            
+            # Initialize reward
+            reward = 0.0
+            
+            # 1. Check for thinking and response sections
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
+            
+            if not has_thinking or not has_response:
+                self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
+                return 0.0
+            
+            # 2. Check for test and implementation sections within response
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if not response_match:
+                self.logger.info("No response section found in completion")
+                return 0.0
+                
+            response_content = response_match.group(1)
+            
+            has_test = bool(re.search(r'<test>.*?</test>', response_content, re.DOTALL))
+            has_implementation = bool(re.search(r'<implementation>.*?</implementation>', response_content, re.DOTALL))
+            
+            if not has_test or not has_implementation:
+                self.logger.info(f"Missing {'test' if not has_test else ''} {'implementation' if not has_implementation else ''} section(s) in response")
+                # Apply structure penalty
+                self.stats.test_driven_programmer_stats['structure_errors'] += 1
+                return 0.0
+            
+            # Apply structure reward for having all required sections
+            structure_reward = 0.2
+            reward += structure_reward
+            self.stats.reward_components['structure_rewards'] = self.stats.reward_components.get('structure_rewards', 0) + 1
+            self.logger.info(f"Applied structure reward: +{structure_reward:.3f}")
+            
+            # 3. Extract and evaluate the test suite
+            test_match = re.search(r'<test>(.*?)</test>', response_content, re.DOTALL)
+            test_content = test_match.group(1) if test_match else ""
+            
+            if not test_content:
+                self.logger.info("No test content found in test section")
+                return reward  # Return with just the structure reward
+            
+            # Check test quality (syntax)
+            test_quality_passed, test_quality_message = check_code_quality(test_content)
+            test_correct = False
+            
+            if test_quality_passed:
+                self.logger.info("Test syntax check passed")
+                # Award partial reward for syntactically correct tests
+                test_syntax_reward = self.config.base_reward / 8
+                reward += test_syntax_reward
+                self.logger.info(f"Applied test syntax reward: +{test_syntax_reward:.3f}")
+            else:
+                self.logger.info(f"Test syntax check failed: {test_quality_message}")
+                self.stats.test_driven_programmer_stats['syntax_errors'] += 1
+                # Continue to implementation check even if tests have syntax errors
+            
+            # 4. Extract and evaluate the implementation
+            implementation_match = re.search(r'<implementation>(.*?)</implementation>', response_content, re.DOTALL)
+            implementation = implementation_match.group(1) if implementation_match else ""
+            
+            if not implementation:
+                self.logger.info("No implementation found in implementation section")
+                return reward  # Return with just the test reward if applicable
+            
+            # Check implementation quality (syntax)
+            implementation_quality_passed, implementation_quality_message = check_code_quality(implementation)
+            if not implementation_quality_passed:
+                self.logger.info(f"Implementation quality check failed: {implementation_quality_message}")
+                self.stats.test_driven_programmer_stats['syntax_errors'] += 1
+                return reward  # Return with just the test reward if applicable
+            
+            # Run the implementation and check if it produces a valid output
+            execution_success, result, error_message = run_code_safely(implementation, timeout=self.config.timeout)
+            implementation_correct = False
+            
+            if not execution_success or result is None:
+                self.logger.info(f"Implementation execution failed: {error_message}")
+                if "timed out" in error_message:
+                    self.stats.test_driven_programmer_stats['timeout_errors'] += 1
+                else:
+                    self.stats.test_driven_programmer_stats['execution_errors'] += 1
+                return reward  # Return with just the test reward if applicable
+            
+            # Check if the implementation result matches the correct answer
+            try:
+                if isinstance(correct_answer, str):
+                    numeric_answer, _ = extract_numeric_answer(correct_answer)
+                    if numeric_answer is not None:
+                        correct_answer = numeric_answer
+                    else:
+                        correct_answer = float(correct_answer)
+                else:
+                    correct_answer = float(correct_answer)
+            except (ValueError, TypeError):
+                self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
+                return reward  # Return with just the test reward if applicable
+            
+            # Compare with tolerance
+            implementation_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+            if implementation_correct:
+                # Award 1/4 of base reward for correct implementation
+                implementation_reward = self.config.base_reward / 4
+                reward += implementation_reward
+                self.stats.reward_components['implementation_rewards'] = self.stats.reward_components.get('implementation_rewards', 0) + 1
+                self.stats.reward_components['correct_implementations'] = self.stats.reward_components.get('correct_implementations', 0) + 1
+                self.stats.test_driven_programmer_stats['correct_implementations'] += 1
+                self.logger.info(f"Applied implementation reward: +{implementation_reward:.3f}")
+            else:
+                self.stats.test_driven_programmer_stats['incorrect_implementations'] += 1
+                self.logger.info(f"Incorrect implementation result: expected {correct_answer}, got {result}")
+            
+            # 5. Try to run tests against the implementation
+            # Combine test and implementation into a single file for execution
+            combined_code = f"""
+{test_content}
+
+# Implementation
+{implementation}
+
+# Run tests if this file is executed directly
+if __name__ == '__main__':
+    import unittest
+    unittest.main()
+"""
+            
+            # Run the combined code to see if tests pass
+            test_execution_success, _, test_error_message = run_code_safely(combined_code, timeout=self.config.timeout)
+            
+            if test_execution_success:
+                # Tests ran without errors, award test reward
+                test_reward = self.config.base_reward / 4
+                reward += test_reward
+                self.stats.reward_components['test_rewards'] = self.stats.reward_components.get('test_rewards', 0) + 1
+                self.stats.reward_components['correct_tests'] = self.stats.reward_components.get('correct_tests', 0) + 1
+                self.stats.test_driven_programmer_stats['correct_tests'] += 1
+                test_correct = True
+                self.logger.info(f"Applied test reward: +{test_reward:.3f}")
+                
+                # If both tests and implementation are correct, award additional bonus
+                if implementation_correct:
+                    bonus_reward = self.config.base_reward / 2  # Additional 1/2 of base reward for having both correct
+                    reward += bonus_reward
+                    self.stats.reward_components['correct_test_driven_solutions'] = self.stats.reward_components.get('correct_test_driven_solutions', 0) + 1
+                    self.stats.test_driven_programmer_stats['correct_test_driven_solutions'] += 1
+                    self.logger.info(f"Applied test-driven solution bonus: +{bonus_reward:.3f}")
+            else:
+                self.stats.test_driven_programmer_stats['incorrect_tests'] += 1
+                self.logger.info(f"Test execution failed: {test_error_message}")
+            
+            # Apply length penalty
+            length_penalty = len(completion) * self.config.length_penalty_factor
+            reward -= length_penalty
+            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
+            total_samples = self.stats.total_batches
+            self.stats.reward_components['average_reward'] = self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+            
+            return reward
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating test-driven programmer reward: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
             return 0.0
