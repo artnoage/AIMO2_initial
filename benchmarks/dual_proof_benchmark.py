@@ -316,6 +316,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'matching_answers': False
             }]
         
+        # Count correct solutions and define variables needed for statistics
+        total_solutions = len(dual_proof_solutions)
+        correct_solutions = sum(1 for ans in final_answers 
+                               if ans is not None and abs(ans - correct_answer) <= config.tolerance)
+        verified_correct_solutions = sum(1 for match, p_corr, c_corr in 
+                                        zip(answers_match_list, proof_correctness, code_correctness)
+                                        if match and p_corr and c_corr)
+        
         # Add statistics to logs
         logger.append("\n" + "="*80)
         logger.append(f"📝 Example {running_id + 1} | ID: {example_id}")
@@ -392,14 +400,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'attempt_number': i + 1,
                 'is_best_solution': i == best_index
             })
-        
-        # Count correct solutions and define variables needed for statistics
-        total_solutions = len(dual_proof_solutions)
-        correct_solutions = sum(1 for ans in final_answers 
-                               if ans is not None and abs(ans - correct_answer) <= config.tolerance)
-        verified_correct_solutions = sum(1 for match, p_corr, c_corr in 
-                                        zip(answers_match_list, proof_correctness, code_correctness)
-                                        if match and p_corr and c_corr)
         
         # Calculate statistics exactly as in programmer_test_benchmark.py
         
