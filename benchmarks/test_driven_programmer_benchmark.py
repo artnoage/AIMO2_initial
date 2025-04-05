@@ -210,7 +210,7 @@ try:
         code_lines = implementation.strip().split('\\n')
         for line in reversed(code_lines):
             if 'print(' in line and not line.strip().startswith('#'):
-                match = re.search(r'print\\s*\\(\\s*([0-9.+-]+)\\s*\\)', line)
+                match = re.search('print\\\\s*\\\\(\\\\s*([0-9.+-]+)\\\\s*\\\\)', line)
                 if match:
                     try:
                         result = float(match.group(1))
