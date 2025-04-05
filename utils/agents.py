@@ -7,11 +7,9 @@ FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a pa
 Your response MUST include both a <thinking> section and a <response> section.
 
 <thinking>
-First, analyze the problem and the partial solution carefully.
-Understand what has been done so far and determine the next logical steps.
-Identify the step numbering pattern and continue from there.
-Make sure you understand the mathematical concepts involved.
-Work through the solution mentally to ensure your approach is correct.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -41,11 +39,13 @@ Make sure all your steps follow logically from the partial solution and that eac
 
 FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
 Your output must include two clearly separated sections: **Thinking** and **Response**.
+
 <thinking>
-First, analyze the problem in depth and outline your approach.
-This section should capture your reasoning, including any abstract thoughts or potential strategies.
-Feel free to refine or correct your ideas as you work toward the solution.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
+
 <response>
 <step>Step 1: Begin with the first calculation or operation
 Show your work clearly using LaTeX notation</step>
@@ -66,10 +66,9 @@ You will be given a mathematical problem along with a proposed solution to analy
 Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
-Analyze the solution carefully, reasoning through the steps to assess correctness.
-- Identify any errors and determine where the logic first goes wrong.
-- If an error is found, consider how it should be corrected.
-Do not state your final verdict here—focus on logical analysis.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -94,12 +93,9 @@ PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem, that you n
 Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
-In this section, explicitly detail your thought process step-by-step:
-- Carefully analyze the problem and identify the mathematical concepts involved.
-- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
-- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
-- Clearly state your intended method before beginning any code implementation.
-Do not provide any Python code in this section, only your reasoning and approach.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -138,12 +134,9 @@ Your output must include two clearly separated sections: **Thinking** and **Resp
 
 
 <thinking>
-In this section, explicitly detail your thought process step-by-step:
-- Carefully analyze the problem and identify the mathematical concepts involved.
-- Clearly outline your reasoning and approach, breaking down the solution into logical, implementable steps.
-- Consider any edge cases, numerical stability issues, or special conditions you might encounter.
-- Clearly state your intended method before beginning any code implementation.
-Do not provide any Python code in this section, only your reasoning and approach.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -179,14 +172,9 @@ Your task is to analyze mathematical problems and create concise instructions fo
 Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section, analyze the problem:
-- Identify key mathematical concepts and principles
-- Break down the problem into logical components
-- Consider solution approaches and their trade-offs
-- Identify edge cases and computational challenges
-- Determine appropriate programming libraries
-- Consider algorithmic efficiency and optimizations
-Do not write code in this section, focus on analysis and planning.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -215,13 +203,9 @@ numeric value (float) correctly solves the problem.
 Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section, carefully analyze the problem:
-- Clearly state the mathematical principles or equations involved.
-- Clearly specify the criteria a correct numerical answer must satisfy.
-- Explain how you would confirm the validity of a proposed solution without necessarily directly computing the solution itself 
-(e.g., plugging the number back into equations, inequalities, or conditions provided by the problem).
-- As a fallback solution if you cant find an easy way to verify the answer, you can provide a simple Python code that computes the solution and compares it with the given answer.
-Do **not** provide Python code here—this section should be dedicated solely to analysis and outlining your verification strategy.
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -260,12 +244,9 @@ DUAL_PROOF_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task 
 Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
-In this section, carefully analyze the problem:
-- Identify the key mathematical concepts and principles involved
-- Break down the problem into logical steps
-- Consider both a formal mathematical approach and a computational approach
-- Outline your solution strategy for both approaches
-- Think about edge cases, potential pitfalls, and how to handle them
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
 </thinking>
 
 <response>
@@ -328,7 +309,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
@@ -370,7 +351,7 @@ class ProgrammingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
     
 

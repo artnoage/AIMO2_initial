@@ -384,9 +384,9 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
 
 def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
                           programming_system_prompt: str, tutor_system_prompt: str,
-                          test_programming_system_prompt: str, architect_system_prompt: str = None,
-                          dual_proof_system_prompt: str = None,
-                         tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 1500) -> Dataset:
+                          test_programming_system_prompt: str, architect_system_prompt: str,
+                          dual_proof_system_prompt: str,
+                         tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 2000) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
@@ -488,31 +488,31 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     
     # Shuffle and select examples for each type
     if solution_data:
-        solution_data = solution_data.shuffle(seed=42)
+        solution_data = solution_data.shuffle(seed=142)
         solution_data = solution_data.select(range(min(solution_target, len(solution_data))))
     
     if programming_data:
-        programming_data = programming_data.shuffle(seed=43)
+        programming_data = programming_data.shuffle(seed=143)
         programming_data = programming_data.select(range(min(programming_target, len(programming_data))))
     
     if finalization_data:
-        finalization_data = finalization_data.shuffle(seed=44)
+        finalization_data = finalization_data.shuffle(seed=144)
         finalization_data = finalization_data.select(range(min(finalization_target, len(finalization_data))))
     
     if tutor_data:
-        tutor_data = tutor_data.shuffle(seed=45)
+        tutor_data = tutor_data.shuffle(seed=145)
         tutor_data = tutor_data.select(range(min(tutor_target, len(tutor_data))))
     
     if test_programming_data:
-        test_programming_data = test_programming_data.shuffle(seed=46)
+        test_programming_data = test_programming_data.shuffle(seed=146)
         test_programming_data = test_programming_data.select(range(min(test_programming_target, len(test_programming_data))))
     
     if architect_data:
-        architect_data = architect_data.shuffle(seed=47)
+        architect_data = architect_data.shuffle(seed=147)
         architect_data = architect_data.select(range(min(architect_target, len(architect_data))))
     
     if dual_proof_data:
-        dual_proof_data = dual_proof_data.shuffle(seed=48)
+        dual_proof_data = dual_proof_data.shuffle(seed=148)
         dual_proof_data = dual_proof_data.select(range(min(dual_proof_target, len(dual_proof_data))))
     
     # Log type distribution before combining
