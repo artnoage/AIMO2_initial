@@ -114,6 +114,20 @@ class RewardStats:
             'timeout_errors': 0
         }
         
+        # Track test-driven programmer stats
+        self.test_driven_programmer_stats = {
+            'correct_tests': 0,
+            'incorrect_tests': 0,
+            'correct_implementations': 0,
+            'incorrect_implementations': 0,
+            'correct_test_driven_solutions': 0,
+            'structure_errors': 0,
+            'syntax_errors': 0,
+            'execution_errors': 0,
+            'timeout_errors': 0,
+            'test_coverage': 0.0
+        }
+        
         # Initialize programming-specific reward components
         self.reward_components.update({
             'syntax_rewards': 0,
@@ -411,6 +425,8 @@ class RewardStats:
                 stats_dict = self.architect_stats
             elif category == 'dual_proof_stats':
                 stats_dict = self.dual_proof_stats
+            elif category == 'test_driven_programmer_stats':
+                stats_dict = self.test_driven_programmer_stats
             elif category == 'solution_stats':
                 # Map to existing dictionaries
                 stats_dict = {**self.reward_components, **self.group_stats}
