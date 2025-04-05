@@ -401,7 +401,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                         zip(answers_match_list, proof_correctness, code_correctness)
                                         if match and p_corr and c_corr)
         
-        # Initial majority vote on ALL solutions
+        # Calculate statistics exactly as in programmer_test_benchmark.py
+        
+        # Initial majority vote on ALL programming solutions (before test validation)
         initial_answer_counts = Counter([str(ans) for ans in final_answers if ans is not None])
         initial_majority = initial_answer_counts.most_common(1)
         initial_majority_answer = initial_majority[0][0] if initial_majority else None
@@ -422,11 +424,24 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
         logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
         
+        # For dual proof, we don't have a separate test phase, so we use the same values for final
+        final_majority_answer = initial_majority_answer
+        final_majority_count = initial_majority_count
+        final_majority_percentage = initial_majority_percentage
+        final_majority_correct = initial_majority_correct
+        
         # Create is_correct_list for compatibility with ProgressTracker
         is_correct_list = [
             ans is not None and abs(ans - correct_answer) <= config.tolerance 
             for ans in final_answers
         ]
+        
+        # Calculate success rates
+        initial_success_rate = sum(is_correct_list) / len(is_correct_list) * 100 if is_correct_list else 0
+        verified_correct_count = sum(1 for match, p_corr, c_corr in 
+                                    zip(answers_match_list, proof_correctness, code_correctness)
+                                    if match and p_corr and c_corr)
+        verified_success_rate = verified_correct_count / len(dual_proof_solutions) * 100 if dual_proof_solutions else 0
         
         # Add statistics entry
         result_entries.append({
@@ -445,10 +460,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'all_answers_match': answers_match_list,
             'all_final_answers': final_answers,
             
-            # Compatibility fields for ProgressTracker statistics
-            'is_correct_list': is_correct_list,
-            'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
-            'is_most_common_correct': initial_majority_correct,
+            # Use exactly the same structure as in programmer_test_benchmark.py
+            'example_processed_successfully': True,
+            
+            # Programming solutions statistics
+            'programming_solutions_count': len(dual_proof_solutions),
+            'programming_correctness': is_correct_list,
+            'programming_results': final_answers,
+            'initial_success_rate': initial_success_rate,
             
             # Initial majority vote (before test validation)
             'initial_majority_answer': initial_majority_answer,
@@ -456,26 +475,45 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'initial_majority_percentage': initial_majority_percentage,
             'initial_majority_correct': initial_majority_correct,
             
-            # Solution statistics
-            'total_solutions': total_solutions,
-            'correct_solutions': correct_solutions,
-            'incorrect_solutions': total_solutions - correct_solutions,
-            'verified_correct_solutions': verified_correct_solutions,
-            'verified_incorrect_solutions': total_solutions - verified_correct_solutions,
+            # Test statistics
+            'test_passed': answers_match_list,  # Using answer matching as a proxy for test passing
+            'test_success_rate': sum(answers_match_list) / len(answers_match_list) * 100 if answers_match_list else 0,
             
-            # Additional fields needed by ProgressTracker
-            'example_processed_successfully': True,
-            'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
-            'verified_success_rate': (verified_correct_solutions / total_solutions * 100) if total_solutions > 0 else 0,
+            # Verified statistics (solutions that are correct AND pass their tests)
+            'verified_correct': [c and m for c, m in zip(is_correct_list, answers_match_list)],
+            'verified_success_rate': verified_success_rate,
+            'verified_results': [ans for ans, match in zip(final_answers, answers_match_list) if match and ans is not None],
+            
+            # Final majority vote (after test validation)
+            'final_majority_answer': final_majority_answer,
+            'final_majority_count': final_majority_count,
+            'final_majority_percentage': final_majority_percentage,
+            'final_majority_correct': final_majority_correct,
             
             # Initial correctness statistics (before test validation)
             'initial_correctness': is_correct_list,
             'initial_majority_correct': initial_majority_correct,
-            'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
+            'initial_success_rate': initial_success_rate,
+            
+            # Test validation statistics
+            'test_passed': answers_match_list,
+            'test_success_rate': sum(answers_match_list) / len(answers_match_list) * 100 if answers_match_list else 0,
             
             # Final correctness statistics (after test validation)
-            'final_correctness': is_correct_list,  # In dual proof, we don't have a separate test phase
-            'final_majority_correct': initial_majority_correct  # Same as initial for dual proof
+            'final_correctness': [c and m for c, m in zip(is_correct_list, answers_match_list)],
+            'final_majority_correct': final_majority_correct,
+            'verified_success_rate': verified_success_rate,
+            
+            # Compatibility fields for ProgressTracker statistics
+            'is_correct_list': is_correct_list,
+            'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
+            'is_most_common_correct': initial_majority_correct,
+            
+            'total_solutions': total_solutions,
+            'correct_solutions': correct_solutions,
+            'incorrect_solutions': total_solutions - correct_solutions,
+            'verified_correct_solutions': verified_correct_count,
+            'verified_incorrect_solutions': total_solutions - verified_correct_count
         })
         
         return result_entries
@@ -492,22 +530,36 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'proof_success': False,
             'code_success': False,
             'matching_answers': False,
+            # Use exactly the same structure as in programmer_test_benchmark.py for error cases
             'is_correct': False,
             'is_most_common_correct': False,
-            'total_solutions': 0,
-            'correct_solutions': 0,
-            'incorrect_solutions': 0,
-            'verified_correct_solutions': 0,
-            'verified_incorrect_solutions': 0,
             'is_correct_list': [],
+            'programming_solutions_count': 0,
+            'programming_correctness': [],
+            'programming_results': [],
+            'initial_success_rate': 0,
             'initial_majority_answer': None,
             'initial_majority_count': 0,
             'initial_majority_percentage': 0,
             'initial_majority_correct': False,
+            'test_passed': [],
+            'test_success_rate': 0,
+            'verified_correct': [],
+            'verified_success_rate': 0,
+            'verified_results': [],
+            'final_majority_answer': None,
+            'final_majority_count': 0,
+            'final_majority_percentage': 0,
+            'final_majority_correct': False,
             'initial_correctness': [],
             'initial_success_rate': 0,
             'final_correctness': [],
-            'final_majority_correct': False
+            'final_majority_correct': False,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'verified_correct_solutions': 0,
+            'verified_incorrect_solutions': 0
         }]
 
 
