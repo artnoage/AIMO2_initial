@@ -401,26 +401,32 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                                         zip(answers_match_list, proof_correctness, code_correctness)
                                         if match and p_corr and c_corr)
         
+        # Initial majority vote on ALL solutions
+        initial_answer_counts = Counter([str(ans) for ans in final_answers if ans is not None])
+        initial_majority = initial_answer_counts.most_common(1)
+        initial_majority_answer = initial_majority[0][0] if initial_majority else None
+        initial_majority_count = initial_majority[0][1] if initial_majority else 0
+        initial_majority_percentage = (initial_majority_count / len([r for r in final_answers if r is not None])) * 100 if initial_majority else 0
+        
+        # Check if the initial majority answer is correct
+        initial_majority_correct = False
+        if initial_majority_answer:
+            try:
+                if isinstance(correct_answer, (int, float)):
+                    initial_majority_correct = abs(float(initial_majority_answer) - correct_answer) <= config.tolerance
+                else:
+                    initial_majority_correct = str(initial_majority_answer).strip() == str(correct_answer).strip()
+            except:
+                pass
+        
+        logger.append(f"Initial majority answer: {initial_majority_answer} ({initial_majority_count} votes, {initial_majority_percentage:.1f}% of valid results)")
+        logger.append(f"Initial majority answer correct: {'✓' if initial_majority_correct else '✗'}")
+        
         # Create is_correct_list for compatibility with ProgressTracker
         is_correct_list = [
             ans is not None and abs(ans - correct_answer) <= config.tolerance 
             for ans in final_answers
         ]
-        
-        # Calculate majority vote on all solutions
-        valid_answers = [str(ans) for ans in final_answers if ans is not None]
-        answer_counts = Counter(valid_answers)
-        majority = answer_counts.most_common(1)
-        majority_answer = majority[0][0] if majority else None
-        majority_count = majority[0][1] if majority else 0
-        
-        # Check if the majority answer is correct
-        majority_correct = False
-        if majority_answer:
-            try:
-                majority_correct = abs(float(majority_answer) - correct_answer) <= config.tolerance
-            except:
-                pass
         
         # Add statistics entry
         result_entries.append({
@@ -442,7 +448,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Compatibility fields for ProgressTracker statistics
             'is_correct_list': is_correct_list,
             'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
-            'is_most_common_correct': majority_correct,
+            'is_most_common_correct': initial_majority_correct,
+            
+            # Initial majority vote (before test validation)
+            'initial_majority_answer': initial_majority_answer,
+            'initial_majority_count': initial_majority_count,
+            'initial_majority_percentage': initial_majority_percentage,
+            'initial_majority_correct': initial_majority_correct,
             
             # Solution statistics
             'total_solutions': total_solutions,
@@ -456,10 +468,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
             'verified_success_rate': (verified_correct_solutions / total_solutions * 100) if total_solutions > 0 else 0,
             
-            # Majority vote information
-            'majority_answer': majority_answer,
-            'majority_count': majority_count,
-            'majority_correct': majority_correct
+            # Initial correctness statistics (before test validation)
+            'initial_correctness': is_correct_list,
+            'initial_majority_correct': initial_majority_correct,
+            'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
+            
+            # Final correctness statistics (after test validation)
+            'final_correctness': is_correct_list,  # In dual proof, we don't have a separate test phase
+            'final_majority_correct': initial_majority_correct  # Same as initial for dual proof
         })
         
         return result_entries
@@ -483,7 +499,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'incorrect_solutions': 0,
             'verified_correct_solutions': 0,
             'verified_incorrect_solutions': 0,
-            'is_correct_list': []
+            'is_correct_list': [],
+            'initial_majority_answer': None,
+            'initial_majority_count': 0,
+            'initial_majority_percentage': 0,
+            'initial_majority_correct': False,
+            'initial_correctness': [],
+            'initial_success_rate': 0,
+            'final_correctness': [],
+            'final_majority_correct': False
         }]
 
 
