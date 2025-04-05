@@ -393,13 +393,19 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'is_best_solution': i == best_index
             })
         
-        # Count correct solutions
+        # Count correct solutions and define variables needed for statistics
         total_solutions = len(dual_proof_solutions)
         correct_solutions = sum(1 for ans in final_answers 
                                if ans is not None and abs(ans - correct_answer) <= config.tolerance)
         verified_correct_solutions = sum(1 for match, p_corr, c_corr in 
                                         zip(answers_match_list, proof_correctness, code_correctness)
                                         if match and p_corr and c_corr)
+        
+        # Create is_correct_list for compatibility with ProgressTracker
+        is_correct_list = [
+            ans is not None and abs(ans - correct_answer) <= config.tolerance 
+            for ans in final_answers
+        ]
         
         # Add statistics entry
         result_entries.append({
@@ -421,12 +427,18 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Compatibility fields for ProgressTracker statistics
             'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
             'is_most_common_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
+            'is_correct_list': is_correct_list,  # Add this for compatibility
             
             'total_solutions': total_solutions,
             'correct_solutions': correct_solutions,
             'incorrect_solutions': total_solutions - correct_solutions,
             'verified_correct_solutions': verified_correct_solutions,
-            'verified_incorrect_solutions': total_solutions - verified_correct_solutions
+            'verified_incorrect_solutions': total_solutions - verified_correct_solutions,
+            
+            # Additional fields needed by ProgressTracker
+            'example_processed_successfully': True,
+            'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
+            'verified_success_rate': (verified_correct_solutions / total_solutions * 100) if total_solutions > 0 else 0
         })
         
         return result_entries
