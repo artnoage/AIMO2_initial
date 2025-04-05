@@ -286,12 +286,26 @@ Use this freedom to ensure you've gathered all insights necessary to clearly and
 Your response must include both a test suite and an implementation:
 
 <test>
-Provide a complete test suite for the solution:
-- Include necessary imports (unittest, pytest, numpy, etc.)
-- Write comprehensive test cases that verify correctness
-- Test edge cases and normal cases
-- Include at least one test for the final answer
-- Make sure tests are clear and well-documented
+Write a Python function named `test_solution(answer)` that:
+1. Accepts exactly one float parameter named `answer`.
+2. Returns `True` if the given answer correctly solves the problem (using appropriate numerical tolerances, e.g., `1e-2`).
+3. Returns `False` otherwise.
+
+**Important Guidelines**:
+- Your function should be self-contained, efficient, and only rely on standard Python libraries (`numpy`, `sympy`, and `scipy` are allowed).
+- Include brief, clear comments explaining how verification is performed.
+- Handle floating-point precision explicitly with tolerances.
+- Write additional test cases using unittest or pytest to verify your implementation.
+
+Example:
+```python
+import numpy as np
+
+def test_solution(answer):
+    # Check if answer satisfies the problem constraints
+    # Use appropriate tolerance for floating-point comparison
+    return np.abs(expected_value - answer) < 1e-2
+```
 </test>
 
 <implementation>

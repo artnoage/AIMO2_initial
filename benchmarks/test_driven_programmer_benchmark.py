@@ -140,27 +140,41 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         if test_quality_passed:
             logger.append(f"Test syntax check passed")
             
-            # Create a dummy implementation that returns the correct answer
+            # Test if the test_solution function works correctly
             test_only_code = f"""
 {test_content}
 
-# Dummy implementation that returns the correct answer
-def solution():
-    return {correct_answer}
+# Test if the test_solution function works with the correct answer
+try:
+    result = test_solution({correct_answer})
+    print(f"Test function result with correct answer: {{result}}")
+    success = result == True
+except Exception as e:
+    print(f"Error testing with correct answer: {{e}}")
+    success = False
+    
+# Also try with an obviously wrong answer
+try:
+    wrong_result = test_solution({correct_answer + 100})
+    print(f"Test function result with wrong answer: {{wrong_result}}")
+    # A good test function should return False for a wrong answer
+    success = success and (wrong_result == False)
+except Exception as e:
+    print(f"Error testing with wrong answer: {{e}}")
+    success = False
 
-# Run tests if this file is executed directly
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
+print(f"Overall test function success: {{success}}")
 """
             
-            test_syntax_success, _, test_syntax_error = run_code_safely(test_only_code, timeout=config.timeout)
+            test_syntax_success, test_output, test_syntax_error = run_code_safely(test_only_code, timeout=config.timeout)
             
-            if test_syntax_success:
-                logger.append(f"Test suite runs successfully with a dummy implementation")
+            if test_syntax_success and "Overall test function success: True" in test_output:
+                logger.append(f"Test function works correctly with correct and incorrect answers")
                 test_correct = True
             else:
-                logger.append(f"❌ Test suite has runtime errors: {test_syntax_error}")
+                logger.append(f"❌ Test function validation failed: {test_syntax_error}")
+                if test_output:
+                    logger.append(f"Test output: {test_output}")
         else:
             logger.append(f"❌ Test syntax check failed: {test_quality_message}")
         
@@ -175,28 +189,84 @@ if __name__ == '__main__':
 # Implementation
 {implementation}
 
-# Run tests if this file is executed directly
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
+# Get the result from the implementation
+result = None
+try:
+    # Try to find the final result in the implementation
+    # This is a bit hacky but should work for most cases
+    exec_globals = {{'print': lambda x: None}}  # Suppress prints during execution
+    exec(implementation, exec_globals)
+    
+    # Now use the test_solution function to verify the result
+    if 'result' in exec_globals:
+        result = exec_globals['result']
+        test_result = test_solution(result)
+        print(f"Implementation result: {{result}}")
+        print(f"Test result: {{test_result}}")
+        combined_correct = test_result
+    else:
+        # Try to find any numeric value that might be the result
+        import re
+        code_lines = implementation.strip().split('\\n')
+        for line in reversed(code_lines):
+            if 'print(' in line and not line.strip().startswith('#'):
+                match = re.search(r'print\s*\(\s*([0-9.+-]+)\s*\)', line)
+                if match:
+                    try:
+                        result = float(match.group(1))
+                        test_result = test_solution(result)
+                        print(f"Found result in print statement: {{result}}")
+                        print(f"Test result: {{test_result}}")
+                        combined_correct = test_result
+                        break
+                    except:
+                        pass
+    
+    # If we couldn't find a result, run the implementation directly
+    if result is None:
+        implementation_result, output = None, ""
+        exec_locals = {{}}
+        exec(implementation, globals(), exec_locals)
+        # The implementation should print the result
+        # We'll capture that in a separate run
+        implementation_success, implementation_output, _ = run_code_safely(implementation, timeout=config.timeout)
+        if implementation_success:
+            # Try to extract a number from the output
+            import re
+            numbers = re.findall(r'[-+]?\d*\.\d+|\d+', implementation_output)
+            if numbers:
+                try:
+                    result = float(numbers[-1])  # Take the last number as the result
+                    test_result = test_solution(result)
+                    print(f"Extracted result from output: {{result}}")
+                    print(f"Test result: {{test_result}}")
+                    combined_correct = test_result
+                except:
+                    pass
+except Exception as e:
+    print(f"Error in combined execution: {{e}}")
+    combined_correct = False
 """
             
-            combined_success, _, combined_error = run_code_safely(combined_code, timeout=config.timeout)
+            combined_success, combined_output, combined_error = run_code_safely(combined_code, timeout=config.timeout)
             
             if combined_success:
-                logger.append(f"Combined solution runs successfully")
-                combined_correct = True
+                logger.append(f"Combined solution execution successful")
+                if "Test result: True" in combined_output:
+                    logger.append(f"Implementation passes the test function")
+                    combined_correct = True
+                else:
+                    logger.append(f"Implementation fails the test function")
+                    # If implementation is correct but tests fail, that's a test issue
+                    if implementation_correct:
+                        logger.append(f"Tests incorrectly fail on a correct implementation")
+                    # If implementation is wrong and tests fail, that could be good (tests catching errors)
+                    elif not implementation_correct:
+                        logger.append(f"Tests correctly identify an incorrect implementation")
+                        # This is actually good test behavior
+                        test_correct = True
             else:
                 logger.append(f"❌ Combined solution failed: {combined_error}")
-                
-                # If implementation is correct but tests fail, that's a test issue
-                if implementation_correct:
-                    logger.append(f"Tests incorrectly fail on a correct implementation")
-                # If implementation is wrong and tests fail, that could be good (tests catching errors)
-                elif not implementation_correct:
-                    logger.append(f"Tests correctly identify an incorrect implementation")
-                    # This is actually good test behavior
-                    test_correct = True
         
         # Add statistics to logs
         logger.append("\n" + "="*80)

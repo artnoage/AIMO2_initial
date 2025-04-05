@@ -1624,24 +1624,36 @@ class TestDrivenProgrammerReward(BaseReward):
                         self.stats.test_driven_programmer_stats['execution_errors'] += 1
             
             # 5. Evaluate the test suite independently
-            # First, try to run the test suite on its own to check syntax and basic functionality
+            # First, check if the test_solution function exists and works with the correct answer
             test_only_code = f"""
 {test_content}
 
-# Dummy implementation that returns the correct answer
-def solution():
-    return {correct_answer}
+# Test if the test_solution function works with the correct answer
+try:
+    result = test_solution({correct_answer})
+    print(f"Test function result with correct answer: {{result}}")
+    success = result == True
+except Exception as e:
+    print(f"Error testing with correct answer: {{e}}")
+    success = False
+    
+# Also try with an obviously wrong answer
+try:
+    wrong_result = test_solution({correct_answer + 100})
+    print(f"Test function result with wrong answer: {{wrong_result}}")
+    # A good test function should return False for a wrong answer
+    success = success and (wrong_result == False)
+except Exception as e:
+    print(f"Error testing with wrong answer: {{e}}")
+    success = False
 
-# Run tests if this file is executed directly
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
+print(f"Overall test function success: {{success}}")
 """
             
-            test_syntax_success, _, test_syntax_error = run_code_safely(test_only_code, timeout=self.config.timeout)
+            test_syntax_success, test_output, test_syntax_error = run_code_safely(test_only_code, timeout=self.config.timeout)
             
-            if test_syntax_success:
-                self.logger.info("Test suite runs successfully with a dummy implementation")
+            if test_syntax_success and "Overall test function success: True" in test_output:
+                self.logger.info("Test function works correctly with correct and incorrect answers")
                 
                 # Now try to run the tests with the actual implementation if it's syntactically valid
                 if implementation_quality_passed:
@@ -1652,20 +1664,82 @@ if __name__ == '__main__':
 # Implementation
 {implementation}
 
-# Run tests if this file is executed directly
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
+# Get the result from the implementation
+result = None
+try:
+    # Try to find the final result in the implementation
+    # This is a bit hacky but should work for most cases
+    exec_globals = {{'print': lambda x: None}}  # Suppress prints during execution
+    exec(implementation, exec_globals)
+    
+    # Now use the test_solution function to verify the result
+    if 'result' in exec_globals:
+        result = exec_globals['result']
+        test_result = test_solution(result)
+        print(f"Implementation result: {{result}}")
+        print(f"Test result: {{test_result}}")
+    else:
+        # Try to find any numeric value that might be the result
+        import re
+        code_lines = implementation.strip().split('\\n')
+        for line in reversed(code_lines):
+            if 'print(' in line and not line.strip().startswith('#'):
+                match = re.search(r'print\s*\(\s*([0-9.+-]+)\s*\)', line)
+                if match:
+                    try:
+                        result = float(match.group(1))
+                        test_result = test_solution(result)
+                        print(f"Found result in print statement: {{result}}")
+                        print(f"Test result: {{test_result}}")
+                        break
+                    except:
+                        pass
+    
+    # If we couldn't find a result, run the implementation directly
+    if result is None:
+        implementation_result, output = None, ""
+        exec_locals = {{}}
+        exec(implementation, globals(), exec_locals)
+        # The implementation should print the result
+        # We'll capture that in a separate run
+        implementation_success, implementation_output, _ = run_code_safely(implementation, timeout=self.config.timeout)
+        if implementation_success:
+            # Try to extract a number from the output
+            import re
+            numbers = re.findall(r'[-+]?\d*\.\d+|\d+', implementation_output)
+            if numbers:
+                try:
+                    result = float(numbers[-1])  # Take the last number as the result
+                    test_result = test_solution(result)
+                    print(f"Extracted result from output: {{result}}")
+                    print(f"Test result: {{test_result}}")
+                except:
+                    pass
+except Exception as e:
+    print(f"Error in combined execution: {{e}}")
 """
                     
                     # Run the combined code to see if tests pass
-                    test_execution_success, _, test_error_message = run_code_safely(combined_code, timeout=self.config.timeout)
+                    test_execution_success, test_output, test_error_message = run_code_safely(combined_code, timeout=self.config.timeout)
                     
                     if test_execution_success:
-                        # Tests ran without errors with the actual implementation
-                        test_correct = True
+                        if "Test result: True" in test_output:
+                            # Tests ran without errors and passed with the actual implementation
+                            test_correct = True
+                            self.logger.info("Tests passed with the actual implementation")
+                        else:
+                            self.logger.info(f"Tests failed with the actual implementation")
+                            # This is expected if the implementation is incorrect but tests are good
+                            if not implementation_correct:
+                                # If implementation is wrong but tests caught it, that's good!
+                                test_correct = True
+                                self.logger.info("Tests correctly identified an incorrect implementation")
+                            else:
+                                # If implementation is correct but tests fail, tests are wrong
+                                test_correct = False
+                                self.logger.info("Tests incorrectly fail on a correct implementation")
                     else:
-                        self.logger.info(f"Tests failed with the actual implementation: {test_error_message}")
+                        self.logger.info(f"Tests failed to run with the actual implementation: {test_error_message}")
                         # This is expected if the implementation is incorrect but tests are good
                         if not implementation_correct:
                             # If implementation is wrong but tests caught it, that's good!
