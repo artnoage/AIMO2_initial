@@ -25,17 +25,17 @@ def main():
     # Load the base model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=args.model_name,
-        max_seq_length=8192,
+        max_seq_length=32768,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",

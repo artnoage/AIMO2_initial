@@ -102,7 +102,7 @@ def main():
     # Configuration
     model_type = "dual_proof_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -178,7 +178,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=2e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,

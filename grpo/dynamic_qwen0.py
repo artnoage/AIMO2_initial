@@ -148,7 +148,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -192,21 +192,21 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=8000,
+        max_seq_length=7192,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.55,
-        max_lora_rank=128)
+        gpu_memory_utilization=0.5,
+        max_lora_rank=256)
         
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=256,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=256,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -250,9 +250,9 @@ def main():
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
+            DUAL_PROOF_SYSTEM_PROMPT,
             tokenizer, 
-            distribution,
-            dual_proof_system_prompt=DUAL_PROOF_SYSTEM_PROMPT)
+            distribution)
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
@@ -262,7 +262,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=2e-6,
+        learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -275,9 +275,9 @@ def main():
         per_device_train_batch_size=8,
         gradient_accumulation_steps=8,
         num_generations=8,
-        max_prompt_length=1800,
-        max_completion_length=6200,
-        num_train_epochs=3,
+        max_prompt_length=2192,
+        max_completion_length=5000,
+        num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
         report_to="wandb",

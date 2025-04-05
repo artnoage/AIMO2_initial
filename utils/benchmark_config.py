@@ -17,10 +17,10 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_0/20250329_181711"
-    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_1/20250329_182835"
-    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_2/20250329_181002"
-    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/W"
+    LOCAL_0 ="/Home/stat/laschos/math/AIMO2_initial/models/Original"
+    LOCAL_1="/Home/stat/laschos/math/AIMO2_initial/models/W0"
+    LOCAL_2="/Home/stat/laschos/math/AIMO2_initial/models/W1"
+    LOCAL_3="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_0/20250330_203928"
     LOCAL_4="/Home/stat/laschos/math/AIMO2_initial/models/dynamic_bigD"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     MISTRAL="mistralai/mistral-small-24b-instruct-2501"
@@ -70,15 +70,8 @@ class BenchmarkConfig:
     upload_dataset: bool = False  # Whether to upload the dataset to HuggingFace Hub
     
     # Code execution settings
-    timeout: int = 200  # Timeout in seconds for code execution
+    timeout: int = 360 # Timeout in seconds for code execution
     
-    # Embedding model settings for similarity analysis
-    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
-    embedding_max_length: int = 512
-    embedding_device: str = "cpu"  # Use GPU when available
-    embedding_batch_size: int = 8
-    embedding_fallback_to_cpu: bool = True
-    embedding_compute_on_cpu: bool = True
     
     @classmethod
     def from_args(cls, description: str) -> 'BenchmarkConfig':

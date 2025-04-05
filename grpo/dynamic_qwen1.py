@@ -10,7 +10,7 @@ import sys
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 
-
+from dotenv import load_dotenv
 
 # Ensure the project root is in sys.path for imports
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +18,6 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
 from dynamic_reward import DynamicReward
-from utils.similarity_checker import SolutionSimilarityChecker
 from utils.data_preparation import prepare_combined_data
 from utils.agents import (
     FULLSOLUTION_SYSTEM_PROMPT, 
@@ -26,10 +25,11 @@ from utils.agents import (
     PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT,
     TESTER_SYSTEM_PROMPT,
-    ARCHITECT_SYSTEM_PROMPT
+    ARCHITECT_SYSTEM_PROMPT,
+    DUAL_PROOF_SYSTEM_PROMPT
 )
 
-
+load_dotenv()
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -148,7 +148,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -160,7 +160,7 @@ def main():
     # Setup
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
-    wandbname = f"{model_type}, DB={reward_config.group_diversity_bonus}, {model_name}, {dataset_name}, {timestamp}"
+    wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
     # Initialize wandb
     wandb.init(
@@ -170,16 +170,12 @@ def main():
             "model_type": reward_config.model_type,
             "dataset": dataset_name,
             "base_reward": 3.0,
-            "diversity_bonus": 0.3,
             "step_continuity_reward": 0.5
         }
     )
     
-    # Initialize similarity checker first
-    similarity_checker = SolutionSimilarityChecker(reward_config)
-    
     # Initialize dynamic reward function
-    reward_func = DynamicReward(reward_config, similarity_checker)
+    reward_func = DynamicReward(reward_config)
     logger.info("\nInitialized DynamicReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
@@ -196,21 +192,21 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=7000,
+        max_seq_length=7192,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.65,
-        max_lora_rank=64)
+        gpu_memory_utilization=0.5,
+        max_lora_rank=256)
         
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=256,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=256,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -230,23 +226,19 @@ def main():
         
         
         # Load the base dataset
-        data1 = load_dataset(dataset_name,split="train")
-        data1=data1.shuffle(seed=1341)
-        data1=data1.select(range(2500))
-        data2 =load_dataset("Metaskepsis/Olympiads_hard",split="train")
-        data2=data2.select(range(500))
-        data2=data2.shuffle(seed= 1341)
-        data = concatenate_datasets([data1,data2])
-        data=data.shuffle(seed=1341)
+        data = load_dataset(dataset_name,split="train")
+        data=data.shuffle(seed=141)
+       
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.25,
-            'programming': 0.25,
+            'solution': 0.1,
+            'programming': 0.1,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.25,
-            'architect': 0.25
+            'test_programming': 0.1,
+            'architect': 0,
+            'dual_proof': 0.1
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -258,6 +250,7 @@ def main():
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
+            DUAL_PROOF_SYSTEM_PROMPT,
             tokenizer, 
             distribution)
 
@@ -269,11 +262,11 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=2e-6,
+        learning_rate=3e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.1,
+        warmup_ratio=0.01,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
@@ -282,8 +275,8 @@ def main():
         per_device_train_batch_size=8,
         gradient_accumulation_steps=8,
         num_generations=8,
-        max_prompt_length=1800,
-        max_completion_length=5200,
+        max_prompt_length=2192,
+        max_completion_length=5000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
