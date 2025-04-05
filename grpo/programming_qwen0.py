@@ -66,7 +66,6 @@ class LoggingCallback(TrainerCallback):
             # Detailed stats for local logging only
             local_stats = {
                 'reward_components': {
-                    'structure_rewards': self.reward_func.stats.reward_components.get('structure_rewards', 0) - getattr(self, '_last_structure_rewards', 0),
                     'syntax_rewards': self.reward_func.stats.reward_components.get('syntax_rewards', 0) - getattr(self, '_last_syntax_rewards', 0),
                     'execution_rewards': self.reward_func.stats.reward_components.get('execution_rewards', 0) - getattr(self, '_last_execution_rewards', 0),
                     'correctness_rewards': self.reward_func.stats.reward_components.get('correctness_rewards', 0) - getattr(self, '_last_correctness_rewards', 0),
@@ -75,7 +74,7 @@ class LoggingCallback(TrainerCallback):
             }
             
             # Store current values for next round
-            self._last_structure_rewards = self.reward_func.stats.reward_components.get('structure_rewards', 0)
+           
             self._last_syntax_rewards = self.reward_func.stats.reward_components.get('syntax_rewards', 0)
             self._last_execution_rewards = self.reward_func.stats.reward_components.get('execution_rewards', 0)
             self._last_correctness_rewards = self.reward_func.stats.reward_components.get('correctness_rewards', 0)
@@ -92,8 +91,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/wait_2/20250304_194943"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -113,7 +112,6 @@ def main():
         config={
             "model_type": reward_config.model_type,
             "dataset": dataset_name,
-            "structure_reward": reward_config.structure_reward,
             "syntax_reward": reward_config.syntax_reward,
             "execution_reward": reward_config.execution_reward,
             "correctness_reward": reward_config.correctness_reward
@@ -128,7 +126,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4096,
+        max_seq_length=8196,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -159,8 +157,7 @@ def main():
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=42)
-    # Use a smaller dataset for programming training
-    formatted_dataset = formatted_dataset.select(range(1000))
+
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -172,21 +169,21 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
-        warmup_ratio=0.05,
+        warmup_ratio=0.01,
         lr_scheduler_type="cosine",
         optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=4,
-        num_generations=8,  # Fewer generations for programming tasks
-        max_prompt_length=800,
-        max_completion_length=3296,
+        per_device_train_batch_size=12,
+        gradient_accumulation_steps=8,
+        num_generations=12,  # Fewer generations for programming tasks
+        max_prompt_length=1000,
+        max_completion_length=7196,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

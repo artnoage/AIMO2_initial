@@ -149,7 +149,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Original"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -193,21 +193,21 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=7192,
+        max_seq_length=8192,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.5,
-        max_lora_rank=256)
+        gpu_memory_utilization=0.6,
+        max_lora_rank=64)
         
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=256,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=256,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -275,11 +275,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=12,
         gradient_accumulation_steps=8,
-        num_generations=8,
+        num_generations=12,
         max_prompt_length=2192,
-        max_completion_length=5000,
+        max_completion_length=6000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
