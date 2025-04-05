@@ -1293,34 +1293,38 @@ class DualProofReward(BaseReward):
     def __init__(self, config: RewardConfig):
         super().__init__(config)
         
-        # Initialize test-programming-specific stats
-        self.stats.test_programming_stats = {
-            'correct_tests': 0,
-            'incorrect_tests': 0,
+        # Initialize dual-proof-specific stats
+        self.stats.dual_proof_stats = {
+            'correct_proofs': 0,
+            'incorrect_proofs': 0,
+            'correct_code': 0,
+            'incorrect_code': 0,
+            'correct_dual_solutions': 0,
+            'structure_errors': 0,
             'syntax_errors': 0,
             'execution_errors': 0,
             'timeout_errors': 0
         }
         
-        # Initialize test-programming-specific reward components
+        # Initialize dual-proof-specific reward components
         self.stats.reward_components.update({
-            'syntax_rewards': 0,
-            'execution_rewards': 0,
-            'correctness_rewards': 0,
-            'syntax_valid_tests': 0,
-            'execution_valid_tests': 0,
-            'correct_tests': 0
+            'proof_rewards': 0,
+            'code_rewards': 0,
+            'structure_rewards': 0,
+            'correct_proofs': 0,
+            'correct_code': 0,
+            'correct_dual_solutions': 0
         })
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
-        """Calculate reward for a test function solution"""
+        """Calculate reward for a dual proof solution (logical proof + programming solution)"""
         try:
             # Get problem and correct answer
             problem = kwargs.get('problem', '')
             correct_answer = kwargs.get('answer', '')
             
             if not all([problem, correct_answer]):
-                self.logger.warning("Missing required inputs for test programming reward calculation")
+                self.logger.warning("Missing required inputs for dual proof reward calculation")
                 return 0.0
             
             # Initialize reward
@@ -1334,37 +1338,89 @@ class DualProofReward(BaseReward):
                 self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
                 return 0.0
             
-            # Extract test function from the completion
-            test_function = extract_code_from_response(completion)
-            if not test_function:
-                self.logger.info("No test function found in completion")
-                return reward
+            # 2. Check for proof and code sections within response
+            response_match = re.search(r'<response>(.*?)</response>', completion, re.DOTALL)
+            if not response_match:
+                self.logger.info("No response section found in completion")
+                return 0.0
+                
+            response_content = response_match.group(1)
             
-            self.logger.info(f"Extracted test function length: {len(test_function)} characters")
+            has_proof = bool(re.search(r'<proof>.*?</proof>', response_content, re.DOTALL))
+            has_code = bool(re.search(r'<code>.*?</code>', response_content, re.DOTALL))
             
-            # 2. Check code quality (syntax reward/penalty)
-            code_quality_passed, quality_message = check_code_quality(test_function)
-            if code_quality_passed:
-                syntax_reward = self.config.syntax_reward
-                reward += syntax_reward
-                self.stats.reward_components['syntax_rewards'] = self.stats.reward_components.get('syntax_rewards', 0) + 1
-                self.stats.reward_components['syntax_valid_tests'] = self.stats.reward_components.get('syntax_valid_tests', 0) + 1
-                self.logger.info(f"Applied syntax reward: +{syntax_reward:.3f}")
+            if not has_proof or not has_code:
+                self.logger.info(f"Missing {'proof' if not has_proof else ''} {'code' if not has_code else ''} section(s) in response")
+                # Apply structure penalty
+                self.stats.dual_proof_stats['structure_errors'] += 1
+                return 0.0
+            
+            # Apply structure reward for having all required sections
+            structure_reward = 0.2
+            reward += structure_reward
+            self.stats.reward_components['structure_rewards'] = self.stats.reward_components.get('structure_rewards', 0) + 1
+            self.logger.info(f"Applied structure reward: +{structure_reward:.3f}")
+            
+            # 3. Extract and evaluate the logical proof
+            proof_match = re.search(r'<proof>(.*?)</proof>', response_content, re.DOTALL)
+            proof_content = proof_match.group(1) if proof_match else ""
+            
+            # Extract answer from the proof
+            proof_answer = extract_answer_from_solution(proof_content)
+            proof_correct = False
+            
+            if proof_answer is not None:
+                # Convert to numeric values
+                proof_numeric, _ = extract_numeric_answer(proof_answer)
+                correct_numeric, _ = extract_numeric_answer(correct_answer)
+                
+                if proof_numeric is not None and correct_numeric is not None:
+                    # Check if the proof answer is correct
+                    proof_correct = abs(proof_numeric - correct_numeric) <= self.config.numeric_tolerance
+                    
+                    if proof_correct:
+                        # Award 1/4 of base reward for correct proof
+                        proof_reward = self.config.base_reward / 4
+                        reward += proof_reward
+                        self.stats.reward_components['proof_rewards'] = self.stats.reward_components.get('proof_rewards', 0) + 1
+                        self.stats.reward_components['correct_proofs'] = self.stats.reward_components.get('correct_proofs', 0) + 1
+                        self.stats.dual_proof_stats['correct_proofs'] += 1
+                        self.logger.info(f"Applied proof reward: +{proof_reward:.3f}")
+                    else:
+                        self.stats.dual_proof_stats['incorrect_proofs'] += 1
+                        self.logger.info(f"Incorrect proof answer: expected {correct_numeric}, got {proof_numeric}")
+                else:
+                    self.logger.info("Could not extract numeric values from proof or correct answer")
             else:
-                syntax_penalty = self.config.syntax_penalty
-                reward -= syntax_penalty
-                self.logger.info(f"Applied syntax penalty: -{syntax_penalty:.3f}")
-                self.logger.info(f"Code quality check failed: {quality_message}")
-                self.stats.test_programming_stats['syntax_errors'] += 1
-                # Update total rewards and average before returning
-                self.stats.reward_components['total_rewards'] += reward
-                total_samples = self.stats.total_batches
-                self.stats.reward_components['average_reward'] = self.stats.reward_components['total_rewards'] / max(1, total_samples)
-                return reward  # Return early if syntax is invalid
+                self.logger.info("No boxed answer found in proof")
             
-            # 3. Generate test cases
+            # 4. Extract and evaluate the code solution
+            code_match = re.search(r'<code>(.*?)</code>', response_content, re.DOTALL)
+            code = code_match.group(1) if code_match else ""
+            
+            if not code:
+                self.logger.info("No code found in code section")
+                return reward  # Return with just the proof reward if applicable
+            
+            # Check code quality (syntax)
+            code_quality_passed, quality_message = check_code_quality(code)
+            if not code_quality_passed:
+                self.logger.info(f"Code quality check failed: {quality_message}")
+                self.stats.dual_proof_stats['syntax_errors'] += 1
+                return reward  # Return with just the proof reward if applicable
+            
+            # Run the code and check if it produces a valid output
+            execution_success, result, error_message = run_code_safely(code, timeout=self.config.timeout)
+            if not execution_success or result is None:
+                self.logger.info(f"Code execution failed: {error_message}")
+                if "timed out" in error_message:
+                    self.stats.dual_proof_stats['timeout_errors'] += 1
+                else:
+                    self.stats.dual_proof_stats['execution_errors'] += 1
+                return reward  # Return with just the proof reward if applicable
+            
+            # Check if the code result matches the correct answer
             try:
-                # Convert correct_answer to float if it's not already
                 if isinstance(correct_answer, str):
                     numeric_answer, _ = extract_numeric_answer(correct_answer)
                     if numeric_answer is not None:
@@ -1373,76 +1429,36 @@ class DualProofReward(BaseReward):
                         correct_answer = float(correct_answer)
                 else:
                     correct_answer = float(correct_answer)
-                    
-                # Generate test cases including the correct answer and many incorrect answers (50 by default)
-                test_cases = generate_test_cases(correct_answer, num_cases=50)
-                self.logger.info(f"Generated {len(test_cases)} test cases for validation")
             except (ValueError, TypeError):
                 self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
-                return reward
+                return reward  # Return with just the proof reward if applicable
             
-            # 4. Run the test function on all test cases
-            success, results, error_message = run_test_function(
-                test_function, 
-                test_cases, 
-                correct_answer,
-                timeout=self.config.timeout
-            )
-            
-            if success:
-                execution_reward = self.config.execution_reward
-                reward += execution_reward
-                self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
-                self.stats.reward_components['execution_valid_tests'] = self.stats.reward_components.get('execution_valid_tests', 0) + 1
-                self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
+            # Compare with tolerance
+            code_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+            if code_correct:
+                # Award 1/4 of base reward for correct code
+                code_reward = self.config.base_reward / 4
+                reward += code_reward
+                self.stats.reward_components['code_rewards'] = self.stats.reward_components.get('code_rewards', 0) + 1
+                self.stats.reward_components['correct_code'] = self.stats.reward_components.get('correct_code', 0) + 1
+                self.stats.dual_proof_stats['correct_code'] += 1
+                self.logger.info(f"Applied code reward: +{code_reward:.3f}")
                 
-                # Add correctness reward for a valid test function
-                correctness_reward = self.config.correctness_reward
-                reward += correctness_reward
-                self.stats.reward_components['correctness_rewards'] = self.stats.reward_components.get('correctness_rewards', 0) + 1
-                self.stats.reward_components['correct_tests'] = self.stats.reward_components.get('correct_tests', 0) + 1
-                self.stats.test_programming_stats['correct_tests'] += 1
-                self.logger.info(f"Applied correctness reward: +{correctness_reward:.3f}")
+                # If both proof and code are correct, award additional bonus
+                if proof_correct:
+                    bonus_reward = self.config.base_reward / 2  # Additional 1/2 of base reward for having both correct
+                    reward += bonus_reward
+                    self.stats.reward_components['correct_dual_solutions'] = self.stats.reward_components.get('correct_dual_solutions', 0) + 1
+                    self.stats.dual_proof_stats['correct_dual_solutions'] += 1
+                    self.logger.info(f"Applied dual solution bonus: +{bonus_reward:.3f}")
             else:
-                self.logger.info(f"Test function validation failed: {error_message}")
-                self.stats.test_programming_stats['incorrect_tests'] += 1
-                if "timed out" in error_message:
-                    self.stats.test_programming_stats['timeout_errors'] += 1
-                else:
-                    self.stats.test_programming_stats['execution_errors'] += 1
+                self.stats.dual_proof_stats['incorrect_code'] += 1
+                self.logger.info(f"Incorrect code result: expected {correct_answer}, got {result}")
             
             # Apply length penalty
-            length_penalty = len(test_function) * self.config.length_penalty_factor
+            length_penalty = len(completion) * self.config.length_penalty_factor
             reward -= length_penalty
             self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
-            # Calculate and update test function success metrics
-            if success:
-                # Count test cases that passed/failed
-                passed_cases = sum(1 for result in results.values() if result is True)
-                total_cases = len(results)
-                
-                # Update test case statistics
-                self.stats.test_programming_stats['test_cases_passed'] += passed_cases
-                self.stats.test_programming_stats['total_test_cases_evaluated'] += total_cases
-                
-                # Calculate and update success rate
-                total_tests = self.stats.test_programming_stats['correct_tests'] + self.stats.test_programming_stats['incorrect_tests']
-                if total_tests > 0:
-                    self.stats.test_programming_stats['test_function_success_rate'] = (
-                        self.stats.test_programming_stats['correct_tests'] / total_tests
-                    )
-                
-                # Calculate and update average test cases passed
-                if self.stats.test_programming_stats['total_test_cases_evaluated'] > 0:
-                    self.stats.test_programming_stats['average_test_cases_passed'] = (
-                        self.stats.test_programming_stats['test_cases_passed'] / 
-                        self.stats.test_programming_stats['total_test_cases_evaluated']
-                    )
-                
-                # Log detailed test case results
-                self.logger.info(f"Test function passed {passed_cases}/{total_cases} test cases")
-                self.logger.info(f"Current test function success rate: {self.stats.test_programming_stats['test_function_success_rate']:.2%}")
             
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
@@ -1452,7 +1468,7 @@ class DualProofReward(BaseReward):
             return reward
             
         except Exception as e:
-            self.logger.error(f"Error calculating test programming reward: {str(e)}")
+            self.logger.error(f"Error calculating dual proof reward: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
             return 0.0
