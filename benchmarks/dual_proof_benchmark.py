@@ -407,6 +407,21 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             for ans in final_answers
         ]
         
+        # Calculate majority vote on all solutions
+        valid_answers = [str(ans) for ans in final_answers if ans is not None]
+        answer_counts = Counter(valid_answers)
+        majority = answer_counts.most_common(1)
+        majority_answer = majority[0][0] if majority else None
+        majority_count = majority[0][1] if majority else 0
+        
+        # Check if the majority answer is correct
+        majority_correct = False
+        if majority_answer:
+            try:
+                majority_correct = abs(float(majority_answer) - correct_answer) <= config.tolerance
+            except:
+                pass
+        
         # Add statistics entry
         result_entries.append({
             'id': example_id,
@@ -425,10 +440,11 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'all_final_answers': final_answers,
             
             # Compatibility fields for ProgressTracker statistics
+            'is_correct_list': is_correct_list,
             'is_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
-            'is_most_common_correct': final_answer is not None and abs(final_answer - correct_answer) <= config.tolerance,
-            'is_correct_list': is_correct_list,  # Add this for compatibility
+            'is_most_common_correct': majority_correct,
             
+            # Solution statistics
             'total_solutions': total_solutions,
             'correct_solutions': correct_solutions,
             'incorrect_solutions': total_solutions - correct_solutions,
@@ -438,7 +454,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             # Additional fields needed by ProgressTracker
             'example_processed_successfully': True,
             'initial_success_rate': (sum(is_correct_list) / len(is_correct_list) * 100) if is_correct_list else 0,
-            'verified_success_rate': (verified_correct_solutions / total_solutions * 100) if total_solutions > 0 else 0
+            'verified_success_rate': (verified_correct_solutions / total_solutions * 100) if total_solutions > 0 else 0,
+            
+            # Majority vote information
+            'majority_answer': majority_answer,
+            'majority_count': majority_count,
+            'majority_correct': majority_correct
         })
         
         return result_entries
@@ -454,7 +475,15 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'example_processed_successfully': False,
             'proof_success': False,
             'code_success': False,
-            'matching_answers': False
+            'matching_answers': False,
+            'is_correct': False,
+            'is_most_common_correct': False,
+            'total_solutions': 0,
+            'correct_solutions': 0,
+            'incorrect_solutions': 0,
+            'verified_correct_solutions': 0,
+            'verified_incorrect_solutions': 0,
+            'is_correct_list': []
         }]
 
 
