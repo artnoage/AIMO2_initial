@@ -288,6 +288,10 @@ def check_code_quality(code: str) -> Tuple[bool, str]:
 
 def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float], str]:
     """Run the code in a safe environment with timeout and capture the output"""
+    # Create logs directory if it doesn't exist
+    logs_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
     # Create a temporary file
     with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
         temp_file_path = temp_file.name
@@ -307,6 +311,18 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
             stdout, stderr = process.communicate(timeout=timeout)
             
             if process.returncode != 0:
+                # Log failed code to file
+                log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+                
+                # Determine if this is an import error
+                is_import_error = "ImportError" in stderr or "ModuleNotFoundError" in stderr
+                error_type = "IMPORT_ERROR" if is_import_error else "EXECUTION_ERROR"
+                
+                with open(log_file_path, 'a') as log_file:
+                    log_file.write(f"\n\n# {error_type}: {stderr}\n")
+                    log_file.write(code)
+                    log_file.write("\n\n# " + "-"*50 + "\n")
+                
                 return False, None, f"Execution error: {stderr}"
             
             # Try to parse the output as a float
@@ -315,9 +331,23 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
                 answer = float(output)
                 return True, answer, "Success"
             except ValueError:
+                # Log code with invalid output format
+                log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+                with open(log_file_path, 'a') as log_file:
+                    log_file.write(f"\n\n# OUTPUT_FORMAT_ERROR: '{output}'\n")
+                    log_file.write(code)
+                    log_file.write("\n\n# " + "-"*50 + "\n")
+                
                 return False, None, f"Output is not a valid number: '{output}'"
                 
         except subprocess.TimeoutExpired:
+            # Log timed out code
+            log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+            with open(log_file_path, 'a') as log_file:
+                log_file.write("\n\n# TIMEOUT_ERROR\n")
+                log_file.write(code)
+                log_file.write("\n\n# " + "-"*50 + "\n")
+            
             # Kill the entire process group
             import signal
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
@@ -325,6 +355,13 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
             return False, None, "Code execution timed out"
             
     except Exception as e:
+        # Log code that caused other exceptions
+        log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+        with open(log_file_path, 'a') as log_file:
+            log_file.write(f"\n\n# EXCEPTION: {str(e)}\n")
+            log_file.write(code)
+            log_file.write("\n\n# " + "-"*50 + "\n")
+        
         return False, None, f"Error running code: {str(e)}"
     finally:
         # Clean up the temporary file
