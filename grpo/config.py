@@ -8,25 +8,25 @@ class RewardConfig:
     logging_dir: str = "logs"
     stats_dir: str = "statistics"
     max_retries: int = 3
-    timeout: int = 30
+    timeout: int = 60
     
     # Main model settings
     main: str = "LOCAL_0"  # Main model to use for solving problems
     main_template: int = 1  # Template for main model
-    main_port: int = 8007  # Port for main model server
+    main_port: int = 8000  # Port for main model server
     main_temp: float = 0.7  # Temperature for main model generation
 
     # Auxiliary model settings
-    auxiliary: str = "LOCAL_0"  # Auxiliary model to use for solving problems
+    auxiliary: str = "LOCAL_3"  # Auxiliary model to use for solving problems
     auxiliary_template: int = 1  # Template for auxiliary model
-    auxiliary_port: int = 8007  # Port for auxiliary model server
-    auxiliary_temp: float = 0  # Temperature for auxiliary model generation
+    auxiliary_port: int = 8000  # Port for auxiliary model server
+    auxiliary_temp: float =  0.7  # Temperature for auxiliary model generation
 
     # Secondary auxiliary model settings
-    auxiliary2: str = "LOCAL_0"  # Secondary auxiliary model to use for solving problems
+    auxiliary2: str = "LOCAL_3"  # Secondary auxiliary model to use for solving problems
     auxiliary2_template: int = 1  # Template for secondary auxiliary model
-    auxiliary2_port: int = 8007  # Port for secondary auxiliary model server
-    auxiliary2_temp: float = 0  # Temperature for secondary auxiliary model generation
+    auxiliary2_port: int = 8000  # Port for secondary auxiliary model server
+    auxiliary2_temp: float =  0.7  # Temperature for secondary auxiliary model generation
     # Completion reward parameters
     step_continuity_reward: float = 0.5
     

@@ -91,7 +91,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Original"
+    model_name = "Qwen/Qwen2.5-3B-Instruct"
     dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
@@ -126,11 +126,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=6000,
+        max_seq_length=5000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.5,
+        gpu_memory_utilization=0.4,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -174,15 +174,15 @@ def main():
         weight_decay=0.1,
         warmup_ratio=0.01,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=14,
         gradient_accumulation_steps=8,
-        num_generations=8,  # Fewer generations for programming tasks
+        num_generations=14,  # Fewer generations for programming tasks
         max_prompt_length=1000,
-        max_completion_length=5000,
+        max_completion_length=4000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

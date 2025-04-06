@@ -148,9 +148,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_0"
+    model_type = "dynamic_2"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -233,14 +233,14 @@ def main():
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.08,
-            'programming': 0.08,
+            'solution': 0.1,
+            'programming': 0.1,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.08,
-            'architect': 0.04,
-            'dual_proof': 0.08,
-            'test_driven_programmer': 0.08
+            'test_programming': 0,
+            'architect': 0,
+            'dual_proof': 0,
+            'test_driven_programmer': 0
         }
         
         # Use the prepare_combined_data function with all system prompts
