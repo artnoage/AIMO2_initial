@@ -312,7 +312,7 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
             
             if process.returncode != 0:
                 # Log failed code to file
-                log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+                log_file_path = os.path.join(logs_dir, "failed_code_log.txt")
                 
                 # Determine if this is an import error
                 is_import_error = "ImportError" in stderr or "ModuleNotFoundError" in stderr
@@ -332,7 +332,7 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
                 return True, answer, "Success"
             except ValueError:
                 # Log code with invalid output format
-                log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+                log_file_path = os.path.join(logs_dir, "failed_code_log.txt")
                 with open(log_file_path, 'a') as log_file:
                     log_file.write(f"\n\n# OUTPUT_FORMAT_ERROR: '{output}'\n")
                     log_file.write(code)
@@ -342,7 +342,7 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
                 
         except subprocess.TimeoutExpired:
             # Log timed out code
-            log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+            log_file_path = os.path.join(logs_dir, "failed_code_log.txt")
             with open(log_file_path, 'a') as log_file:
                 log_file.write("\n\n# TIMEOUT_ERROR\n")
                 log_file.write(code)
@@ -356,7 +356,7 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
             
     except Exception as e:
         # Log code that caused other exceptions
-        log_file_path = os.path.join(logs_dir, "failed_code_log.py")
+        log_file_path = os.path.join(logs_dir, "failed_code_log.txt")
         with open(log_file_path, 'a') as log_file:
             log_file.write(f"\n\n# EXCEPTION: {str(e)}\n")
             log_file.write(code)
