@@ -91,7 +91,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Original"
     dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
@@ -126,11 +126,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=8196,
+        max_seq_length=6000,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
+        use_gradient_checkpointing=False,
+        gpu_memory_utilization=0.5,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -142,7 +142,7 @@ def main():
         lora_alpha=64,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing="unsloth",
+        use_gradient_checkpointing=False,
         random_state=3407,
         use_rslora=False,
         loftq_config=None
@@ -168,7 +168,6 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=1,
         learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -179,11 +178,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=8,
-        num_generations=12,  # Fewer generations for programming tasks
+        num_generations=8,  # Fewer generations for programming tasks
         max_prompt_length=1000,
-        max_completion_length=7196,
+        max_completion_length=5000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

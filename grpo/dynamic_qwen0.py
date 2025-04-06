@@ -197,7 +197,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.6,
+        gpu_memory_utilization=0.5,
         max_lora_rank=64)
         
     
@@ -233,14 +233,14 @@ def main():
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.1,
-            'programming': 0.1,
+            'solution': 0.08,
+            'programming': 0.08,
             'finalization': 0,
             'tutor': 0,
-            'test_programming': 0.1,
+            'test_programming': 0.08,
             'architect': 0,
-            'dual_proof': 0.1,
-            'test_driven_programmer': 0.1
+            'dual_proof': 0.08,
+            'test_driven_programmer': 0.08
         }
         
         # Use the prepare_combined_data function with all system prompts
@@ -275,9 +275,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=8,
-        num_generations=12,
+        num_generations=8,
         max_prompt_length=2192,
         max_completion_length=6000,
         num_train_epochs=1,
