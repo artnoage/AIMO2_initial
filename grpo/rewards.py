@@ -238,6 +238,19 @@ class SolutionReward(BaseReward):
 
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
             
+            # Check for glimpses of reasoning in thinking section
+            thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
+            has_glimpses = False
+            if thinking_match:
+                thinking_content = thinking_match.group(1)
+                # Check if any of the glimpses of reasoning are in the thinking content
+                from grpo.terms import Glimpses_of_reasoning
+                for glimpse in Glimpses_of_reasoning:
+                    if glimpse.lower() in thinking_content.lower():
+                        has_glimpses = True
+                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
+                        break
+            
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
@@ -264,8 +277,15 @@ class SolutionReward(BaseReward):
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             if is_correct:
-                reward += self.config.base_reward
-                self.logger.info(f"Applied base reward: +{self.config.base_reward:.3f}")
+                base_reward = self.config.base_reward
+                
+                # Apply bonus for glimpses of reasoning
+                if has_glimpses:
+                    base_reward *= 3
+                    self.logger.info(f"Applied 3x bonus for glimpses of reasoning")
+                
+                reward += base_reward
+                self.logger.info(f"Applied base reward: +{base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
                 
@@ -393,6 +413,19 @@ class ProgrammingReward(BaseReward):
             if not has_thinking or not has_response:
                 self.logger.info(f"Missing {'thinking' if not has_thinking else ''} {'response' if not has_response else ''} section(s)")
                 return 0.0
+                
+            # Check for glimpses of reasoning in thinking section
+            thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
+            has_glimpses = False
+            if thinking_match:
+                thinking_content = thinking_match.group(1)
+                # Check if any of the glimpses of reasoning are in the thinking content
+                from grpo.terms import Glimpses_of_reasoning
+                for glimpse in Glimpses_of_reasoning:
+                    if glimpse.lower() in thinking_content.lower():
+                        has_glimpses = True
+                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
+                        break
             
             # Extract code from the completion
             # First check if response section exists
@@ -477,6 +510,12 @@ class ProgrammingReward(BaseReward):
             is_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
             if is_correct:
                 correctness_reward = self.config.correctness_reward
+                
+                # Apply bonus for glimpses of reasoning
+                if has_glimpses:
+                    correctness_reward *= 3
+                    self.logger.info(f"Applied 3x bonus for glimpses of reasoning")
+                
                 reward += correctness_reward
                 self.stats.reward_components['correctness_rewards'] = self.stats.reward_components.get('correctness_rewards', 0) + 1
                 self.stats.reward_components['correct_solutions'] = self.stats.reward_components.get('correct_solutions', 0) + 1
