@@ -31,7 +31,8 @@ def prepare_solution_data(data: Dataset, system_prompts: Union[str, List[str]]) 
             'wrong_step': None,  # Use None instead of empty string for consistency
             'example_type': 'solution'  # Add type for tracking
         }
-    })
+    
+    solution_data = data.map(map_function)
     return solution_data
 
 def prepare_programming_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
@@ -54,7 +55,8 @@ def prepare_programming_data(data: Dataset, system_prompts: Union[str, List[str]
             'wrong_step': None,  # Use None instead of empty string for consistency
             'example_type': 'programming'
         }
-    })
+    
+    programming_data = data.map(map_function)
     return programming_data
 
 def prepare_test_programming_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
@@ -78,7 +80,8 @@ def prepare_test_programming_data(data: Dataset, system_prompts: Union[str, List
             'wrong_step': None,
             'example_type': 'test_programming'
         }
-    })
+    
+    test_programming_data = data.map(map_function)
     return test_programming_data
 
 def prepare_dual_proof_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
@@ -102,7 +105,8 @@ def prepare_dual_proof_data(data: Dataset, system_prompts: Union[str, List[str]]
             'wrong_step': None,
             'example_type': 'dual_proof'
         }
-    })
+    
+    dual_proof_data = data.map(map_function)
     return dual_proof_data
 
 def prepare_test_driven_programmer_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
@@ -126,7 +130,8 @@ def prepare_test_driven_programmer_data(data: Dataset, system_prompts: Union[str
             'wrong_step': None,
             'example_type': 'test_driven_programmer'
         }
-    })
+    
+    test_driven_programmer_data = data.map(map_function)
     return test_driven_programmer_data
 
 def prepare_architect_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
@@ -150,7 +155,8 @@ def prepare_architect_data(data: Dataset, system_prompts: Union[str, List[str]])
             'wrong_step': None,
             'example_type': 'architect'
         }
-    })
+    
+    architect_data = data.map(map_function)
     return architect_data
 
 def prepare_tutor_data(data: Dataset, system_prompts: Union[str, List[str]], tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
