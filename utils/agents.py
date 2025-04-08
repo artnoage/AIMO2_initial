@@ -1,6 +1,8 @@
 from typing import Union, Tuple, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
+from utils.solution_prompt import SOLUTION_PROMPTS, FULLSOLUTION_SYSTEM_PROMPT
+from utils.programmer_prompt import PROGRAMMER_PROMPTS, PROGRAMMER_SYSTEM_PROMPT
 
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
@@ -37,26 +39,6 @@ In your final step, include your answer in a LaTeX boxed environment:
 Make sure all your steps follow logically from the partial solution and that each step has both opening and closing tags.
 </response>"""
 
-FULLSOLUTION_SYSTEM_PROMPT="""You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-Your output must include two clearly separated sections: **Thinking** and **Response**.
-
-<thinking>
-Use this area as your creative scratchpad.
-Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
-Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
-</thinking>
-
-<response>
-<step>Step 1: Begin with the first calculation or operation
-Show your work clearly using LaTeX notation</step>
-
-<step>Step 2: Continue with the next logical step
-Each step should be numbered and self-contained</step>
-
-<step>Step N: In your final step, state your conclusion
-Put your final answer in \\boxed{}</step>
-</response>
-"""
 
 
 TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
@@ -88,44 +70,6 @@ If an incorrect step was found, provide the corrected solution starting from tha
 </response>"""
 
 
-PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem, that you need to solve using Python code.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
-
-<thinking>
-Use this area as your creative scratchpad.
-Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
-Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
-</thinking>
-
-<response>
-In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step of your approach within the code itself.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-4. Gracefully handle potential errors or edge cases.
-5. Be efficient and avoid excessive resource usage.
-
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem
-import math
-
-# Step 1: Parse the problem
-# [brief explanation comment]
-...
-
-# Step 2: Solve using appropriate method
-# [brief explanation comment]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
-</response>"""
 
 
 PROGRAMMER_SYSTEM_PROMPT_SUB="""You will be given a mathematical problem and some general instructions.
@@ -347,18 +291,26 @@ class FinalizationAgent:
 class FullSolutionAgent:
     """Agent that provides complete solutions with analysis and steps"""
     
-    def __init__(self, model):
+    def __init__(self, model, prompt_index: int = 0):
         self.model = model
+        self.prompt_index = prompt_index
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate a complete solution with analysis and steps"""
-        system_prompt = FULLSOLUTION_SYSTEM_PROMPT
+        system_prompt = SOLUTION_PROMPTS[self.prompt_index]
         prompt = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
         response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
+    
+    def set_prompt_variation(self, index: int) -> None:
+        """Change the prompt variation to use"""
+        if 0 <= index < len(SOLUTION_PROMPTS):
+            self.prompt_index = index
+        else:
+            raise ValueError(f"Invalid prompt index. Must be between 0 and {len(SOLUTION_PROMPTS)-1}")
 
 
 class TutorAgent:
@@ -388,12 +340,13 @@ class TutorAgent:
 class ProgrammingAgent:
     """Agent that generates Python code to solve mathematical problems"""
     
-    def __init__(self, model):
+    def __init__(self, model, prompt_index: int = 0):
         self.model = model
+        self.prompt_index = prompt_index
         
     async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
         """Generate Python code that solves the mathematical problem"""
-        system_prompt = PROGRAMMER_SYSTEM_PROMPT
+        system_prompt = PROGRAMMER_PROMPTS[self.prompt_index]
 
         prompt = [
             SystemMessage(content=system_prompt),
@@ -401,6 +354,13 @@ class ProgrammingAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=16384)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
+    
+    def set_prompt_variation(self, index: int) -> None:
+        """Change the prompt variation to use"""
+        if 0 <= index < len(PROGRAMMER_PROMPTS):
+            self.prompt_index = index
+        else:
+            raise ValueError(f"Invalid prompt index. Must be between 0 and {len(PROGRAMMER_PROMPTS)-1}")
     
 
 class ArchitectAgent:
