@@ -91,7 +91,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "Qwen/Qwen2.5-3B-Instruct"
+    model_name = "Metaskepsis/S"
     dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
@@ -126,11 +126,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=5000,
+        max_seq_length=4000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.4,
+        gpu_memory_utilization=0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -168,7 +168,7 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        learning_rate=1e-5,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -178,11 +178,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=14,
+        per_device_train_batch_size=32,
         gradient_accumulation_steps=8,
-        num_generations=14,  # Fewer generations for programming tasks
+        num_generations=32,  # Fewer generations for programming tasks
         max_prompt_length=1000,
-        max_completion_length=4000,
+        max_completion_length=3000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

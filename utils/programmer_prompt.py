@@ -1,275 +1,214 @@
-"""
-Collection of programmer prompts for mathematical problem-solving.
-These are variations of the programmer system prompt.
-"""
-
 from typing import List
 
 # Original programmer prompt
-PROGRAMMER_SYSTEM_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code.
+PROGRAMMER_SYSTEM_PROMPT = """You will be given a mathematical problem, which you must solve using Python code.
 
 Your output must include two clearly separated sections: **Thinking** and **Response**.
 
 <thinking>
 Use this area as your creative scratchpad.
-Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
-Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+Freely document thoughts, ideas, corrections, and insights in any order and form.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step of your approach within the code itself.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
+Write a complete, self-contained Python program that solves the problem explicitly based on the thinking above. Your code must:
+1. Be syntactically correct and runnable (standard Python libraries: numpy, sympy, scipy allowed).
+2. Include clear comments explaining each step.
+3. Print the final answer explicitly as a numeric value (float or integer).
 4. Gracefully handle potential errors or edge cases.
-5. Be efficient and avoid excessive resource usage.
+5. Be efficient and avoid unnecessary computations.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
+No explanations outside code comments.
 
 Example format:
-
 ```python
-# Solution for the problem
+# Solution
 import math
 
-# Step 1: Parse the problem
-# [brief explanation comment]
+# Step 1: Parse problem
 ...
 
-# Step 2: Solve using appropriate method
-# [brief explanation comment]
+# Step 2: Solve
 ...
 
-# Calculate and print the final answer
+# Print final answer
 result = ...
-print(result)  # Just the number, no text
+print(result)  # numeric value only
+```
 </response>"""
 
-# Variation 1: Emphasizing algorithm efficiency
-EFFICIENT_ALGORITHM_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code with a focus on algorithmic efficiency.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+# Variation 1: Efficiency-focused
+EFFICIENT_ALGORITHM_PROMPT = """You will be given a mathematical problem to solve using Python with an emphasis on algorithmic efficiency.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section:
-1. Analyze the computational complexity of different approaches
-2. Consider time and space efficiency tradeoffs
-3. Identify potential optimizations or mathematical shortcuts
-4. Select the most efficient algorithm for implementation
+1. Analyze complexity.
+2. Consider time-space tradeoffs.
+3. Identify optimizations.
+4. Select efficient algorithm.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem efficiently. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step and noting complexity considerations.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-4. Use efficient algorithms and data structures appropriate for the problem.
-5. Avoid unnecessary computations or memory usage.
+Complete Python program emphasizing efficiency:
+1. Runnable with numpy, sympy, scipy.
+2. Comments include complexity notes.
+3. Explicit numeric answer printed.
+4. Optimal algorithms and data structures used.
+5. Minimal computations.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem
-import math
-
-# Step 1: Parse the problem - O(1)
-# [brief explanation comment]
-...
-
-# Step 2: Solve using appropriate method - O(n log n)
-# [brief explanation comment with efficiency notes]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
+No explanations outside code comments.
 </response>"""
 
-# Variation 2: Numerical stability focus
-NUMERICAL_STABILITY_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code with special attention to numerical stability.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+# Variation 2: Numerical stability-focused
+NUMERICAL_STABILITY_PROMPT = """Solve the given mathematical problem using Python with a focus on numerical stability.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section:
-1. Identify potential numerical issues (overflow, underflow, precision loss)
-2. Consider alternative formulations to improve stability
-3. Determine appropriate tolerances and error handling
-4. Plan how to validate numerical results
+1. Identify numerical issues (overflow, precision loss).
+2. Consider stable formulations.
+3. Set appropriate tolerances.
+4. Plan result validation.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem with robust numerical handling. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include clear comments explaining each step and any numerical considerations.
-3. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-4. Use numerically stable algorithms and techniques.
-5. Include appropriate error handling and validation.
+Complete numerically stable Python solution:
+1. Runnable with numpy, sympy, scipy.
+2. Comments explain stability considerations.
+3. Numeric result explicitly printed.
+4. Numerically stable methods.
+5. Robust error handling.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem with numerical stability focus
-import numpy as np
-
-# Step 1: Parse the problem
-# [brief explanation comment]
-...
-
-# Step 2: Solve using numerically stable method
-# [explanation of stability considerations]
-...
-
-# Calculate and print the final answer with appropriate precision
-result = ...
-print(result)  # Just the number, no text
+No explanations outside code comments.
 </response>"""
 
-# Variation 3: Test-driven approach
-TEST_DRIVEN_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code with a test-driven approach.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+# Variation 3: Mathematical libraries-focused
+MATH_LIBRARY_PROMPT = """Solve the mathematical problem using Python leveraging mathematical libraries.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section:
-1. Break down the problem into testable components
-2. Design test cases for each component, including edge cases
-3. Plan your implementation strategy based on these tests
-4. Consider how to validate the final solution
+1. Choose suitable libraries (numpy, scipy, sympy).
+2. Identify applicable functions.
+3. Leverage library capabilities.
+4. Implementation strategy.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem using a test-driven approach. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include test functions that verify correctness of your solution.
-3. Implement the solution that passes all tests.
-4. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-5. Include appropriate assertions and validation.
+Python solution leveraging libraries:
+1. Runnable with numpy, sympy, scipy.
+2. Effective library usage.
+3. Comments explaining chosen functions.
+4. Numeric result explicitly printed.
+5. Concise implementation.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem using test-driven approach
-import math
-import unittest
-
-# Test cases for our solution
-def test_solution():
-    # Test basic case
-    assert abs(solve_problem(standard_input) - expected_output) < 1e-9
-    # Test edge cases
-    assert abs(solve_problem(edge_case) - edge_case_output) < 1e-9
-    
-# Main solution function
-def solve_problem(input_data):
-    # Implementation that passes all tests
-    ...
-    return result
-
-# Run tests and solve the actual problem
-test_solution()
-result = solve_problem(problem_input)
-print(result)  # Just the number, no text
+No explanations outside code comments.
 </response>"""
 
-# Variation 4: Mathematical library focused
-MATH_LIBRARY_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code with appropriate mathematical libraries.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+# Variation 4: Educational implementation
+EDUCATIONAL_CODE_PROMPT = """Solve the mathematical problem using Python with an educational perspective.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-In this section:
-1. Identify which mathematical libraries are most suitable (numpy, scipy, sympy)
-2. Determine specific functions or modules that apply to this problem
-3. Consider how to leverage library features for cleaner or more efficient code
-4. Plan your implementation using these libraries
+Freely document insights, ideas, and educational considerations.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem using appropriate mathematical libraries. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Make effective use of mathematical library functions rather than implementing from scratch.
-3. Include clear comments explaining each library function used and why.
-4. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-5. Be concise and leverage library capabilities.
+Educational Python program:
+1. Runnable with numpy, sympy, scipy.
+2. Extensive explanatory comments.
+3. Prioritize clarity.
+4. Numeric result explicitly printed.
+5. Alternative approaches noted in comments.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Solution for the problem using mathematical libraries
-import numpy as np
-from scipy import optimize
-import sympy as sp
-
-# Step 1: Set up the problem using appropriate library
-# [brief explanation of library choice]
-...
-
-# Step 2: Solve using library functions
-# [explanation of functions used]
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
+No explanations outside code comments.
 </response>"""
 
-# Variation 5: Educational implementation
-EDUCATIONAL_CODE_PROMPT = """You will be given a mathematical problem, that you need to solve using Python code with an educational focus.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+# Variation 5: Creative exploration prompt
+CREATIVE_EXPLORATION_PROMPT = """Solve the mathematical problem using Python with an emphasis on creative exploration and alternative approaches.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
 
 <thinking>
-Use this area as your creative scratchpad.
-Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
-Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+1. Explore unconventional methods.
+2. Evaluate multiple solution strategies.
+3. Identify creative shortcuts.
+4. Document reasoning clearly.
 </thinking>
 
 <response>
-In this section, write a complete, self-contained Python program that solves the problem with detailed educational comments. Your code must:
-1. Be syntactically correct and runnable with standard Python libraries (numpy, sympy, scipy are allowed).
-2. Include extensive comments explaining the mathematical concepts and programming techniques.
-3. Implement the solution in a way that prioritizes clarity over brevity.
-4. Print the final answer explicitly as a single numeric value (float or integer, as appropriate).
-5. Include alternative approaches in comments where relevant.
+Creatively explored Python solution:
+1. Runnable with numpy, sympy, scipy.
+2. Comments highlight creativity and alternatives.
+3. Explicit numeric result printed.
+4. Efficient and inventive code.
+5. Robust handling of special cases.
 
-Do NOT include explanations outside code comments. Your response here must contain ONLY valid Python code and comments.
-
-Example format:
-
-```python
-# Educational solution for the problem
-import math
-
-# Step 1: Parse the problem
-# This problem involves [mathematical concept], which works by...
-# [detailed explanation of the concept and approach]
-...
-
-# Step 2: Implement the solution
-# We're using [technique] because...
-# An alternative approach would be [alternative], but we chose this because...
-...
-
-# Calculate and print the final answer
-result = ...
-print(result)  # Just the number, no text
+No explanations outside code comments.
 </response>"""
 
-# List of all programmer prompts
+# Variation 6: Minimalist prompt
+MINIMALIST_PROMPT = """Solve the given mathematical problem using Python with minimal, concise code.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+1. Identify the simplest solution.
+2. Avoid unnecessary complexity.
+</thinking>
+
+<response>
+Minimal Python solution:
+1. Runnable with numpy, sympy, scipy.
+2. Minimal but clear comments.
+3. Explicit numeric result printed.
+
+No explanations outside code comments.
+</response>"""
+
+# Variation 7: Error handling-focused
+ERROR_HANDLING_PROMPT = """Solve the given mathematical problem using Python with robust error handling.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+1. Anticipate potential errors.
+2. Plan graceful handling and recovery.
+</thinking>
+
+<response>
+Robust Python solution:
+1. Runnable with numpy, sympy, scipy.
+2. Comments explain error handling.
+3. Explicit numeric result printed.
+4. Comprehensive edge case coverage.
+
+No explanations outside code comments.
+</response>"""
+
+# Variation 8: Performance optimization-focused
+PERFORMANCE_OPTIMIZATION_PROMPT = """Solve the given mathematical problem using Python focusing on performance optimization.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+1. Identify performance bottlenecks.
+2. Optimize for speed.
+</thinking>
+
+<response>
+Optimized Python solution:
+1. Runnable with numpy, sympy, scipy.
+2. Comments explain optimizations.
+3. Explicit numeric result printed.
+4. High-performance code structure.
+
+No explanations outside code comments.
+</response>"""
+
+# Updated list of prompts
 PROGRAMMER_PROMPTS: List[str] = [
     PROGRAMMER_SYSTEM_PROMPT,
     EFFICIENT_ALGORITHM_PROMPT,
     NUMERICAL_STABILITY_PROMPT,
-    TEST_DRIVEN_PROMPT,
     MATH_LIBRARY_PROMPT,
-    EDUCATIONAL_CODE_PROMPT
+    EDUCATIONAL_CODE_PROMPT,
+    CREATIVE_EXPLORATION_PROMPT,
+    MINIMALIST_PROMPT,
+    ERROR_HANDLING_PROMPT,
+    PERFORMANCE_OPTIMIZATION_PROMPT
 ]

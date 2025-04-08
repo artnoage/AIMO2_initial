@@ -149,8 +149,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_4"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/splus"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    model_name = "Metaskepsis/S"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -193,7 +193,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=6096,
+        max_seq_length=4096,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
@@ -275,11 +275,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=17,
+        per_device_train_batch_size=36,
         gradient_accumulation_steps=8,
-        num_generations=17,
-        max_prompt_length=1296,
-        max_completion_length=4800,
+        num_generations=36,
+        max_prompt_length=1096,
+        max_completion_length=3000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
