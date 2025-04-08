@@ -24,12 +24,13 @@ def prepare_solution_data(data: Dataset, system_prompts: Union[str, List[str]]) 
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
-        'partial_solution': '',  # Empty partial solution indicates full solution task
-        'full_solution': '',
-        'is_correct': None,  # Use None instead of empty string for consistency
-        'wrong_step': None,  # Use None instead of empty string for consistency
-        'example_type': 'solution'  # Add type for tracking
+            'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
+            'partial_solution': '',  # Empty partial solution indicates full solution task
+            'full_solution': '',
+            'is_correct': None,  # Use None instead of empty string for consistency
+            'wrong_step': None,  # Use None instead of empty string for consistency
+            'example_type': 'solution'  # Add type for tracking
+        }
     })
     return solution_data
 
@@ -46,12 +47,13 @@ def prepare_programming_data(data: Dataset, system_prompts: Union[str, List[str]
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,  # Use None instead of empty string for consistency
-        'wrong_step': None,  # Use None instead of empty string for consistency
-        'example_type': 'programming'
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,  # Use None instead of empty string for consistency
+            'wrong_step': None,  # Use None instead of empty string for consistency
+            'example_type': 'programming'
+        }
     })
     return programming_data
 
@@ -68,13 +70,14 @@ def prepare_test_programming_data(data: Dataset, system_prompts: Union[str, List
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'problem': x['problem'],
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,
-        'wrong_step': None,
-        'example_type': 'test_programming'
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,
+            'wrong_step': None,
+            'example_type': 'test_programming'
+        }
     })
     return test_programming_data
 
@@ -91,13 +94,14 @@ def prepare_dual_proof_data(data: Dataset, system_prompts: Union[str, List[str]]
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'problem': x['problem'],
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,
-        'wrong_step': None,
-        'example_type': 'dual_proof'
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,
+            'wrong_step': None,
+            'example_type': 'dual_proof'
+        }
     })
     return dual_proof_data
 
@@ -114,13 +118,14 @@ def prepare_test_driven_programmer_data(data: Dataset, system_prompts: Union[str
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'problem': x['problem'],
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,
-        'wrong_step': None,
-        'example_type': 'test_driven_programmer'
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,
+            'wrong_step': None,
+            'example_type': 'test_driven_programmer'
+        }
     })
     return test_driven_programmer_data
 
@@ -137,13 +142,14 @@ def prepare_architect_data(data: Dataset, system_prompts: Union[str, List[str]])
         selected_prompt = random.choice(system_prompts)
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'problem': x['problem'],
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,
-        'wrong_step': None,
-        'example_type': 'architect'
+            'answer': x.get('answer', x.get('correct_answer', '')),
+            'problem': x['problem'],
+            'partial_solution': '',
+            'full_solution': '',
+            'is_correct': None,
+            'wrong_step': None,
+            'example_type': 'architect'
+        }
     })
     return architect_data
 
