@@ -20,15 +20,15 @@ from config import RewardConfig
 from dynamic_reward import DynamicReward
 from utils.data_preparation import prepare_combined_data
 from utils.agents import (
-    FULLSOLUTION_SYSTEM_PROMPT, 
-    FINALIZATION_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT,
     TUTOR_SYSTEM_PROMPT,
     TESTER_SYSTEM_PROMPT,
     ARCHITECT_SYSTEM_PROMPT,
     DUAL_PROOF_SYSTEM_PROMPT,
-    TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT
+    TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
+    FINALIZATION_SYSTEM_PROMPT
 )
+from utils.solution_prompt import SOLUTION_PROMPTS
+from utils.programmer_prompt import PROGRAMMER_PROMPTS
 
 load_dotenv()
 def setup_logging(model_type: str) -> logging.Logger:
@@ -246,9 +246,9 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            FULLSOLUTION_SYSTEM_PROMPT, 
+            SOLUTION_PROMPTS, 
             FINALIZATION_SYSTEM_PROMPT, 
-            PROGRAMMER_SYSTEM_PROMPT,
+            PROGRAMMER_PROMPTS,
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,

@@ -1,7 +1,7 @@
 import re
 import random
 import logging
-from typing import Dict
+from typing import Dict, List, Union
 from datasets import concatenate_datasets, Dataset
 from utils.solution_utils import (extract_response_section, split_into_steps, get_partial_solutions, has_response_section, validate_solution)
 
@@ -11,11 +11,19 @@ logger.setLevel(logging.INFO)
 if not logger.handlers:
     logger.addHandler(logging.StreamHandler())
 
-def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_solution_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for full solution tasks"""
     logger.info("Creating solution examples...")
-    solution_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
         'partial_solution': '',  # Empty partial solution indicates full solution task
         'full_solution': '',
@@ -25,11 +33,19 @@ def prepare_solution_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return solution_data
 
-def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_programming_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for programming tasks using the programming-specific system prompt"""
     logger.info("Creating programming examples...")
-    programming_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'partial_solution': '',
         'full_solution': '',
@@ -39,11 +55,19 @@ def prepare_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return programming_data
 
-def prepare_test_programming_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_test_programming_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for test programming tasks using the test-specific system prompt"""
     logger.info("Creating test programming examples...")
-    test_programming_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'problem': x['problem'],
         'partial_solution': '',
@@ -54,11 +78,19 @@ def prepare_test_programming_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return test_programming_data
 
-def prepare_dual_proof_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_dual_proof_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for dual proof tasks using the dual-proof-specific system prompt"""
     logger.info("Creating dual proof examples...")
-    dual_proof_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'problem': x['problem'],
         'partial_solution': '',
@@ -69,11 +101,19 @@ def prepare_dual_proof_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return dual_proof_data
 
-def prepare_test_driven_programmer_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_test_driven_programmer_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for test-driven programmer tasks using the test-driven-programmer-specific system prompt"""
     logger.info("Creating test-driven programmer examples...")
-    test_driven_programmer_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'problem': x['problem'],
         'partial_solution': '',
@@ -84,11 +124,19 @@ def prepare_test_driven_programmer_data(data: Dataset, system_prompt: str) -> Da
     })
     return test_driven_programmer_data
 
-def prepare_architect_data(data: Dataset, system_prompt: str) -> Dataset:
+def prepare_architect_data(data: Dataset, system_prompts: Union[str, List[str]]) -> Dataset:
     """Create examples for architect/engineering tasks using the architect-specific system prompt"""
     logger.info("Creating architect examples...")
-    architect_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
+    
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
+    def map_function(x):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
+        return {
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
         'answer': x.get('answer', x.get('correct_answer', '')),
         'problem': x['problem'],
         'partial_solution': '',
@@ -99,7 +147,7 @@ def prepare_architect_data(data: Dataset, system_prompt: str) -> Dataset:
     })
     return architect_data
 
-def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
+def prepare_tutor_data(data: Dataset, system_prompts: Union[str, List[str]], tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for tutor tasks using the tutor-specific system prompt"""
     logger.info("Creating tutor examples...")
     
@@ -109,10 +157,16 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
             return len(tokenizer.encode(text))
         return len(text) // 4  # Rough estimate if no tokenizer provided
         
+    # Convert single prompt to list for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    
     # Default invalid example template - mark as solution type instead of using valid flag
     def create_invalid_example(example):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
         return {
-            'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': example.get('answer', example.get('correct_answer', '')),
             'partial_solution': '',
             'full_solution': '',
@@ -174,8 +228,11 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
                     logger.info(f"Converting correct tutor example to solution type (90% filter)")
                     return create_invalid_example(example)
             
+            # Randomly select a prompt from the list
+            selected_prompt = random.choice(system_prompts)
+            
             # Format the prompt with the problem and full solution
-            formatted_prompt = '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+            formatted_prompt = '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Here is a mathematical problem and a proposed solution:\n\n" + \
                 f"Problem:\n{example['problem']}\n\n" + \
                 f"Proposed Solution:\n{full_solution}<|im_end|>\\n<|im_start|>assistant\\n"
@@ -213,7 +270,7 @@ def prepare_tutor_data(data: Dataset, system_prompt: str, tokenizer=None, max_pr
     
     return tutor_data
 
-def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
+def prepare_finalization_data(data: Dataset, system_prompts: Union[str, List[str]], finalization_system_prompts: Union[str, List[str]], 
                            tokenizer=None, max_prompt_tokens: int = 1500) -> Dataset:
     """Create examples for finalization tasks with detailed validation"""
     logger.info("Creating finalization examples...")
@@ -224,13 +281,23 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
             return len(tokenizer.encode(text))
         return len(text) // 4  # Rough estimate if no tokenizer provided
     
+    # Convert single prompts to lists for consistent handling
+    if isinstance(system_prompts, str):
+        system_prompts = [system_prompts]
+    if isinstance(finalization_system_prompts, str):
+        finalization_system_prompts = [finalization_system_prompts]
+    
     # Calculate token counts for system prompts if tokenizer is provided
-    finalization_prompt_tokens = count_tokens(finalization_system_prompt) if tokenizer else 0
+    # Use the longest prompt for estimation
+    longest_prompt = max(finalization_system_prompts, key=len) if finalization_system_prompts else ""
+    finalization_prompt_tokens = count_tokens(longest_prompt) if tokenizer else 0
     
     # Default invalid example template - mark as solution type instead of using valid flag
     def create_invalid_example(example):
+        # Randomly select a prompt from the list
+        selected_prompt = random.choice(system_prompts)
         return {
-            'prompt': '<|im_start|>system\\n' + system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
+            'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + example.get('problem', '') + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': example.get('answer', example.get('correct_answer', '')),
             'partial_solution': '',
             'full_solution': '',
@@ -339,8 +406,11 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
                         logger.info(f"Finalization prompt too long ({total_tokens} tokens), marking as invalid")
                         return create_invalid_example(example)
             
+            # Randomly select a prompt from the list
+            selected_prompt = random.choice(finalization_system_prompts)
+            
             # Format the finalization prompt with the partial solution in the user section
-            formatted_prompt = '<|im_start|>system\\n' + finalization_system_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
+            formatted_prompt = '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + \
                 f"Problem: {example['problem']}\n\nPartial Solution: {partial_solution}<|im_end|>\\n<|im_start|>assistant\\n"
             
             # Get the answer from the example or extract from solution
@@ -397,11 +467,16 @@ def prepare_finalization_data(data: Dataset, system_prompt: str, finalization_sy
     
     return finalization_data
 
-def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system_prompt: str, 
-                          programming_system_prompt: str, tutor_system_prompt: str,
-                          test_programming_system_prompt: str, architect_system_prompt: str,
-                          dual_proof_system_prompt: str, test_driven_programmer_system_prompt: str,
-                         tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 2000) -> Dataset:
+def prepare_combined_data(data: Dataset, 
+                          system_prompts: Union[str, List[str]], 
+                          finalization_system_prompts: Union[str, List[str]], 
+                          programming_system_prompts: Union[str, List[str]], 
+                          tutor_system_prompts: Union[str, List[str]],
+                          test_programming_system_prompts: Union[str, List[str]], 
+                          architect_system_prompts: Union[str, List[str]],
+                          dual_proof_system_prompts: Union[str, List[str]], 
+                          test_driven_programmer_system_prompts: Union[str, List[str]],
+                          tokenizer=None, distribution: Dict[str, float] = None, max_prompt_tokens: int = 2000) -> Dataset:
     """
     Load and format dataset with multiple example types based on the specified distribution.
     Default distribution:
@@ -437,40 +512,40 @@ def prepare_combined_data(data: Dataset, system_prompt: str, finalization_system
     # Create examples for each type only if their distribution is non-zero
     solution_data = None
     if distribution.get('solution', 0) > 0:
-        solution_data = prepare_solution_data(data, system_prompt)
+        solution_data = prepare_solution_data(data, system_prompts)
         
     programming_data = None
     if distribution.get('programming', 0) > 0:
-        programming_data = prepare_programming_data(data, programming_system_prompt)
+        programming_data = prepare_programming_data(data, programming_system_prompts)
         
     finalization_data = None
     if distribution.get('finalization', 0) > 0:
-        finalization_data = prepare_finalization_data(data, system_prompt, finalization_system_prompt, tokenizer, max_prompt_tokens=1500)
+        finalization_data = prepare_finalization_data(data, system_prompts, finalization_system_prompts, tokenizer, max_prompt_tokens=1500)
     
-    # Create tutor examples if tutor_system_prompt is provided and distribution is non-zero
+    # Create tutor examples if tutor_system_prompts is provided and distribution is non-zero
     tutor_data = None
-    if tutor_system_prompt and distribution.get('tutor', 0) > 0:
-        tutor_data = prepare_tutor_data(data, tutor_system_prompt, tokenizer, max_prompt_tokens)
+    if tutor_system_prompts and distribution.get('tutor', 0) > 0:
+        tutor_data = prepare_tutor_data(data, tutor_system_prompts, tokenizer, max_prompt_tokens)
     
-    # Create test programming examples if test_programming_system_prompt is provided and distribution is non-zero
+    # Create test programming examples if test_programming_system_prompts is provided and distribution is non-zero
     test_programming_data = None
-    if test_programming_system_prompt and distribution.get('test_programming', 0) > 0:
-        test_programming_data = prepare_test_programming_data(data, test_programming_system_prompt)
+    if test_programming_system_prompts and distribution.get('test_programming', 0) > 0:
+        test_programming_data = prepare_test_programming_data(data, test_programming_system_prompts)
     
-    # Create architect examples if architect_system_prompt is provided and distribution is non-zero
+    # Create architect examples if architect_system_prompts is provided and distribution is non-zero
     architect_data = None
-    if architect_system_prompt and distribution.get('architect', 0) > 0:
-        architect_data = prepare_architect_data(data, architect_system_prompt)
+    if architect_system_prompts and distribution.get('architect', 0) > 0:
+        architect_data = prepare_architect_data(data, architect_system_prompts)
     
-    # Create dual proof examples if dual_proof_system_prompt is provided and distribution is non-zero
+    # Create dual proof examples if dual_proof_system_prompts is provided and distribution is non-zero
     dual_proof_data = None
-    if dual_proof_system_prompt and distribution.get('dual_proof', 0) > 0:
-        dual_proof_data = prepare_dual_proof_data(data, dual_proof_system_prompt)
+    if dual_proof_system_prompts and distribution.get('dual_proof', 0) > 0:
+        dual_proof_data = prepare_dual_proof_data(data, dual_proof_system_prompts)
     
-    # Create test-driven programmer examples if test_driven_programmer_system_prompt is provided and distribution is non-zero
+    # Create test-driven programmer examples if test_driven_programmer_system_prompts is provided and distribution is non-zero
     test_driven_programmer_data = None
-    if test_driven_programmer_system_prompt and distribution.get('test_driven_programmer', 0) > 0:
-        test_driven_programmer_data = prepare_test_driven_programmer_data(data, test_driven_programmer_system_prompt)
+    if test_driven_programmer_system_prompts and distribution.get('test_driven_programmer', 0) > 0:
+        test_driven_programmer_data = prepare_test_driven_programmer_data(data, test_driven_programmer_system_prompts)
     
     # Calculate the target number of examples for each type
     total_examples = len(data)
