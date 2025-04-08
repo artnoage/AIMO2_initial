@@ -148,8 +148,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W"
+    model_type = "dynamic_4"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/splus"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -197,7 +197,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.45,
+        gpu_memory_utilization=0.3,
         max_lora_rank=64)
         
     
@@ -275,9 +275,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=17,
         gradient_accumulation_steps=8,
-        num_generations=8,
+        num_generations=17,
         max_prompt_length=1296,
         max_completion_length=4800,
         num_train_epochs=1,
