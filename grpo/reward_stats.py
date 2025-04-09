@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any, Tuple
 import os
 import sys
+from collections import defaultdict
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
@@ -23,6 +24,25 @@ class RewardStats:
         self.max_reward = float('-inf')
         self.all_rewards = []  # Store all rewards for dynamic binning
         self.current_reward_type = None  # Track the current reward type being used
+        
+        # Add fields for tracking individual results by batch
+        self.batch_results = []  # Will store results for each batch
+        self.current_batch = {
+            'answers': [],       # Extracted answers from completions
+            'is_correct': [],    # Whether each answer is correct
+            'execution_times': [],  # Execution time for each solution
+            'code_lengths': [],   # Length of code for each solution
+            'completions': []    # Store the actual completions
+        }
+        
+        # Add fields for tracking plurality statistics
+        self.plurality_stats = {
+            'plurality_correct_count': 0,
+            'total_batches': 0,
+            'plurality_correct_rate': 0.0,
+            'avg_plurality_percentage': 0.0,
+            'avg_completion_length': 0.0
+        }
         
         # Track step validation stats
         self.step_stats = {

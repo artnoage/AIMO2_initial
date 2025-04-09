@@ -50,18 +50,56 @@ class LoggingCallback(TrainerCallback):
         self.step = 0
         self.logger = logger
         
+        # Initialize tracking variables
+        self._last_syntax_rewards = 0
+        self._last_execution_rewards = 0
+        self._last_correctness_rewards = 0
+        self._last_length_penalties = 0.0
+        self._last_total_examples = 0
+        
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Calculate new examples in this batch
+            current_total_examples = self.reward_func.stats.total_examples
+            new_examples = current_total_examples - getattr(self, '_last_total_examples', 0)
+            self._last_total_examples = current_total_examples
+            
+            # Get plurality statistics if available
+            plurality_stats = {}
+            if hasattr(self.reward_func.stats, 'plurality_stats'):
+                plurality_stats = self.reward_func.stats.plurality_stats
+            
+            # Get the most recent batch result if available
+            latest_batch = {}
+            if hasattr(self.reward_func.stats, 'batch_results') and self.reward_func.stats.batch_results:
+                latest_batch = self.reward_func.stats.batch_results[-1]
+            
             # Key performance metrics for wandb
             wandb_stats = {
                 'programming_reward': logs['rewards/0'],
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_solutions': self.reward_func.stats.reward_components.get('correct_solutions', 0),
                 'syntax_valid_solutions': self.reward_func.stats.reward_components.get('syntax_valid_solutions', 0),
-                'execution_valid_solutions': self.reward_func.stats.reward_components.get('execution_valid_solutions', 0)
+                'execution_valid_solutions': self.reward_func.stats.reward_components.get('execution_valid_solutions', 0),
+                'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0)
             }
+            
+            # Add plurality metrics to wandb logs
+            if plurality_stats:
+                wandb_stats.update({
+                    'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
+                    'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0)
+                })
+            
+            if latest_batch:
+                wandb_stats.update({
+                    'batch_plurality_correct': latest_batch.get('plurality_correct', False),
+                    'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
+                    'batch_avg_code_length': latest_batch.get('avg_code_length', 0),
+                    'batch_avg_execution_time': latest_batch.get('avg_execution_time', 0.0)
+                })
             
             # Detailed stats for local logging only
             local_stats = {
@@ -73,8 +111,16 @@ class LoggingCallback(TrainerCallback):
                 }
             }
             
+            # Log to console/file
+            if latest_batch:
+                self.logger.info(
+                    f"Step {self.step}: Plurality answer: {latest_batch.get('plurality_answer')} " +
+                    f"({latest_batch.get('plurality_percentage', 0.0):.2%} of answers), " +
+                    f"Correct: {latest_batch.get('plurality_correct', False)}, " +
+                    f"Overall rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}"
+                )
+            
             # Store current values for next round
-           
             self._last_syntax_rewards = self.reward_func.stats.reward_components.get('syntax_rewards', 0)
             self._last_execution_rewards = self.reward_func.stats.reward_components.get('execution_rewards', 0)
             self._last_correctness_rewards = self.reward_func.stats.reward_components.get('correctness_rewards', 0)

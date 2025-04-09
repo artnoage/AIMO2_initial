@@ -94,6 +94,15 @@ class BaseReward(ABC):
             print("wtf")
             return [0.0] * len(completions)
             
+        # Reset current batch data for this new batch
+        self.stats.current_batch = {
+            'answers': [],
+            'is_correct': [],
+            'execution_times': [],
+            'code_lengths': [],
+            'completions': []
+        }
+            
         # Group completions by prompt for group context
         prompt_groups = {}
         for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
@@ -200,11 +209,134 @@ class BaseReward(ABC):
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions, example_type=kwargs.get('example_type', []))
         
+        # Process the batch results to calculate plurality metrics
+        self._finalize_batch()
+        
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
         self.logger.info(self.stats.get_summary(getattr(self, 'relevant_stats', None)))
         
         return rewards
+        
+    def _finalize_batch(self):
+        """Calculate batch-level statistics including plurality voting with numerical grouping"""
+        # Skip if no results
+        if not self.stats.current_batch['answers']:
+            return
+        
+        # Filter out None values
+        valid_results = [(ans, correct) for ans, correct in 
+                         zip(self.stats.current_batch['answers'], 
+                             self.stats.current_batch['is_correct']) 
+                         if ans is not None]
+        
+        if not valid_results:
+            return
+        
+        # Group similar answers using the tolerance
+        grouped_answers = defaultdict(list)
+        
+        for idx, (ans, correct) in enumerate(valid_results):
+            # Find if this answer belongs to an existing group
+            found_group = False
+            for group_key in grouped_answers:
+                if abs(ans - group_key) <= self.answer_grouping_tolerance:
+                    # Add to existing group
+                    grouped_answers[group_key].append((idx, ans, correct))
+                    found_group = True
+                    break
+            
+            if not found_group:
+                # Create new group
+                grouped_answers[ans].append((idx, ans, correct))
+        
+        # Find the plurality winner (most common answer group)
+        if grouped_answers:
+            # Get the group with the most answers
+            plurality_group, plurality_indices = max(grouped_answers.items(), 
+                                                    key=lambda x: len(x[1]))
+            
+            # Calculate what percentage of valid answers this represents
+            plurality_count = len(plurality_indices)
+            plurality_percentage = plurality_count / len(valid_results)
+            
+            # Check if the plurality answer is correct
+            plurality_correct = any(correct for _, _, correct in plurality_indices)
+            
+            # Calculate average code length and execution time
+            avg_code_length = sum(self.stats.current_batch['code_lengths']) / len(self.stats.current_batch['code_lengths'])
+            valid_times = [t for t in self.stats.current_batch['execution_times'] if t > 0]
+            avg_execution_time = sum(valid_times) / len(valid_times) if valid_times else 0
+            
+            # Store batch results
+            batch_result = {
+                'plurality_answer': plurality_group,
+                'plurality_count': plurality_count,
+                'plurality_percentage': plurality_percentage,
+                'plurality_correct': plurality_correct,
+                'total_answers': len(valid_results),
+                'correct_answers': sum(1 for _, correct in valid_results if correct),
+                'avg_code_length': avg_code_length,
+                'avg_execution_time': avg_execution_time,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Add to batch history
+            self.stats.batch_results.append(batch_result)
+            
+            # Update plurality statistics
+            self.stats.plurality_stats['plurality_correct_count'] += int(plurality_correct)
+            self.stats.plurality_stats['total_batches'] += 1
+            
+            if self.stats.plurality_stats['total_batches'] > 0:
+                self.stats.plurality_stats['plurality_correct_rate'] = (
+                    self.stats.plurality_stats['plurality_correct_count'] / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            
+            # Update average plurality percentage (how dominant is the most common answer)
+            prev_avg = self.stats.plurality_stats['avg_plurality_percentage']
+            prev_batches = self.stats.plurality_stats['total_batches'] - 1
+            
+            if prev_batches > 0:
+                self.stats.plurality_stats['avg_plurality_percentage'] = (
+                    (prev_avg * prev_batches + plurality_percentage) / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            else:
+                self.stats.plurality_stats['avg_plurality_percentage'] = plurality_percentage
+            
+            # Update average completion length
+            total_length = sum(len(comp) for comp in self.stats.current_batch['completions'] if comp)
+            avg_length = total_length / len(self.stats.current_batch['completions']) if self.stats.current_batch['completions'] else 0
+            
+            prev_avg_length = self.stats.plurality_stats['avg_completion_length']
+            
+            if prev_batches > 0:
+                self.stats.plurality_stats['avg_completion_length'] = (
+                    (prev_avg_length * prev_batches + avg_length) / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            else:
+                self.stats.plurality_stats['avg_completion_length'] = avg_length
+            
+            # Log the results
+            self.logger.info(
+                f"Batch plurality results: answer={plurality_group}, " +
+                f"count={plurality_count}/{len(valid_results)} ({plurality_percentage:.2%}), " +
+                f"correct={plurality_correct}, " +
+                f"overall rate={self.stats.plurality_stats['plurality_correct_rate']:.2%}"
+            )
+            
+            # Log the answer groups for debugging
+            group_info = []
+            for group_key, indices in grouped_answers.items():
+                correct_in_group = any(correct for _, _, correct in indices)
+                group_info.append(f"{group_key}: {len(indices)} answers, correct={correct_in_group}")
+            
+            self.logger.info(f"Answer groups (tolerance={self.answer_grouping_tolerance}):")
+            for info in group_info:
+                self.logger.info(f"  {info}")
             
 
 
@@ -377,6 +509,9 @@ class ProgrammingReward(BaseReward):
         'programming_stats': [
             'correct_solutions', 'incorrect_solutions', 'syntax_errors', 
             'execution_errors', 'timeout_errors'
+        ],
+        'plurality_stats': [
+            'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length'
         ]
     }
     
@@ -392,12 +527,16 @@ class ProgrammingReward(BaseReward):
             'timeout_errors': 0
         }
         
+        # Numerical tolerance for grouping similar answers
+        self.answer_grouping_tolerance = 1e-2
+        
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a programming solution"""
         try:
             # Get problem and correct answer
             problem = kwargs.get('problem', '')
             correct_answer = kwargs.get('answer', '')
+            batch_index = kwargs.get('reward_index', len(self.stats.current_batch['answers']))
             
             if not all([problem, correct_answer]):
                 self.logger.warning("Missing required inputs for programming reward calculation")
@@ -405,6 +544,13 @@ class ProgrammingReward(BaseReward):
             
             # Initialize reward
             reward = 0.0
+            
+            # Initialize tracking variables for this completion
+            model_answer = None
+            model_numeric = None
+            is_correct = False
+            execution_time = 0.0
+            code_length = 0
             
             # 1. Check for thinking and response sections
             has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
@@ -435,6 +581,17 @@ class ProgrammingReward(BaseReward):
                 code = extract_code_from_response(completion)
                 if not code:
                     self.logger.info("No code found in completion")
+                    
+                    # Ensure lists are long enough for this batch index
+                    self._ensure_batch_lists_length(batch_index)
+                    
+                    # Store empty results
+                    self.stats.current_batch['answers'][batch_index] = None
+                    self.stats.current_batch['is_correct'][batch_index] = False
+                    self.stats.current_batch['execution_times'][batch_index] = 0.0
+                    self.stats.current_batch['code_lengths'][batch_index] = 0
+                    self.stats.current_batch['completions'][batch_index] = completion
+                    
                     return reward
             else:
                 # Extract code from the response section
@@ -447,9 +604,21 @@ class ProgrammingReward(BaseReward):
                     code = extract_code_from_response(completion)
                     if not code:
                         self.logger.info("No code found in completion")
+                        
+                        # Ensure lists are long enough for this batch index
+                        self._ensure_batch_lists_length(batch_index)
+                        
+                        # Store empty results
+                        self.stats.current_batch['answers'][batch_index] = None
+                        self.stats.current_batch['is_correct'][batch_index] = False
+                        self.stats.current_batch['execution_times'][batch_index] = 0.0
+                        self.stats.current_batch['code_lengths'][batch_index] = 0
+                        self.stats.current_batch['completions'][batch_index] = completion
+                        
                         return reward
             
             self.logger.info(f"Extracted code length: {len(code)} characters")
+            code_length = len(code)
             
             # 2. Check code quality (syntax reward/penalty)
             code_quality_passed, quality_message = check_code_quality(code)
@@ -472,19 +641,35 @@ class ProgrammingReward(BaseReward):
                 return reward  # Return early if syntax is invalid
             
             # 3. Run the code and check if it produces a valid output (execution reward)
+            import time
+            start_time = time.time()
             execution_success, result, error_message = run_code_safely(code, timeout=self.config.timeout)
+            execution_time = time.time() - start_time
+            
             if execution_success and result is not None:
                 execution_reward = self.config.execution_reward
                 reward += execution_reward
                 self.stats.reward_components['execution_rewards'] = self.stats.reward_components.get('execution_rewards', 0) + 1
                 self.stats.reward_components['execution_valid_solutions'] = self.stats.reward_components.get('execution_valid_solutions', 0) + 1
                 self.logger.info(f"Applied execution reward: +{execution_reward:.3f}")
+                model_numeric = result
             else:
                 self.logger.info(f"Code execution failed: {error_message}")
                 if "timed out" in error_message:
                     self.stats.programming_stats['timeout_errors'] += 1
                 else:
                     self.stats.programming_stats['execution_errors'] += 1
+                
+                # Ensure lists are long enough for this batch index
+                self._ensure_batch_lists_length(batch_index)
+                
+                # Store results even for failed execution
+                self.stats.current_batch['answers'][batch_index] = None
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = execution_time
+                self.stats.current_batch['code_lengths'][batch_index] = code_length
+                self.stats.current_batch['completions'][batch_index] = completion
+                
                 # Update total rewards and average before returning
                 self.stats.reward_components['total_rewards'] += reward
                 total_samples = self.stats.total_batches
@@ -504,10 +689,21 @@ class ProgrammingReward(BaseReward):
                     correct_answer = float(correct_answer)
             except (ValueError, TypeError):
                 self.logger.info(f"Could not convert correct answer to float: {correct_answer}")
+                
+                # Ensure lists are long enough for this batch index
+                self._ensure_batch_lists_length(batch_index)
+                
+                # Store results even for failed conversion
+                self.stats.current_batch['answers'][batch_index] = model_numeric
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = execution_time
+                self.stats.current_batch['code_lengths'][batch_index] = code_length
+                self.stats.current_batch['completions'][batch_index] = completion
+                
                 return reward
             
             # Compare with tolerance
-            is_correct = abs(correct_answer - result) <= self.config.numeric_tolerance
+            is_correct = abs(correct_answer - model_numeric) <= self.config.numeric_tolerance
             if is_correct:
                 correctness_reward = self.config.correctness_reward
                 
@@ -523,7 +719,17 @@ class ProgrammingReward(BaseReward):
                 self.logger.info(f"Applied correctness reward: +{correctness_reward:.3f}")
             else:
                 self.stats.programming_stats['incorrect_solutions'] += 1
-                self.logger.info(f"Incorrect answer: expected {correct_answer}, got {result}")
+                self.logger.info(f"Incorrect answer: expected {correct_answer}, got {model_numeric}")
+            
+            # Ensure lists are long enough for this batch index
+            self._ensure_batch_lists_length(batch_index)
+            
+            # Store the results for this completion
+            self.stats.current_batch['answers'][batch_index] = model_numeric
+            self.stats.current_batch['is_correct'][batch_index] = is_correct
+            self.stats.current_batch['execution_times'][batch_index] = execution_time
+            self.stats.current_batch['code_lengths'][batch_index] = code_length
+            self.stats.current_batch['completions'][batch_index] = completion
             
             # Apply length penalty
             length_penalty = len(code) * self.config.length_penalty_factor
@@ -541,7 +747,29 @@ class ProgrammingReward(BaseReward):
             self.logger.error(f"Error calculating programming reward: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
+            
+            # Ensure lists are long enough for this batch index
+            self._ensure_batch_lists_length(batch_index)
+            
+            # Store empty results in case of exception
+            self.stats.current_batch['answers'][batch_index] = None
+            self.stats.current_batch['is_correct'][batch_index] = False
+            self.stats.current_batch['execution_times'][batch_index] = 0.0
+            self.stats.current_batch['code_lengths'][batch_index] = 0
+            self.stats.current_batch['completions'][batch_index] = completion
+            
             return 0.0
+    
+    def _ensure_batch_lists_length(self, index):
+        """Ensure all batch lists are long enough to store data at the given index"""
+        for key in ['answers', 'is_correct', 'execution_times', 'code_lengths', 'completions']:
+            while len(self.stats.current_batch[key]) <= index:
+                if key == 'is_correct':
+                    self.stats.current_batch[key].append(False)
+                elif key in ['execution_times', 'code_lengths']:
+                    self.stats.current_batch[key].append(0.0)
+                else:
+                    self.stats.current_batch[key].append(None)
 
 class FinalizationReward(BaseReward):
     """Reward class for solution finalization evaluation"""
