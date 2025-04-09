@@ -91,8 +91,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "Metaskepsis/S"
-    dataset_name = "Metaskepsis/Numina_medium"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Splus"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -130,7 +130,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.6,
+        gpu_memory_utilization=0.2,
         max_lora_rank=64)
     
     # Configure LoRA
