@@ -418,6 +418,8 @@ class BaseReward(ABC):
             }
             
             # Add to batch history
+            if not hasattr(self.stats, 'batch_results'):
+                self.stats.batch_results = []
             self.stats.batch_results.append(batch_result)
             
             # Update plurality statistics

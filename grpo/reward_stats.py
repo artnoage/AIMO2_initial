@@ -44,6 +44,9 @@ class RewardStats:
             'avg_completion_length': 0.0
         }
         
+        # Initialize batch_results to avoid None errors
+        self.batch_results = []
+        
         # Track step validation stats
         self.step_stats = {
             'correct_step_numbering': 0,

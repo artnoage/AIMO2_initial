@@ -103,18 +103,18 @@ class LoggingCallback(TrainerCallback):
             if hasattr(self.reward_func.stats, 'batch_results') and self.reward_func.stats.batch_results:
                 latest_batch = self.reward_func.stats.batch_results[-1]
             
-            # Add plurality metrics to wandb logs
-            if plurality_stats:
-                wandb_stats.update({
-                    'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
-                    'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0),
-                    'average_completion_length': plurality_stats.get('avg_completion_length', 0.0)
-                })
+            # Add plurality metrics to wandb logs - ensure these are always logged
+            wandb_stats.update({
+                'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
+                'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0),
+                'avg_completion_length': plurality_stats.get('avg_completion_length', 0.0)
+            })
             
             if latest_batch:
                 # Convert boolean plurality_correct to float (1.0 for True, 0.0 for False)
                 plurality_correct_float = 1.0 if latest_batch.get('plurality_correct', False) else 0.0
                 
+                # Always include these metrics in wandb logs
                 wandb_stats.update({
                     'batch_plurality_correct': plurality_correct_float,  # Numeric value for averaging
                     'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
