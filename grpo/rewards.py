@@ -104,6 +104,15 @@ class BaseReward(ABC):
             'completions': []
         }
             
+        # Reset current batch data for this new batch
+        self.stats.current_batch = {
+            'answers': [],
+            'is_correct': [],
+            'execution_times': [],
+            'code_lengths': [],
+            'completions': []
+        }
+            
         # Group completions by prompt for group context
         prompt_groups = {}
         for idx, (completion, prompt, ans) in enumerate(zip(completions, prompts, answers)):
@@ -349,11 +358,19 @@ class SolutionReward(BaseReward):
         'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty'],
         'group_stats': [
             'correct_answers', 'incorrect_answers'
+        ],
+        'plurality_stats': [
+            'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length',
+            'batch_plurality_correct', 'batch_plurality_percentage', 'batch_total_answers',
+            'batch_correct_answers', 'batch_correct_rate'
         ]
     }
     
     def __init__(self, config: RewardConfig, similarity_checker=None):
         super().__init__(config)
+        
+        # Numerical tolerance for grouping similar answers
+        self.answer_grouping_tolerance = 1e-2
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -364,9 +381,37 @@ class SolutionReward(BaseReward):
             group_indices = kwargs.get('group_indices', [])
             group_idx = kwargs.get('group_idx', 0)
             correct_answer = kwargs.get('answer')
+            batch_index = kwargs.get('reward_index', len(self.stats.current_batch['answers']) if hasattr(self.stats, 'current_batch') else 0)
             reward=0.0
+            
+            # Initialize tracking variables for this completion
+            model_answer = None
+            model_numeric = None
+            is_correct = False
+            
+            # Ensure current_batch exists in stats
+            if not hasattr(self.stats, 'current_batch'):
+                self.stats.current_batch = {
+                    'answers': [],
+                    'is_correct': [],
+                    'execution_times': [],
+                    'code_lengths': [],
+                    'completions': []
+                }
+            
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
+                
+                # Ensure lists are long enough for this batch index
+                self._ensure_batch_lists_length(batch_index)
+                
+                # Store empty results
+                self.stats.current_batch['answers'][batch_index] = None
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = 0.0
+                self.stats.current_batch['code_lengths'][batch_index] = 0
+                self.stats.current_batch['completions'][batch_index] = completion
+                
                 return 0.0
 
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
@@ -388,7 +433,18 @@ class SolutionReward(BaseReward):
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
             if model_answer is None:
-                self.logger.info("Thre is not model_answer")
+                self.logger.info("There is no model_answer")
+                
+                # Ensure lists are long enough for this batch index
+                self._ensure_batch_lists_length(batch_index)
+                
+                # Store empty results
+                self.stats.current_batch['answers'][batch_index] = None
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = 0.0
+                self.stats.current_batch['code_lengths'][batch_index] = 0
+                self.stats.current_batch['completions'][batch_index] = completion
+                
                 return reward
                 
             # Convert to numeric values
@@ -396,6 +452,17 @@ class SolutionReward(BaseReward):
             correct_numeric, _ = extract_numeric_answer(str(correct_answer))
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")
+                
+                # Ensure lists are long enough for this batch index
+                self._ensure_batch_lists_length(batch_index)
+                
+                # Store empty results
+                self.stats.current_batch['answers'][batch_index] = None
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = 0.0
+                self.stats.current_batch['code_lengths'][batch_index] = 0
+                self.stats.current_batch['completions'][batch_index] = completion
+                
                 return reward
                 
                 
@@ -424,6 +491,16 @@ class SolutionReward(BaseReward):
                 
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
+                
+            # Ensure lists are long enough for this batch index
+            self._ensure_batch_lists_length(batch_index)
+            
+            # Store the results for this completion
+            self.stats.current_batch['answers'][batch_index] = model_numeric
+            self.stats.current_batch['is_correct'][batch_index] = is_correct
+            self.stats.current_batch['execution_times'][batch_index] = 0.0  # Not applicable for solution reward
+            self.stats.current_batch['code_lengths'][batch_index] = len(completion)
+            self.stats.current_batch['completions'][batch_index] = completion
 
 
             # Extract response part and validate solution structure
@@ -494,7 +571,31 @@ class SolutionReward(BaseReward):
             
         except Exception as e:
             self.logger.error(f"Error calculating group reward: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            
+            # Ensure lists are long enough for this batch index
+            self._ensure_batch_lists_length(batch_index)
+            
+            # Store empty results in case of exception
+            self.stats.current_batch['answers'][batch_index] = None
+            self.stats.current_batch['is_correct'][batch_index] = False
+            self.stats.current_batch['execution_times'][batch_index] = 0.0
+            self.stats.current_batch['code_lengths'][batch_index] = 0
+            self.stats.current_batch['completions'][batch_index] = completion
+            
             return 0.0
+    
+    def _ensure_batch_lists_length(self, index):
+        """Ensure all batch lists are long enough to store data at the given index"""
+        for key in ['answers', 'is_correct', 'execution_times', 'code_lengths', 'completions']:
+            while len(self.stats.current_batch[key]) <= index:
+                if key == 'is_correct':
+                    self.stats.current_batch[key].append(False)
+                elif key in ['execution_times', 'code_lengths']:
+                    self.stats.current_batch[key].append(0.0)
+                else:
+                    self.stats.current_batch[key].append(None)
 
 
 class ProgrammingReward(BaseReward):

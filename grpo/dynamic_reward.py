@@ -46,6 +46,12 @@ class DynamicReward(BaseReward):
         self.dual_proof_reward.stats = self.stats
         self.test_driven_programmer_reward.stats = self.stats
         
+        # Ensure all reward functions have the same answer_grouping_tolerance
+        if hasattr(self.programming_reward, 'answer_grouping_tolerance'):
+            tolerance = self.programming_reward.answer_grouping_tolerance
+            if hasattr(self.solution_reward, 'answer_grouping_tolerance'):
+                self.solution_reward.answer_grouping_tolerance = tolerance
+        
         # Create a clean separation of stats by reward type
         self.relevant_stats = {
             # Common stats for all rewards
@@ -279,6 +285,16 @@ class DynamicReward(BaseReward):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             self.logger.error(f"kwargs keys: {list(kwargs.keys())}")
             return [0.0] * len(completions)
+            
+        # Reset current batch data for this new batch
+        if hasattr(self.stats, 'current_batch'):
+            self.stats.current_batch = {
+                'answers': [],
+                'is_correct': [],
+                'execution_times': [],
+                'code_lengths': [],
+                'completions': []
+            }
         
         # Log all kwargs keys for debugging
         self.logger.info(f"Available kwargs: {list(kwargs.keys())}")
