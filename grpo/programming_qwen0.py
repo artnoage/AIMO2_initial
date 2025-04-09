@@ -92,14 +92,27 @@ class LoggingCallback(TrainerCallback):
                     'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
                     'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0)
                 })
-            
+        
             if latest_batch:
+                # Convert boolean plurality_correct to float (1.0 for True, 0.0 for False)
+                plurality_correct_float = 1.0 if latest_batch.get('plurality_correct', False) else 0.0
+            
                 wandb_stats.update({
-                    'batch_plurality_correct': latest_batch.get('plurality_correct', False),
+                    'batch_plurality_correct': plurality_correct_float,  # Numeric value for averaging
                     'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
                     'batch_avg_code_length': latest_batch.get('avg_code_length', 0),
-                    'batch_avg_execution_time': latest_batch.get('avg_execution_time', 0.0)
+                    'batch_avg_execution_time': latest_batch.get('avg_execution_time', 0.0),
+                    # Add new metrics
+                    'batch_total_answers': latest_batch.get('total_answers', 0),
+                    'batch_correct_answers': latest_batch.get('correct_answers', 0),
+                    'batch_correct_rate': latest_batch.get('correct_answers', 0) / max(latest_batch.get('total_answers', 1), 1)
                 })
+            
+                # Add answer group metrics if available
+                if hasattr(self.reward_func, 'answer_grouping_tolerance'):
+                    wandb_stats.update({
+                        'answer_grouping_tolerance': self.reward_func.answer_grouping_tolerance
+                    })
             
             # Detailed stats for local logging only
             local_stats = {
@@ -117,7 +130,8 @@ class LoggingCallback(TrainerCallback):
                     f"Step {self.step}: Plurality answer: {latest_batch.get('plurality_answer')} " +
                     f"({latest_batch.get('plurality_percentage', 0.0):.2%} of answers), " +
                     f"Correct: {latest_batch.get('plurality_correct', False)}, " +
-                    f"Overall rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}"
+                    f"Overall rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}, " +
+                    f"Batch correct rate: {latest_batch.get('correct_answers', 0)}/{latest_batch.get('total_answers', 0)}"
                 )
             
             # Store current values for next round
@@ -160,7 +174,9 @@ def main():
             "dataset": dataset_name,
             "syntax_reward": reward_config.syntax_reward,
             "execution_reward": reward_config.execution_reward,
-            "correctness_reward": reward_config.correctness_reward
+            "correctness_reward": reward_config.correctness_reward,
+            "answer_grouping_tolerance": reward_func.answer_grouping_tolerance,
+            "tracking_plurality_metrics": True
         }
     )
     
