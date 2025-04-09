@@ -165,6 +165,11 @@ def main():
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
+    # Initialize reward function
+    reward_func = ProgrammingReward(reward_config)
+    logger.info("\nInitialized ProgrammingReward:")
+    logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    
     # Initialize wandb
     wandb.init(
         project="grpo",
@@ -179,11 +184,6 @@ def main():
             "tracking_plurality_metrics": True
         }
     )
-    
-    # Initialize reward function
-    reward_func = ProgrammingReward(reward_config)
-    logger.info("\nInitialized ProgrammingReward:")
-    logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
