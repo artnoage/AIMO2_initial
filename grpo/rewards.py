@@ -273,6 +273,132 @@ class BaseReward(ABC):
             # Check if the plurality answer is correct
             plurality_correct = any(correct for _, _, correct in plurality_indices)
             
+            # Calculate average completion length
+            avg_completion_length = sum(len(comp) for comp in self.stats.current_batch['completions'] if comp) / len(self.stats.current_batch['completions']) if self.stats.current_batch['completions'] else 0
+            
+            # Store batch results
+            batch_result = {
+                'plurality_answer': plurality_group,
+                'plurality_count': plurality_count,
+                'plurality_percentage': plurality_percentage,
+                'plurality_correct': plurality_correct,
+                'total_answers': len(valid_results),
+                'correct_answers': sum(1 for _, _, correct in plurality_indices if correct),
+                'avg_code_length': 0,  # Not applicable for solution reward
+                'avg_execution_time': 0,  # Not applicable for solution reward
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Add to batch history
+            if not hasattr(self.stats, 'batch_results'):
+                self.stats.batch_results = []
+            self.stats.batch_results.append(batch_result)
+            
+            # Update plurality statistics
+            if not hasattr(self.stats, 'plurality_stats'):
+                self.stats.plurality_stats = {
+                    'plurality_correct_count': 0,
+                    'total_batches': 0,
+                    'plurality_correct_rate': 0.0,
+                    'avg_plurality_percentage': 0.0,
+                    'avg_completion_length': 0.0
+                }
+                
+            self.stats.plurality_stats['plurality_correct_count'] += int(plurality_correct)
+            self.stats.plurality_stats['total_batches'] += 1
+            
+            if self.stats.plurality_stats['total_batches'] > 0:
+                self.stats.plurality_stats['plurality_correct_rate'] = (
+                    self.stats.plurality_stats['plurality_correct_count'] / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            
+            # Update average plurality percentage (how dominant is the most common answer)
+            prev_avg = self.stats.plurality_stats['avg_plurality_percentage']
+            prev_batches = self.stats.plurality_stats['total_batches'] - 1
+            
+            if prev_batches > 0:
+                self.stats.plurality_stats['avg_plurality_percentage'] = (
+                    (prev_avg * prev_batches + plurality_percentage) / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            else:
+                self.stats.plurality_stats['avg_plurality_percentage'] = plurality_percentage
+            
+            # Update average completion length
+            prev_avg_length = self.stats.plurality_stats['avg_completion_length']
+            
+            if prev_batches > 0:
+                self.stats.plurality_stats['avg_completion_length'] = (
+                    (prev_avg_length * prev_batches + avg_completion_length) / 
+                    self.stats.plurality_stats['total_batches']
+                )
+            else:
+                self.stats.plurality_stats['avg_completion_length'] = avg_completion_length
+            
+            # Log the results
+            self.logger.info(
+                f"Batch plurality results: answer={plurality_group}, " +
+                f"count={plurality_count}/{len(valid_results)} ({plurality_percentage:.2%}), " +
+                f"correct={plurality_correct}, " +
+                f"overall rate={self.stats.plurality_stats['plurality_correct_rate']:.2%}"
+            )
+            
+            # Log the answer groups for debugging
+            group_info = []
+            for group_key, indices in grouped_answers.items():
+                correct_in_group = any(correct for _, _, correct in indices)
+                group_info.append(f"{group_key}: {len(indices)} answers, correct={correct_in_group}")
+            
+            self.logger.info(f"Answer groups (tolerance={self.answer_grouping_tolerance}):")
+            for info in group_info:
+                self.logger.info(f"  {info}")
+        
+    def _finalize_batch(self):
+        """Calculate batch-level statistics including plurality voting with numerical grouping"""
+        # Skip if no results
+        if not self.stats.current_batch['answers']:
+            return
+        
+        # Filter out None values
+        valid_results = [(ans, correct) for ans, correct in 
+                         zip(self.stats.current_batch['answers'], 
+                             self.stats.current_batch['is_correct']) 
+                         if ans is not None]
+        
+        if not valid_results:
+            return
+        
+        # Group similar answers using the tolerance
+        grouped_answers = defaultdict(list)
+        
+        for idx, (ans, correct) in enumerate(valid_results):
+            # Find if this answer belongs to an existing group
+            found_group = False
+            for group_key in grouped_answers:
+                if abs(ans - group_key) <= self.answer_grouping_tolerance:
+                    # Add to existing group
+                    grouped_answers[group_key].append((idx, ans, correct))
+                    found_group = True
+                    break
+            
+            if not found_group:
+                # Create new group
+                grouped_answers[ans].append((idx, ans, correct))
+        
+        # Find the plurality winner (most common answer group)
+        if grouped_answers:
+            # Get the group with the most answers
+            plurality_group, plurality_indices = max(grouped_answers.items(), 
+                                                    key=lambda x: len(x[1]))
+            
+            # Calculate what percentage of valid answers this represents
+            plurality_count = len(plurality_indices)
+            plurality_percentage = plurality_count / len(valid_results)
+            
+            # Check if the plurality answer is correct
+            plurality_correct = any(correct for _, _, correct in plurality_indices)
+            
             # Calculate average code length and execution time
             avg_code_length = sum(self.stats.current_batch['code_lengths']) / len(self.stats.current_batch['code_lengths'])
             valid_times = [t for t in self.stats.current_batch['execution_times'] if t > 0]
