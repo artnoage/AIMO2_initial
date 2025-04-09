@@ -152,7 +152,7 @@ def main():
     # Configuration
     model_type = "programming_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Splus"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -192,7 +192,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.2,
+        gpu_memory_utilization=0.4,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -240,9 +240,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=32,
-        gradient_accumulation_steps=8,
-        num_generations=32,  # Fewer generations for programming tasks
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
+        num_generations=8,  # Fewer generations for programming tasks
         max_prompt_length=1000,
         max_completion_length=3000,
         num_train_epochs=1,

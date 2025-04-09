@@ -193,7 +193,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O2"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O1"
     dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
