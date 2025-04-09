@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import os, sys
+from collections import defaultdict
 from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
