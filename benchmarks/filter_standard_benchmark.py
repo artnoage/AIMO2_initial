@@ -243,32 +243,41 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         result_entries = []
         
         # Filter solutions based on correct count
-        filtered_solutions = []
         if correct_count == 1 or correct_count == 2:
             # Keep only one correct solution
             for s in solutions:
                 if s['is_correct']:
-                    filtered_solutions.append(s)
+                    # Add just this one solution
+                    result_entries.append({
+                        'id': example_id,
+                        'data_type': 'training',
+                        'problem': example['problem'],
+                        'correct_solution': example.get('solution', '') if 'solution' in example else '',
+                        'correct_answer': correct_answer,
+                        'model_solution': s['solution'],
+                        'model_answer': s['answer'],
+                        'is_correct': s['is_correct'],
+                        'error_message': s['error_message'],
+                        'attempt_number': 1,
+                        'total_attempts': 1
+                    })
                     break  # Only keep the first correct one
         else:
             # Keep all solutions
-            filtered_solutions = solutions
-        
-        # Add individual solution entries for filtered solutions
-        for i, s in enumerate(filtered_solutions):
-            result_entries.append({
-                'id': example_id,
-                'data_type': 'training',
-                'problem': example['problem'],
-                'correct_solution': example.get('solution', '') if 'solution' in example else '',
-                'correct_answer': correct_answer,
-                'model_solution': s['solution'],
-                'model_answer': s['answer'],
-                'is_correct': s['is_correct'],
-                'error_message': s['error_message'],
-                'attempt_number': i + 1,
-                'total_attempts': len(filtered_solutions)
-            })
+            for i, s in enumerate(solutions):
+                result_entries.append({
+                    'id': example_id,
+                    'data_type': 'training',
+                    'problem': example['problem'],
+                    'correct_solution': example.get('solution', '') if 'solution' in example else '',
+                    'correct_answer': correct_answer,
+                    'model_solution': s['solution'],
+                    'model_answer': s['answer'],
+                    'is_correct': s['is_correct'],
+                    'error_message': s['error_message'],
+                    'attempt_number': i + 1,
+                    'total_attempts': len(solutions)
+                })
         
         # Add statistics entry - this includes stats for all 8 solutions, not just filtered ones
         result_entries.append({
@@ -282,7 +291,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'correct_solutions': correct_count,
             'incorrect_solutions': len(solutions) - correct_count,
             'all_solutions_correct': all(s['is_correct'] for s in solutions),
-            'filtered_solutions_count': len(filtered_solutions)
+            'filtered_solutions_count': 1 if correct_count in [1, 2] else len(solutions)
         })
         
         return result_entries
