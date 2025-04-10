@@ -57,9 +57,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 prompt , current_solution = await solution_agent.generate(example["problem"],return_prompt=True)
                 # Create numeric verifier
                 verifier = NumericVerifier(tolerance=config.tolerance)
+                
+                # Make sure correct_answer is a string before passing to verify
+                correct_answer_str = str(correct_answer) if correct_answer is not None else ""
+                
                 is_correct, current_answer = await verifier.verify(
                     current_solution,
-                    correct_answer,
+                    correct_answer_str,
                     example["problem"]
                 )
                 # Always append the solution, regardless of correctness
@@ -89,9 +93,13 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                         
                         # Create numeric verifier
                         verifier = NumericVerifier(tolerance=config.tolerance)
+                        
+                        # Make sure correct_answer is a string before passing to verify
+                        correct_answer_str = str(correct_answer) if correct_answer is not None else ""
+                        
                         is_correct, current_answer = await verifier.verify(
                             current_solution,
-                            correct_answer,
+                            correct_answer_str,
                             example["problem"]
                         )
                         
