@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 import sys
-import re
+from collections import Counter
 import numpy as np
 from contextlib import contextmanager
 from typing import Optional, Dict, Tuple, List
@@ -108,7 +108,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             pass
 
         main = get_model(config, role="main")
-        programming_agent = ProgrammingAgent(main)
+        solution_agent = FullSolutionAgent(main)
         solutions = []
         correct_count = 0
         best_solution = None
@@ -118,77 +118,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         
         for attempt in range(best_of):
             try:
-                prompt, full_solution = await programming_agent.generate(example["problem"], return_prompt=True)
+                prompt, full_solution = await solution_agent.generate(example["problem"], return_prompt=True)
                 
-                # Store the full solution but extract code for execution
-                # The full_solution contains the complete model output
+                # Create numeric verifier
+                verifier = NumericVerifier(tolerance=config.tolerance)
+                is_correct, current_answer = await verifier.verify(
+                    full_solution,
+                    correct_answer,
+                    example["problem"]
+                )
                 
-                # First check if response section exists
-                response_match = re.search(r'<response>(.*?)</response>', full_solution, re.DOTALL)
-                if response_match:
-                    response_content = response_match.group(1)
-                    code = extract_code_from_response(response_content)
-                    if not code:
-                        # If no code in response section, try the whole solution
-                        logger.append(f"No code found in response section, trying whole solution")
-                        code = extract_code_from_response(full_solution)
-                else:
-                    # If no response tags, extract from the whole solution
-                    code = extract_code_from_response(full_solution)
-                
-                logger.append(f"Extracted code length: {len(code)} characters")
-                if not code:
-                    logger.append(f"❌ No code found in solution")
-                    solutions.append({
-                        'solution': full_solution,
-                        'code': "",
-                        'answer': None,
-                        'is_correct': False,
-                        'error_message': "No code found in solution"
-                    })
-                    continue
-                
-                # Check code quality first to save time
-                code_quality_passed, quality_message = check_code_quality(code)
-                
-                if not code_quality_passed:
-                    logger.append(f"❌ Code quality check failed for attempt {attempt+1}: {quality_message}")
-                    solutions.append({
-                        'solution': full_solution,  # Store the complete model output
-                        'code': code,
-                        'answer': None,
-                        'is_correct': False,
-                        'error_message': f"Code quality check failed: {quality_message}"
-                    })
-                    continue
-                
-                # Only run code if it passes quality checks
-                execution_success, result, error_message = run_code_safely(code, timeout=config.timeout)
-                
-                if not execution_success:
-                    logger.append(f"❌ Code execution failed for attempt {attempt+1}: {error_message}")
-                    solutions.append({
-                        'solution': full_solution,
-                        'code': code,
-                        'answer': None,
-                        'is_correct': False,
-                        'error_message': error_message
-                    })
-                    continue
-                
-                # Compare with correct answer
-                is_correct = False
-                if isinstance(correct_answer, (int, float)) and isinstance(result, (int, float)):
-                    # Use tolerance for numeric comparison
-                    is_correct = abs(correct_answer - result) <= config.tolerance
-                else:
-                    # Try string comparison as fallback
-                    is_correct = str(correct_answer).strip() == str(result).strip()
-                
+                # Always append the solution, regardless of correctness
                 solutions.append({
-                    'solution': full_solution,  # This is the complete model output
-                    'code': code,               # This is just the extracted code for execution
-                    'answer': result,
+                    'solution': full_solution,
+                    'answer': current_answer,
                     'is_correct': is_correct,
                     'error_message': None
                 })
@@ -210,29 +153,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 error_message = f"Error occurred: {type(e).__name__} - {str(e)}"
                 solutions.append({
                     'solution': full_solution if 'full_solution' in locals() else error_message,
-                    'code': "",
                     'answer': None,
                     'is_correct': False,
                     'error_message': str(e)
                 })
         
-        # Calculate most common answer statistics using tolerance-based grouping
+        # Calculate most common answer statistics
         model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
         most_common_answer = None
         is_most_common_correct = False
-        answer_counts = {}
         
         if model_answers:
-            most_common_answer, answer_counts = calculate_answer_majority(model_answers, tolerance=1e-2)
-            
-            # Check if the most common answer is correct
-            is_most_common_correct = False
-            for s in solutions:
-                if s['answer'] is not None and s['is_correct']:
-                    # Check if this answer is close to the most common answer
-                    if abs(s['answer'] - most_common_answer) <= 1e-2:
-                        is_most_common_correct = True
-                        break
+            from collections import Counter
+            most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
+            is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
         # Calculate thinking length statistics
         thinking_lengths = [get_thinking_length(s['solution']) for s in solutions]
@@ -262,9 +196,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Correct solutions: {correct_count}/{best_of}")
         logger.append(f"├─ Success rate: {(correct_count/best_of)*100:.1f}%")
         
-        # Format the answer counts for display
-        formatted_counts = {f"{k:.6f}": v for k, v in answer_counts.items()}
-        logger.append(f"├─ Answer distribution (with tolerance 1e-2): {formatted_counts}")
+        logger.append(f"├─ Answer distribution: {Counter(str(ans) for ans in model_answers).most_common()}")
         logger.append(f"├─ Most common answer: {most_common_answer}")
         logger.append(f"├─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
         logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
@@ -291,12 +223,12 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 logger.append(f"✓ Answer: {s['answer']}")
                 logger.append(f"✓ Correct: {'Yes' if s['is_correct'] else 'No'}")
             
-            # Show a snippet of the code
-            code_lines = s['code'].split('\n')
-            code_preview = '\n'.join(code_lines[:10])
-            if len(code_lines) > 10:
-                code_preview += f"\n... ({len(code_lines) - 10} more lines)"
-            logger.append(f"Code snippet:\n{code_preview}")
+            # Show a snippet of the solution
+            solution_lines = s['solution'].split('\n')
+            solution_preview = '\n'.join(solution_lines[:5])
+            if len(solution_lines) > 5:
+                solution_preview += f"\n... ({len(solution_lines) - 5} more lines)"
+            logger.append(f"Solution snippet:\n{solution_preview}")
         
         logger.append("="*80)
         
@@ -327,7 +259,6 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 'correct_solution': example.get('solution', '') if 'solution' in example else '',
                 'correct_answer': correct_answer,
                 'model_solution': s['solution'],
-                'model_code': s['code'],
                 'model_answer': s['answer'],
                 'is_correct': s['is_correct'],
                 'error_message': s['error_message'],
@@ -411,7 +342,7 @@ def create_ascii_histogram(data: List[int], title: str) -> str:
     return "\n".join(result)
 
 async def main():
-    """Main function for benchmarking mathematical problem solving with programming solutions
+    """Main function for benchmarking mathematical problem solving with standard solutions
     and filtering results to keep only one correct solution when there are 1-2 correct solutions."""
     config = BenchmarkConfig.from_args('Benchmark model on mathematical problems using programming solutions with filtering')
     
