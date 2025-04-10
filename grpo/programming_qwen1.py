@@ -13,10 +13,10 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from utils.data_preparation import prepare_dual_proof_data
+from utils.data_preparation import prepare_programming_data
 # Import system prompts from agents.py
-from utils.agents import DUAL_PROOF_SYSTEM_PROMPT
-from rewards import DualProofReward
+from utils.agents import PROGRAMMER_SYSTEM_PROMPT
+from rewards import ProgrammingReward
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""
@@ -28,7 +28,7 @@ def setup_logging(model_type: str) -> logging.Logger:
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('dual_proof_grpo')
+    logger = logging.getLogger('programming_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -56,7 +56,7 @@ class LoggingCallback(TrainerCallback):
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
             # Key performance metrics for wandb
             wandb_stats = {
-                'dual_proof_reward': logs['rewards/0'],
+                'programming_reward': logs['rewards/0'],
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_solutions': self.reward_func.stats.reward_components.get('correct_solutions', 0),
                 'syntax_valid_solutions': self.reward_func.stats.reward_components.get('syntax_valid_solutions', 0),
@@ -66,7 +66,6 @@ class LoggingCallback(TrainerCallback):
             # Detailed stats for local logging only
             local_stats = {
                 'reward_components': {
-                    'structure_rewards': self.reward_func.stats.reward_components.get('structure_rewards', 0) - getattr(self, '_last_structure_rewards', 0),
                     'syntax_rewards': self.reward_func.stats.reward_components.get('syntax_rewards', 0) - getattr(self, '_last_syntax_rewards', 0),
                     'execution_rewards': self.reward_func.stats.reward_components.get('execution_rewards', 0) - getattr(self, '_last_execution_rewards', 0),
                     'correctness_rewards': self.reward_func.stats.reward_components.get('correctness_rewards', 0) - getattr(self, '_last_correctness_rewards', 0),
@@ -75,7 +74,7 @@ class LoggingCallback(TrainerCallback):
             }
             
             # Store current values for next round
-            self._last_structure_rewards = self.reward_func.stats.reward_components.get('structure_rewards', 0)
+           
             self._last_syntax_rewards = self.reward_func.stats.reward_components.get('syntax_rewards', 0)
             self._last_execution_rewards = self.reward_func.stats.reward_components.get('execution_rewards', 0)
             self._last_correctness_rewards = self.reward_func.stats.reward_components.get('correctness_rewards', 0)
@@ -84,25 +83,16 @@ class LoggingCallback(TrainerCallback):
             # Update logs with our metrics
             logs.update(wandb_stats)
 
-def prepare_dual_proof_data(data: Dataset) -> Dataset:
-    """Create examples for dual proof tasks"""
-    logging.info("Creating dual proof examples...")
-    dual_proof_data = data.map(lambda x: {
-        'prompt': '<|im_start|>system\\n' + DUAL_PROOF_SYSTEM_PROMPT + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
-        'answer': x.get('answer', x.get('correct_answer', '')),
-        'partial_solution': '',
-        'full_solution': '',
-        'is_correct': None,
-        'wrong_step': None,
-        'example_type': 'dual_proof'
-    })
-    return dual_proof_data
+
+
+# Use the ProgrammingReward class from rewards.py
+
 
 def main():
     # Configuration
-    model_type = "dual_proof_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/W1"
-    dataset_name = "Metaskepsis/Numina_medium_filtered"
+    model_type = "programming_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/S1"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -129,44 +119,45 @@ def main():
     )
     
     # Initialize reward function
-    reward_func = DualProofReward(reward_config)
-    logger.info("\nInitialized DualProofReward:")
+    reward_func = ProgrammingReward(reward_config)
+    logger.info("\nInitialized ProgrammingReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=7192,
+        max_seq_length=7000,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.45,
-        max_lora_rank=256)
+        use_gradient_checkpointing=False,
+        gpu_memory_utilization=0.3,
+        max_lora_rank=128)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=256,
+        r=128,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=256,
+        lora_alpha=128,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing="unsloth",
+        use_gradient_checkpointing=False,
         random_state=3407,
         use_rslora=False,
         loftq_config=None
     )
     
     def get_questions(split="train") -> Dataset:
+        # Import the data preparation function
+        
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_dual_proof_data(data)
+        return prepare_programming_data(data, PROGRAMMER_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-    # Use a smaller dataset for dual proof training
-    formatted_dataset = formatted_dataset.select(range(3000))
+    formatted_dataset = formatted_dataset.shuffle(seed=142)
+    formatted_dataset = formatted_dataset.select(range(3500))
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -177,22 +168,22 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
+        temperature=1.2,
         weight_decay=0.1,
-        warmup_ratio=0.05,
+        warmup_ratio=0.01,
         lr_scheduler_type="cosine",
         optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=8,
-        gradient_accumulation_steps=8,
-        num_generations=8,  # Fewer generations for dual proof tasks
-        max_prompt_length=2192,
-        max_completion_length=5000,
+        gradient_accumulation_steps=32,
+        num_generations=8,  # Fewer generations for programming tasks
+        max_prompt_length=1000,
+        max_completion_length=6000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

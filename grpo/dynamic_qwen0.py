@@ -194,7 +194,7 @@ def main():
     # Configuration
     model_type = "dynamic_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O1"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -243,7 +243,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.45,
+        gpu_memory_utilization=0.5,
         max_lora_rank=64)
         
     
@@ -305,13 +305,14 @@ def main():
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
-
+    formatted_dataset = formatted_dataset.shuffle(seed=142)
+    formatted_dataset = formatted_dataset.select(range(4000))
    
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=8e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -321,9 +322,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
-        gradient_accumulation_steps=8,
-        num_generations=10,
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
+        num_generations=8,
         max_prompt_length=1296,
         max_completion_length=3800,
         num_train_epochs=1,

@@ -151,7 +151,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Splus"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/S1"
     dataset_name = "Metaskepsis/Olympiads_medium"
     
     # Setup logging first
@@ -188,11 +188,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=8000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.4,
+        gpu_memory_utilization=0.3,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -218,8 +218,8 @@ def main():
         return prepare_programming_data(data, PROGRAMMER_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=42)
-
+    formatted_dataset = formatted_dataset.shuffle(seed=142)
+    formatted_dataset = formatted_dataset.select(range(4000))
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -230,13 +230,13 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        learning_rate=6e-6,
+        learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.01,
         lr_scheduler_type="cosine",
-        optim="paged_adamw_8bit",
+        optim="adamw_torch",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
@@ -244,9 +244,9 @@ def main():
         gradient_accumulation_steps=1,
         num_generations=8,  # Fewer generations for programming tasks
         max_prompt_length=1000,
-        max_completion_length=3000,
+        max_completion_length=7000,
         num_train_epochs=1,
-        save_steps=50,
+        save_steps=200,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

@@ -45,7 +45,6 @@ Glimpses_of_reasoning=["mistake detected",
 "hypothetically",
 "under the condition",
 "to be precise",
-"specifically",
 "meaning that",
 "in explicit terms"]
 Glimpses_of_reasoning=[]
