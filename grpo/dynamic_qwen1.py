@@ -25,10 +25,10 @@ from utils.agents import (
     ARCHITECT_SYSTEM_PROMPT,
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
-    FINALIZATION_SYSTEM_PROMPT
+    FINALIZATION_SYSTEM_PROMPT,
+    FULLSOLUTION_SYSTEM_PROMPT,
+    PROGRAMMER_SYSTEM_PROMPT
 )
-from utils.solution_prompt import SOLUTION_PROMPTS
-from utils.programmer_prompt import PROGRAMMER_PROMPTS
 
 load_dotenv()
 def setup_logging(model_type: str) -> logging.Logger:
@@ -64,10 +64,18 @@ class LoggingCallback(TrainerCallback):
         self.step = 0
         self.logger = logger
         
+        # Initialize tracking variables
+        self._last_total_examples = 0
+        
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
         
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
+            # Calculate new examples in this batch
+            current_total_examples = self.reward_func.stats.total_examples
+            new_examples = current_total_examples - getattr(self, '_last_total_examples', 0)
+            self._last_total_examples = current_total_examples
+            
             # Print detailed stats to console/log file
             self.logger.info("\n" + "="*50)
             self.logger.info(f"Step {self.step} - Reward Stats Summary:")
@@ -84,6 +92,42 @@ class LoggingCallback(TrainerCallback):
                 'total_batches': self.reward_func.stats.total_batches,
                 'total_examples': self.reward_func.stats.total_examples
             }
+            
+            # Get plurality statistics if available
+            plurality_stats = {}
+            if hasattr(self.reward_func.stats, 'plurality_stats'):
+                plurality_stats = self.reward_func.stats.plurality_stats
+            
+            # Get the most recent batch result if available
+            latest_batch = {}
+            if hasattr(self.reward_func.stats, 'batch_results') and self.reward_func.stats.batch_results:
+                latest_batch = self.reward_func.stats.batch_results[-1]
+            
+            # Add plurality metrics to wandb logs - ensure these are always logged
+            wandb_stats.update({
+                'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
+                'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0),
+                'avg_completion_length': plurality_stats.get('avg_completion_length', 0.0)
+            })
+            
+            if latest_batch:
+                # Convert boolean plurality_correct to float (1.0 for True, 0.0 for False)
+                plurality_correct_float = 1.0 if latest_batch.get('plurality_correct', False) else 0.0
+                
+                # Always include these metrics in wandb logs
+                wandb_stats.update({
+                    'batch_plurality_correct': plurality_correct_float,  # Numeric value for averaging
+                    'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
+                    'batch_total_answers': latest_batch.get('total_answers', 0),
+                    'batch_correct_answers': latest_batch.get('correct_answers', 0),
+                    'batch_correct_rate': latest_batch.get('correct_answers', 0) / max(latest_batch.get('total_answers', 1), 1)
+                })
+                
+                # Add answer group metrics if available
+                if hasattr(self.reward_func.solution_reward, 'answer_grouping_tolerance'):
+                    wandb_stats.update({
+                        'answer_grouping_tolerance': self.reward_func.solution_reward.answer_grouping_tolerance
+                    })
             
             # Add dynamic reward specific metrics
             if 'solution_reward_uses' in self.reward_func.stats.reward_components:
@@ -150,7 +194,7 @@ def main():
     # Configuration
     model_type = "dynamic_1"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O1"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250411_094145"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -171,7 +215,9 @@ def main():
             "model_type": reward_config.model_type,
             "dataset": dataset_name,
             "base_reward": 3.0,
-            "step_continuity_reward": 0.5
+            "step_continuity_reward": 0.5,
+            "answer_grouping_tolerance": 1e-2,
+            "tracking_plurality_metrics": True
         }
     )
     
@@ -227,14 +273,14 @@ def main():
         
         
         # Load the base dataset
-        data = load_dataset(dataset_name,split="train")
-        data=data.shuffle(seed=333)
+        data = load_from_disk(dataset_name)
+        data=data.shuffle(seed=141)
        
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.2,
-            'programming': 0.2,
+            'solution': 1,
+            'programming': 0,
             'finalization': 0,
             'tutor': 0,
             'test_programming': 0,
@@ -246,9 +292,9 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            SOLUTION_PROMPTS, 
+            FULLSOLUTION_SYSTEM_PROMPT,
             FINALIZATION_SYSTEM_PROMPT, 
-            PROGRAMMER_PROMPTS,
+            PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
@@ -261,11 +307,12 @@ def main():
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=142)
     formatted_dataset = formatted_dataset.select(range(4000))
+   
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=2e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -276,7 +323,7 @@ def main():
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
         per_device_train_batch_size=8,
-        gradient_accumulation_steps=32,
+        gradient_accumulation_steps=1,
         num_generations=8,
         max_prompt_length=1296,
         max_completion_length=3800,

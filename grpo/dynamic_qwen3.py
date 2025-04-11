@@ -25,10 +25,10 @@ from utils.agents import (
     ARCHITECT_SYSTEM_PROMPT,
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
-    FINALIZATION_SYSTEM_PROMPT
+    FINALIZATION_SYSTEM_PROMPT,
+    FULLSOLUTION_SYSTEM_PROMPT,
+    PROGRAMMER_SYSTEM_PROMPT
 )
-from utils.solution_prompt import SOLUTION_PROMPTS
-from utils.programmer_prompt import PROGRAMMER_PROMPTS
 
 load_dotenv()
 def setup_logging(model_type: str) -> logging.Logger:
@@ -192,9 +192,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_A"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O2"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    model_type = "dynamic_3"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/O3"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250411_094145"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -273,14 +273,14 @@ def main():
         
         
         # Load the base dataset
-        data = load_dataset(dataset_name,split="train")
+        data = load_from_disk(dataset_name)
         data=data.shuffle(seed=141)
        
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
-            'solution': 0.2,
-            'programming': 0.2,
+            'solution': 1,
+            'programming': 0,
             'finalization': 0,
             'tutor': 0,
             'test_programming': 0,
@@ -292,9 +292,9 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            SOLUTION_PROMPTS, 
+            FULLSOLUTION_SYSTEM_PROMPT,
             FINALIZATION_SYSTEM_PROMPT, 
-            PROGRAMMER_PROMPTS,
+            PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
             TESTER_SYSTEM_PROMPT,
             ARCHITECT_SYSTEM_PROMPT,
@@ -312,7 +312,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=6e-6,
+        learning_rate=2e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
