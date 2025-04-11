@@ -1,5 +1,6 @@
 from datasets import load_dataset, load_from_disk, concatenate_datasets
 import os
+import sys
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -8,6 +9,12 @@ from transformers import logging
 from unsloth import is_bfloat16_supported
 from datetime import datetime
 import json
+
+# Add project root to path to import from utils
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
 def main():
     # Set training type
     logging.set_verbosity_info()
@@ -16,48 +23,50 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="unsloth/Phi-4",
-         max_seq_length=3200,
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/S1",
+        max_seq_length=8000,
+        fast_inference=True,
         load_in_4bit=False,
-        max_lora_rank=128)
+        max_lora_rank=64)
         
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
-    model,
-    r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                      "gate_proj", "up_proj", "down_proj",
-                      "lm_head", "embed_tokens",],
-    lora_alpha = 128,
-    lora_dropout = 0, # Supports any, but = 0 is optimized
-    bias = "none",    # Supports any, but = "none" is optimized
-    # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-    use_gradient_checkpointing = True, # True or "unsloth" for very long context
-    random_state = 3407,
-    use_rslora = False)
+        model,
+        r=64,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                       "gate_proj", "up_proj", "down_proj"],
+        lora_alpha=64,
+        lora_dropout=0,
+        bias="none",
+        use_gradient_checkpointing=False,
+        random_state=3407,
+        use_rslora=False,
+        loftq_config=None
+    )
     
 
-    SYSTEM_PROMPT = "You are a mathematician. Solve the following problem."
-
+    # Use the FULLSOLUTION_SYSTEM_PROMPT from agents.py
     def formatting_prompts_func(examples):
         texts = []
         problems = examples['problem']
-        solutions = examples['solution']
+        solutions = examples.get('solution', examples.get('model_solution', [None] * len(problems)))
+        
         for problem, solution in zip(problems, solutions):
+            if not solution:
+                continue
+                
             formatted_text = (
-                "<|im_start|>system<|im_sep|>" + SYSTEM_PROMPT + "<|im_end|>"
-                "<|im_start|>user<|im_sep|>" + problem + "<|im_end|>"
-                "<|im_start|>assistant<|im_sep|>" + solution + "<|im_end|>"
+                '<|im_start|>system\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\n'
+                '<|im_start|>user\n' + problem + '<|im_end|>\n'
+                '<|im_start|>assistant\n' + solution + '<|im_end|>'
             )
             texts.append(formatted_text)
         return {"text": texts}
 
 
     # Load dataset
-    # Load dataset and get second half
-    #dataset = load_dataset("Metaskepsis/sft", split="train")
-    dataset = load_dataset("Metaskepsis/Olympiads_hard")["train"]
+    dataset = load_dataset("Metaskepsis/Olympiads_medium")["train"]
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
@@ -74,17 +83,21 @@ def main():
     training_args = TrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=32,
-        learning_rate=5e-6,
-        logging_steps=10,  # More frequent logging
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
+        learning_rate=3e-6,
+        logging_steps=10,
         save_strategy="steps",
-        save_steps=1000,
-        fp16 = not is_bfloat16_supported(),
-        bf16 = is_bfloat16_supported(),
-        optim = "paged_adamw_8bit",  # Enable tensorboard logging
-        logging_first_step=True,    # Log the first training step
-        logging_dir=f"train_results/{timestamp}/logs",  # Directory for logs
+        save_steps=200,
+        fp16=not is_bfloat16_supported(),
+        bf16=is_bfloat16_supported(),
+        optim="adamw_torch",
+        logging_first_step=True,
+        logging_dir=f"train_results/{timestamp}/logs",
+        warmup_ratio=0.01,
+        lr_scheduler_type="cosine",
+        weight_decay=0.1,
+        max_grad_norm=0.1,
     )
 
     # Initialize SFT trainer
@@ -99,7 +112,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "phi_sft"
+    model_type = "sft_solution"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
