@@ -2,6 +2,7 @@ from datasets import load_dataset, load_from_disk, concatenate_datasets
 import os
 import sys
 from unsloth import FastLanguageModel
+from unsloth import UnslothTrainer, UnslothTrainingArguments
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
 from trl import SFTTrainer
@@ -23,23 +24,23 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/S1",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/Bprime",
         max_seq_length=8000,
-        fast_inference=True,
         load_in_4bit=False,
-        max_lora_rank=64)
+        use_gradient_checkpointing="unsloth")
         
 
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                       "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        r=256,
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                      "gate_proj", "up_proj", "down_proj",
+                      "lm_head", "embed_tokens",],
+        lora_alpha=256,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing=False,
+        use_gradient_checkpointing="unsloth",
         random_state=3407,
         use_rslora=False,
         loftq_config=None
@@ -66,32 +67,32 @@ def main():
 
 
     # Load dataset
-    dataset = load_dataset("Metaskepsis/Olympiads_medium")["train"]
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250411_193009")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     formatted_dataset1 = formatted_dataset.shuffle(seed=42)
     formatted_dataset2= formatted_dataset.shuffle(seed=31)
     formatted_dataset3= formatted_dataset.shuffle(seed=13)
-    formatted_dataset4 =formatted_dataset.shuffle(seed=31)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3,formatted_dataset4])
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Training arguments
-    training_args = TrainingArguments(
+    training_args = UnslothTrainingArguments(
         output_dir=f"train_results/{timestamp}",
         num_train_epochs=1,
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=1,
-        learning_rate=3e-6,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=32,
+        learning_rate = 5e-5,
+        embedding_learning_rate = 5e-6,
         logging_steps=10,
         save_strategy="steps",
         save_steps=200,
         fp16=not is_bfloat16_supported(),
         bf16=is_bfloat16_supported(),
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_first_step=True,
         logging_dir=f"train_results/{timestamp}/logs",
         warmup_ratio=0.01,
@@ -101,7 +102,7 @@ def main():
     )
 
     # Initialize SFT trainer
-    trainer = SFTTrainer(
+    trainer = UnslothTrainer(
         model=model,
         train_dataset=formatted_dataset,
         dataset_text_field="text",
@@ -112,7 +113,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "sft_solution"
+    model_type = "sft_B"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     
