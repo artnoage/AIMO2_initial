@@ -54,6 +54,10 @@ def main():
         solutions = examples.get('solution', examples.get('model_solution', [None] * len(problems)))
         model_codes = examples.get('model_code', [None] * len(problems))
         
+        # Initialize counters for statistics
+        fullsolution_count = 0
+        programmer_count = 0
+        
         for i, (problem, solution) in enumerate(zip(problems, solutions)):
             if not solution:
                 continue
@@ -62,11 +66,13 @@ def main():
             model_code = model_codes[i] if i < len(model_codes) else None
             if model_code and isinstance(model_code, str) and len(model_code.strip()) > 0:
                 system_prompt = PROGRAMMER_SYSTEM_PROMPT
+                programmer_count += 1
                 # Use model_code as the solution if it contains code
                 if "import" in model_code or "def" in model_code:
                     solution = model_code
             else:
                 system_prompt = FULLSOLUTION_SYSTEM_PROMPT
+                fullsolution_count += 1
                 
             formatted_text = (
                 '<|im_start|>system\n' + system_prompt + '<|im_end|>\n'
@@ -74,6 +80,13 @@ def main():
                 '<|im_start|>assistant\n' + solution + '<|im_end|>'
             )
             texts.append(formatted_text)
+        
+        # Print statistics
+        print(f"\nPrompt usage statistics:")
+        print(f"FULLSOLUTION_SYSTEM_PROMPT: {fullsolution_count} examples")
+        print(f"PROGRAMMER_SYSTEM_PROMPT: {programmer_count} examples")
+        print(f"Total: {fullsolution_count + programmer_count} examples")
+        
         return {"text": texts}
 
 
