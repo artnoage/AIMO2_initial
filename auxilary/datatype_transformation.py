@@ -25,15 +25,35 @@ def convert_to_hf_dataset(data, dataset_type=None):
     
     print(f"Found {len(all_fields)} unique fields: {', '.join(sorted(all_fields))}")
     
-    # Normalize all entries to have the same fields
+    # Normalize all entries to have the same fields and handle type conversions
     print("Normalizing entries to include all fields...")
     normalized_data = []
     for entry in data:
-        normalized_entry = {field: entry.get(field, None) for field in all_fields}
+        normalized_entry = {}
+        for field in all_fields:
+            value = entry.get(field, None)
+            
+            # Handle problematic data types for PyArrow
+            if isinstance(value, (float, int)) and field not in ('score', 'timestamp', 'id'):
+                # Convert numeric values to strings in non-numeric fields
+                normalized_entry[field] = str(value)
+            else:
+                normalized_entry[field] = value
+                
         normalized_data.append(normalized_entry)
     
     # Create Dataset from normalized data
-    dataset = Dataset.from_list(normalized_data)
+    try:
+        dataset = Dataset.from_list(normalized_data)
+    except Exception as e:
+        print(f"Error creating dataset: {str(e)}")
+        # Fallback: convert all values to strings
+        print("Attempting fallback conversion: converting all values to strings...")
+        for entry in normalized_data:
+            for field in entry:
+                if entry[field] is not None:
+                    entry[field] = str(entry[field])
+        dataset = Dataset.from_list(normalized_data)
     
     # Save locally in Arrow format with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
