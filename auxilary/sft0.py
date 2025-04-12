@@ -15,7 +15,7 @@ import json
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT, PROGRAMMER_SYSTEM_PROMPT
 def main():
     # Set training type
     logging.set_verbosity_info()
@@ -47,18 +47,29 @@ def main():
     )
     
 
-    # Use the FULLSOLUTION_SYSTEM_PROMPT from agents.py
+    # Choose between FULLSOLUTION_SYSTEM_PROMPT and PROGRAMMER_SYSTEM_PROMPT based on model_code
     def formatting_prompts_func(examples):
         texts = []
         problems = examples['problem']
         solutions = examples.get('solution', examples.get('model_solution', [None] * len(problems)))
+        model_codes = examples.get('model_code', [None] * len(problems))
         
-        for problem, solution in zip(problems, solutions):
+        for i, (problem, solution) in enumerate(zip(problems, solutions)):
             if not solution:
                 continue
+            
+            # Choose system prompt based on whether model_code exists and is not empty
+            model_code = model_codes[i] if i < len(model_codes) else None
+            if model_code and isinstance(model_code, str) and len(model_code.strip()) > 0:
+                system_prompt = PROGRAMMER_SYSTEM_PROMPT
+                # Use model_code as the solution if it contains code
+                if "import" in model_code or "def" in model_code:
+                    solution = model_code
+            else:
+                system_prompt = FULLSOLUTION_SYSTEM_PROMPT
                 
             formatted_text = (
-                '<|im_start|>system\n' + FULLSOLUTION_SYSTEM_PROMPT + '<|im_end|>\n'
+                '<|im_start|>system\n' + system_prompt + '<|im_end|>\n'
                 '<|im_start|>user\n' + problem + '<|im_end|>\n'
                 '<|im_start|>assistant\n' + solution + '<|im_end|>'
             )
