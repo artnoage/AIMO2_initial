@@ -8,9 +8,9 @@ import os
 import json
 
 # --- Configuration ---
-model_directory = "/Home/stat/laschos/math/AIMO2_initial/models/O1" # Replace with the path to your model files
-output_directory = "/Home/stat/laschos/math/AIMO2_initial/models/O2"      # Directory to save the new 30-layer model
-new_total_layers = 34
+model_directory = "/Home/stat/laschos/math/AIMO2_initial/models/slow" # Replace with the path to your model files
+output_directory = "/Home/stat/laschos/math/AIMO2_initial/models/Mprime"      # Directory to save the new 30-layer model
+new_total_layers = 30
 reinit_std_dev = 0.01 # Standard deviation for re-initializing the new layers
 
 # --- Ensure config.json and index file exist (rename if needed) ---

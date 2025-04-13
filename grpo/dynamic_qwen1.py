@@ -193,8 +193,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/OB"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250411_094145"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/sft_M/20250412_185528"
+    dataset_name = "Metaskepsis/Olympiads_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -239,7 +239,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=3000,
+        max_seq_length=4000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
@@ -273,7 +273,7 @@ def main():
         
         
         # Load the base dataset
-        data = load_from_disk(dataset_name)
+        data = load_dataset(dataset_name,split="train")
         data=data.shuffle(seed=141)
        
         # Define the distribution
@@ -305,29 +305,27 @@ def main():
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=2412)
-    formatted_dataset = formatted_dataset.select(range(500))
-   
+    formatted_dataset = formatted_dataset.shuffle(seed=30)
+    formatted_dataset = formatted_dataset.select(range(4000))
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=2e-6,
+        learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.01,
-        temperature=1,
         lr_scheduler_type="cosine",
         optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=1,
-        num_generations=12,
+        num_generations=8,
         max_prompt_length=1000,
-        max_completion_length=2000,
+        max_completion_length=3000,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,

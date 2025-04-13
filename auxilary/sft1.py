@@ -24,7 +24,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/sft_B/20250412_170517",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/sft_M/20250412_170449",
         max_seq_length=8000,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")
@@ -95,7 +95,6 @@ def main():
 
 
 
-
     # Load dataset
     dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250412_164300")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
@@ -143,7 +142,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "sft_B"
+    model_type = "sft_M"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

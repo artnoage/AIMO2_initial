@@ -24,7 +24,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/sft_B/20250412_170517",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/sft_S/20250412_171054",
         max_seq_length=8000,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")
@@ -48,14 +48,15 @@ def main():
     
 
     # Choose between FULLSOLUTION_SYSTEM_PROMPT and PROGRAMMER_SYSTEM_PROMPT based on model_code
+    import json
+
+# Choose between FULLSOLUTION_SYSTEM_PROMPT and PROGRAMMER_SYSTEM_PROMPT based on model_code
     def formatting_prompts_func(examples):
         problems = examples['problem']
         
-        # Handle fallback logic
         raw_solutions = examples.get('solution', examples.get('model_solution', []))
         raw_model_codes = examples.get('model_code', [])
 
-        # Get batched inputs safely
         solutions = [
             raw_solutions[i] if i < len(raw_solutions) else None
             for i in range(len(problems))
@@ -69,30 +70,32 @@ def main():
         fullsolution_count = 0
         programmer_count = 0
 
-        for i, (problem, solution, model_code) in enumerate(zip(problems, solutions, model_codes)):
-            if not solution:
-                texts.append("")  # or continue if you want to skip it
-                continue
+        with open("dataset.json", "a", encoding="utf-8") as f:
+            for i, (problem, solution, model_code) in enumerate(zip(problems, solutions, model_codes)):
+                if not solution:
+                    texts.append("")
+                    continue
 
-            if model_code and isinstance(model_code, str) and len(model_code.strip()) > 0:
-                system_prompt = PROGRAMMER_SYSTEM_PROMPT
-                programmer_count += 1
-            else:
-                system_prompt = FULLSOLUTION_SYSTEM_PROMPT
-                fullsolution_count += 1
+                if model_code and isinstance(model_code, str) and len(model_code.strip()) > 0:
+                    system_prompt = PROGRAMMER_SYSTEM_PROMPT
+                    programmer_count += 1
+                else:
+                    system_prompt = FULLSOLUTION_SYSTEM_PROMPT
+                    fullsolution_count += 1
 
-            formatted_text = (
-                '<|im_start|>system\n' + system_prompt + '<|im_end|>\n'
-                '<|im_start|>user\n' + problem + '<|im_end|>\n'
-                '<|im_start|>assistant\n' + solution + '<|im_end|>'
-            )
-            texts.append(formatted_text)
+                formatted_text = (
+                    '<|im_start|>system\n' + system_prompt + '<|im_end|>\n'
+                    '<|im_start|>user\n' + problem + '<|im_end|>\n'
+                    '<|im_start|>assistant\n' + solution + '<|im_end|>'
+                )
+                texts.append(formatted_text)
 
-        # Comment out print if you don't want it flooding output during batched runs
+                # Log each entry to JSON file as a separate line
+                json.dump({"text": formatted_text}, f, ensure_ascii=False)
+                f.write("\n")
+
         print(f"FULL: {fullsolution_count}, PROGRAMMER: {programmer_count}, TOTAL: {len(texts)}")
-
         return {"text": texts}
-
 
 
 
@@ -143,7 +146,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "sft_B"
+    model_type = "sft_S"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

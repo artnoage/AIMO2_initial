@@ -114,7 +114,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         best_solution = None
         
         # Force best_of to be 8 regardless of config
-        best_of = 8
+        best_of = 10
         
         for attempt in range(best_of):
             try:
@@ -243,7 +243,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         result_entries = []
         
         # Filter solutions based on correct count
-        if correct_count == 1 or correct_count == 2:
+        if correct_count == 1 or correct_count == 2 or correct_count == 3:
             # Keep only one correct solution
             for s in solutions:
                 if s['is_correct']:
