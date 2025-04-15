@@ -61,7 +61,6 @@ class RewardStats:
             'diversity_bonuses': 0,
             'similarity_penalties': 0,
             'validation_rewards': 0,
-            'total_length_penalty': 0.0,
             'correct_answers': 0,
             'incorrect_answers': 0,
             'total_rewards': 0.0,

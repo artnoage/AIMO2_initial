@@ -483,7 +483,7 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'validation_rewards', 'total_length_penalty'],
+        'reward_components': ['base_rewards', 'validation_rewards'],
         'group_stats': [
             'correct_answers', 'incorrect_answers'
         ],
@@ -725,7 +725,7 @@ class ProgrammingReward(BaseReward):
     relevant_stats = {
         'reward_components': [
             'syntax_rewards', 'execution_rewards', 'correctness_rewards',
-            'total_length_penalty', 'correct_solutions', 'syntax_valid_solutions', 
+            'correct_solutions', 'syntax_valid_solutions', 
             'execution_valid_solutions', 'total_rewards', 'average_reward'
         ],
         'programming_stats': [
@@ -953,11 +953,6 @@ class ProgrammingReward(BaseReward):
             self.stats.current_batch['code_lengths'][batch_index] = code_length
             self.stats.current_batch['completions'][batch_index] = completion
             
-            # Apply length penalty
-            length_penalty = len(code) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
@@ -998,7 +993,7 @@ class FinalizationReward(BaseReward):
     
     __name__ = "finalization_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'step_continuity_rewards', 'total_length_penalty'],
+        'reward_components': ['base_rewards', 'step_continuity_rewards'],
         'step_stats': ['correct_step_numbering', 'incorrect_step_numbering', 'total_steps_completed']
     }
     
@@ -1091,12 +1086,6 @@ class FinalizationReward(BaseReward):
             # Track total steps completed
             self.stats.step_stats['total_steps_completed'] += len(completion_steps)
             
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = \
-                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Group information is still passed but similarity reward is not used
             group_completions = kwargs.get('group_completions', [])
             if len(group_completions) > 1:
@@ -1122,7 +1111,7 @@ class ArchitectReward(BaseReward):
     relevant_stats = {
         'reward_components': [
             'syntax_rewards', 'execution_rewards', 'correctness_rewards',
-            'total_length_penalty', 'correct_architectures', 'syntax_valid_architectures', 
+            'correct_architectures', 'syntax_valid_architectures', 
             'execution_valid_architectures', 'total_rewards', 'average_reward'
         ],
         'architect_stats': [
@@ -1331,11 +1320,6 @@ class ArchitectReward(BaseReward):
                 self.logger.error(traceback.format_exc())
                 self.stats.architect_stats['execution_errors'] += 1
             
-            # Apply length penalty
-            length_penalty = len(architect_response) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
@@ -1357,7 +1341,7 @@ class TestProgrammingReward(BaseReward):
     relevant_stats = {
         'reward_components': [
             'syntax_rewards', 'execution_rewards', 'correctness_rewards',
-            'total_length_penalty', 'correct_tests', 'syntax_valid_tests', 
+            'correct_tests', 'syntax_valid_tests', 
             'execution_valid_tests', 'total_rewards', 'average_reward'
         ],
         'test_programming_stats': [
@@ -1487,11 +1471,6 @@ class TestProgrammingReward(BaseReward):
                 else:
                     self.stats.test_programming_stats['execution_errors'] += 1
             
-            # Apply length penalty
-            length_penalty = len(test_function) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Calculate and update test function success metrics
             if success:
                 # Count test cases that passed/failed
@@ -1539,7 +1518,7 @@ class TutorReward(BaseReward):
     
     __name__ = "tutor_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'correct_verdict_rewards', 'correct_fix_rewards', 'total_length_penalty'],
+        'reward_components': ['base_rewards', 'correct_verdict_rewards', 'correct_fix_rewards'],
         'tutor_stats': ['correct_verdicts', 'incorrect_verdicts', 'correct_fixes', 'incorrect_fixes']
     }
     
@@ -1737,12 +1716,6 @@ class TutorReward(BaseReward):
                 else:
                     self.logger.info("No finalization tags found in response")
             
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = \
-                self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
@@ -1769,7 +1742,7 @@ class DualProofReward(BaseReward):
     relevant_stats = {
         'reward_components': [
             'proof_rewards', 'code_rewards', 'structure_rewards',
-            'total_length_penalty', 'correct_proofs', 'correct_code', 
+            'correct_proofs', 'correct_code', 
             'correct_dual_solutions', 'total_rewards', 'average_reward'
         ],
         'dual_proof_stats': [
@@ -1944,11 +1917,6 @@ class DualProofReward(BaseReward):
                 self.stats.dual_proof_stats['incorrect_code'] += 1
                 self.logger.info(f"Incorrect code result: expected {correct_answer}, got {result}")
             
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
-            
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
             total_samples = self.stats.total_batches
@@ -1970,7 +1938,7 @@ class TestDrivenProgrammerReward(BaseReward):
     relevant_stats = {
         'reward_components': [
             'test_rewards', 'implementation_rewards', 'structure_rewards',
-            'total_length_penalty', 'correct_tests', 'correct_implementations', 
+            'correct_tests', 'correct_implementations', 
             'correct_test_driven_solutions', 'total_rewards', 'average_reward'
         ],
         'test_driven_programmer_stats': [
@@ -2281,11 +2249,6 @@ except Exception as e:
                 self.stats.reward_components['correct_test_driven_solutions'] = self.stats.reward_components.get('correct_test_driven_solutions', 0) + 1
                 self.stats.test_driven_programmer_stats['correct_test_driven_solutions'] += 1
                 self.logger.info(f"Applied test-driven solution bonus: +{bonus_reward:.3f}")
-            
-            # Apply length penalty
-            length_penalty = len(completion) * self.config.length_penalty_factor
-            reward -= length_penalty
-            self.stats.reward_components['total_length_penalty'] = self.stats.reward_components.get('total_length_penalty', 0.0) + length_penalty
             
             # Update total rewards and average
             self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + reward
