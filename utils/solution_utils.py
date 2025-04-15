@@ -125,6 +125,7 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
     1. LaTeX boxed answers: \boxed{X}
     2. Hash-marked answers: #### X
     Returns the raw answer string with LaTeX notation preserved, or None if no answer is found.
+    Returns None if multiple boxed answers are found.
     """
     def find_matching_brace(s: str, start: int) -> int:
         """
@@ -147,19 +148,28 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             i += 1
         return i - 1 if count == 0 else -1
 
-    # First try to find boxed answer
+    # Check if there are multiple boxed answers
     pattern = re.compile(r'\\boxed\{')
-    for match in pattern.finditer(solution):
+    matches = list(pattern.finditer(solution))
+    if len(matches) > 1:
+        return None  # Return None if multiple boxed answers are found
+    
+    # If exactly one boxed answer, extract it
+    if len(matches) == 1:
+        match = matches[0]
         start = match.end() - 1  # Position of the opening brace '{'
         end = find_matching_brace(solution, start)
         if end != -1:
             # Extract content between the braces
             content = solution[start + 1:end].strip()
-            return content  # Return the first found boxed content
+            return content
 
     # If no boxed answer found, try hash format
     if "####" in solution:
-        return solution.split("####")[1].strip()
+        hash_parts = solution.split("####")
+        if len(hash_parts) > 2:  # More than one #### section
+            return None  # Return None if multiple hash-marked answers
+        return hash_parts[1].strip()
 
     return None  # Return None if no answer format is found
 
