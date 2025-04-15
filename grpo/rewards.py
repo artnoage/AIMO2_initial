@@ -1724,7 +1724,7 @@ class TutorReward(BaseReward):
             # Log detailed reward breakdown
             self.logger.info(f"Tutor reward breakdown: verdict_correct={verdict_is_correct} ({self.config.tutor_verdict_reward if verdict_is_correct else 0}), " +
                             f"fix_reward={fix_reward if 'fix_reward' in locals() else 0}, " +
-                            f"length_penalty={length_penalty:.4f}, total={reward:.4f}")
+                            f"total={reward:.4f}")
             
             return reward
             
