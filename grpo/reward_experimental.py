@@ -2,6 +2,7 @@ import re
 import asyncio
 import torch
 import logging
+import json
 from datetime import datetime
 from pathlib import Path
 import os, sys
@@ -11,6 +12,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.model_utils import *
 from utils.agents import *
+from utils.agents import SolutionVerifierAgent
 from utils.solution_utils import (
     extract_numeric_answer, extract_answer_from_solution)
 from abc import ABC, abstractmethod
@@ -647,7 +649,6 @@ class SolutionReward(BaseReward):
             verification_model = get_model(self.config, role="auxiliary")
             
             # Create a verification agent
-            from utils.agents import SolutionVerifierAgent
             verifier = SolutionVerifierAgent(verification_model)
             
             # The solution_content is already the extracted response part
@@ -670,8 +671,6 @@ class SolutionReward(BaseReward):
             
             try:
                 # Parse the JSON response
-                import json
-                
                 self.logger.info("Raw verification result received from agent:")
                 self.logger.info("-" * 40)
                 self.logger.info(verification_result)
