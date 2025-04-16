@@ -12,8 +12,7 @@ sys.path.append(project_root)
 from utils.model_utils import *
 from utils.agents import *
 from utils.solution_utils import (
-    extract_numeric_answer, extract_answer_from_solution, 
-    extract_code_from_response, check_code_quality, generate_test_cases, run_test_function, run_code_safely)
+    extract_numeric_answer, extract_answer_from_solution)
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
@@ -415,17 +414,6 @@ class SolutionReward(BaseReward):
             
             # Check for glimpses of reasoning in thinking section
             thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
-            has_glimpses = False
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                # Check if any of the glimpses of reasoning are in the thinking content
-                from grpo.terms import Glimpses_of_reasoning
-                for glimpse in Glimpses_of_reasoning:
-                    if glimpse.lower() in thinking_content.lower():
-                        has_glimpses = True
-                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
-                        break
-            
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
@@ -475,12 +463,6 @@ class SolutionReward(BaseReward):
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             if is_correct:
                 base_reward = self.config.base_reward
-                
-                # Apply bonus for glimpses of reasoning
-                if has_glimpses:
-                    base_reward *= 3
-                    self.logger.info(f"Applied 3x bonus for glimpses of reasoning")
-                
                 reward += base_reward
                 self.logger.info(f"Applied base reward: +{base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
