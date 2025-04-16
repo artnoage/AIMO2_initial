@@ -509,9 +509,10 @@ class SolutionReward(BaseReward):
             if is_correct:
                 self.logger.info("Solution is correct, proceeding with verification...")
                 # Only verify solutions that have passed basic correctness checks
+                # Pass the already extracted response content
                 verification_passed, verification_details = await self.verify_solution(
                     problem=kwargs.get('problem', ''),
-                    solution=completion,
+                    solution_content=response_parts[0],
                     correct_answer=correct_numeric
                 )
                 
@@ -621,7 +622,7 @@ class SolutionReward(BaseReward):
             
             return 0.0
     
-    async def verify_solution(self, problem: str, solution: str, correct_answer: float) -> Tuple[bool, Dict[str, Any]]:
+    async def verify_solution(self, problem: str, solution_content: str, correct_answer: float) -> Tuple[bool, Dict[str, Any]]:
         """
         Use a verification agent to check if the solution is correct.
         The agent evaluates the solution based on three criteria:
@@ -631,7 +632,7 @@ class SolutionReward(BaseReward):
         
         Args:
             problem: The problem statement
-            solution: The solution to verify
+            solution_content: The already extracted response content to verify
             correct_answer: The expected answer
             
         Returns:
@@ -649,19 +650,13 @@ class SolutionReward(BaseReward):
             from utils.agents import SolutionVerifierAgent
             verifier = SolutionVerifierAgent(verification_model)
             
-            # Extract the response part from the solution
-            response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
-            if not response_match:
-                self.logger.info("Verification failed: No response section found")
-                return False, {"error": "No response section found"}
-            
-            response_content = response_match.group(1)
+            # The solution_content is already the extracted response part
             
             # Remove any boxed answers from the response to avoid giving away the answer
-            response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', response_content)
+            response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', solution_content)
             
-            # Call the verification agent with just the response part
-            full_verification_result = await verifier.verify(problem, response_content)
+            # Call the verification agent with the solution content
+            full_verification_result = await verifier.verify(problem, solution_content)
             
             # Extract just the response section containing the JSON
             response_match = re.search(r'<response>(.*?)</response>', full_verification_result, re.DOTALL)
