@@ -531,12 +531,19 @@ Calculate what the final boxed answer should be.
 </thinking>
 
 <response>
-Provide your assessment in JSON format with the following fields:
-- "is_detailed": (boolean) Is this a detailed solution with clear steps and reasoning?
-- "is_correct": (boolean) Is the solution's approach and reasoning correct?
-- "boxed_answer": (number or string) What should be the final answer that belongs in the box?
+Provide your assessment in a structured JSON format that looks like this:
+{
+  "is_detailed": true or false,
+  "is_correct": true or false,
+  "boxed_answer": numeric value or string
+}
 
-Your response must be valid JSON that can be parsed programmatically. Be precise in your assessment.
+Where:
+- "is_detailed": Boolean (true/false) indicating if this is a detailed solution with clear steps and reasoning
+- "is_correct": Boolean (true/false) indicating if the solution's approach and reasoning are correct
+- "boxed_answer": The final answer that should be in the box (as a number or string)
+
+Make sure your response contains only this JSON object and nothing else, so it can be properly parsed.
 </response>
 """
 
