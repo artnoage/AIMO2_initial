@@ -9,10 +9,10 @@ from collections import defaultdict
 from typing import List, Dict, Tuple, Optional, Any, Union
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-from utils.model_utils import *
-from utils.agents import *
+from utils.model_utils import get_model
+from utils.agents import SolutionVerifierAgent
 from utils.solution_utils import (
-    extract_numeric_answer, extract_answer_from_solution,validate_solution)
+    extract_numeric_answer, extract_answer_from_solution, validate_solution)
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
@@ -366,6 +366,16 @@ class SolutionReward(BaseReward):
         # Initialize verification-specific stats
         if not hasattr(self.stats.group_stats, 'verified_solutions'):
             self.stats.group_stats['verified_solutions'] = 0
+            
+        # Verification criteria weights (configurable)
+        self.verification_weights = {
+            'is_detailed': 1/3,
+            'is_correct': 1/3,
+            'boxed_answer': 1/3
+        }
+        
+        # Create verification model once during initialization
+        self.verification_model = get_model(self.config, role="auxiliary")
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -377,7 +387,7 @@ class SolutionReward(BaseReward):
             group_idx = kwargs.get('group_idx', 0)
             correct_answer = kwargs.get('answer')
             batch_index = kwargs.get('reward_index', len(self.stats.current_batch['answers']) if hasattr(self.stats, 'current_batch') else 0)
-            reward=0.0
+            reward = 0.0
             
             # Initialize tracking variables for this completion
             model_answer = None
@@ -393,12 +403,12 @@ class SolutionReward(BaseReward):
                     'code_lengths': [],
                     'completions': []
                 }
+                
+            # Ensure lists are long enough for this batch index (do this once at the beginning)
+            self._ensure_batch_lists_length(batch_index)
             
             if not all([group_completions, group_answers, group_indices]):
                 self.logger.warning(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}")
-                
-                # Ensure lists are long enough for this batch index
-                self._ensure_batch_lists_length(batch_index)
                 
                 # Store empty results
                 self.stats.current_batch['answers'][batch_index] = None
@@ -411,19 +421,31 @@ class SolutionReward(BaseReward):
 
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
             
-            # Check for glimpses of reasoning in thinking section
-            thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
-            
-            # Extract and validate the answer from the response part only
+            # Extract response part and validate the answer
             response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
-            model_answer = None
-            if response_parts:
-                model_answer = extract_answer_from_solution(response_parts[0])
-            if model_answer is None:
-                self.logger.info("There is no model_answer")
+            response_content = response_parts[0] if response_parts else ""
+            
+            # Check for required structure
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_response = bool(response_parts)
+            
+            if not has_thinking or not has_response:
+                self.logger.debug("Missing required structure: thinking or response section")
                 
-                # Ensure lists are long enough for this batch index
-                self._ensure_batch_lists_length(batch_index)
+                # Store empty results
+                self.stats.current_batch['answers'][batch_index] = None
+                self.stats.current_batch['is_correct'][batch_index] = False
+                self.stats.current_batch['execution_times'][batch_index] = 0.0
+                self.stats.current_batch['code_lengths'][batch_index] = 0
+                self.stats.current_batch['completions'][batch_index] = completion
+                
+                return 0.0
+                
+            # Extract the answer from the response content
+            model_answer = extract_answer_from_solution(response_content) if response_content else None
+            
+            if model_answer is None:
+                self.logger.info("No model answer found in response")
                 
                 # Store empty results
                 self.stats.current_batch['answers'][batch_index] = None
@@ -437,11 +459,9 @@ class SolutionReward(BaseReward):
             # Convert to numeric values
             model_numeric, debug_info = extract_numeric_answer(model_answer)
             correct_numeric, _ = extract_numeric_answer(str(correct_answer))
+            
             if model_numeric is None or correct_numeric is None:
                 self.logger.debug("Could not extract numeric values - returning 0.0")
-                
-                # Ensure lists are long enough for this batch index
-                self._ensure_batch_lists_length(batch_index)
                 
                 # Store empty results
                 self.stats.current_batch['answers'][batch_index] = None
@@ -452,14 +472,7 @@ class SolutionReward(BaseReward):
                 
                 return reward
                 
-                
-            # Structure validation rewards
-            
-            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
-            has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
-            if not has_thinking or not has_response:
-                self.logger.debug("No thinking or response")
-                return reward
+            # Initialize validation reward
             validation_reward = 0.0
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
@@ -469,12 +482,8 @@ class SolutionReward(BaseReward):
                 self.logger.info(f"Applied base reward: +{base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
-                
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
-                
-            # Ensure lists are long enough for this batch index
-            self._ensure_batch_lists_length(batch_index)
             
             # Store the results for this completion
             self.stats.current_batch['answers'][batch_index] = model_numeric
@@ -484,34 +493,30 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['completions'][batch_index] = completion
 
 
-            # Validate solution structure using the already extracted response parts
-            if response_parts:
-                # Use the validate_solution method to check solution structure
-                
-                solution_valid, validation_reason = validate_solution(response_parts[0])
+            # Validate solution structure - only apply validation reward if the answer is correct
+            # This ensures we don't reward structurally valid but incorrect solutions
+            if is_correct:
+                solution_valid, validation_reason = validate_solution(response_content)
                 
                 if solution_valid:
                     validation_reward += 0.2
                     self.logger.info(f"Solution structure validation passed (+0.2)")
+                    self.stats.reward_components['validation_rewards'] += 1
                 else:
                     self.logger.info(f"Solution structure validation failed: {validation_reason}")
-            
-            reward += validation_reward
-            if validation_reward > 0:
-                self.stats.reward_components['validation_rewards'] += 1
-                self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
                 
-
-            # We'll update the total rewards after verification (if applicable)
+                reward += validation_reward
+                if validation_reward > 0:
+                    self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
             
             # If the solution is correct, verify it with the verification agent
+            verification_reward = 0.0
             if is_correct:
                 self.logger.info("Solution is correct, proceeding with verification...")
                 # Only verify solutions that have passed basic correctness checks
-                # Pass the already extracted response content
                 verification_passed, verification_details = await self.verify_solution(
                     problem=kwargs.get('problem', ''),
-                    solution_content=response_parts[0],
+                    solution_content=response_content,
                     correct_answer=correct_numeric
                 )
                 
@@ -560,45 +565,37 @@ class SolutionReward(BaseReward):
                         self.stats.verification_criteria_stats['is_correct_count'] += 1
                     if criteria_scores.get("boxed_answer", 0) > 0:
                         self.stats.verification_criteria_stats['boxed_answer_count'] += 1
-                    
-                    # Update total rewards after verification
-                    self.stats.reward_components['total_rewards'] += verification_reward
-                    self.stats.reward_components['average_reward'] = \
-                        self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
-            # Calculate correctness for all completions in group
-            all_results = []
-            for comp, ans in zip(group_completions, group_answers):
-                comp_answer = extract_answer_from_solution(comp)
-                if comp_answer is None:
-                    all_results.append(False)
-                    continue
-                    
-                comp_numeric, _ = extract_numeric_answer(comp_answer)
-                ans_numeric, _ = extract_numeric_answer(ans)
-                if comp_numeric is None or ans_numeric is None:
-                    all_results.append(False)
-                    continue
-                    
-                all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
-            
-            # Group information is available but similarity reward is not used
+            # Calculate correctness for all completions in group (for logging purposes)
             if len(group_completions) > 1:
-                self.logger.info(f"Group information available ({len(group_completions)} completions) but similarity reward disabled")
+                all_results = []
+                for comp, ans in zip(group_completions, group_answers):
+                    comp_response_parts = re.findall(r'<response>(.*?)</response>', comp, re.DOTALL)
+                    if not comp_response_parts:
+                        all_results.append(False)
+                        continue
+                        
+                    comp_answer = extract_answer_from_solution(comp_response_parts[0])
+                    if comp_answer is None:
+                        all_results.append(False)
+                        continue
+                        
+                    comp_numeric, _ = extract_numeric_answer(comp_answer)
+                    ans_numeric, _ = extract_numeric_answer(ans)
+                    if comp_numeric is None or ans_numeric is None:
+                        all_results.append(False)
+                        continue
+                        
+                    all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
                 
-            # Update group-specific statistics
-            if is_correct:
-                self.stats.group_stats['correct_answers'] += 1
-            else:
-                self.stats.group_stats['incorrect_answers'] += 1
-                
-            # Group information is available but not used for similarity rewards
-            if len(group_completions) > 1:
-                self.logger.info(f"Group has {len(group_completions)} completions, but similarity reward is disabled")
+                self.logger.info(f"Group information: {sum(all_results)}/{len(all_results)} correct answers")
             
             # Update total rewards and average
-            self.stats.reward_components['total_rewards'] += reward
+            total_reward = reward
             total_samples = self.stats.reward_components['correct_answers'] + self.stats.reward_components['incorrect_answers']
+            
+            # Update the total rewards counter
+            self.stats.reward_components['total_rewards'] += total_reward
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
@@ -654,127 +651,158 @@ class SolutionReward(BaseReward):
             # Call the verification agent with the solution content that has boxed answers removed
             full_verification_result = await verifier.verify(problem, response_without_boxed)
             
-            # Extract just the response section containing the JSON
-            response_match = re.search(r'<response>(.*?)</response>', full_verification_result, re.DOTALL)
-            if response_match:
-                verification_result = response_match.group(1).strip()
-                self.logger.info("Successfully extracted response section from verification result")
-            else:
-                # Fallback to the full response if no response tags are found
-                verification_result = full_verification_result
-                self.logger.info("No response tags found, using full verification result")
+            # Process the verification result to extract JSON data
+            verification_data = self._extract_verification_data(full_verification_result)
             
-            try:
-                # Parse the JSON response
-                self.logger.info("Raw verification result received from agent:")
-                self.logger.info("-" * 40)
-                self.logger.info(verification_result)
-                self.logger.info("-" * 40)
+            if not verification_data:
+                return False, {"error": "Failed to extract valid verification data"}
                 
-                # Clean up the JSON string to handle potential formatting issues
-                # Remove any markdown code block markers
-                verification_result = re.sub(r'```json|```', '', verification_result).strip()
+            # Extract the verification criteria
+            is_detailed = verification_data.get('is_detailed', False)
+            is_correct = verification_data.get('is_correct', False)
+            boxed_answer = verification_data.get('boxed_answer', None)
+            
+            # Calculate verification score based on configurable weights
+            verification_score = 0
+            verification_details = {
+                "is_detailed": is_detailed,
+                "is_correct": is_correct,
+                "boxed_answer": boxed_answer,
+                "criteria_scores": {}
+            }
+            
+            # Check if the solution is detailed
+            if is_detailed:
+                detailed_weight = self.verification_weights['is_detailed']
+                verification_score += detailed_weight
+                verification_details["criteria_scores"]["is_detailed"] = detailed_weight
+                self.logger.info(f"✓ REWARD: Solution is detailed (+{detailed_weight:.2f} of verification reward)")
+            else:
+                verification_details["criteria_scores"]["is_detailed"] = 0
+                self.logger.info("✗ NO REWARD: Solution is not sufficiently detailed")
+            
+            # Check if the solution approach is correct
+            if is_correct:
+                correct_weight = self.verification_weights['is_correct']
+                verification_score += correct_weight
+                verification_details["criteria_scores"]["is_correct"] = correct_weight
+                self.logger.info(f"✓ REWARD: Solution approach is correct (+{correct_weight:.2f} of verification reward)")
+            else:
+                verification_details["criteria_scores"]["is_correct"] = 0
+                self.logger.info("✗ NO REWARD: Solution approach contains errors or incorrect reasoning")
+            
+            # Check if the boxed answer is correct
+            if boxed_answer is not None:
+                is_answer_correct = self._compare_answers(boxed_answer, correct_answer)
                 
-                # Try to find a valid JSON object in the response
-                json_match = re.search(r'\{.*\}', verification_result, re.DOTALL)
-                if json_match:
-                    verification_result = json_match.group(0)
-                    self.logger.info(f"Extracted JSON object: {verification_result}")
-                else:
-                    self.logger.error("Could not find a valid JSON object in the verification result")
-                    return False, {"error": "No valid JSON object found in verifier response"}
-                
-                try:
-                    verification_data = json.loads(verification_result)
-                    self.logger.info(f"Successfully parsed verification data: {verification_data}")
-                except json.JSONDecodeError as json_err:
-                    self.logger.error(f"JSON parsing error: {str(json_err)}")
-                    self.logger.error(f"Problematic JSON string: {verification_result}")
-                    return False, {"error": f"Invalid JSON format: {str(json_err)}"}
-                
-                # Extract the verification criteria
-                is_detailed = verification_data.get('is_detailed', False)
-                is_correct = verification_data.get('is_correct', False)
-                boxed_answer = verification_data.get('boxed_answer', None)
-                
-                # Calculate verification score (1/3 for each correct criterion)
-                verification_score = 0
-                verification_details = {
-                    "is_detailed": is_detailed,
-                    "is_correct": is_correct,
-                    "boxed_answer": boxed_answer,
-                    "criteria_scores": {}
-                }
-                
-                # Check if the solution is detailed
-                if is_detailed:
-                    verification_score += 1/3
-                    verification_details["criteria_scores"]["is_detailed"] = 1/3
-                    self.logger.info("✓ REWARD: Solution is detailed (+1/3 of verification reward)")
-                else:
-                    verification_details["criteria_scores"]["is_detailed"] = 0
-                    self.logger.info("✗ NO REWARD: Solution is not sufficiently detailed")
-                
-                # Check if the solution approach is correct
-                if is_correct:
-                    verification_score += 1/3
-                    verification_details["criteria_scores"]["is_correct"] = 1/3
-                    self.logger.info("✓ REWARD: Solution approach is correct (+1/3 of verification reward)")
-                else:
-                    verification_details["criteria_scores"]["is_correct"] = 0
-                    self.logger.info("✗ NO REWARD: Solution approach contains errors or incorrect reasoning")
-                
-                # Check if the boxed answer is correct
-                if boxed_answer is not None:
-                    # Try to convert to numeric if possible
-                    try:
-                        boxed_numeric = float(boxed_answer)
-                        is_answer_correct = abs(boxed_numeric - correct_answer) <= self.config.numeric_tolerance
-                        self.logger.info(f"Comparing numeric answers: agent={boxed_numeric}, correct={correct_answer}, tolerance={self.config.numeric_tolerance}")
-                    except (ValueError, TypeError):
-                        # If not numeric, do string comparison
-                        is_answer_correct = str(boxed_answer).strip() == str(correct_answer).strip()
-                        self.logger.info(f"Comparing string answers: agent='{boxed_answer}', correct='{correct_answer}'")
-                    
-                    if is_answer_correct:
-                        verification_score += 1/3
-                        verification_details["criteria_scores"]["boxed_answer"] = 1/3
-                        self.logger.info("✓ REWARD: Boxed answer is correct (+1/3 of verification reward)")
-                    else:
-                        verification_details["criteria_scores"]["boxed_answer"] = 0
-                        self.logger.info(f"✗ NO REWARD: Boxed answer is incorrect (agent provided: {boxed_answer}, expected: {correct_answer})")
+                if is_answer_correct:
+                    boxed_weight = self.verification_weights['boxed_answer']
+                    verification_score += boxed_weight
+                    verification_details["criteria_scores"]["boxed_answer"] = boxed_weight
+                    self.logger.info(f"✓ REWARD: Boxed answer is correct (+{boxed_weight:.2f} of verification reward)")
                 else:
                     verification_details["criteria_scores"]["boxed_answer"] = 0
-                    self.logger.info("✗ NO REWARD: No boxed answer was provided by the agent")
-                
-                # Calculate total verification score
-                verification_details["total_score"] = verification_score
-                
-                # Verification passes if at least one criterion is met
-                verification_passed = verification_score > 0
-                
-                if verification_passed:
-                    self.logger.info(f"Verification passed with score: {verification_score:.2f}/1.00")
-                else:
-                    self.logger.info("Verification failed: No criteria met")
-                
-                return verification_passed, verification_details
-                
-            except json.JSONDecodeError as json_err:
-                self.logger.error("❌ VERIFICATION FAILED: Could not parse agent output as JSON")
-                self.logger.error(f"JSON error details: {str(json_err)}")
-                self.logger.error("Raw verification result:")
-                self.logger.error("-" * 40)
-                self.logger.error(verification_result)
-                self.logger.error("-" * 40)
-                self.logger.error("No verification reward will be applied")
-                return False, {"error": f"Invalid JSON response from verifier: {str(json_err)}"}
+                    self.logger.info(f"✗ NO REWARD: Boxed answer is incorrect (agent provided: {boxed_answer}, expected: {correct_answer})")
+            else:
+                verification_details["criteria_scores"]["boxed_answer"] = 0
+                self.logger.info("✗ NO REWARD: No boxed answer was provided by the agent")
             
+            # Calculate total verification score
+            verification_details["total_score"] = verification_score
+            
+            # Verification passes if at least one criterion is met
+            verification_passed = verification_score > 0
+            
+            if verification_passed:
+                self.logger.info(f"Verification passed with score: {verification_score:.2f}/1.00")
+            else:
+                self.logger.info("Verification failed: No criteria met")
+            
+            return verification_passed, verification_details
         except Exception as e:
             self.logger.error(f"Error during verification: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
             return False, {"error": str(e)}
+    
+    def _extract_verification_data(self, verification_result: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract and parse JSON data from verification agent response.
+        
+        Args:
+            verification_result: The raw response from the verification agent
+            
+        Returns:
+            Dict containing the parsed verification data, or None if parsing failed
+        """
+        try:
+            # Extract just the response section containing the JSON
+            response_match = re.search(r'<response>(.*?)</response>', verification_result, re.DOTALL)
+            if response_match:
+                json_text = response_match.group(1).strip()
+                self.logger.debug("Successfully extracted response section from verification result")
+            else:
+                # Fallback to the full response if no response tags are found
+                json_text = verification_result
+                self.logger.debug("No response tags found, using full verification result")
+            
+            # Log the raw verification result at debug level
+            if self.logger.level <= logging.DEBUG:
+                self.logger.debug("Raw verification result received from agent:")
+                self.logger.debug("-" * 40)
+                self.logger.debug(json_text)
+                self.logger.debug("-" * 40)
+            
+            # Clean up the JSON string to handle potential formatting issues
+            # Remove any markdown code block markers
+            json_text = re.sub(r'```json|```', '', json_text).strip()
+            
+            # Try to find a valid JSON object in the response
+            json_match = re.search(r'\{.*\}', json_text, re.DOTALL)
+            if json_match:
+                json_text = json_match.group(0)
+                self.logger.debug(f"Extracted JSON object")
+            else:
+                self.logger.error("Could not find a valid JSON object in the verification result")
+                return None
+            
+            # Parse the JSON data
+            verification_data = json.loads(json_text)
+            return verification_data
+            
+        except json.JSONDecodeError as json_err:
+            self.logger.error("❌ VERIFICATION FAILED: Could not parse agent output as JSON")
+            self.logger.error(f"JSON error details: {str(json_err)}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Error extracting verification data: {str(e)}")
+            return None
+    
+    def _compare_answers(self, agent_answer: Any, correct_answer: Any) -> bool:
+        """
+        Compare the agent's answer with the correct answer, handling both numeric and string cases.
+        
+        Args:
+            agent_answer: The answer provided by the verification agent
+            correct_answer: The expected correct answer
+            
+        Returns:
+            bool: True if the answers match within tolerance, False otherwise
+        """
+        # Try to convert to numeric if possible
+        try:
+            agent_numeric = float(agent_answer)
+            correct_numeric = float(correct_answer)
+            is_answer_correct = abs(agent_numeric - correct_numeric) <= self.config.numeric_tolerance
+            self.logger.info(f"Comparing numeric answers: agent={agent_numeric}, correct={correct_numeric}, tolerance={self.config.numeric_tolerance}")
+            return is_answer_correct
+        except (ValueError, TypeError):
+            # If not numeric, do string comparison
+            agent_str = str(agent_answer).strip()
+            correct_str = str(correct_answer).strip()
+            is_answer_correct = agent_str == correct_str
+            self.logger.info(f"Comparing string answers: agent='{agent_str}', correct='{correct_str}'")
+            return is_answer_correct
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
