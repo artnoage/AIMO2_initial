@@ -1,6 +1,5 @@
 import re
 import asyncio
-import torch
 import logging
 import json
 from datetime import datetime
@@ -12,13 +11,11 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.model_utils import *
 from utils.agents import *
-from utils.agents import SolutionVerifierAgent
 from utils.solution_utils import (
-    extract_numeric_answer, extract_answer_from_solution)
+    extract_numeric_answer, extract_answer_from_solution,validate_solution)
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from utils.solution_utils import validate_solution
 
 class BaseReward(ABC):
     """Base class for reward calculation
@@ -650,8 +647,6 @@ class SolutionReward(BaseReward):
             
             # Create a verification agent
             verifier = SolutionVerifierAgent(verification_model)
-            
-            # The solution_content is already the extracted response part
             
             # Remove any boxed answers from the response to avoid giving away the answer
             response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', solution_content)
