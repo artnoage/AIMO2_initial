@@ -670,6 +670,16 @@ class SolutionReward(BaseReward):
             try:
                 # Parse the JSON response
                 import json
+                
+                # Clean up the JSON string to handle potential formatting issues
+                # Remove any markdown code block markers
+                verification_result = re.sub(r'```json|```', '', verification_result).strip()
+                
+                # Try to find a valid JSON object in the response
+                json_match = re.search(r'\{.*\}', verification_result, re.DOTALL)
+                if json_match:
+                    verification_result = json_match.group(0)
+                
                 verification_data = json.loads(verification_result)
                 
                 # Extract the verification criteria

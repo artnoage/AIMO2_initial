@@ -519,12 +519,25 @@ You will be given:
 1. A mathematical problem statement
 2. A proposed solution (with the final boxed answer removed)
 
-Analyze the solution carefully and provide your assessment in JSON format with the following fields:
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
+Analyze the solution step by step, noting any errors or issues.
+Determine if the solution is detailed enough with clear steps and reasoning.
+Determine if the solution's approach and reasoning are correct.
+Calculate what the final boxed answer should be.
+</thinking>
+
+<response>
+Provide your assessment in JSON format with the following fields:
 - "is_detailed": (boolean) Is this a detailed solution with clear steps and reasoning?
 - "is_correct": (boolean) Is the solution's approach and reasoning correct?
 - "boxed_answer": (number or string) What should be the final answer that belongs in the box?
 
 Your response must be valid JSON that can be parsed programmatically. Be precise in your assessment.
+</response>
 """
 
 class SolutionVerifierAgent:
@@ -557,7 +570,16 @@ class SolutionVerifierAgent:
             HumanMessage(content=content)
         ]
         
-        response = await get_model_response(self.model, prompt, max_tokens=4096)
-        return (system_prompt + "\n\n" + content, response) if return_prompt else response
+        full_response = await get_model_response(self.model, prompt, max_tokens=4096)
+        
+        # Extract just the response section containing the JSON
+        response_match = re.search(r'<response>(.*?)</response>', full_response, re.DOTALL)
+        if response_match:
+            json_response = response_match.group(1).strip()
+        else:
+            # Fallback to the full response if no response tags are found
+            json_response = full_response
+        
+        return (system_prompt + "\n\n" + content, json_response) if return_prompt else json_response
 
 
