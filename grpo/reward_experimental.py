@@ -655,8 +655,8 @@ class SolutionReward(BaseReward):
             # Remove any boxed answers from the response to avoid giving away the answer
             response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', solution_content)
             
-            # Call the verification agent with the solution content
-            full_verification_result = await verifier.verify(problem, solution_content)
+            # Call the verification agent with the solution content that has boxed answers removed
+            full_verification_result = await verifier.verify(problem, response_without_boxed)
             
             # Extract just the response section containing the JSON
             response_match = re.search(r'<response>(.*?)</response>', full_verification_result, re.DOTALL)
