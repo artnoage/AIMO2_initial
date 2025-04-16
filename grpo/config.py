@@ -10,6 +10,12 @@ class RewardConfig:
     max_retries: int = 3
     timeout: int = 60
     
+    # Regex patterns for extracting solution parts
+    thinking_pattern: str = r'<thinking>(.*?)</thinking>'
+    response_pattern: str = r'<response>(.*?)</response>'
+    boxed_pattern: str = r'\\boxed\{[^}]*\}'
+    boxed_replacement: str = r'\\boxed{?}'
+    
     # Main model settings
     main: str = "LOCAL_0"  # Main model to use for solving problems
     main_template: int = 1  # Template for main model
@@ -50,5 +56,17 @@ class RewardConfig:
     
     # Verification-specific settings
     verification_reward: float = 1.5   # Reward for verified solution
+    
+    # Verification criteria weights
+    verification_weights: Dict[str, float] = None  # Will be initialized with default values
+    
+    def __post_init__(self):
+        """Initialize default values for complex types"""
+        if self.verification_weights is None:
+            self.verification_weights = {
+                'is_detailed': 1/3,
+                'is_correct': 1/3,
+                'boxed_answer': 1/3
+            }
 
 

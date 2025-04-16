@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 import os, sys
 from collections import defaultdict
-from typing import List, Dict, Tuple, Optional, Any, Union
+from typing import List, Dict, Tuple, Optional, Any, Union, Callable
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from utils.model_utils import get_model
@@ -366,15 +366,16 @@ class SolutionReward(BaseReward):
         if not hasattr(self.stats.group_stats, 'verified_solutions'):
             self.stats.group_stats['verified_solutions'] = 0
             
-        # Verification criteria weights (configurable)
-        self.verification_weights = {
-            'is_detailed': 1/3,
-            'is_correct': 1/3,
-            'boxed_answer': 1/3
-        }
+        # Use verification weights from config
+        self.verification_weights = self.config.verification_weights
         
         # Create verification model once during initialization
         self.verification_model = get_model(self.config, role="auxiliary")
+        
+        # Compile regex patterns for better performance
+        self.thinking_pattern = re.compile(self.config.thinking_pattern, re.DOTALL)
+        self.response_pattern = re.compile(self.config.response_pattern, re.DOTALL)
+        self.boxed_pattern = re.compile(self.config.boxed_pattern)
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -421,11 +422,11 @@ class SolutionReward(BaseReward):
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
             
             # Extract response part and validate the answer
-            response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+            response_parts = self.response_pattern.findall(completion)
             response_content = response_parts[0] if response_parts else ""
             
             # Check for required structure
-            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
+            has_thinking = bool(self.thinking_pattern.search(completion))
             has_response = bool(response_parts)
             
             if not has_thinking or not has_response:
@@ -567,26 +568,7 @@ class SolutionReward(BaseReward):
             
             # Calculate correctness for all completions in group (for logging purposes)
             if len(group_completions) > 1:
-                all_results = []
-                for comp, ans in zip(group_completions, group_answers):
-                    comp_response_parts = re.findall(r'<response>(.*?)</response>', comp, re.DOTALL)
-                    if not comp_response_parts:
-                        all_results.append(False)
-                        continue
-                        
-                    comp_answer = extract_answer_from_solution(comp_response_parts[0])
-                    if comp_answer is None:
-                        all_results.append(False)
-                        continue
-                        
-                    comp_numeric, _ = extract_numeric_answer(comp_answer)
-                    ans_numeric, _ = extract_numeric_answer(ans)
-                    if comp_numeric is None or ans_numeric is None:
-                        all_results.append(False)
-                        continue
-                        
-                    all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
-                
+                all_results = self._calculate_group_results(group_completions, group_answers)
                 self.logger.info(f"Group information: {sum(all_results)}/{len(all_results)} correct answers")
             
             # Update total rewards and average
@@ -598,7 +580,7 @@ class SolutionReward(BaseReward):
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
-            return reward
+            return total_reward
             
         except Exception as e:
             self.logger.error(f"Error calculating group reward: {str(e)}")
@@ -642,7 +624,7 @@ class SolutionReward(BaseReward):
             verifier = SolutionVerifierAgent(self.verification_model)
             
             # Remove any boxed answers from the response to avoid giving away the answer
-            response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', solution_content)
+            response_without_boxed = self.boxed_pattern.sub(self.config.boxed_replacement, solution_content)
             
             # Call the verification agent with the solution content that has boxed answers removed
             full_verification_result = await verifier.verify(problem, response_without_boxed)
@@ -653,55 +635,11 @@ class SolutionReward(BaseReward):
             if not verification_data:
                 return False, {"error": "Failed to extract valid verification data"}
                 
-            # Extract the verification criteria
-            is_detailed = verification_data.get('is_detailed', False)
-            is_correct = verification_data.get('is_correct', False)
-            boxed_answer = verification_data.get('boxed_answer', None)
-            
-            # Calculate verification score based on configurable weights
-            verification_score = 0
-            verification_details = {
-                "is_detailed": is_detailed,
-                "is_correct": is_correct,
-                "boxed_answer": boxed_answer,
-                "criteria_scores": {}
-            }
-            
-            # Check if the solution is detailed
-            if is_detailed:
-                detailed_weight = self.verification_weights['is_detailed']
-                verification_score += detailed_weight
-                verification_details["criteria_scores"]["is_detailed"] = detailed_weight
-                self.logger.info(f"✓ REWARD: Solution is detailed (+{detailed_weight:.2f} of verification reward)")
-            else:
-                verification_details["criteria_scores"]["is_detailed"] = 0
-                self.logger.info("✗ NO REWARD: Solution is not sufficiently detailed")
-            
-            # Check if the solution approach is correct
-            if is_correct:
-                correct_weight = self.verification_weights['is_correct']
-                verification_score += correct_weight
-                verification_details["criteria_scores"]["is_correct"] = correct_weight
-                self.logger.info(f"✓ REWARD: Solution approach is correct (+{correct_weight:.2f} of verification reward)")
-            else:
-                verification_details["criteria_scores"]["is_correct"] = 0
-                self.logger.info("✗ NO REWARD: Solution approach contains errors or incorrect reasoning")
-            
-            # Check if the boxed answer is correct
-            if boxed_answer is not None:
-                is_answer_correct = self._compare_answers(boxed_answer, correct_answer)
-                
-                if is_answer_correct:
-                    boxed_weight = self.verification_weights['boxed_answer']
-                    verification_score += boxed_weight
-                    verification_details["criteria_scores"]["boxed_answer"] = boxed_weight
-                    self.logger.info(f"✓ REWARD: Boxed answer is correct (+{boxed_weight:.2f} of verification reward)")
-                else:
-                    verification_details["criteria_scores"]["boxed_answer"] = 0
-                    self.logger.info(f"✗ NO REWARD: Boxed answer is incorrect (agent provided: {boxed_answer}, expected: {correct_answer})")
-            else:
-                verification_details["criteria_scores"]["boxed_answer"] = 0
-                self.logger.info("✗ NO REWARD: No boxed answer was provided by the agent")
+            # Process verification criteria and calculate score
+            verification_details = self._process_verification_criteria(
+                verification_data, correct_answer
+            )
+            verification_score = verification_details["total_score"]
             
             # Calculate total verification score
             verification_details["total_score"] = verification_score
@@ -721,6 +659,99 @@ class SolutionReward(BaseReward):
             self.logger.error(traceback.format_exc())
             return False, {"error": str(e)}
     
+    def _calculate_group_results(self, group_completions: List[str], group_answers: List[str]) -> List[bool]:
+        """
+        Calculate correctness for all completions in a group.
+        
+        Args:
+            group_completions: List of completions in the group
+            group_answers: List of expected answers for the group
+            
+        Returns:
+            List of boolean values indicating correctness of each completion
+        """
+        all_results = []
+        for comp, ans in zip(group_completions, group_answers):
+            comp_response_parts = self.response_pattern.findall(comp)
+            if not comp_response_parts:
+                all_results.append(False)
+                continue
+                
+            comp_answer = extract_answer_from_solution(comp_response_parts[0])
+            if comp_answer is None:
+                all_results.append(False)
+                continue
+                
+            comp_numeric, _ = extract_numeric_answer(comp_answer)
+            ans_numeric, _ = extract_numeric_answer(ans)
+            if comp_numeric is None or ans_numeric is None:
+                all_results.append(False)
+                continue
+                
+            all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
+        
+        return all_results
+    
+    def _process_verification_criteria(self, verification_data: Dict[str, Any], correct_answer: Any) -> Dict[str, Any]:
+        """
+        Process verification criteria and calculate verification score.
+        
+        Args:
+            verification_data: The parsed verification data from the agent
+            correct_answer: The expected correct answer
+            
+        Returns:
+            Dict containing verification details and scores
+        """
+        # Extract the verification criteria
+        is_detailed = verification_data.get('is_detailed', False)
+        is_correct = verification_data.get('is_correct', False)
+        boxed_answer = verification_data.get('boxed_answer', None)
+        
+        # Initialize verification details
+        verification_details = {
+            "is_detailed": is_detailed,
+            "is_correct": is_correct,
+            "boxed_answer": boxed_answer,
+            "criteria_scores": {},
+            "total_score": 0
+        }
+        
+        # Process each criterion
+        criteria = [
+            ('is_detailed', is_detailed, "Solution is detailed", None),
+            ('is_correct', is_correct, "Solution approach is correct", None),
+            ('boxed_answer', boxed_answer is not None, "Boxed answer is correct", 
+             lambda: self._compare_answers(boxed_answer, correct_answer) if boxed_answer is not None else False)
+        ]
+        
+        verification_score = 0
+        
+        for criterion_name, criterion_met, success_message, additional_check in criteria:
+            # Apply additional check if provided
+            if additional_check is not None:
+                criterion_met = criterion_met and additional_check()
+            
+            weight = self.verification_weights[criterion_name]
+            
+            if criterion_met:
+                verification_score += weight
+                verification_details["criteria_scores"][criterion_name] = weight
+                self.logger.info(f"✓ REWARD: {success_message} (+{weight:.2f} of verification reward)")
+            else:
+                verification_details["criteria_scores"][criterion_name] = 0
+                if criterion_name == 'boxed_answer' and boxed_answer is not None:
+                    self.logger.info(f"✗ NO REWARD: Boxed answer is incorrect (agent provided: {boxed_answer}, expected: {correct_answer})")
+                elif criterion_name == 'boxed_answer':
+                    self.logger.info("✗ NO REWARD: No boxed answer was provided by the agent")
+                elif criterion_name == 'is_detailed':
+                    self.logger.info("✗ NO REWARD: Solution is not sufficiently detailed")
+                elif criterion_name == 'is_correct':
+                    self.logger.info("✗ NO REWARD: Solution approach contains errors or incorrect reasoning")
+        
+        verification_details["total_score"] = verification_score
+        return verification_details
+    
     def _extract_verification_data(self, verification_result: str) -> Optional[Dict[str, Any]]:
         """
         Extract and parse JSON data from verification agent response.
@@ -733,7 +764,7 @@ class SolutionReward(BaseReward):
         """
         try:
             # Extract just the response section containing the JSON
-            response_match = re.search(r'<response>(.*?)</response>', verification_result, re.DOTALL)
+            response_match = self.response_pattern.search(verification_result)
             if response_match:
                 json_text = response_match.group(1).strip()
                 self.logger.debug("Successfully extracted response section from verification result")
