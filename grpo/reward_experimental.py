@@ -415,8 +415,11 @@ class SolutionReward(BaseReward):
             # Check for glimpses of reasoning in thinking section
             thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
             
-            # Extract and validate the answer
-            model_answer = extract_answer_from_solution(completion)
+            # Extract and validate the answer from the response part only
+            response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+            model_answer = None
+            if response_parts:
+                model_answer = extract_answer_from_solution(response_parts[0])
             if model_answer is None:
                 self.logger.info("There is no model_answer")
                 
@@ -482,8 +485,7 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['completions'][batch_index] = completion
 
 
-            # Extract response part and validate solution structure
-            response_parts = re.findall(r'<response>(.*?)</response>', completion, re.DOTALL)
+            # Validate solution structure using the already extracted response parts
             if response_parts:
                 # Use the validate_solution method to check solution structure
                 
@@ -501,11 +503,7 @@ class SolutionReward(BaseReward):
                 self.logger.info(f"Applied total validation reward: +{validation_reward:.3f}")
                 
 
-            # Update total rewards and average
-            self.stats.reward_components['total_rewards'] += reward
-            total_samples = self.stats.reward_components['correct_answers'] + self.stats.reward_components['incorrect_answers']
-            self.stats.reward_components['average_reward'] = \
-                self.stats.reward_components['total_rewards'] / max(1, total_samples)
+            # We'll update the total rewards after verification (if applicable)
             
             # If the solution is correct, verify it with the verification agent
             if is_correct:
@@ -563,7 +561,7 @@ class SolutionReward(BaseReward):
                     if criteria_scores.get("boxed_answer", 0) > 0:
                         self.stats.verification_criteria_stats['boxed_answer_count'] += 1
                     
-                    # Update total rewards again after verification
+                    # Update total rewards after verification
                     self.stats.reward_components['total_rewards'] += verification_reward
                     self.stats.reward_components['average_reward'] = \
                         self.stats.reward_components['total_rewards'] / max(1, total_samples)
@@ -597,6 +595,12 @@ class SolutionReward(BaseReward):
             # Group information is available but not used for similarity rewards
             if len(group_completions) > 1:
                 self.logger.info(f"Group has {len(group_completions)} completions, but similarity reward is disabled")
+            
+            # Update total rewards and average
+            self.stats.reward_components['total_rewards'] += reward
+            total_samples = self.stats.reward_components['correct_answers'] + self.stats.reward_components['incorrect_answers']
+            self.stats.reward_components['average_reward'] = \
+                self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
             return reward
             
