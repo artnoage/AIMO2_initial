@@ -345,9 +345,9 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'validation_rewards'],
+        'reward_components': ['base_rewards', 'validation_rewards', 'verification_rewards'],
         'group_stats': [
-            'correct_answers', 'incorrect_answers'
+            'correct_answers', 'incorrect_answers', 'verified_solutions'
         ],
         'plurality_stats': [
             'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length',
@@ -361,6 +361,10 @@ class SolutionReward(BaseReward):
         
         # Numerical tolerance for grouping similar answers
         self.answer_grouping_tolerance = 1e-2
+        
+        # Initialize verification-specific stats
+        if not hasattr(self.stats.group_stats, 'verified_solutions'):
+            self.stats.group_stats['verified_solutions'] = 0
         
     async def calculate_reward(self, completion: str, **kwargs) -> float:
         """Calculate reward for a single completion with group context"""
@@ -518,6 +522,29 @@ class SolutionReward(BaseReward):
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
+            # If the solution is correct, verify it with the verification agent
+            if is_correct:
+                # Only verify solutions that have passed basic correctness checks
+                verification_passed = await self.verify_solution(
+                    problem=kwargs.get('problem', ''),
+                    solution=completion,
+                    correct_answer=correct_numeric
+                )
+                
+                if verification_passed:
+                    # Apply verification reward
+                    verification_reward = self.config.verification_reward
+                    reward += verification_reward
+                    self.logger.info(f"Applied verification reward: +{verification_reward:.3f}")
+                    
+                    # Update verification stats
+                    self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
+                    self.stats.group_stats['verified_solutions'] += 1
+                    
+                    # Update total rewards again after verification
+                    self.stats.reward_components['total_rewards'] += verification_reward
+                    self.stats.reward_components['average_reward'] = \
+                        self.stats.reward_components['total_rewards'] / max(1, total_samples)
             
             # Calculate correctness for all completions in group
             all_results = []
@@ -567,6 +594,71 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['completions'][batch_index] = completion
             
             return 0.0
+    
+    async def verify_solution(self, problem: str, solution: str, correct_answer: float) -> bool:
+        """
+        Use a verification agent to check if the solution is correct.
+        This is a placeholder method that would normally call an external agent.
+        
+        Args:
+            problem: The problem statement
+            solution: The solution to verify
+            correct_answer: The expected answer
+            
+        Returns:
+            bool: True if the solution is verified as correct, False otherwise
+        """
+        try:
+            self.logger.info("Calling verification agent to verify solution")
+            
+            # Get the model using the benchmark config
+            verification_model = get_model(self.config, role="auxiliary")
+            
+            # In a real implementation, we would create a verification agent and call it
+            # For now, we'll simulate a verification process with a placeholder
+            
+            # Extract the answer from the solution
+            model_answer = extract_answer_from_solution(solution)
+            if model_answer is None:
+                self.logger.info("Verification failed: No answer found in solution")
+                return False
+                
+            # Convert to numeric value
+            model_numeric, _ = extract_numeric_answer(model_answer)
+            if model_numeric is None:
+                self.logger.info("Verification failed: Could not extract numeric answer")
+                return False
+                
+            # Check if the answer is correct (this is a simplified verification)
+            # In a real implementation, the verification agent would analyze the solution steps
+            is_correct = abs(model_numeric - correct_answer) <= self.config.numeric_tolerance
+            
+            # Simulate some verification logic based on solution quality
+            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', solution, re.DOTALL))
+            has_response = bool(re.search(r'<response>.*?</response>', solution, re.DOTALL))
+            
+            # Check for step structure in the response
+            response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
+            has_steps = False
+            if response_match:
+                response_content = response_match.group(1)
+                has_steps = bool(re.search(r'Step\s+\d+:', response_content, re.IGNORECASE))
+            
+            # Verification passes if the answer is correct and the solution has proper structure
+            verification_passed = is_correct and has_thinking and has_response and has_steps
+            
+            if verification_passed:
+                self.logger.info("Verification passed: Solution is correct and well-structured")
+            else:
+                self.logger.info(f"Verification failed: correct={is_correct}, thinking={has_thinking}, response={has_response}, steps={has_steps}")
+                
+            return verification_passed
+            
+        except Exception as e:
+            self.logger.error(f"Error during verification: {str(e)}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return False
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
