@@ -24,7 +24,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/sft_S/20250412_171054",
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/Bplus/20250415_131650",
         max_seq_length=8000,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")
@@ -100,14 +100,14 @@ def main():
 
 
     # Load dataset
-    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250412_164300")
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250415_131101")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
-    formatted_dataset1 = formatted_dataset.shuffle(seed=42)
-    formatted_dataset2= formatted_dataset.shuffle(seed=31)
+    formatted_dataset1 = formatted_dataset.shuffle(seed=412)
+    formatted_dataset2= formatted_dataset.shuffle(seed=133)
     formatted_dataset3= formatted_dataset.shuffle(seed=13)
-    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2,formatted_dataset3])
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
@@ -146,7 +146,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "sft_S"
+    model_type = "Bplus"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

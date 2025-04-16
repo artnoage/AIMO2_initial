@@ -116,8 +116,8 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         correct_count = 0
         best_solution = None
         
-        # Force best_of to be 10 regardless of config
-        best_of = 10
+        # Force best_of to be 20 regardless of config
+        best_of = 20
         
         for attempt in range(best_of):
             try:

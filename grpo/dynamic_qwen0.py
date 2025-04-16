@@ -193,8 +193,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/sft_S/20250412_185528"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7B"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -239,11 +239,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=3000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.5,
+        gpu_memory_utilization=0.6,
         max_lora_rank=64)
         
     
@@ -306,7 +306,6 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=30)
-    formatted_dataset = formatted_dataset.select(range(4000))
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
@@ -325,9 +324,9 @@ def main():
         gradient_accumulation_steps=1,
         num_generations=8,
         max_prompt_length=1000,
-        max_completion_length=3000,
+        max_completion_length=2000,
         num_train_epochs=1,
-        save_steps=50,
+        save_steps=200,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

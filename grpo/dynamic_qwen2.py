@@ -26,7 +26,7 @@ from utils.agents import (
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
     FINALIZATION_SYSTEM_PROMPT,
-    FULLSOLUTION_SYSTEM_PROMPT,
+    FULLSOLUTION_SYSTEM_PROMPT2,
     PROGRAMMER_SYSTEM_PROMPT
 )
 
@@ -193,8 +193,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "dynamic_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/sft_B/20250412_190953"
-    dataset_name = "Metaskepsis/Olympiads_hard"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -239,11 +239,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=2700,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.55,
+        use_gradient_checkpointing="unsloth",
+        gpu_memory_utilization=0.75,
         max_lora_rank=64)
         
     
@@ -256,7 +256,7 @@ def main():
         lora_alpha=64,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing=False,
+        use_gradient_checkpointing="unsloth",
         random_state=3407,
         use_rslora=False,
         loftq_config=None
@@ -276,6 +276,7 @@ def main():
         data = load_dataset(dataset_name,split="train")
         data=data.shuffle(seed=141)
        
+        # Define the distribution
         # You can set any value to 0 to skip generating that type of example
         distribution = {
             'solution': 1,
@@ -291,7 +292,7 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            FULLSOLUTION_SYSTEM_PROMPT,
+            FULLSOLUTION_SYSTEM_PROMPT2,
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
@@ -305,7 +306,6 @@ def main():
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=30)
-    formatted_dataset = formatted_dataset.select(range(4000))
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
@@ -320,13 +320,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=6,
         gradient_accumulation_steps=1,
-        num_generations=8,
-        max_prompt_length=1000,
-        max_completion_length=3000,
+        num_generations=6,
+        max_prompt_length=800,
+        max_completion_length=1900,
         num_train_epochs=1,
-        save_steps=50,
+        save_steps=200,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

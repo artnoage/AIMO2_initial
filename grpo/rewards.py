@@ -204,17 +204,10 @@ class BaseReward(ABC):
             self.logger.error(traceback.format_exc())
             rewards = [0.0] * len(completions)
         
-        # Check if any rewards are high enough to be considered good
-        if len(rewards) > 1:
-            # Calculate max reward
-            self.logger.info(f"Rewards before: {rewards}")
+     
+        self.logger.info(f"Rewards before: {rewards}")
             
-            # If max reward is below threshold, set all rewards to zero
-            max_reward = max(rewards) if rewards else 0
-            if max_reward < 1.5:
-                self.logger.info(f"Max reward is below threshold ({max_reward:.6f} < 1.5), setting all rewards to zero")
-                rewards = [0.0] * len(rewards)
-                self.logger.info(f"Rewards after adjustment: {rewards}")
+           
         
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions, example_type=kwargs.get('example_type', []))

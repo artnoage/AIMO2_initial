@@ -25,6 +25,32 @@ Clearly numbered and self-contained</step>
 Answer in \boxed{}</step>
 </response>"""
 
+FULLSOLUTION_SYSTEM_PROMPT2 = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
+Thoughts about the nature of the problem, potential difficulties, suitable solution methods.
+You can attempt trial and error. You can backtrack, or correct mistakes. It is ok to make mistakes as long as you fix them.
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+Do not proceed if you dont feel confident about the answer. 
+</thinking>
+
+<response>
+Provide a full (self-consistent) proof of the answer to your question with the following structure:
+
+<step>Step 1: Clearly state initial calculations
+Show work with LaTeX notation</step>
+
+<step>Step 2: Logical next step
+Clearly numbered and self-contained</step>
+
+<step>Step N: Final conclusion clearly stated
+Answer in \boxed{}</step>
+
+</response>"""
+
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.

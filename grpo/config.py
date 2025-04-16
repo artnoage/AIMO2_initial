@@ -33,7 +33,6 @@ class RewardConfig:
     # Common reward components
     base_reward: float = 3.0
     validation_reward: float = 0.3
-    length_penalty_factor: float = 0.00001
     
     # Solution-specific settings
     solution_validation_reward: float = 0.2  # For passing solution validation

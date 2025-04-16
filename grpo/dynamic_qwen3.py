@@ -26,7 +26,7 @@ from utils.agents import (
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
     FINALIZATION_SYSTEM_PROMPT,
-    FULLSOLUTION_SYSTEM_PROMPT,
+    FULLSOLUTION_SYSTEM_PROMPT2,
     PROGRAMMER_SYSTEM_PROMPT
 )
 
@@ -192,8 +192,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
+    model_type = "dynamic_3"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/9B"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -239,11 +239,11 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=2800,
+        max_seq_length=2700,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.77,
+        gpu_memory_utilization=0.7,
         max_lora_rank=64)
         
     
@@ -292,7 +292,7 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            FULLSOLUTION_SYSTEM_PROMPT,
+            FULLSOLUTION_SYSTEM_PROMPT2,
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
@@ -320,13 +320,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
+        per_device_train_batch_size=8,
         gradient_accumulation_steps=1,
-        num_generations=6,
+        num_generations=8,
         max_prompt_length=800,
-        max_completion_length=2000,
+        max_completion_length=1900,
         num_train_epochs=1,
-        save_steps=50,
+        save_steps=200,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
