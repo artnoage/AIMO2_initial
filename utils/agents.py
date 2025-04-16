@@ -563,7 +563,7 @@ class SolutionVerifierAgent:
             return_prompt: Whether to return the prompt along with the response
             
         Returns:
-            JSON string with verification results or tuple of (prompt, response)
+            Full response from the model or tuple of (prompt, response)
         """
         system_prompt = SOLUTION_VERIFIER_SYSTEM_PROMPT
         
@@ -579,14 +579,6 @@ class SolutionVerifierAgent:
         
         full_response = await get_model_response(self.model, prompt, max_tokens=4096)
         
-        # Extract just the response section containing the JSON
-        response_match = re.search(r'<response>(.*?)</response>', full_response, re.DOTALL)
-        if response_match:
-            json_response = response_match.group(1).strip()
-        else:
-            # Fallback to the full response if no response tags are found
-            json_response = full_response
-        
-        return (system_prompt + "\n\n" + content, json_response) if return_prompt else json_response
+        return (system_prompt + "\n\n" + content, full_response) if return_prompt else full_response
 
 

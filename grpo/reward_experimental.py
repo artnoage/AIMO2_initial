@@ -677,7 +677,17 @@ class SolutionReward(BaseReward):
             response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', response_content)
             
             # Call the verification agent
-            verification_result = await verifier.verify(problem, response_without_boxed)
+            full_verification_result = await verifier.verify(problem, response_without_boxed)
+            
+            # Extract just the response section containing the JSON
+            response_match = re.search(r'<response>(.*?)</response>', full_verification_result, re.DOTALL)
+            if response_match:
+                verification_result = response_match.group(1).strip()
+                self.logger.info("Successfully extracted response section from verification result")
+            else:
+                # Fallback to the full response if no response tags are found
+                verification_result = full_verification_result
+                self.logger.info("No response tags found, using full verification result")
             
             try:
                 # Parse the JSON response
