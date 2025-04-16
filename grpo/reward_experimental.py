@@ -353,6 +353,9 @@ class SolutionReward(BaseReward):
             'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length',
             'batch_plurality_correct', 'batch_plurality_percentage', 'batch_total_answers',
             'batch_correct_answers', 'batch_correct_rate'
+        ],
+        'verification_criteria_stats': [
+            'is_detailed_count', 'is_correct_count', 'boxed_answer_count', 'total_verifications'
         ]
     }
     
@@ -525,21 +528,48 @@ class SolutionReward(BaseReward):
             # If the solution is correct, verify it with the verification agent
             if is_correct:
                 # Only verify solutions that have passed basic correctness checks
-                verification_passed = await self.verify_solution(
+                verification_passed, verification_details = await self.verify_solution(
                     problem=kwargs.get('problem', ''),
                     solution=completion,
                     correct_answer=correct_numeric
                 )
                 
                 if verification_passed:
-                    # Apply verification reward
-                    verification_reward = self.config.verification_reward
+                    # Get the verification score (between 0 and 1)
+                    verification_score = verification_details.get("total_score", 0)
+                    
+                    # Apply verification reward proportional to the score
+                    verification_reward = self.config.verification_reward * verification_score
                     reward += verification_reward
-                    self.logger.info(f"Applied verification reward: +{verification_reward:.3f}")
+                    self.logger.info(f"Applied verification reward: +{verification_reward:.3f} ({verification_score:.2f} * {self.config.verification_reward:.2f})")
+                    
+                    # Log detailed verification results
+                    criteria_scores = verification_details.get("criteria_scores", {})
+                    for criterion, score in criteria_scores.items():
+                        if score > 0:
+                            self.logger.info(f"  - {criterion}: +{score:.2f} of verification reward")
                     
                     # Update verification stats
                     self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
                     self.stats.group_stats['verified_solutions'] += 1
+                    
+                    # Initialize verification criteria stats if they don't exist
+                    if not hasattr(self.stats, 'verification_criteria_stats'):
+                        self.stats.verification_criteria_stats = {
+                            'is_detailed_count': 0,
+                            'is_correct_count': 0,
+                            'boxed_answer_count': 0,
+                            'total_verifications': 0
+                        }
+                    
+                    # Update verification criteria stats
+                    self.stats.verification_criteria_stats['total_verifications'] += 1
+                    if verification_details.get("is_detailed", False):
+                        self.stats.verification_criteria_stats['is_detailed_count'] += 1
+                    if verification_details.get("is_correct", False):
+                        self.stats.verification_criteria_stats['is_correct_count'] += 1
+                    if criteria_scores.get("boxed_answer", 0) > 0:
+                        self.stats.verification_criteria_stats['boxed_answer_count'] += 1
                     
                     # Update total rewards again after verification
                     self.stats.reward_components['total_rewards'] += verification_reward
@@ -595,10 +625,13 @@ class SolutionReward(BaseReward):
             
             return 0.0
     
-    async def verify_solution(self, problem: str, solution: str, correct_answer: float) -> bool:
+    async def verify_solution(self, problem: str, solution: str, correct_answer: float) -> Tuple[bool, Dict[str, Any]]:
         """
         Use a verification agent to check if the solution is correct.
-        This is a placeholder method that would normally call an external agent.
+        The agent evaluates the solution based on three criteria:
+        1. Is it a detailed solution?
+        2. Is the solution correct?
+        3. What should be the boxed answer?
         
         Args:
             problem: The problem statement
@@ -606,7 +639,9 @@ class SolutionReward(BaseReward):
             correct_answer: The expected answer
             
         Returns:
-            bool: True if the solution is verified as correct, False otherwise
+            Tuple containing:
+            - bool: True if verification passed (at least one criterion met)
+            - Dict: Detailed verification results with scores for each criterion
         """
         try:
             self.logger.info("Calling verification agent to verify solution")
@@ -614,51 +649,105 @@ class SolutionReward(BaseReward):
             # Get the model using the benchmark config
             verification_model = get_model(self.config, role="auxiliary")
             
-            # In a real implementation, we would create a verification agent and call it
-            # For now, we'll simulate a verification process with a placeholder
+            # Create a verification agent
+            from utils.agents import SolutionVerifierAgent
+            verifier = SolutionVerifierAgent(verification_model)
             
-            # Extract the answer from the solution
-            model_answer = extract_answer_from_solution(solution)
-            if model_answer is None:
-                self.logger.info("Verification failed: No answer found in solution")
-                return False
-                
-            # Convert to numeric value
-            model_numeric, _ = extract_numeric_answer(model_answer)
-            if model_numeric is None:
-                self.logger.info("Verification failed: Could not extract numeric answer")
-                return False
-                
-            # Check if the answer is correct (this is a simplified verification)
-            # In a real implementation, the verification agent would analyze the solution steps
-            is_correct = abs(model_numeric - correct_answer) <= self.config.numeric_tolerance
-            
-            # Simulate some verification logic based on solution quality
-            has_thinking = bool(re.search(r'<thinking>.*?</thinking>', solution, re.DOTALL))
-            has_response = bool(re.search(r'<response>.*?</response>', solution, re.DOTALL))
-            
-            # Check for step structure in the response
+            # Extract the response part from the solution
             response_match = re.search(r'<response>(.*?)</response>', solution, re.DOTALL)
-            has_steps = False
-            if response_match:
-                response_content = response_match.group(1)
-                has_steps = bool(re.search(r'Step\s+\d+:', response_content, re.IGNORECASE))
+            if not response_match:
+                self.logger.info("Verification failed: No response section found")
+                return False, {"error": "No response section found"}
             
-            # Verification passes if the answer is correct and the solution has proper structure
-            verification_passed = is_correct and has_thinking and has_response and has_steps
+            response_content = response_match.group(1)
             
-            if verification_passed:
-                self.logger.info("Verification passed: Solution is correct and well-structured")
-            else:
-                self.logger.info(f"Verification failed: correct={is_correct}, thinking={has_thinking}, response={has_response}, steps={has_steps}")
+            # Remove any boxed answers from the response to avoid giving away the answer
+            response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', response_content)
+            
+            # Call the verification agent
+            verification_result = await verifier.verify(problem, response_without_boxed)
+            
+            try:
+                # Parse the JSON response
+                import json
+                verification_data = json.loads(verification_result)
                 
-            return verification_passed
+                # Extract the verification criteria
+                is_detailed = verification_data.get('is_detailed', False)
+                is_correct = verification_data.get('is_correct', False)
+                boxed_answer = verification_data.get('boxed_answer', None)
+                
+                # Calculate verification score (1/3 for each correct criterion)
+                verification_score = 0
+                verification_details = {
+                    "is_detailed": is_detailed,
+                    "is_correct": is_correct,
+                    "boxed_answer": boxed_answer,
+                    "criteria_scores": {}
+                }
+                
+                # Check if the solution is detailed
+                if is_detailed:
+                    verification_score += 1/3
+                    verification_details["criteria_scores"]["is_detailed"] = 1/3
+                    self.logger.info("Verification: Solution is detailed (+1/3)")
+                else:
+                    verification_details["criteria_scores"]["is_detailed"] = 0
+                    self.logger.info("Verification: Solution is not detailed")
+                
+                # Check if the solution approach is correct
+                if is_correct:
+                    verification_score += 1/3
+                    verification_details["criteria_scores"]["is_correct"] = 1/3
+                    self.logger.info("Verification: Solution approach is correct (+1/3)")
+                else:
+                    verification_details["criteria_scores"]["is_correct"] = 0
+                    self.logger.info("Verification: Solution approach is not correct")
+                
+                # Check if the boxed answer is correct
+                if boxed_answer is not None:
+                    # Try to convert to numeric if possible
+                    try:
+                        boxed_numeric = float(boxed_answer)
+                        is_answer_correct = abs(boxed_numeric - correct_answer) <= self.config.numeric_tolerance
+                    except (ValueError, TypeError):
+                        # If not numeric, do string comparison
+                        is_answer_correct = str(boxed_answer).strip() == str(correct_answer).strip()
+                    
+                    if is_answer_correct:
+                        verification_score += 1/3
+                        verification_details["criteria_scores"]["boxed_answer"] = 1/3
+                        self.logger.info("Verification: Boxed answer is correct (+1/3)")
+                    else:
+                        verification_details["criteria_scores"]["boxed_answer"] = 0
+                        self.logger.info(f"Verification: Boxed answer is incorrect (got {boxed_answer}, expected {correct_answer})")
+                else:
+                    verification_details["criteria_scores"]["boxed_answer"] = 0
+                    self.logger.info("Verification: No boxed answer provided")
+                
+                # Calculate total verification score
+                verification_details["total_score"] = verification_score
+                
+                # Verification passes if at least one criterion is met
+                verification_passed = verification_score > 0
+                
+                if verification_passed:
+                    self.logger.info(f"Verification passed with score: {verification_score:.2f}/1.00")
+                else:
+                    self.logger.info("Verification failed: No criteria met")
+                
+                return verification_passed, verification_details
+                
+            except json.JSONDecodeError:
+                self.logger.error("Failed to parse verification result as JSON")
+                self.logger.error(f"Raw verification result: {verification_result}")
+                return False, {"error": "Invalid JSON response from verifier"}
             
         except Exception as e:
             self.logger.error(f"Error during verification: {str(e)}")
             import traceback
             self.logger.error(traceback.format_exc())
-            return False
+            return False, {"error": str(e)}
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""

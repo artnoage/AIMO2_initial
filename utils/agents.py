@@ -513,3 +513,51 @@ class TestDrivenProgrammerAgent:
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 
+SOLUTION_VERIFIER_SYSTEM_PROMPT = """You are an expert mathematical solution verifier. Your task is to analyze a mathematical solution and evaluate it based on specific criteria.
+
+You will be given:
+1. A mathematical problem statement
+2. A proposed solution (with the final boxed answer removed)
+
+Analyze the solution carefully and provide your assessment in JSON format with the following fields:
+- "is_detailed": (boolean) Is this a detailed solution with clear steps and reasoning?
+- "is_correct": (boolean) Is the solution's approach and reasoning correct?
+- "boxed_answer": (number or string) What should be the final answer that belongs in the box?
+
+Your response must be valid JSON that can be parsed programmatically. Be precise in your assessment.
+"""
+
+class SolutionVerifierAgent:
+    """Agent that verifies mathematical solutions and provides structured assessment"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def verify(self, problem: str, solution: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """
+        Verify a mathematical solution and provide structured assessment
+        
+        Args:
+            problem: The mathematical problem statement
+            solution: The solution to verify (with boxed answer removed)
+            return_prompt: Whether to return the prompt along with the response
+            
+        Returns:
+            JSON string with verification results or tuple of (prompt, response)
+        """
+        system_prompt = SOLUTION_VERIFIER_SYSTEM_PROMPT
+        
+        content = (
+            f"Problem:\n{problem}\n\n"
+            f"Solution (with boxed answer removed):\n{solution}"
+        )
+        
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=content)
+        ]
+        
+        response = await get_model_response(self.model, prompt, max_tokens=4096)
+        return (system_prompt + "\n\n" + content, response) if return_prompt else response
+
+
