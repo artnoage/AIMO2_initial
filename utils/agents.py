@@ -270,6 +270,29 @@ The function doesn't compute the root; it verifies whether the provided number m
 Your response should strictly follow this verification approach. 
 </response> """
 
+SOLUTION_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+
+<thinking>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
+Thoughts about the nature of the problem, potential difficulties, suitable solution methods.
+You can attempt trial and error. You can backtrack, or correct mistakes. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+Do not proceed if you dont feel confident about the answer. 
+</thinking>
+
+<response>
+<step>Step 1: Clearly state initial calculations
+Show work with LaTeX notation</step>
+
+<step>Step 2: Logical next step
+Clearly numbered and self-contained</step>
+
+<step>Step N: Final conclusion clearly stated
+Answer in \boxed{}</step>
+</response>"""
+
 DUAL_PROOF_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to solve it using both logical reasoning and programming.
 
 Your output must include two clearly separated sections: **Thinking** and **Response**.
