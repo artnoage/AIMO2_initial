@@ -91,7 +91,6 @@ class BaseReward(ABC):
         
         if len(completions) != len(prompts) or len(completions) != len(answers):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
-            print("wtf")
             return [0.0] * len(completions)
             
         # Reset current batch data for this new batch
