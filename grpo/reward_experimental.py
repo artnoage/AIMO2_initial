@@ -527,12 +527,15 @@ class SolutionReward(BaseReward):
             
             # If the solution is correct, verify it with the verification agent
             if is_correct:
+                self.logger.info("Solution is correct, proceeding with verification...")
                 # Only verify solutions that have passed basic correctness checks
                 verification_passed, verification_details = await self.verify_solution(
                     problem=kwargs.get('problem', ''),
                     solution=completion,
                     correct_answer=correct_numeric
                 )
+            else:
+                self.logger.info("Solution is incorrect, skipping verification step")
                 
                 if verification_passed:
                     # Get the verification score (between 0 and 1)
@@ -541,13 +544,22 @@ class SolutionReward(BaseReward):
                     # Apply verification reward proportional to the score
                     verification_reward = self.config.verification_reward * verification_score
                     reward += verification_reward
-                    self.logger.info(f"Applied verification reward: +{verification_reward:.3f} ({verification_score:.2f} * {self.config.verification_reward:.2f})")
+                    
+                    # Log detailed verification reward summary
+                    self.logger.info("=" * 50)
+                    self.logger.info(f"VERIFICATION REWARD SUMMARY:")
+                    self.logger.info(f"Total verification reward: +{verification_reward:.3f}")
+                    self.logger.info(f"Calculation: {verification_score:.2f} (score) × {self.config.verification_reward:.2f} (max reward)")
+                    self.logger.info("-" * 40)
                     
                     # Log detailed verification results
                     criteria_scores = verification_details.get("criteria_scores", {})
                     for criterion, score in criteria_scores.items():
-                        if score > 0:
-                            self.logger.info(f"  - {criterion}: +{score:.2f} of verification reward")
+                        status = "✓" if score > 0 else "✗"
+                        reward_text = f"+{score:.2f}" if score > 0 else "0.00"
+                        self.logger.info(f"{status} {criterion}: {reward_text}")
+                    
+                    self.logger.info("=" * 50)
                     
                     # Update verification stats
                     self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
@@ -671,6 +683,11 @@ class SolutionReward(BaseReward):
                 # Parse the JSON response
                 import json
                 
+                self.logger.info("Raw verification result received from agent:")
+                self.logger.info("-" * 40)
+                self.logger.info(verification_result)
+                self.logger.info("-" * 40)
+                
                 # Clean up the JSON string to handle potential formatting issues
                 # Remove any markdown code block markers
                 verification_result = re.sub(r'```json|```', '', verification_result).strip()
@@ -679,8 +696,18 @@ class SolutionReward(BaseReward):
                 json_match = re.search(r'\{.*\}', verification_result, re.DOTALL)
                 if json_match:
                     verification_result = json_match.group(0)
+                    self.logger.info(f"Extracted JSON object: {verification_result}")
+                else:
+                    self.logger.error("Could not find a valid JSON object in the verification result")
+                    return False, {"error": "No valid JSON object found in verifier response"}
                 
-                verification_data = json.loads(verification_result)
+                try:
+                    verification_data = json.loads(verification_result)
+                    self.logger.info(f"Successfully parsed verification data: {verification_data}")
+                except json.JSONDecodeError as json_err:
+                    self.logger.error(f"JSON parsing error: {str(json_err)}")
+                    self.logger.error(f"Problematic JSON string: {verification_result}")
+                    return False, {"error": f"Invalid JSON format: {str(json_err)}"}
                 
                 # Extract the verification criteria
                 is_detailed = verification_data.get('is_detailed', False)
@@ -700,19 +727,19 @@ class SolutionReward(BaseReward):
                 if is_detailed:
                     verification_score += 1/3
                     verification_details["criteria_scores"]["is_detailed"] = 1/3
-                    self.logger.info("Verification: Solution is detailed (+1/3)")
+                    self.logger.info("✓ REWARD: Solution is detailed (+1/3 of verification reward)")
                 else:
                     verification_details["criteria_scores"]["is_detailed"] = 0
-                    self.logger.info("Verification: Solution is not detailed")
+                    self.logger.info("✗ NO REWARD: Solution is not sufficiently detailed")
                 
                 # Check if the solution approach is correct
                 if is_correct:
                     verification_score += 1/3
                     verification_details["criteria_scores"]["is_correct"] = 1/3
-                    self.logger.info("Verification: Solution approach is correct (+1/3)")
+                    self.logger.info("✓ REWARD: Solution approach is correct (+1/3 of verification reward)")
                 else:
                     verification_details["criteria_scores"]["is_correct"] = 0
-                    self.logger.info("Verification: Solution approach is not correct")
+                    self.logger.info("✗ NO REWARD: Solution approach contains errors or incorrect reasoning")
                 
                 # Check if the boxed answer is correct
                 if boxed_answer is not None:
@@ -720,20 +747,22 @@ class SolutionReward(BaseReward):
                     try:
                         boxed_numeric = float(boxed_answer)
                         is_answer_correct = abs(boxed_numeric - correct_answer) <= self.config.numeric_tolerance
+                        self.logger.info(f"Comparing numeric answers: agent={boxed_numeric}, correct={correct_answer}, tolerance={self.config.numeric_tolerance}")
                     except (ValueError, TypeError):
                         # If not numeric, do string comparison
                         is_answer_correct = str(boxed_answer).strip() == str(correct_answer).strip()
+                        self.logger.info(f"Comparing string answers: agent='{boxed_answer}', correct='{correct_answer}'")
                     
                     if is_answer_correct:
                         verification_score += 1/3
                         verification_details["criteria_scores"]["boxed_answer"] = 1/3
-                        self.logger.info("Verification: Boxed answer is correct (+1/3)")
+                        self.logger.info("✓ REWARD: Boxed answer is correct (+1/3 of verification reward)")
                     else:
                         verification_details["criteria_scores"]["boxed_answer"] = 0
-                        self.logger.info(f"Verification: Boxed answer is incorrect (got {boxed_answer}, expected {correct_answer})")
+                        self.logger.info(f"✗ NO REWARD: Boxed answer is incorrect (agent provided: {boxed_answer}, expected: {correct_answer})")
                 else:
                     verification_details["criteria_scores"]["boxed_answer"] = 0
-                    self.logger.info("Verification: No boxed answer provided")
+                    self.logger.info("✗ NO REWARD: No boxed answer was provided by the agent")
                 
                 # Calculate total verification score
                 verification_details["total_score"] = verification_score
@@ -748,10 +777,15 @@ class SolutionReward(BaseReward):
                 
                 return verification_passed, verification_details
                 
-            except json.JSONDecodeError:
-                self.logger.error("Failed to parse verification result as JSON")
-                self.logger.error(f"Raw verification result: {verification_result}")
-                return False, {"error": "Invalid JSON response from verifier"}
+            except json.JSONDecodeError as json_err:
+                self.logger.error("❌ VERIFICATION FAILED: Could not parse agent output as JSON")
+                self.logger.error(f"JSON error details: {str(json_err)}")
+                self.logger.error("Raw verification result:")
+                self.logger.error("-" * 40)
+                self.logger.error(verification_result)
+                self.logger.error("-" * 40)
+                self.logger.error("No verification reward will be applied")
+                return False, {"error": f"Invalid JSON response from verifier: {str(json_err)}"}
             
         except Exception as e:
             self.logger.error(f"Error during verification: {str(e)}")
