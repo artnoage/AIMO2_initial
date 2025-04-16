@@ -534,8 +534,6 @@ class SolutionReward(BaseReward):
                     solution=completion,
                     correct_answer=correct_numeric
                 )
-            else:
-                self.logger.info("Solution is incorrect, skipping verification step")
                 
                 if verification_passed:
                     # Get the verification score (between 0 and 1)
