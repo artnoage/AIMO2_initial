@@ -639,11 +639,8 @@ class SolutionReward(BaseReward):
         try:
             self.logger.info("Calling verification agent to verify solution")
             
-            # Get the model using the benchmark config
-            verification_model = get_model(self.config, role="auxiliary")
-            
-            # Create a verification agent
-            verifier = SolutionVerifierAgent(verification_model)
+            # Create a verification agent using the model created during initialization
+            verifier = SolutionVerifierAgent(self.verification_model)
             
             # Remove any boxed answers from the response to avoid giving away the answer
             response_without_boxed = re.sub(r'\\boxed\{[^}]*\}', '\\boxed{?}', solution_content)
