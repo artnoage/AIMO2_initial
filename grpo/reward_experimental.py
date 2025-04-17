@@ -411,6 +411,14 @@ class SolutionReward(BaseReward):
                     'completions': []
                 }
                 
+            # Initialize group_stats if they don't exist
+            if not hasattr(self.stats, 'group_stats'):
+                self.stats.group_stats = {
+                    'correct_answers': 0,
+                    'incorrect_answers': 0,
+                    'verified_solutions': 0
+                }
+                
             # Ensure lists are long enough for this batch index (do this once at the beginning)
             self._ensure_batch_lists_length(batch_index)
             
