@@ -521,7 +521,8 @@ class SolutionReward(BaseReward):
             if is_correct:
                 log("Solution is correct, proceeding with verification...")
                 # Only verify solutions that have passed basic correctness checks
-                main_verification_passed, main_verification_details = await self.verify_solution(
+                # Run both verifications concurrently
+                main_verification_task = self.verify_solution(
                     problem=kwargs.get('problem', ''),
                     solution_content=response_content,
                     correct_answer=correct_numeric,
@@ -529,12 +530,18 @@ class SolutionReward(BaseReward):
                     verifier_name="Main"
                 )
                 
-                aux_verification_passed, aux_verification_details = await self.verify_solution(
+                aux_verification_task = self.verify_solution(
                     problem=kwargs.get('problem', ''),
                     solution_content=response_content,
                     correct_answer=correct_numeric,
                     model=self.aux_verification_model,
                     verifier_name="Auxiliary"
+                )
+                
+                # Wait for both verifications to complete
+                (main_verification_passed, main_verification_details), (aux_verification_passed, aux_verification_details) = await asyncio.gather(
+                    main_verification_task,
+                    aux_verification_task
                 )
                 
                 # Combine verification results
