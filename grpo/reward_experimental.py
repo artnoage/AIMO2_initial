@@ -489,8 +489,10 @@ class SolutionReward(BaseReward):
                 log(f"Applied base reward: +{base_reward:.3f}")
                 self.stats.reward_components['base_rewards'] += 1
                 self.stats.reward_components['correct_answers'] += 1
+                self.stats.group_stats['correct_answers'] += 1
             else:
                 self.stats.reward_components['incorrect_answers'] += 1
+                self.stats.group_stats['incorrect_answers'] += 1
             
             # Store the results for this completion
             self.stats.current_batch['answers'][batch_index] = model_numeric
@@ -621,6 +623,9 @@ class SolutionReward(BaseReward):
             self.stats.reward_components['total_rewards'] += total_reward
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
+                
+            # Log group stats
+            log(f"Group stats: correct={self.stats.group_stats['correct_answers']}, incorrect={self.stats.group_stats['incorrect_answers']}, verified={self.stats.group_stats['verified_solutions']}")
             
             # Output all collected logs at once
             for level, message in log_messages:
