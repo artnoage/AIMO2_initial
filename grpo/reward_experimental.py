@@ -12,7 +12,8 @@ sys.path.append(project_root)
 from utils.model_utils import get_model
 from utils.agents import SolutionVerifierAgent
 from utils.solution_utils import (
-    extract_numeric_answer, extract_answer_from_solution, validate_solution)
+    extract_numeric_answer, extract_answer_from_solution, validate_solution,
+    is_answer_correct)
 from abc import ABC, abstractmethod
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
@@ -807,7 +808,7 @@ class SolutionReward(BaseReward):
     
     def _compare_answers(self, agent_answer: Any, correct_answer: Any) -> bool:
         """
-        Compare the agent's answer with the correct answer, handling both numeric and string cases.
+        Compare the agent's answer with the correct answer, using extract_numeric_answer for robust parsing.
         
         Args:
             agent_answer: The answer provided by the verification agent
@@ -816,20 +817,35 @@ class SolutionReward(BaseReward):
         Returns:
             bool: True if the answers match within tolerance, False otherwise
         """
-        # Try to convert to numeric if possible
-        try:
-            agent_numeric = float(agent_answer)
-            correct_numeric = float(correct_answer)
-            is_answer_correct = abs(agent_numeric - correct_numeric) <= self.config.numeric_tolerance
+        from utils.solution_utils import extract_numeric_answer, is_answer_correct
+        
+        # Use extract_numeric_answer to handle LaTeX and other formats
+        agent_numeric, agent_debug = extract_numeric_answer(str(agent_answer), debug=True)
+        correct_numeric, correct_debug = extract_numeric_answer(str(correct_answer), debug=True)
+        
+        if agent_numeric is not None and correct_numeric is not None:
+            # Use the is_answer_correct helper function with our tolerance
+            result = is_answer_correct(agent_numeric, correct_numeric, self.config.numeric_tolerance)
             self.logger.info(f"Comparing numeric answers: agent={agent_numeric}, correct={correct_numeric}, tolerance={self.config.numeric_tolerance}")
-            return is_answer_correct
-        except (ValueError, TypeError):
-            # If not numeric, do string comparison
+            self.logger.info(f"Numeric comparison result: {result}, difference: {abs(agent_numeric - correct_numeric) if agent_numeric is not None and correct_numeric is not None else 'N/A'}")
+            
+            if agent_debug or correct_debug:
+                self.logger.debug(f"Agent answer parsing: {agent_debug}")
+                self.logger.debug(f"Correct answer parsing: {correct_debug}")
+                
+            return result
+        else:
+            # If numeric conversion failed, fall back to string comparison
             agent_str = str(agent_answer).strip()
             correct_str = str(correct_answer).strip()
-            is_answer_correct = agent_str == correct_str
-            self.logger.info(f"Comparing string answers: agent='{agent_str}', correct='{correct_str}'")
-            return is_answer_correct
+            is_string_match = agent_str == correct_str
+            
+            self.logger.info(f"Numeric conversion failed, comparing as strings: agent='{agent_str}', correct='{correct_str}'")
+            if agent_debug or correct_debug:
+                self.logger.debug(f"Agent answer parsing failed: {agent_debug}")
+                self.logger.debug(f"Correct answer parsing failed: {correct_debug}")
+                
+            return is_string_match
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
