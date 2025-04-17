@@ -370,7 +370,7 @@ class SolutionReward(BaseReward):
         self.verification_weights = self.config.verification_weights
         
         # Create verification model once during initialization
-        self.verification_model = get_model(self.config, role="auxiliary")
+        self.verification_model = get_model(self.config, role="main")
         
         # Compile regex patterns for better performance
         self.thinking_pattern = re.compile(self.config.thinking_pattern, re.DOTALL)
