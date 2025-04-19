@@ -579,11 +579,9 @@ class SolutionReward(BaseReward):
                 if validation_reward > 0:
                     log(f"Applied total validation reward: +{validation_reward:.3f}")
             
-            # If the solution is correct, verify it with the verification agents
+            # Verify the solution regardless of correctness, as long as it has thinking and response parts
             verification_reward = 0.0
-            if is_correct:
-                log("Solution is correct, proceeding with verification...")
-                # Only verify solutions that have passed basic correctness checks
+            if has_thinking and has_response:
                 # Run both verifications concurrently
                 main_verification_task = self.verify_solution(
                     problem=kwargs.get('problem', ''),
@@ -610,66 +608,110 @@ class SolutionReward(BaseReward):
                 # Combine verification results
                 verification_passed = main_verification_passed or aux_verification_passed
                 
-                if verification_passed:
-                    # Get the verification scores (between 0 and 1)
-                    main_score = main_verification_details.get("total_score", 0)
-                    aux_score = aux_verification_details.get("total_score", 0)
+                # Get the verification scores (between 0 and 1)
+                main_score = main_verification_details.get("total_score", 0)
+                aux_score = aux_verification_details.get("total_score", 0)
+                
+                # Average the scores
+                verification_score = (main_score + aux_score) / 2
+                
+                # Different handling based on correctness and batch context
+                if is_correct:
+                    # For correct answers, proceed as before
+                    log("Solution is correct, proceeding with verification...")
                     
-                    # Average the scores
-                    verification_score = (main_score + aux_score) / 2
+                    if verification_passed:
+                        # Apply verification reward proportional to the score
+                        verification_reward = self.config.verification_reward * verification_score
+                        reward += verification_reward
+                        
+                        # Log detailed verification reward summary
+                        log("=" * 50)
+                        log(f"VERIFICATION REWARD SUMMARY:")
+                        log(f"Total verification reward: +{verification_reward:.3f}")
+                        log(f"Calculation: {verification_score:.2f} (avg score) × {self.config.verification_reward:.2f} (max reward)")
+                        log(f"Main verifier score: {main_score:.2f}")
+                        log(f"Auxiliary verifier score: {aux_score:.2f}")
+                        log("-" * 40)
+                        
+                        # Log detailed verification results for main verifier
+                        log("MAIN VERIFIER RESULTS:")
+                        main_criteria_scores = main_verification_details.get("criteria_scores", {})
+                        for criterion, score in main_criteria_scores.items():
+                            status = "✓" if score > 0 else "✗"
+                            reward_text = f"+{score:.2f}" if score > 0 else "0.00"
+                            log(f"{status} {criterion}: {reward_text}")
+                        
+                        # Log detailed verification results for auxiliary verifier
+                        log("AUXILIARY VERIFIER RESULTS:")
+                        aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
+                        for criterion, score in aux_criteria_scores.items():
+                            status = "✓" if score > 0 else "✗"
+                            reward_text = f"+{score:.2f}" if score > 0 else "0.00"
+                            log(f"{status} {criterion}: {reward_text}")
+                        
+                        log("=" * 50)
+                        
+                        # Update verification stats
+                        self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
+                        self.stats.group_stats['verified_solutions'] += 1
+                else:
+                    # For incorrect answers, handle differently based on batch context
+                    log("Solution is incorrect, checking verification results...")
                     
-                    # Apply verification reward proportional to the score
-                    verification_reward = self.config.verification_reward * verification_score
-                    reward += verification_reward
+                    # Case 1: Incorrect answer but batch has at least one correct answer
+                    if batch_has_correct_answer and verification_passed:
+                        # Penalize if verifier thinks it's correct (misleading verification)
+                        penalty = -0.2
+                        reward += penalty
+                        log(f"Applied penalty for incorrect answer that verifier thinks is correct: {penalty:.3f}")
+                        log(f"Batch has correct answers, so penalizing misleading solutions")
+                        
+                        # Track this case
+                        self.stats.reward_components['incorrect_verified_solutions'] = self.stats.reward_components.get('incorrect_verified_solutions', 0) + 1
                     
-                    # Log detailed verification reward summary
-                    log("=" * 50)
-                    log(f"VERIFICATION REWARD SUMMARY:")
-                    log(f"Total verification reward: +{verification_reward:.3f}")
-                    log(f"Calculation: {verification_score:.2f} (avg score) × {self.config.verification_reward:.2f} (max reward)")
-                    log(f"Main verifier score: {main_score:.2f}")
-                    log(f"Auxiliary verifier score: {aux_score:.2f}")
-                    log("-" * 40)
-                    
-                    # Log detailed verification results for main verifier
-                    log("MAIN VERIFIER RESULTS:")
-                    main_criteria_scores = main_verification_details.get("criteria_scores", {})
-                    for criterion, score in main_criteria_scores.items():
-                        status = "✓" if score > 0 else "✗"
-                        reward_text = f"+{score:.2f}" if score > 0 else "0.00"
-                        log(f"{status} {criterion}: {reward_text}")
-                    
-                    # Log detailed verification results for auxiliary verifier
-                    log("AUXILIARY VERIFIER RESULTS:")
-                    aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
-                    for criterion, score in aux_criteria_scores.items():
-                        status = "✓" if score > 0 else "✗"
-                        reward_text = f"+{score:.2f}" if score > 0 else "0.00"
-                        log(f"{status} {criterion}: {reward_text}")
-                    
-                    log("=" * 50)
-                    
-                    # Update verification stats
-                    self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
-                    self.stats.group_stats['verified_solutions'] += 1
-                    
-                    # Initialize verification criteria stats if they don't exist
-                    if not hasattr(self.stats, 'verification_criteria_stats'):
-                        self.stats.verification_criteria_stats = {
-                            'is_detailed_count': 0,
-                            'is_correct_count': 0,
-                            'boxed_answer_count': 0,
-                            'total_verifications': 0
-                        }
-                    
-                    # Update verification criteria stats
-                    self.stats.verification_criteria_stats['total_verifications'] += 1
-                    if main_verification_details.get("is_detailed", False) or aux_verification_details.get("is_detailed", False):
-                        self.stats.verification_criteria_stats['is_detailed_count'] += 1
-                    if main_verification_details.get("is_correct", False) or aux_verification_details.get("is_correct", False):
-                        self.stats.verification_criteria_stats['is_correct_count'] += 1
-                    if main_criteria_scores.get("boxed_answer", 0) > 0 or aux_criteria_scores.get("boxed_answer", 0) > 0:
-                        self.stats.verification_criteria_stats['boxed_answer_count'] += 1
+                    # Case 2: Incorrect answer and no correct answers in batch
+                    elif not batch_has_correct_answer and verification_passed:
+                        # Check if verifier's boxed answer is actually correct
+                        main_boxed = main_verification_details.get("boxed_answer")
+                        aux_boxed = aux_verification_details.get("boxed_answer")
+                        
+                        # Try both verifiers' boxed answers
+                        for boxed_answer, verifier_name in [(main_boxed, "Main"), (aux_boxed, "Auxiliary")]:
+                            if boxed_answer is not None:
+                                boxed_numeric, _ = extract_numeric_answer(str(boxed_answer))
+                                if boxed_numeric is not None and abs(boxed_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                                    # Verifier found the correct answer despite the model being wrong
+                                    bonus = 0.3
+                                    reward += bonus
+                                    log(f"Applied bonus for incorrect answer where {verifier_name} verifier found correct boxed answer: +{bonus:.3f}")
+                                    log(f"Verifier boxed answer: {boxed_answer}, Correct answer: {correct_answer}")
+                                    
+                                    # Track this case
+                                    self.stats.reward_components['incorrect_with_correct_boxed'] = self.stats.reward_components.get('incorrect_with_correct_boxed', 0) + 1
+                                    break
+                
+                # Initialize verification criteria stats if they don't exist
+                if not hasattr(self.stats, 'verification_criteria_stats'):
+                    self.stats.verification_criteria_stats = {
+                        'is_detailed_count': 0,
+                        'is_correct_count': 0,
+                        'boxed_answer_count': 0,
+                        'total_verifications': 0
+                    }
+                
+                # Update verification criteria stats
+                self.stats.verification_criteria_stats['total_verifications'] += 1
+                if main_verification_details.get("is_detailed", False) or aux_verification_details.get("is_detailed", False):
+                    self.stats.verification_criteria_stats['is_detailed_count'] += 1
+                if main_verification_details.get("is_correct", False) or aux_verification_details.get("is_correct", False):
+                    self.stats.verification_criteria_stats['is_correct_count'] += 1
+                
+                # Check if either verifier found a correct boxed answer
+                main_criteria_scores = main_verification_details.get("criteria_scores", {})
+                aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
+                if main_criteria_scores.get("boxed_answer", 0) > 0 or aux_criteria_scores.get("boxed_answer", 0) > 0:
+                    self.stats.verification_criteria_stats['boxed_answer_count'] += 1
             
             # Calculate correctness for all completions in group (for logging purposes)
             if len(group_completions) > 1:

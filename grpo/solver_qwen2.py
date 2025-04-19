@@ -102,7 +102,9 @@ class LoggingCallback(TrainerCallback):
                         'verification_detailed_rate': verification_stats.get('is_detailed_count', 0) / total_verifications,
                         'verification_correct_rate': verification_stats.get('is_correct_count', 0) / total_verifications,
                         'verification_boxed_answer_rate': verification_stats.get('boxed_answer_count', 0) / total_verifications,
-                        'total_verifications': total_verifications
+                        'total_verifications': total_verifications,
+                        'incorrect_verified_solutions': self.reward_func.stats.reward_components.get('incorrect_verified_solutions', 0),
+                        'incorrect_with_correct_boxed': self.reward_func.stats.reward_components.get('incorrect_with_correct_boxed', 0)
                     })
         
             if latest_batch:
