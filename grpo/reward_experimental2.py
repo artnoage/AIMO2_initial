@@ -674,9 +674,9 @@ class SolutionReward(BaseReward):
                         
                         # Case 2: Incorrect answer and no correct answers in batch
                         elif not batch_has_correct_answer:
-                        # Check if verifier's boxed answer is actually correct
-                        main_boxed = main_verification_details.get("boxed_answer")
-                        aux_boxed = aux_verification_details.get("boxed_answer")
+                            # Check if verifier's boxed answer is actually correct
+                            main_boxed = main_verification_details.get("boxed_answer")
+                            aux_boxed = aux_verification_details.get("boxed_answer")
                         
                         # Try both verifiers' boxed answers
                         for boxed_answer, verifier_name in [(main_boxed, "Main"), (aux_boxed, "Auxiliary")]:
