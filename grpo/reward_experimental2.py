@@ -84,6 +84,37 @@ class BaseReward(ABC):
         logger.addHandler(logging.StreamHandler())
         return logger
         
+    def _check_for_correct_answers(self, completions: List[str], answers: List[str]) -> bool:
+        """
+        Check if there's at least one correct answer in the batch.
+        
+        Args:
+            completions: List of model completions
+            answers: List of expected answers
+            
+        Returns:
+            bool: True if at least one completion has the correct answer
+        """
+        for completion, correct_answer in zip(completions, answers):
+            # Extract response part
+            response_parts = self.response_pattern.findall(completion) if hasattr(self, 'response_pattern') else [completion]
+            response_content = response_parts[0] if response_parts else ""
+            
+            # Extract the answer
+            model_answer = extract_answer_from_solution(response_content) if response_content else None
+            
+            if model_answer is not None:
+                # Convert to numeric values
+                model_numeric, _ = extract_numeric_answer(model_answer)
+                correct_numeric, _ = extract_numeric_answer(str(correct_answer))
+                
+                if model_numeric is not None and correct_numeric is not None:
+                    # Check if answer is correct within tolerance
+                    if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                        return True
+        
+        return False
+    
     def __call__(self, completions: List[str], **kwargs) -> List[float]:
         """Synchronous batch processing that runs async code in event loop"""
         # Validate inputs
@@ -94,13 +125,18 @@ class BaseReward(ABC):
             self.logger.error(f"Mismatched lengths: completions={len(completions)}, prompts={len(prompts)}, answers={len(answers)}")
             return [0.0] * len(completions)
             
+        # Check if there's at least one correct answer in the batch
+        has_correct_answer = self._check_for_correct_answers(completions, answers)
+        self.logger.info(f"Batch has at least one correct answer: {has_correct_answer}")
+            
         # Reset current batch data for this new batch
         self.stats.current_batch = {
             'answers': [],
             'is_correct': [],
             'execution_times': [],
             'code_lengths': [],
-            'completions': []
+            'completions': [],
+            'has_correct_answer': has_correct_answer
         }
             
         # Group completions by prompt for group context
@@ -119,16 +155,19 @@ class BaseReward(ABC):
         # Process completions in parallel using event loop
         async def process_batch():
             tasks = []
-            
+                
             # Extract problems, solutions, and partial solutions from kwargs if present
             problems = kwargs.get('problem', [''] * len(prompts))
             solutions = kwargs.get('model_solution', [''] * len(prompts))
             partial_solutions = kwargs.get('partial_solution', [''] * len(prompts))
-            
+                
             # Extract tutor-specific parameters if present
             wrong_steps = kwargs.get('wrong_step', [None] * len(prompts))
             is_corrects = kwargs.get('is_correct', [False] * len(prompts))
             full_solutions = kwargs.get('full_solution', [''] * len(prompts))
+                
+            # Get batch-level information
+            has_correct_answer = self.stats.current_batch.get('has_correct_answer', False)
             
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
@@ -152,7 +191,8 @@ class BaseReward(ABC):
                         'group_indices': group['indices'],
                         'wrong_step': wrong_steps[idx] if idx < len(wrong_steps) else None,
                         'is_correct': is_corrects[idx] if idx < len(is_corrects) else False,
-                        'full_solution': full_solutions[idx] if idx < len(full_solutions) else ''
+                        'full_solution': full_solutions[idx] if idx < len(full_solutions) else '',
+                        'batch_has_correct_answer': has_correct_answer
                     }
                     task = self.calculate_reward(completion, **task_kwargs)
                     tasks.append(task)
@@ -391,6 +431,9 @@ class SolutionReward(BaseReward):
             batch_index = kwargs.get('reward_index', len(self.stats.current_batch['answers']) if hasattr(self.stats, 'current_batch') else 0)
             reward = 0.0
             
+            # Check if the batch has at least one correct answer
+            batch_has_correct_answer = self.stats.current_batch.get('has_correct_answer', False)
+            
             # Initialize tracking variables for this completion
             model_answer = None
             model_numeric = None
@@ -489,6 +532,9 @@ class SolutionReward(BaseReward):
                 
             # Initialize validation reward
             validation_reward = 0.0
+            # Get batch-level information
+            batch_has_correct_answer = kwargs.get('batch_has_correct_answer', False)
+            
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
             if is_correct:
@@ -499,6 +545,13 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['correct_answers'] += 1
                 self.stats.group_stats['correct_answers'] += 1
             else:
+                # If this answer is incorrect but the batch has at least one correct answer,
+                # apply a small penalty to encourage convergence to the correct answer
+                if batch_has_correct_answer:
+                    penalty = -0.1  # Small penalty when other correct answers exist
+                    reward += penalty
+                    log(f"Applied penalty for incorrect answer when batch has correct answers: {penalty:.3f}")
+                
                 self.stats.reward_components['incorrect_answers'] += 1
                 self.stats.group_stats['incorrect_answers'] += 1
             

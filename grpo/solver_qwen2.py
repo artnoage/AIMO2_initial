@@ -83,7 +83,8 @@ class LoggingCallback(TrainerCallback):
                 'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0),
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0),
                 'verified_solutions': self.reward_func.stats.group_stats.get('verified_solutions', 0),
-                'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0)
+                'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0),
+                'batch_has_correct_answer': self.reward_func.stats.current_batch.get('has_correct_answer', False) if hasattr(self.reward_func.stats, 'current_batch') else False
             }
             
             # Add plurality metrics to wandb logs
