@@ -104,17 +104,23 @@ class BaseReward(ABC):
             model_answer = extract_answer_from_solution(response_content) if response_content else None
             
             if model_answer is not None:
-                # Convert to numeric values
-                model_numeric, _ = extract_numeric_answer(model_answer)
-                correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-                
-                # If either conversion failed, just continue to the next completion
-                if model_numeric is None or correct_numeric is None:
-                    continue
+                try:
+                    # Convert to numeric values
+                    model_numeric, _ = extract_numeric_answer(model_answer)
+                    correct_numeric, _ = extract_numeric_answer(str(correct_answer))
                     
-                # Check if answer is correct within tolerance
-                if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
-                    return True
+                    # If either conversion failed, just continue to the next completion
+                    if model_numeric is None or correct_numeric is None:
+                        continue
+                        
+                    # Check if answer is correct within tolerance
+                    if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                        return True
+                except Exception as e:
+                    # Log the error but continue processing other completions
+                    if hasattr(self, 'logger'):
+                        self.logger.warning(f"Error extracting numeric answer: {str(e)}")
+                    continue
         
         return False
     
@@ -518,11 +524,23 @@ class SolutionReward(BaseReward):
                 return reward
                 
             # Convert to numeric values
-            model_numeric, debug_info = extract_numeric_answer(model_answer)
-            correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-            
-            if model_numeric is None or correct_numeric is None:
-                log("Could not extract numeric values - returning 0.0", "debug")
+            try:
+                model_numeric, debug_info = extract_numeric_answer(model_answer)
+                correct_numeric, _ = extract_numeric_answer(str(correct_answer))
+                
+                if model_numeric is None or correct_numeric is None:
+                    log("Could not extract numeric values - returning 0.0", "debug")
+                    
+                    # Store empty results
+                    self.stats.current_batch['answers'][batch_index] = None
+                    self.stats.current_batch['is_correct'][batch_index] = False
+                    self.stats.current_batch['execution_times'][batch_index] = 0.0
+                    self.stats.current_batch['code_lengths'][batch_index] = 0
+                    self.stats.current_batch['completions'][batch_index] = completion
+                    
+                    return reward
+            except Exception as e:
+                log(f"Error extracting numeric values: {str(e)}", "warning")
                 
                 # Store empty results
                 self.stats.current_batch['answers'][batch_index] = None
@@ -1001,33 +1019,48 @@ class SolutionReward(BaseReward):
         """
         from utils.solution_utils import extract_numeric_answer, is_answer_correct
         
-        # Use extract_numeric_answer to handle LaTeX and other formats
-        agent_numeric, agent_debug = extract_numeric_answer(str(agent_answer), debug=True)
-        correct_numeric, correct_debug = extract_numeric_answer(str(correct_answer), debug=True)
-        
-        if agent_numeric is not None and correct_numeric is not None:
-            # Use the is_answer_correct helper function with our tolerance
-            result = is_answer_correct(agent_numeric, correct_numeric, self.config.numeric_tolerance)
-            self.logger.info(f"Comparing numeric answers: agent={agent_numeric}, correct={correct_numeric}, tolerance={self.config.numeric_tolerance}")
-            self.logger.info(f"Numeric comparison result: {result}, difference: {abs(agent_numeric - correct_numeric) if agent_numeric is not None and correct_numeric is not None else 'N/A'}")
+        try:
+            # Use extract_numeric_answer to handle LaTeX and other formats
+            agent_numeric, agent_debug = extract_numeric_answer(str(agent_answer), debug=True)
+            correct_numeric, correct_debug = extract_numeric_answer(str(correct_answer), debug=True)
             
-            if agent_debug or correct_debug:
-                self.logger.debug(f"Agent answer parsing: {agent_debug}")
-                self.logger.debug(f"Correct answer parsing: {correct_debug}")
+            if agent_numeric is not None and correct_numeric is not None:
+                # Use the is_answer_correct helper function with our tolerance
+                result = is_answer_correct(agent_numeric, correct_numeric, self.config.numeric_tolerance)
+                self.logger.info(f"Comparing numeric answers: agent={agent_numeric}, correct={correct_numeric}, tolerance={self.config.numeric_tolerance}")
+                self.logger.info(f"Numeric comparison result: {result}, difference: {abs(agent_numeric - correct_numeric) if agent_numeric is not None and correct_numeric is not None else 'N/A'}")
                 
-            return result
-        else:
-            # If numeric conversion failed, fall back to string comparison
-            agent_str = str(agent_answer).strip()
-            correct_str = str(correct_answer).strip()
-            is_string_match = agent_str == correct_str
+                if agent_debug or correct_debug:
+                    self.logger.debug(f"Agent answer parsing: {agent_debug}")
+                    self.logger.debug(f"Correct answer parsing: {correct_debug}")
+                    
+                return result
+            else:
+                # If numeric conversion failed, fall back to string comparison
+                agent_str = str(agent_answer).strip()
+                correct_str = str(correct_answer).strip()
+                is_string_match = agent_str == correct_str
+                
+                self.logger.info(f"Numeric conversion failed, comparing as strings: agent='{agent_str}', correct='{correct_str}'")
+                if agent_debug or correct_debug:
+                    self.logger.debug(f"Agent answer parsing failed: {agent_debug}")
+                    self.logger.debug(f"Correct answer parsing failed: {correct_debug}")
+                    
+                return is_string_match
+        except Exception as e:
+            self.logger.warning(f"Error comparing answers: {str(e)}")
             
-            self.logger.info(f"Numeric conversion failed, comparing as strings: agent='{agent_str}', correct='{correct_str}'")
-            if agent_debug or correct_debug:
-                self.logger.debug(f"Agent answer parsing failed: {agent_debug}")
-                self.logger.debug(f"Correct answer parsing failed: {correct_debug}")
+            # Fall back to string comparison on exception
+            try:
+                agent_str = str(agent_answer).strip()
+                correct_str = str(correct_answer).strip()
+                is_string_match = agent_str == correct_str
                 
-            return is_string_match
+                self.logger.info(f"Exception during comparison, comparing as strings: agent='{agent_str}', correct='{correct_str}'")
+                return is_string_match
+            except Exception as e2:
+                self.logger.error(f"String comparison also failed: {str(e2)}")
+                return False
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
