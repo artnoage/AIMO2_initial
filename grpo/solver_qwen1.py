@@ -15,7 +15,7 @@ if project_root not in sys.path:
 from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT2
 from reward_experimental import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -165,7 +165,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "solver_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14Bex"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -229,7 +229,7 @@ def main():
     def get_questions(split="train") -> Dataset:
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT2)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=142)

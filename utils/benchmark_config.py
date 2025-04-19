@@ -27,7 +27,7 @@ class ModelOption(Enum):
     CODER="qwen/qwen-2.5-coder-32b-instruct"
     DEEP="deepseek/deepseek-chat"
     QWEN="qwen/qwq-32b"
-
+    NANO="openai/gpt-4.1-nano"
 @dataclass
 class BenchmarkConfig:
     """Unified configuration for benchmarking with optional numeric verification, code execution, and similarity analysis"""

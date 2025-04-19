@@ -26,7 +26,7 @@ from utils.agents import (
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
     FINALIZATION_SYSTEM_PROMPT,
-    FULLSOLUTION_SYSTEM_PROMPT,
+    FULLSOLUTION_SYSTEM_PROMPT3,
     PROGRAMMER_SYSTEM_PROMPT
 )
 
@@ -192,8 +192,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/9B"
+    model_type = "dynamic_4"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7B"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -239,24 +239,24 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=3000,
+        max_seq_length=2700,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.6,
-        max_lora_rank=256)
+        use_gradient_checkpointing="unsloth",
+        gpu_memory_utilization=0.7,
+        max_lora_rank=64)
         
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=256,
+        r=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=256,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing=False,
+        use_gradient_checkpointing="unsloth",
         random_state=3407,
         use_rslora=False,
         loftq_config=None
@@ -292,7 +292,7 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            FULLSOLUTION_SYSTEM_PROMPT,
+            FULLSOLUTION_SYSTEM_PROMPT3,
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
@@ -323,8 +323,8 @@ def main():
         per_device_train_batch_size=8,
         gradient_accumulation_steps=1,
         num_generations=8,
-        max_prompt_length=1000,
-        max_completion_length=2000,
+        max_prompt_length=800,
+        max_completion_length=1900,
         num_train_epochs=1,
         save_steps=200,
         max_grad_norm=0.1,

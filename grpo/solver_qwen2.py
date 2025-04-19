@@ -16,7 +16,7 @@ from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
-from reward_experimental import SolutionReward
+from reward_experimental2 import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -164,7 +164,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver_1"
+    model_type = "solver_2"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     

@@ -18,13 +18,13 @@ class RewardConfig:
     boxed_replacement: str = r'\\boxed{?}'
     
     # Main model settings
-    main: str = "LOCAL_0"  # Main model to use for solving problems
+    main: str = "CODER"  # Main model to use for solving problems
     main_template: int = 1  # Template for main model
     main_port: int = 8000  # Port for main model server
-    main_temp: float = 0.7  # Temperature for main model generation
+    main_temp: float = 0  # Temperature for main model generation
 
     # Auxiliary model settings
-    auxiliary: str = "LOCAL_3"  # Auxiliary model to use for solving problems
+    auxiliary: str = "DEEP"  # Auxiliary model to use for solving problems
     auxiliary_template: int = 1  # Template for auxiliary model
     auxiliary_port: int = 8000  # Port for auxiliary model server
     auxiliary_temp: float =  0.7  # Temperature for auxiliary model generation
