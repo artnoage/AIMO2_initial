@@ -609,49 +609,53 @@ class SolutionReward(BaseReward):
                 # Average the scores
                 verification_score = (main_score + aux_score) / 2
                 
+                # Log detailed verification reward summary for all completions
+                log("=" * 50)
+                log(f"VERIFICATION RESULTS SUMMARY:")
+                log(f"Solution is {'correct' if is_correct else 'incorrect'}")
+                log(f"Verification {'passed' if verification_passed else 'failed'}")
+                log(f"Main verifier score: {main_score:.2f}")
+                log(f"Auxiliary verifier score: {aux_score:.2f}")
+                log("-" * 40)
+                
+                # Log detailed verification results for main verifier
+                log("MAIN VERIFIER RESULTS:")
+                main_criteria_scores = main_verification_details.get("criteria_scores", {})
+                for criterion, score in main_criteria_scores.items():
+                    status = "✓" if score > 0 else "✗"
+                    reward_text = f"+{score:.2f}" if score > 0 else "0.00"
+                    log(f"{status} {criterion}: {reward_text}")
+                
+                # Log detailed verification results for auxiliary verifier
+                log("AUXILIARY VERIFIER RESULTS:")
+                aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
+                for criterion, score in aux_criteria_scores.items():
+                    status = "✓" if score > 0 else "✗"
+                    reward_text = f"+{score:.2f}" if score > 0 else "0.00"
+                    log(f"{status} {criterion}: {reward_text}")
+                
+                log("=" * 50)
+                
                 # Different handling based on correctness and verification results
                 if is_correct:
                     # For correct answers, apply verification reward if verification passed
-                    log("Solution is correct, proceeding with verification...")
+                    log("Solution is correct, proceeding with verification reward calculation...")
                     
                     if verification_passed:
                         # Apply verification reward proportional to the score
                         verification_reward = self.config.verification_reward * verification_score
                         reward += verification_reward
                         
-                        # Log detailed verification reward summary
-                        log("=" * 50)
-                        log(f"VERIFICATION REWARD SUMMARY:")
-                        log(f"Total verification reward: +{verification_reward:.3f}")
+                        # Log verification reward
+                        log(f"Applied verification reward: +{verification_reward:.3f}")
                         log(f"Calculation: {verification_score:.2f} (avg score) × {self.config.verification_reward:.2f} (max reward)")
-                        log(f"Main verifier score: {main_score:.2f}")
-                        log(f"Auxiliary verifier score: {aux_score:.2f}")
-                        log("-" * 40)
-                        
-                        # Log detailed verification results for main verifier
-                        log("MAIN VERIFIER RESULTS:")
-                        main_criteria_scores = main_verification_details.get("criteria_scores", {})
-                        for criterion, score in main_criteria_scores.items():
-                            status = "✓" if score > 0 else "✗"
-                            reward_text = f"+{score:.2f}" if score > 0 else "0.00"
-                            log(f"{status} {criterion}: {reward_text}")
-                        
-                        # Log detailed verification results for auxiliary verifier
-                        log("AUXILIARY VERIFIER RESULTS:")
-                        aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
-                        for criterion, score in aux_criteria_scores.items():
-                            status = "✓" if score > 0 else "✗"
-                            reward_text = f"+{score:.2f}" if score > 0 else "0.00"
-                            log(f"{status} {criterion}: {reward_text}")
-                        
-                        log("=" * 50)
                         
                         # Update verification stats
                         self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
                         self.stats.group_stats['verified_solutions'] += 1
                 else:
                     # For incorrect answers, handle differently based on verification results
-                    log("Solution is incorrect, checking verification results...")
+                    log("Solution is incorrect, calculating penalties or bonuses...")
                     
                     # Penalize only if verifier thinks the incorrect answer is correct
                     if verification_passed:
