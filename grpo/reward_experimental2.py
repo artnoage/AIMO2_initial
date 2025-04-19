@@ -581,7 +581,7 @@ class SolutionReward(BaseReward):
             
             # Verify the solution regardless of correctness, as long as it has thinking and response parts
             verification_reward = 0.0
-            if has_thinking and has_response:
+            if has_thinking and has_response and model_answer is not None:
                 # Run both verifications concurrently
                 main_verification_task = self.verify_solution(
                     problem=kwargs.get('problem', ''),
@@ -615,9 +615,9 @@ class SolutionReward(BaseReward):
                 # Average the scores
                 verification_score = (main_score + aux_score) / 2
                 
-                # Different handling based on correctness and batch context
+                # Different handling based on correctness and verification results
                 if is_correct:
-                    # For correct answers, proceed as before
+                    # For correct answers, apply verification reward if verification passed
                     log("Solution is correct, proceeding with verification...")
                     
                     if verification_passed:
