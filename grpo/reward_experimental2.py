@@ -104,22 +104,17 @@ class BaseReward(ABC):
             model_answer = extract_answer_from_solution(response_content) if response_content else None
             
             if model_answer is not None:
-                try:
-                    # Convert to numeric values
-                    model_numeric, _ = extract_numeric_answer(model_answer)
-                    correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-                    
-                    if model_numeric is not None and correct_numeric is not None:
-                        # Check if answer is correct within tolerance
-                        if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
-                            return True
-                except Exception as e:
-                    # Log the error but continue processing other completions
-                    if hasattr(self, 'logger'):
-                        self.logger.warning(f"Error processing answer '{model_answer}': {str(e)}")
-                    else:
-                        print(f"Warning: Error processing answer '{model_answer}': {str(e)}")
+                # Convert to numeric values
+                model_numeric, _ = extract_numeric_answer(model_answer)
+                correct_numeric, _ = extract_numeric_answer(str(correct_answer))
+                
+                # If either conversion failed, just continue to the next completion
+                if model_numeric is None or correct_numeric is None:
                     continue
+                    
+                # Check if answer is correct within tolerance
+                if abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                    return True
         
         return False
     
@@ -523,23 +518,11 @@ class SolutionReward(BaseReward):
                 return reward
                 
             # Convert to numeric values
-            try:
-                model_numeric, debug_info = extract_numeric_answer(model_answer)
-                correct_numeric, _ = extract_numeric_answer(str(correct_answer))
-                
-                if model_numeric is None or correct_numeric is None:
-                    log("Could not extract numeric values - returning 0.0", "debug")
-                    
-                    # Store empty results
-                    self.stats.current_batch['answers'][batch_index] = None
-                    self.stats.current_batch['is_correct'][batch_index] = False
-                    self.stats.current_batch['execution_times'][batch_index] = 0.0
-                    self.stats.current_batch['code_lengths'][batch_index] = 0
-                    self.stats.current_batch['completions'][batch_index] = completion
-                    
-                    return reward
-            except Exception as e:
-                log(f"Error extracting numeric values: {str(e)} - returning 0.0", "warning")
+            model_numeric, debug_info = extract_numeric_answer(model_answer)
+            correct_numeric, _ = extract_numeric_answer(str(correct_answer))
+            
+            if model_numeric is None or correct_numeric is None:
+                log("Could not extract numeric values - returning 0.0", "debug")
                 
                 # Store empty results
                 self.stats.current_batch['answers'][batch_index] = None
@@ -858,20 +841,15 @@ class SolutionReward(BaseReward):
             if comp_answer is None:
                 all_results.append(False)
                 continue
-            
-            try:    
-                comp_numeric, _ = extract_numeric_answer(comp_answer)
-                ans_numeric, _ = extract_numeric_answer(ans)
-                if comp_numeric is None or ans_numeric is None:
-                    all_results.append(False)
-                    continue
-                    
-                all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
-            except Exception as e:
-                # Log the error if logger is available
-                if hasattr(self, 'logger'):
-                    self.logger.warning(f"Error comparing answers '{comp_answer}' and '{ans}': {str(e)}")
+                
+            # Convert to numeric values - if extraction fails, just mark as incorrect
+            comp_numeric, _ = extract_numeric_answer(comp_answer)
+            ans_numeric, _ = extract_numeric_answer(ans)
+            if comp_numeric is None or ans_numeric is None:
                 all_results.append(False)
+                continue
+                
+            all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
         
         return all_results
     
