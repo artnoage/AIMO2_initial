@@ -545,13 +545,7 @@ class SolutionReward(BaseReward):
                 self.stats.reward_components['correct_answers'] += 1
                 self.stats.group_stats['correct_answers'] += 1
             else:
-                # If this answer is incorrect but the batch has at least one correct answer,
-                # apply a small penalty to encourage convergence to the correct answer
-                if batch_has_correct_answer:
-                    penalty = -0.1  # Small penalty when other correct answers exist
-                    reward += penalty
-                    log(f"Applied penalty for incorrect answer when batch has correct answers: {penalty:.3f}")
-                
+                # No penalty for incorrect answers here - penalties are handled in verification section
                 self.stats.reward_components['incorrect_answers'] += 1
                 self.stats.group_stats['incorrect_answers'] += 1
             
@@ -677,21 +671,22 @@ class SolutionReward(BaseReward):
                             # Check if verifier's boxed answer is actually correct
                             main_boxed = main_verification_details.get("boxed_answer")
                             aux_boxed = aux_verification_details.get("boxed_answer")
-                        
-                        # Try both verifiers' boxed answers
-                        for boxed_answer, verifier_name in [(main_boxed, "Main"), (aux_boxed, "Auxiliary")]:
-                            if boxed_answer is not None:
-                                boxed_numeric, _ = extract_numeric_answer(str(boxed_answer))
-                                if boxed_numeric is not None and abs(boxed_numeric - correct_numeric) <= self.config.numeric_tolerance:
-                                    # Verifier found the correct answer despite the model being wrong
-                                    bonus = 0.3
-                                    reward += bonus
-                                    log(f"Applied bonus for incorrect answer where {verifier_name} verifier found correct boxed answer: +{bonus:.3f}")
-                                    log(f"Verifier boxed answer: {boxed_answer}, Correct answer: {correct_answer}")
-                                    
-                                    # Track this case
-                                    self.stats.reward_components['incorrect_with_correct_boxed'] = self.stats.reward_components.get('incorrect_with_correct_boxed', 0) + 1
-                                    break
+                            
+                            # Try both verifiers' boxed answers
+                            for boxed_answer, verifier_name in [(main_boxed, "Main"), (aux_boxed, "Auxiliary")]:
+                                if boxed_answer is not None:
+                                    boxed_numeric, _ = extract_numeric_answer(str(boxed_answer))
+                                    if boxed_numeric is not None and abs(boxed_numeric - correct_numeric) <= self.config.numeric_tolerance:
+                                        # Verifier found the correct answer despite the model being wrong
+                                        # This is a good solution in a sea of wrong answers, so give it a bonus
+                                        bonus = 0.3
+                                        reward += bonus
+                                        log(f"Applied bonus for incorrect answer where {verifier_name} verifier found correct boxed answer: +{bonus:.3f}")
+                                        log(f"Verifier boxed answer: {boxed_answer}, Correct answer: {correct_answer}")
+                                        
+                                        # Track this case
+                                        self.stats.reward_components['incorrect_with_correct_boxed'] = self.stats.reward_components.get('incorrect_with_correct_boxed', 0) + 1
+                                        break
                 
                 # Initialize verification criteria stats if they don't exist
                 if not hasattr(self.stats, 'verification_criteria_stats'):
