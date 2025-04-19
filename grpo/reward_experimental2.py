@@ -915,32 +915,73 @@ class SolutionReward(BaseReward):
             Dict containing the parsed verification data, or None if parsing failed
         """
         try:
-            # Extract just the response section containing the JSON
+            # First try to find JSON in the entire text
+            # Look for patterns that might contain JSON objects
+            potential_json_patterns = [
+                # Find content between triple backticks with json tag
+                r'```json\s*([\s\S]*?)\s*```',
+                # Find content between triple backticks without tag
+                r'```\s*([\s\S]*?)\s*```',
+                # Find content that looks like a JSON object anywhere in the text
+                r'(\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\})'
+            ]
+            
+            # Try each pattern until we find valid JSON
+            for pattern in potential_json_patterns:
+                matches = re.findall(pattern, verification_result, re.DOTALL)
+                for match in matches:
+                    try:
+                        # Clean up the match
+                        cleaned_match = match.strip()
+                        verification_data = json.loads(cleaned_match)
+                        self.logger.debug(f"Successfully extracted JSON using pattern: {pattern[:20]}...")
+                        return verification_data
+                    except json.JSONDecodeError:
+                        continue
+            
+            # If we couldn't find JSON with the patterns, try the response section
             response_match = self.response_pattern.search(verification_result)
             if response_match:
                 json_text = response_match.group(1).strip()
-            else:
-                # Fallback to the full response if no response tags are found
-                json_text = verification_result
+                
+                # Try to find a valid JSON object in the response section
+                json_match = re.search(r'\{.*\}', json_text, re.DOTALL)
+                if json_match:
+                    try:
+                        json_text = json_match.group(0)
+                        verification_data = json.loads(json_text)
+                        self.logger.debug(f"Successfully extracted JSON from response section")
+                        return verification_data
+                    except json.JSONDecodeError:
+                        pass
             
-            # Clean up the JSON string to handle potential formatting issues
-            # Remove any markdown code block markers
-            json_text = re.sub(r'```json|```', '', json_text).strip()
+            # Last resort: try to find any JSON-like structure in the entire text
+            self.logger.warning(f"{verifier_name} verifier: Could not find valid JSON in standard formats, trying fallback extraction")
             
-            # Try to find a valid JSON object in the response
-            json_match = re.search(r'\{.*\}', json_text, re.DOTALL)
-            if json_match:
-                json_text = json_match.group(0)
-            else:
-                return None
+            # Look for key verification fields directly in the text
+            is_detailed = "detailed" in verification_result.lower() and "yes" in verification_result.lower()
+            is_correct = "correct" in verification_result.lower() and "yes" in verification_result.lower()
             
-            # Parse the JSON data
-            verification_data = json.loads(json_text)
-            return verification_data
+            # Try to extract a boxed answer if present
+            boxed_match = re.search(r'boxed answer[^\n]*?[: ]\s*([^\n]+)', verification_result, re.IGNORECASE)
+            boxed_answer = boxed_match.group(1).strip() if boxed_match else None
             
-        except json.JSONDecodeError:
+            # Create a simple JSON structure from extracted information
+            if is_detailed or is_correct or boxed_answer:
+                self.logger.info(f"{verifier_name} verifier: Created fallback JSON from text extraction")
+                return {
+                    "is_detailed": is_detailed,
+                    "is_correct": is_correct,
+                    "boxed_answer": boxed_answer
+                }
+            
+            self.logger.warning(f"{verifier_name} verifier: Failed to extract any verification data")
             return None
-        except Exception:
+            
+        except Exception as e:
+            self.logger.error(f"{verifier_name} verifier: Error extracting verification data: {str(e)}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
             return None
     
     def _compare_answers(self, agent_answer: Any, correct_answer: Any) -> bool:
