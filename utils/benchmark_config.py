@@ -12,7 +12,7 @@ class ModelOption(Enum):
     """
     CLAUDE = "anthropic/claude-3.5-sonnet"
     GEMINI_PRO = "google/gemini-pro-1.5"
-    GEMINI_FLASH="google/gemini-2.0-flash-001"
+    GEMINI_FLASH="google/gemini-2.5-flash-preview"
     GPT = "openai/gpt-4o"
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"

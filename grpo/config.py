@@ -27,7 +27,7 @@ class RewardConfig:
     auxiliary: str = "DEEP"  # Auxiliary model to use for solving problems
     auxiliary_template: int = 1  # Template for auxiliary model
     auxiliary_port: int = 8000  # Port for auxiliary model server
-    auxiliary_temp: float =  0.7  # Temperature for auxiliary model generation
+    auxiliary_temp: float =  0  # Temperature for auxiliary model generation
 
     # Secondary auxiliary model settings
     auxiliary2: str = "LOCAL_3"  # Secondary auxiliary model to use for solving problems

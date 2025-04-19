@@ -164,8 +164,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solver_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14Bex"
+    model_type = "prompt_2"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B_2nd"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -232,7 +232,7 @@ def main():
         return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT2)
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=142)
+    formatted_dataset = formatted_dataset.shuffle(seed=33)
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
