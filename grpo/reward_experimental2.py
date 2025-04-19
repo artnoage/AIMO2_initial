@@ -656,22 +656,24 @@ class SolutionReward(BaseReward):
                         self.stats.reward_components['verification_rewards'] = self.stats.reward_components.get('verification_rewards', 0) + 1
                         self.stats.group_stats['verified_solutions'] += 1
                 else:
-                    # For incorrect answers, handle differently based on batch context
+                    # For incorrect answers, handle differently based on verification results
                     log("Solution is incorrect, checking verification results...")
                     
-                    # Case 1: Incorrect answer but batch has at least one correct answer
-                    if batch_has_correct_answer and verification_passed:
-                        # Penalize if verifier thinks it's correct (misleading verification)
-                        penalty = -0.2
-                        reward += penalty
-                        log(f"Applied penalty for incorrect answer that verifier thinks is correct: {penalty:.3f}")
-                        log(f"Batch has correct answers, so penalizing misleading solutions")
+                    # Penalize only if verifier thinks the incorrect answer is correct
+                    if verification_passed:
+                        # Case 1: Incorrect answer but batch has at least one correct answer
+                        if batch_has_correct_answer:
+                            # Penalize if verifier thinks it's correct (misleading verification)
+                            penalty = -0.2
+                            reward += penalty
+                            log(f"Applied penalty for incorrect answer that verifier thinks is correct: {penalty:.3f}")
+                            log(f"Batch has correct answers, so penalizing misleading solutions")
+                            
+                            # Track this case
+                            self.stats.reward_components['incorrect_verified_solutions'] = self.stats.reward_components.get('incorrect_verified_solutions', 0) + 1
                         
-                        # Track this case
-                        self.stats.reward_components['incorrect_verified_solutions'] = self.stats.reward_components.get('incorrect_verified_solutions', 0) + 1
-                    
-                    # Case 2: Incorrect answer and no correct answers in batch
-                    elif not batch_has_correct_answer and verification_passed:
+                        # Case 2: Incorrect answer and no correct answers in batch
+                        elif not batch_has_correct_answer:
                         # Check if verifier's boxed answer is actually correct
                         main_boxed = main_verification_details.get("boxed_answer")
                         aux_boxed = aux_verification_details.get("boxed_answer")
