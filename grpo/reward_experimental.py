@@ -345,7 +345,8 @@ class SolutionReward(BaseReward):
     relevant_stats = {
         'reward_components': ['base_rewards', 'validation_rewards', 'verification_rewards'],
         'group_stats': [
-            'correct_answers', 'incorrect_answers', 'verified_solutions'
+            'correct_answers', 'incorrect_answers', 'verified_solutions',
+            'correct_to_incorrect_ratio', 'correct_to_total_ratio'
         ],
         'plurality_stats': [
             'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length',
@@ -631,9 +632,23 @@ class SolutionReward(BaseReward):
             self.stats.reward_components['total_rewards'] += total_reward
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components['total_rewards'] / max(1, total_samples)
+            
+            # Calculate ratios
+            correct_answers = self.stats.group_stats['correct_answers']
+            incorrect_answers = self.stats.group_stats['incorrect_answers']
+            total_answers = correct_answers + incorrect_answers
+            
+            # Calculate and store the ratios
+            if incorrect_answers > 0:
+                self.stats.group_stats['correct_to_incorrect_ratio'] = correct_answers / incorrect_answers
+            else:
+                self.stats.group_stats['correct_to_incorrect_ratio'] = float('inf') if correct_answers > 0 else 0.0
+                
+            self.stats.group_stats['correct_to_total_ratio'] = correct_answers / max(1, total_answers)
                 
             # Log group stats
-            log(f"Group stats: correct={self.stats.group_stats['correct_answers']}, incorrect={self.stats.group_stats['incorrect_answers']}, verified={self.stats.group_stats['verified_solutions']}")
+            log(f"Group stats: correct={correct_answers}, incorrect={incorrect_answers}, verified={self.stats.group_stats['verified_solutions']}")
+            log(f"Ratios: correct/incorrect={self.stats.group_stats['correct_to_incorrect_ratio']:.2f}, correct/total={self.stats.group_stats['correct_to_total_ratio']:.2%}")
             
             # Output all collected logs at once
             for level, message in log_messages:
