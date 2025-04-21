@@ -215,14 +215,25 @@ class BaseReward(ABC):
         
      
         self.logger.info(f"Rewards before: {rewards}")
-            
-           
         
+        # Store rewards for potential modification in _finalize_batch
+        self.rewards = rewards
+            
         # Update stats and print batch summary
         self.stats.update(rewards, completions=completions, example_type=kwargs.get('example_type', []))
         
         # Process the batch results to calculate plurality metrics
         self._finalize_batch()
+        
+        # Apply any pending originality rewards
+        if hasattr(self, 'pending_originality_rewards') and self.pending_originality_rewards:
+            for idx, reward_value in self.pending_originality_rewards:
+                if 0 <= idx < len(rewards):
+                    rewards[idx] += reward_value
+                    self.logger.info(f"Applied pending originality reward: +{reward_value:.3f} to completion {idx}")
+            
+            # Clear pending rewards
+            self.pending_originality_rewards = []
         
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
@@ -235,6 +246,9 @@ class BaseReward(ABC):
         # Skip if no results
         if not self.stats.current_batch['answers']:
             return
+        
+        # Apply originality reward to the most novel correct answer
+        self._apply_originality_reward()
         
         # Filter out None values
         valid_results = [(ans, correct) for ans, correct in 
@@ -543,8 +557,8 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['code_lengths'][batch_index] = len(completion)
             self.stats.current_batch['completions'][batch_index] = completion
             
-            # Calculate diversity reward if the answer is correct and similarity matrix is available
-            diversity_reward = 0.0
+            # Calculate similarity score if the answer is correct and similarity matrix is available
+            # But don't apply the reward yet - we'll do that in _finalize_batch
             if is_correct and similarity_matrix is not None:
                 try:
                     # Get the current completion's index in the similarity matrix
@@ -567,20 +581,11 @@ class SolutionReward(BaseReward):
                         if similarity_scores:
                             avg_similarity = sum(similarity_scores) / len(similarity_scores)
                             
-                            # Store the similarity score
+                            # Store the similarity score for later use in _finalize_batch
                             self.stats.current_batch['similarity_scores'][batch_index] = avg_similarity
-                            
-                            # Lower similarity (more unique) gets higher reward
-                            # Reward is 1.0 for completely unique solutions (avg_similarity = 0)
-                            # and 0.0 for identical solutions (avg_similarity = 1)
-                            diversity_reward = 1.0 - avg_similarity
-                            
-                            # Add diversity reward to total reward
-                            reward += diversity_reward
-                            
-                            log(f"ORIGINALITY REWARD: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
-                            self.logger.info(f"ORIGINALITY REWARD APPLIED: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
-                            self.stats.reward_components['diversity_rewards'] += 1
+                            log(f"Stored similarity score: {avg_similarity:.3f} for completion {current_idx}")
+                        else:
+                            self.stats.current_batch['similarity_scores'][batch_index] = 0.0
                 except Exception as e:
                     log(f"Error calculating diversity reward: {str(e)}", "error")
 
@@ -952,6 +957,43 @@ class SolutionReward(BaseReward):
                 self.logger.debug(f"Correct answer parsing failed: {correct_debug}")
                 
             return is_string_match
+    
+    def _apply_originality_reward(self):
+        """Apply originality reward only to the most novel correct answer"""
+        # Get indices of correct answers
+        correct_indices = [i for i, is_correct in enumerate(self.stats.current_batch['is_correct']) 
+                          if is_correct]
+        
+        if not correct_indices:
+            return  # No correct answers to reward
+            
+        # Get similarity scores for correct answers
+        similarity_scores = [(i, self.stats.current_batch['similarity_scores'][i]) 
+                            for i in correct_indices]
+        
+        if not similarity_scores:
+            return  # No similarity scores available
+            
+        # Find the most novel answer (lowest similarity score)
+        most_novel_idx, lowest_similarity = min(similarity_scores, key=lambda x: x[1])
+        
+        # Calculate diversity reward (1.0 for completely unique, 0.0 for identical)
+        diversity_reward = 1.0 - lowest_similarity
+        
+        # Get the reward for this completion
+        if hasattr(self, 'rewards') and len(self.rewards) > most_novel_idx:
+            # If we have a rewards list, update it
+            self.rewards[most_novel_idx] += diversity_reward
+            self.logger.info(f"ORIGINALITY REWARD APPLIED: +{diversity_reward:.3f} to completion {most_novel_idx} (lowest similarity: {lowest_similarity:.3f})")
+            self.stats.reward_components['diversity_rewards'] += 1
+        else:
+            # Otherwise, we need to store this information for later
+            if not hasattr(self, 'pending_originality_rewards'):
+                self.pending_originality_rewards = []
+            
+            self.pending_originality_rewards.append((most_novel_idx, diversity_reward))
+            self.logger.info(f"PENDING ORIGINALITY REWARD: +{diversity_reward:.3f} to completion {most_novel_idx} (lowest similarity: {lowest_similarity:.3f})")
+            self.stats.reward_components['diversity_rewards'] += 1
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
