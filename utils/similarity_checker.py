@@ -241,9 +241,18 @@ class SolutionSimilarityChecker:
                 # Ensure values are in valid range [0,1]
                 similarity_matrix = torch.clamp(similarity_matrix, 0.0, 1.0)
                 
+                # Log the matrix shape and a sample
+                logging.getLogger('similarity_checker').info(f"Computed similarity matrix with shape: {similarity_matrix.shape}")
+                if similarity_matrix.shape[0] > 0:
+                    sample_size = min(3, similarity_matrix.shape[0])
+                    sample = similarity_matrix[:sample_size, :sample_size]
+                    logging.getLogger('similarity_checker').info(f"Sample of similarity matrix:\n{sample}")
+                
                 return similarity_matrix
                 
             except Exception as e:
                 self.logger.error(f"Error computing similarity matrix: {str(e)}")
+                import traceback
+                self.logger.error(f"Traceback: {traceback.format_exc()}")
                 # Return identity matrix as fallback (each solution only similar to itself)
                 return torch.eye(len(solutions), device=self.device)

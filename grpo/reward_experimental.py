@@ -138,6 +138,13 @@ class BaseReward(ABC):
                     self.logger.info("Computing similarity matrix for completions...")
                     similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
                     self.logger.info(f"Similarity matrix shape: {similarity_matrix.shape}")
+                    
+                    # Print the entire similarity matrix for debugging
+                    matrix_str = "\nSimilarity Matrix:\n"
+                    for i in range(similarity_matrix.shape[0]):
+                        row = [f"{similarity_matrix[i, j]:.4f}" for j in range(similarity_matrix.shape[1])]
+                        matrix_str += f"Row {i}: [{', '.join(row)}]\n"
+                    self.logger.info(matrix_str)
                 except Exception as e:
                     self.logger.error(f"Error computing similarity matrix: {str(e)}")
             
