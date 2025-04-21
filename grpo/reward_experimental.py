@@ -547,6 +547,12 @@ class SolutionReward(BaseReward):
                         # Get similarity scores for this completion compared to all others
                         similarity_scores = similarity_matrix[current_idx].tolist()
                         
+                        # Log all individual similarity scores for debugging
+                        log(f"SIMILARITY SCORES for completion {current_idx}:")
+                        for i, score in enumerate(similarity_scores):
+                            if i != current_idx:
+                                log(f"  - Similarity to completion {i}: {score:.4f}")
+                        
                         # Remove self-similarity (which is always 1.0)
                         similarity_scores.pop(current_idx)
                         
