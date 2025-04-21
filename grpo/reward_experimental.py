@@ -100,7 +100,8 @@ class BaseReward(ABC):
             'is_correct': [],
             'execution_times': [],
             'code_lengths': [],
-            'completions': []
+            'completions': [],
+            'similarity_scores': []
         }
             
         # Group completions by prompt for group context
@@ -130,6 +131,16 @@ class BaseReward(ABC):
             is_corrects = kwargs.get('is_correct', [False] * len(prompts))
             full_solutions = kwargs.get('full_solution', [''] * len(prompts))
             
+            # Calculate similarity matrix for all completions if similarity checker is available
+            similarity_matrix = None
+            if hasattr(self, 'similarity_checker') and self.similarity_checker is not None:
+                try:
+                    self.logger.info("Computing similarity matrix for completions...")
+                    similarity_matrix = self.similarity_checker.compute_similarity_matrix(completions)
+                    self.logger.info(f"Similarity matrix shape: {similarity_matrix.shape}")
+                except Exception as e:
+                    self.logger.error(f"Error computing similarity matrix: {str(e)}")
+            
             for prompt, group in prompt_groups.items():
                 # Process each completion in group
                 for group_idx, (completion, ans, idx) in enumerate(zip(
@@ -152,7 +163,8 @@ class BaseReward(ABC):
                         'group_indices': group['indices'],
                         'wrong_step': wrong_steps[idx] if idx < len(wrong_steps) else None,
                         'is_correct': is_corrects[idx] if idx < len(is_corrects) else False,
-                        'full_solution': full_solutions[idx] if idx < len(full_solutions) else ''
+                        'full_solution': full_solutions[idx] if idx < len(full_solutions) else '',
+                        'similarity_matrix': similarity_matrix
                     }
                     task = self.calculate_reward(completion, **task_kwargs)
                     tasks.append(task)
@@ -343,7 +355,7 @@ class SolutionReward(BaseReward):
     
     __name__ = "solution_reward"
     relevant_stats = {
-        'reward_components': ['base_rewards', 'validation_rewards', 'verification_rewards'],
+        'reward_components': ['base_rewards', 'validation_rewards', 'verification_rewards', 'diversity_rewards'],
         'group_stats': [
             'correct_answers', 'incorrect_answers', 'verified_solutions',
             'correct_to_incorrect_ratio', 'correct_to_total_ratio'
@@ -374,6 +386,13 @@ class SolutionReward(BaseReward):
         # Create verification models once during initialization
         self.main_verification_model = get_model(self.config, role="main")
         self.aux_verification_model = get_model(self.config, role="auxiliary")
+        
+        # Store the similarity checker
+        self.similarity_checker = similarity_checker
+        
+        # Initialize diversity rewards counter
+        if 'diversity_rewards' not in self.stats.reward_components:
+            self.stats.reward_components['diversity_rewards'] = 0
         
         # Compile regex patterns for better performance
         self.thinking_pattern = re.compile(self.config.thinking_pattern, re.DOTALL)
@@ -409,7 +428,8 @@ class SolutionReward(BaseReward):
                     'is_correct': [],
                     'execution_times': [],
                     'code_lengths': [],
-                    'completions': []
+                    'completions': [],
+                    'similarity_scores': []
                 }
                 
             # Initialize group_stats if they don't exist
@@ -423,6 +443,9 @@ class SolutionReward(BaseReward):
             # Ensure lists are long enough for this batch index (do this once at the beginning)
             self._ensure_batch_lists_length(batch_index)
             
+            # Get similarity matrix if available
+            similarity_matrix = kwargs.get('similarity_matrix', None)
+            
             if not all([group_completions, group_answers, group_indices]):
                 log(f"Missing required group context - completions: {bool(group_completions)}, answers: {bool(group_answers)}, indices: {bool(group_indices)}", "warning")
                 
@@ -432,6 +455,7 @@ class SolutionReward(BaseReward):
                 self.stats.current_batch['execution_times'][batch_index] = 0.0
                 self.stats.current_batch['code_lengths'][batch_index] = 0
                 self.stats.current_batch['completions'][batch_index] = completion
+                self.stats.current_batch['similarity_scores'][batch_index] = 0.0
                 
                 return 0.0
 
@@ -454,6 +478,7 @@ class SolutionReward(BaseReward):
                 self.stats.current_batch['execution_times'][batch_index] = 0.0
                 self.stats.current_batch['code_lengths'][batch_index] = 0
                 self.stats.current_batch['completions'][batch_index] = completion
+                self.stats.current_batch['similarity_scores'][batch_index] = 0.0
                 
                 return 0.0
                 
@@ -469,6 +494,7 @@ class SolutionReward(BaseReward):
                 self.stats.current_batch['execution_times'][batch_index] = 0.0
                 self.stats.current_batch['code_lengths'][batch_index] = 0
                 self.stats.current_batch['completions'][batch_index] = completion
+                self.stats.current_batch['similarity_scores'][batch_index] = 0.0
                 
                 return reward
                 
@@ -485,6 +511,7 @@ class SolutionReward(BaseReward):
                 self.stats.current_batch['execution_times'][batch_index] = 0.0
                 self.stats.current_batch['code_lengths'][batch_index] = 0
                 self.stats.current_batch['completions'][batch_index] = completion
+                self.stats.current_batch['similarity_scores'][batch_index] = 0.0
                 
                 return reward
                 
@@ -509,6 +536,40 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['execution_times'][batch_index] = 0.0  # Not applicable for solution reward
             self.stats.current_batch['code_lengths'][batch_index] = len(completion)
             self.stats.current_batch['completions'][batch_index] = completion
+            
+            # Calculate diversity reward if the answer is correct and similarity matrix is available
+            diversity_reward = 0.0
+            if is_correct and similarity_matrix is not None:
+                try:
+                    # Get the current completion's index in the similarity matrix
+                    current_idx = kwargs.get('reward_index')
+                    
+                    if current_idx is not None and 0 <= current_idx < similarity_matrix.shape[0]:
+                        # Get similarity scores for this completion compared to all others
+                        similarity_scores = similarity_matrix[current_idx].tolist()
+                        
+                        # Remove self-similarity (which is always 1.0)
+                        similarity_scores.pop(current_idx)
+                        
+                        # Calculate average similarity to other completions
+                        if similarity_scores:
+                            avg_similarity = sum(similarity_scores) / len(similarity_scores)
+                            
+                            # Store the similarity score
+                            self.stats.current_batch['similarity_scores'][batch_index] = avg_similarity
+                            
+                            # Lower similarity (more unique) gets higher reward
+                            # Reward is 1.0 for completely unique solutions (avg_similarity = 0)
+                            # and 0.0 for identical solutions (avg_similarity = 1)
+                            diversity_reward = 1.0 - avg_similarity
+                            
+                            # Add diversity reward to total reward
+                            reward += diversity_reward
+                            
+                            log(f"Applied diversity reward: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
+                            self.stats.reward_components['diversity_rewards'] += 1
+                except Exception as e:
+                    log(f"Error calculating diversity reward: {str(e)}", "error")
 
 
             # Validate solution structure - only apply validation reward if the answer is correct
@@ -677,6 +738,7 @@ class SolutionReward(BaseReward):
             self.stats.current_batch['execution_times'][batch_index] = 0.0
             self.stats.current_batch['code_lengths'][batch_index] = 0
             self.stats.current_batch['completions'][batch_index] = completion
+            self.stats.current_batch['similarity_scores'][batch_index] = 0.0
             
             return 0.0
     
@@ -905,11 +967,11 @@ class SolutionReward(BaseReward):
     
     def _ensure_batch_lists_length(self, index):
         """Ensure all batch lists are long enough to store data at the given index"""
-        for key in ['answers', 'is_correct', 'execution_times', 'code_lengths', 'completions']:
+        for key in ['answers', 'is_correct', 'execution_times', 'code_lengths', 'completions', 'similarity_scores']:
             while len(self.stats.current_batch[key]) <= index:
                 if key == 'is_correct':
                     self.stats.current_batch[key].append(False)
-                elif key in ['execution_times', 'code_lengths']:
+                elif key in ['execution_times', 'code_lengths', 'similarity_scores']:
                     self.stats.current_batch[key].append(0.0)
                 else:
                     self.stats.current_batch[key].append(None)
