@@ -383,9 +383,8 @@ class SolutionReward(BaseReward):
         # Use verification weights from config
         self.verification_weights = self.config.verification_weights
         
-        # Create verification models once during initialization
+        # Create verification model once during initialization
         self.main_verification_model = get_model(self.config, role="main")
-        self.aux_verification_model = get_model(self.config, role="auxiliary")
         
         # Store the similarity checker
         self.similarity_checker = similarity_checker
@@ -566,7 +565,8 @@ class SolutionReward(BaseReward):
                             # Add diversity reward to total reward
                             reward += diversity_reward
                             
-                            log(f"Applied diversity reward: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
+                            log(f"ORIGINALITY REWARD: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
+                            self.logger.info(f"ORIGINALITY REWARD APPLIED: +{diversity_reward:.3f} (avg similarity: {avg_similarity:.3f})")
                             self.stats.reward_components['diversity_rewards'] += 1
                 except Exception as e:
                     log(f"Error calculating diversity reward: {str(e)}", "error")
@@ -593,7 +593,7 @@ class SolutionReward(BaseReward):
             if is_correct:
                 log("Solution is correct, proceeding with verification...")
                 # Only verify solutions that have passed basic correctness checks
-                # Run both verifications concurrently
+                # Run only the main verification
                 main_verification_task = self.verify_solution(
                     problem=kwargs.get('problem', ''),
                     solution_content=response_content,
@@ -602,30 +602,15 @@ class SolutionReward(BaseReward):
                     verifier_name="Main"
                 )
                 
-                aux_verification_task = self.verify_solution(
-                    problem=kwargs.get('problem', ''),
-                    solution_content=response_content,
-                    correct_answer=correct_numeric,
-                    model=self.aux_verification_model,
-                    verifier_name="Auxiliary"
-                )
+                # Wait for verification to complete
+                main_verification_passed, main_verification_details = await main_verification_task
                 
-                # Wait for both verifications to complete
-                (main_verification_passed, main_verification_details), (aux_verification_passed, aux_verification_details) = await asyncio.gather(
-                    main_verification_task,
-                    aux_verification_task
-                )
-                
-                # Combine verification results
-                verification_passed = main_verification_passed or aux_verification_passed
+                # Use only main verification results
+                verification_passed = main_verification_passed
                 
                 if verification_passed:
-                    # Get the verification scores (between 0 and 1)
-                    main_score = main_verification_details.get("total_score", 0)
-                    aux_score = aux_verification_details.get("total_score", 0)
-                    
-                    # Average the scores
-                    verification_score = (main_score + aux_score) / 2
+                    # Get the verification score (between 0 and 1)
+                    verification_score = main_verification_details.get("total_score", 0)
                     
                     # Apply verification reward proportional to the score
                     verification_reward = self.config.verification_reward * verification_score
@@ -635,23 +620,13 @@ class SolutionReward(BaseReward):
                     log("=" * 50)
                     log(f"VERIFICATION REWARD SUMMARY:")
                     log(f"Total verification reward: +{verification_reward:.3f}")
-                    log(f"Calculation: {verification_score:.2f} (avg score) × {self.config.verification_reward:.2f} (max reward)")
-                    log(f"Main verifier score: {main_score:.2f}")
-                    log(f"Auxiliary verifier score: {aux_score:.2f}")
+                    log(f"Calculation: {verification_score:.2f} (score) × {self.config.verification_reward:.2f} (max reward)")
                     log("-" * 40)
                     
                     # Log detailed verification results for main verifier
                     log("MAIN VERIFIER RESULTS:")
                     main_criteria_scores = main_verification_details.get("criteria_scores", {})
                     for criterion, score in main_criteria_scores.items():
-                        status = "✓" if score > 0 else "✗"
-                        reward_text = f"+{score:.2f}" if score > 0 else "0.00"
-                        log(f"{status} {criterion}: {reward_text}")
-                    
-                    # Log detailed verification results for auxiliary verifier
-                    log("AUXILIARY VERIFIER RESULTS:")
-                    aux_criteria_scores = aux_verification_details.get("criteria_scores", {})
-                    for criterion, score in aux_criteria_scores.items():
                         status = "✓" if score > 0 else "✗"
                         reward_text = f"+{score:.2f}" if score > 0 else "0.00"
                         log(f"{status} {criterion}: {reward_text}")
@@ -673,11 +648,11 @@ class SolutionReward(BaseReward):
                     
                     # Update verification criteria stats
                     self.stats.verification_criteria_stats['total_verifications'] += 1
-                    if main_verification_details.get("is_detailed", False) or aux_verification_details.get("is_detailed", False):
+                    if main_verification_details.get("is_detailed", False):
                         self.stats.verification_criteria_stats['is_detailed_count'] += 1
-                    if main_verification_details.get("is_correct", False) or aux_verification_details.get("is_correct", False):
+                    if main_verification_details.get("is_correct", False):
                         self.stats.verification_criteria_stats['is_correct_count'] += 1
-                    if main_criteria_scores.get("boxed_answer", 0) > 0 or aux_criteria_scores.get("boxed_answer", 0) > 0:
+                    if main_criteria_scores.get("boxed_answer", 0) > 0:
                         self.stats.verification_criteria_stats['boxed_answer_count'] += 1
             
             # Calculate correctness for all completions in group (for logging purposes)
