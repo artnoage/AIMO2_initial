@@ -16,7 +16,7 @@ from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
-from reward_experimental import SolutionReward
+from grpo.solver_rewards import SolutionReward
 from utils.similarity_checker import SolutionSimilarityChecker
 
 def setup_logging(model_type: str) -> logging.Logger:
@@ -126,15 +126,6 @@ class LoggingCallback(TrainerCallback):
                         'answer_grouping_tolerance': self.reward_func.answer_grouping_tolerance
                     })
             
-            # Detailed stats for local logging only
-            local_stats = {
-                'reward_components': {
-                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
-                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
-                    'verification_rewards': self.reward_func.stats.reward_components.get('verification_rewards', 0) - getattr(self, '_last_verification_rewards', 0)
-                }
-            }
-            
             # Log to console/file
             if latest_batch:
                 self.logger.info(
@@ -167,8 +158,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "prompt_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14BR2"
+    model_type = "reward_1"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -245,7 +236,7 @@ def main():
         return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=33)
+    formatted_dataset = formatted_dataset.shuffle(seed=999)
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):

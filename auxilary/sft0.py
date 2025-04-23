@@ -24,8 +24,8 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/OriginalPlus/20250413_184944",
-        max_seq_length=8000,
+        model_name="/Home/stat/laschos/math/AIMO2_initial/models/14BR22",
+        max_seq_length=6000,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")
         
@@ -33,11 +33,11 @@ def main():
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=256,
+        r=64,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",
                       "lm_head", "embed_tokens",],
-        lora_alpha=256,
+        lora_alpha=64,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -97,14 +97,14 @@ def main():
 
 
     # Load dataset
-    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250413_183813")
+    dataset = load_from_disk("/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250422_131523")
     dataset = dataset.shuffle(seed=42)  # Keep same shuffle seed for consistency
     # Apply the formatting to the dataset
     formatted_dataset = dataset.map(formatting_prompts_func, batched=True)
     formatted_dataset1 = formatted_dataset.shuffle(seed=42)
     formatted_dataset2= formatted_dataset.shuffle(seed=31)
     formatted_dataset3= formatted_dataset.shuffle(seed=13)
-    formatted_dataset= concatenate_datasets([formatted_dataset1])
+    formatted_dataset= concatenate_datasets([formatted_dataset1,formatted_dataset2])
     #print("\nFirst conversation after formatting:")
     print(json.dumps(formatted_dataset[0]["text"], indent=2))
     # Create timestamp for output directory
@@ -143,7 +143,7 @@ def main():
     # Train the model
     trainer.train()
     models_dir = "models"
-    model_type = "OriginalPlus"
+    model_type = "14"
     os.makedirs(os.path.join(models_dir, model_type), exist_ok=True)
     
     

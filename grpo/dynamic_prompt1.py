@@ -26,7 +26,7 @@ from utils.agents import (
     DUAL_PROOF_SYSTEM_PROMPT,
     TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
     FINALIZATION_SYSTEM_PROMPT,
-    FULLSOLUTION_SYSTEM_PROMPT2,
+    FULLSOLUTION_SYSTEM_PROMPT,
     PROGRAMMER_SYSTEM_PROMPT
 )
 
@@ -192,7 +192,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "dynamic_2"
+    model_type = "dynamic_0"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     
@@ -236,16 +236,15 @@ def main():
     else:
         logger.warning("No stats object found in reward_func!")
     
-    # Load model
+     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=2700,
+        max_seq_length=3800,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.75,
+        gpu_memory_utilization=0.76,
         max_lora_rank=64)
-        
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
@@ -274,7 +273,6 @@ def main():
         
         # Load the base dataset
         data = load_dataset(dataset_name,split="train")
-        data=data.shuffle(seed=141)
        
         # Define the distribution
         # You can set any value to 0 to skip generating that type of example
@@ -292,7 +290,7 @@ def main():
         # Use the prepare_combined_data function with all system prompts
         return prepare_combined_data(
             data, 
-            FULLSOLUTION_SYSTEM_PROMPT2,
+            FULLSOLUTION_SYSTEM_PROMPT,
             FINALIZATION_SYSTEM_PROMPT, 
             PROGRAMMER_SYSTEM_PROMPT,
             TUTOR_SYSTEM_PROMPT,
@@ -305,7 +303,7 @@ def main():
 
     # Get the formatted dataset with all types of examples
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=30)
+    formatted_dataset = formatted_dataset.shuffle(seed=999)
         
     # GRPO specific training arguments
     training_args = GRPOConfig(
@@ -320,11 +318,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
+        per_device_train_batch_size=5,
         gradient_accumulation_steps=1,
-        num_generations=6,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=1900,
+        max_completion_length=3000,
         num_train_epochs=1,
         save_steps=200,
         max_grad_norm=0.1,

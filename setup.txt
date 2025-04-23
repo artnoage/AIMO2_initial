@@ -21,5 +21,5 @@ python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-
 && python benchmark.py --dataset Metaskepsis/custom219 --main-temp 0 --best-of 1 
 && python benchmark.py --dataset AI-MO/aimo-validation-aime --main-temp 0 --best-of 1 
 
-
+yentinglin/aime_2025
 python joined_benchmark.py --dataset Metaskepsis/Numina_medium --best-of 1 --main-temp 0 --auxiliary-temp 0 --main-port 8002 --auxiliary-port 8003

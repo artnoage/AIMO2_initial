@@ -417,7 +417,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        response = await get_model_response(self.model, prompt, max_tokens=4192)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
     
 

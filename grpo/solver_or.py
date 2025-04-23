@@ -15,8 +15,8 @@ if project_root not in sys.path:
 from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT3
-from reward_experimental import SolutionReward
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from rewards import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -166,7 +166,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "prompt_3"
+    model_type = "prompt_1"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     
@@ -211,15 +211,15 @@ def main():
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
         gpu_memory_utilization=0.77,
-        max_lora_rank=64)
+        max_lora_rank=32)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=32,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -231,10 +231,10 @@ def main():
     def get_questions(split="train") -> Dataset:
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT3)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
-    formatted_dataset = formatted_dataset.shuffle(seed=142)
+    formatted_dataset = formatted_dataset.shuffle(seed=999)
     
     # Verify first few entries
     for i in range(min(3, len(formatted_dataset))):
@@ -246,7 +246,7 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        learning_rate=3e-6,
+        learning_rate=2e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -256,9 +256,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
-        gradient_accumulation_steps=1,
-        num_generations=6,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=64,
+        num_generations=5,
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,

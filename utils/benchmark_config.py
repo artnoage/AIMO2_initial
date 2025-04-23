@@ -17,11 +17,11 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/Bit"
-    LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/Bit"
-    LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/Bit"
-    LOCAL_3= "/Home/stat/laschos/math/AIMO2_initial/models/sft_B/20250412_190953"
-    LOCAL_4= "/Home/stat/laschos/math/AIMO2_initial/models/sft_M/20250412_185528"
+    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/14Bp"
+    LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/14BR1"
+    LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/14BR2"
+    LOCAL_3= "/Home/stat/laschos/math/AIMO2_initial/models/14B_P2"
+    LOCAL_4= "/Home/stat/laschos/math/AIMO2_initial/models/7B"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     MISTRAL="mistralai/mistral-small-24b-instruct-2501"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
@@ -120,7 +120,7 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=256,
+        parser.add_argument('--max-concurrent', type=int, default=32,
                           help='Maximum number of concurrent problems (default: 64)')
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
