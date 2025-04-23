@@ -37,7 +37,7 @@ class SolverReward:
         
         # Initialize relevant stats for tracking
         self.relevant_stats = {
-            'reward_components': ['base_rewards', 'validation_rewards'],
+            'reward_components': ['base_rewards', 'validation_rewards', 'correct_reflections', 'incorrect_reflections'],
             'group_stats': [
                 'correct_answers', 'incorrect_answers'
             ],
@@ -168,14 +168,28 @@ class SolverReward:
             # Structure validation rewards
             has_thinking = bool(re.search(r'<thinking>.*?</thinking>', completion, re.DOTALL))
             has_response = bool(re.search(r'<response>.*?</response>', completion, re.DOTALL))
-            if not has_thinking or not has_response:
-                self.logger.debug("No thinking or response")
+            has_reflection = bool(re.search(r'<reflection>.*?</reflection>', completion, re.DOTALL))
+            
+            if not has_thinking or not has_response or not has_reflection:
+                self.logger.debug(f"Missing required sections - thinking: {has_thinking}, response: {has_response}, reflection: {has_reflection}")
                 return reward
                 
             validation_reward = 0.0
             
             # Calculate base reward
             is_correct = abs(model_numeric - correct_numeric) <= self.config.numeric_tolerance
+            
+            # Extract reflection content to check if model thinks answer is correct
+            reflection_match = re.search(r'<reflection>(.*?)</reflection>', completion, re.DOTALL)
+            reflection_content = reflection_match.group(1) if reflection_match else ""
+            
+            # Check if reflection indicates the answer is correct
+            thinks_correct = "answer is correct" in reflection_content.lower()
+            thinks_incorrect = "answer may not be correct" in reflection_content.lower() or "answer is not correct" in reflection_content.lower()
+            
+            # Initialize reflection reward
+            reflection_reward = 0.0
+            
             if is_correct:
                 base_reward = self.config.base_reward
                 
@@ -184,13 +198,26 @@ class SolverReward:
                     base_reward *= 3
                     self.logger.info(f"Applied 3x bonus for glimpses of reasoning")
                 
-                reward += base_reward
-                self.logger.info(f"Applied base reward: +{base_reward:.3f}")
+                # If answer is correct but model thinks it's incorrect, subtract 1 point
+                if thinks_incorrect:
+                    reflection_reward = -1.0
+                    self.logger.info(f"Answer is correct but model thinks it's incorrect: {reflection_reward:.1f}")
+                    self.stats.reward_components['incorrect_reflections'] = self.stats.reward_components.get('incorrect_reflections', 0) + 1
+                
+                reward += base_reward + reflection_reward
+                self.logger.info(f"Applied base reward: +{base_reward:.3f}, reflection reward: {reflection_reward:.1f}")
                 self.stats.reward_components['base_rewards'] = self.stats.reward_components.get('base_rewards', 0) + 1
                 self.stats.reward_components['correct_answers'] = self.stats.reward_components.get('correct_answers', 0) + 1
                 
             else:
                 self.stats.reward_components['incorrect_answers'] = self.stats.reward_components.get('incorrect_answers', 0) + 1
+                
+                # If answer is incorrect and model correctly identifies it, add 1 point
+                if thinks_incorrect:
+                    reflection_reward = 1.0
+                    self.logger.info(f"Answer is incorrect and model correctly identifies it: +{reflection_reward:.1f}")
+                    self.stats.reward_components['correct_reflections'] = self.stats.reward_components.get('correct_reflections', 0) + 1
+                    reward += reflection_reward
                 
             # Ensure lists are long enough for this batch index
             self._ensure_batch_lists_length(batch_index)

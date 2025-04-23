@@ -17,7 +17,7 @@ if project_root not in sys.path:
 from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
 from grpo.solver_reward2 import SolverReward
 from utils.similarity_checker import SolutionSimilarityChecker
 
@@ -85,6 +85,8 @@ class LoggingCallback(TrainerCallback):
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0),
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0),
+                'correct_reflections': self.reward_func.stats.reward_components.get('correct_reflections', 0),
+                'incorrect_reflections': self.reward_func.stats.reward_components.get('incorrect_reflections', 0),
                 'verified_solutions': self.reward_func.stats.group_stats.get('verified_solutions', 0),
                 'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0),
                 'correct_to_incorrect_ratio': self.reward_func.stats.group_stats.get('correct_to_incorrect_ratio', 0.0),
@@ -196,6 +198,7 @@ def main():
             "dataset": dataset_name,
             "base_reward": reward_config.base_reward,
             "validation_reward": 0.2,  # Fixed value in the code
+            "reflection_reward": 1.0,  # Reward for correct reflection
             "answer_grouping_tolerance": reward_func.answer_grouping_tolerance,
             "tracking_plurality_metrics": True,
             "using_similarity_checker": True,
@@ -232,7 +235,7 @@ def main():
     def get_questions(split="train") -> Dataset:
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=999)
