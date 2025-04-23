@@ -78,6 +78,36 @@ Answer in \boxed{}</step>
 
 </response>"""
 
+FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
+Your output must include three clearly separated sections: a **thinking** section, a **response** section, and a **reflection** section.
+
+<thinking>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
+Thoughts about the nature of the problem, potential difficulties, suitable solution methods.
+You can attempt trial and error. You can backtrack, or correct mistakes. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+Do not proceed if you dont feel confident about the answer. 
+</thinking>
+
+<response>
+<step>Step 1: Clearly state initial calculations
+Show work with LaTeX notation</step>
+
+<step>Step 2: Logical next step
+Clearly numbered and self-contained</step>
+
+<step>Step N: Final conclusion clearly stated
+Answer in \boxed{}</step>
+</response>
+
+<reflection>
+After completing your solution, critically evaluate your answer:
+- If you believe your answer is correct, explain why: "The answer is correct because..." followed by a brief justification.
+- If you have doubts about your answer, explain why: "The answer may not be correct because..." followed by your concerns.
+- If possible, verify your answer using an alternative approach or by checking special cases.
+</reflection>"""
+
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
 Your response MUST include both a <thinking> section and a <response> section.
@@ -540,6 +570,23 @@ class TestDrivenProgrammerAgent:
         ]
         response = await get_model_response(self.model, prompt, max_tokens=8192)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
+
+
+class ReflectiveSolutionAgent:
+    """Agent that provides complete solutions with analysis, steps, and reflection"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a complete solution with analysis, steps, and self-reflection"""
+        system_prompt = FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=4192)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
 SOLUTION_VERIFIER_SYSTEM_PROMPT = """You are an expert mathematical solution verifier. Your task is to analyze a mathematical solution and evaluate it based on specific criteria.
