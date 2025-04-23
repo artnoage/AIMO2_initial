@@ -19,7 +19,6 @@ from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
 from grpo.solver_reward2 import SolverReward
-from utils.similarity_checker import SolutionSimilarityChecker
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -177,17 +176,10 @@ def main():
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
-    # Initialize similarity checker
-    similarity_checker = SolutionSimilarityChecker(reward_config)
-    logger.info("\nInitialized SolutionSimilarityChecker:")
-    logger.info(f"Using device: {similarity_checker.device}")
-    logger.info(f"Batch size: {similarity_checker.batch_size}")
-    
-    # Initialize reward function from solver_reward2 with similarity checker
-    reward_func = SolverReward(reward_config, similarity_checker=similarity_checker)
+    # Initialize reward function from solver_reward2
+    reward_func = SolverReward(reward_config)
     logger.info("\nInitialized SolverReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
-    logger.info(f"Using similarity checker: {reward_func.similarity_checker is not None}")
     
     # Initialize wandb
     wandb.init(
@@ -201,9 +193,7 @@ def main():
             "reflection_reward": 1.0,  # Reward for correct reflection
             "answer_grouping_tolerance": reward_func.answer_grouping_tolerance,
             "tracking_plurality_metrics": True,
-            "using_similarity_checker": True,
-            "embedding_model": getattr(reward_config, 'embedding_model', "sentence-transformers/all-mpnet-base-v2"),
-            "embedding_device": similarity_checker.device.type
+            "using_similarity_checker": False
         }
     )
     

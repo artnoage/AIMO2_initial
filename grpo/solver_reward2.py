@@ -17,23 +17,19 @@ from utils.solution_utils import (
 )
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
-from grpo.terms import Glimpses_of_reasoning
 
 class SolverReward:
     """Reward class for solution evaluation with detailed tracking"""
     
     __name__ = "solver_reward"
     
-    def __init__(self, config: RewardConfig, similarity_checker=None):
+    def __init__(self, config: RewardConfig):
         self.config = config
         self.stats = RewardStats(config)
         self.logger = self._setup_logger()
         
         # Numerical tolerance for grouping similar answers
         self.answer_grouping_tolerance = 1e-2
-        
-        # Store similarity checker if provided
-        self.similarity_checker = similarity_checker
         
         # Initialize relevant stats for tracking
         self.relevant_stats = {
@@ -118,17 +114,8 @@ class SolverReward:
 
             self.logger.info(f"Processing completion {group_idx+1}/{len(group_completions)} in group")
             
-            # Check for glimpses of reasoning in thinking section
+            # Extract thinking section
             thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
-            has_glimpses = False
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                # Check if any of the glimpses of reasoning are in the thinking content
-                for glimpse in Glimpses_of_reasoning:
-                    if glimpse.lower() in thinking_content.lower():
-                        has_glimpses = True
-                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
-                        break
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
@@ -193,10 +180,6 @@ class SolverReward:
             if is_correct:
                 base_reward = self.config.base_reward
                 
-                # Apply bonus for glimpses of reasoning
-                if has_glimpses:
-                    base_reward *= 3
-                    self.logger.info(f"Applied 3x bonus for glimpses of reasoning")
                 
                 # If answer is correct but model thinks it's incorrect, subtract 1 point
                 if thinks_incorrect:
@@ -268,9 +251,6 @@ class SolverReward:
                     
                 all_results.append(abs(comp_numeric - ans_numeric) <= self.config.numeric_tolerance)
             
-            # Group information is available but similarity reward is not used
-            if len(group_completions) > 1:
-                self.logger.info(f"Group information available ({len(group_completions)} completions) but similarity reward disabled")
                 
             # Update group-specific statistics
             if is_correct:
@@ -278,9 +258,6 @@ class SolverReward:
             else:
                 self.stats.group_stats['incorrect_answers'] = self.stats.group_stats.get('incorrect_answers', 0) + 1
                 
-            # Group information is available but not used for similarity rewards
-            if len(group_completions) > 1:
-                self.logger.info(f"Group has {len(group_completions)} completions, but similarity reward is disabled")
             
             return reward
             
