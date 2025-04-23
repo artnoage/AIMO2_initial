@@ -1,13 +1,11 @@
 import re
 import asyncio
-import torch
 import logging
 from datetime import datetime
 from pathlib import Path
 import os, sys
 from collections import defaultdict
-from typing import List, Dict, Tuple, Optional, Any, Union
-from abc import ABC, abstractmethod
+from typing import List, Dict, Tuple, Optional, Union
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
@@ -41,7 +39,23 @@ class SolverReward:
                 'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length',
                 'batch_plurality_correct', 'batch_plurality_percentage', 'batch_total_answers',
                 'batch_correct_answers', 'batch_correct_rate'
+            ],
+            'reflection_stats': [
+                'total_reflections', 'correct_self_assessments', 'incorrect_self_assessments',
+                'self_assessment_accuracy'
             ]
+        }
+        
+        # Initialize reflection statistics
+        self.reflection_stats = {
+            'total_reflections': 0,
+            'correct_self_assessments': 0,  # Model correctly assessed its answer (right or wrong)
+            'incorrect_self_assessments': 0,  # Model incorrectly assessed its answer
+            'self_assessment_accuracy': 0.0,  # Percentage of correct assessments
+            'correct_answers_assessed_correct': 0,  # Correct answers that model thought were correct
+            'correct_answers_assessed_incorrect': 0,  # Correct answers that model thought were incorrect
+            'incorrect_answers_assessed_correct': 0,  # Incorrect answers that model thought were correct
+            'incorrect_answers_assessed_incorrect': 0,  # Incorrect answers that model thought were incorrect
         }
         
     def _setup_logger(self) -> logging.Logger:
@@ -174,8 +188,14 @@ class SolverReward:
             thinks_correct = "answer is correct" in reflection_content.lower()
             thinks_incorrect = "answer may not be correct" in reflection_content.lower() or "answer is not correct" in reflection_content.lower()
             
+            # Update reflection statistics
+            self.reflection_stats['total_reflections'] += 1
+            
             # Initialize reflection reward
             reflection_reward = 0.0
+            
+            # Log the reflection assessment
+            self.logger.info(f"Reflection assessment - Answer is actually {is_correct}, model thinks {'correct' if thinks_correct else 'incorrect' if thinks_incorrect else 'unclear'}")
             
             if is_correct:
                 base_reward = self.config.base_reward
@@ -186,6 +206,14 @@ class SolverReward:
                     reflection_reward = -1.0
                     self.logger.info(f"Answer is correct but model thinks it's incorrect: {reflection_reward:.1f}")
                     self.stats.reward_components['incorrect_reflections'] = self.stats.reward_components.get('incorrect_reflections', 0) + 1
+                    self.reflection_stats['incorrect_self_assessments'] += 1
+                    self.reflection_stats['correct_answers_assessed_incorrect'] += 1
+                elif thinks_correct:
+                    self.logger.info(f"Answer is correct and model correctly identified it")
+                    self.reflection_stats['correct_self_assessments'] += 1
+                    self.reflection_stats['correct_answers_assessed_correct'] += 1
+                else:
+                    self.logger.info(f"Answer is correct but model's assessment is unclear")
                 
                 reward += base_reward + reflection_reward
                 self.logger.info(f"Applied base reward: +{base_reward:.3f}, reflection reward: {reflection_reward:.1f}")
@@ -200,7 +228,15 @@ class SolverReward:
                     reflection_reward = 1.0
                     self.logger.info(f"Answer is incorrect and model correctly identifies it: +{reflection_reward:.1f}")
                     self.stats.reward_components['correct_reflections'] = self.stats.reward_components.get('correct_reflections', 0) + 1
+                    self.reflection_stats['correct_self_assessments'] += 1
+                    self.reflection_stats['incorrect_answers_assessed_incorrect'] += 1
                     reward += reflection_reward
+                elif thinks_correct:
+                    self.logger.info(f"Answer is incorrect but model thinks it's correct")
+                    self.reflection_stats['incorrect_self_assessments'] += 1
+                    self.reflection_stats['incorrect_answers_assessed_correct'] += 1
+                else:
+                    self.logger.info(f"Answer is incorrect and model's assessment is unclear")
                 
             # Ensure lists are long enough for this batch index
             self._ensure_batch_lists_length(batch_index)
@@ -234,6 +270,15 @@ class SolverReward:
             total_samples = self.stats.reward_components.get('correct_answers', 0) + self.stats.reward_components.get('incorrect_answers', 0)
             self.stats.reward_components['average_reward'] = \
                 self.stats.reward_components.get('total_rewards', 0.0) / max(1, total_samples)
+                
+            # Update reflection accuracy statistics
+            total_assessments = self.reflection_stats['correct_self_assessments'] + self.reflection_stats['incorrect_self_assessments']
+            if total_assessments > 0:
+                self.reflection_stats['self_assessment_accuracy'] = self.reflection_stats['correct_self_assessments'] / total_assessments
+            
+            # Log reflection statistics
+            self.logger.info(f"Reflection stats - Accuracy: {self.reflection_stats['self_assessment_accuracy']:.2%}, "
+                            f"Correct assessments: {self.reflection_stats['correct_self_assessments']}/{total_assessments}")
             
             # Calculate correctness for all completions in group
             all_results = []
@@ -410,6 +455,15 @@ class SolverReward:
         # Print reward-specific statistics summary every batch
         self.logger.info("\nReward Statistics Summary:")
         self.logger.info(self.stats.get_summary(getattr(self, 'relevant_stats', None)))
+        
+        # Print reflection statistics
+        self.logger.info("\nReflection Statistics:")
+        self.logger.info(f"Total reflections: {self.reflection_stats['total_reflections']}")
+        self.logger.info(f"Self-assessment accuracy: {self.reflection_stats['self_assessment_accuracy']:.2%}")
+        self.logger.info(f"Correct answers assessed correctly: {self.reflection_stats['correct_answers_assessed_correct']}")
+        self.logger.info(f"Correct answers assessed incorrectly: {self.reflection_stats['correct_answers_assessed_incorrect']}")
+        self.logger.info(f"Incorrect answers assessed correctly: {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
+        self.logger.info(f"Incorrect answers assessed incorrectly: {self.reflection_stats['incorrect_answers_assessed_correct']}")
         
         return rewards
         

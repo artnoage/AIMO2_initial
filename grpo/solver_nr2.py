@@ -86,11 +86,21 @@ class LoggingCallback(TrainerCallback):
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0),
                 'correct_reflections': self.reward_func.stats.reward_components.get('correct_reflections', 0),
                 'incorrect_reflections': self.reward_func.stats.reward_components.get('incorrect_reflections', 0),
-                'verified_solutions': self.reward_func.stats.group_stats.get('verified_solutions', 0),
                 'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0),
-                'correct_to_incorrect_ratio': self.reward_func.stats.group_stats.get('correct_to_incorrect_ratio', 0.0),
-                'correct_to_total_ratio': self.reward_func.stats.group_stats.get('correct_to_total_ratio', 0.0)
             }
+            
+            # Add reflection statistics to wandb
+            if hasattr(self.reward_func, 'reflection_stats'):
+                wandb_stats.update({
+                    'reflection_accuracy': self.reward_func.reflection_stats.get('self_assessment_accuracy', 0.0),
+                    'total_reflections': self.reward_func.reflection_stats.get('total_reflections', 0),
+                    'correct_self_assessments': self.reward_func.reflection_stats.get('correct_self_assessments', 0),
+                    'incorrect_self_assessments': self.reward_func.reflection_stats.get('incorrect_self_assessments', 0),
+                    'correct_answers_assessed_correct': self.reward_func.reflection_stats.get('correct_answers_assessed_correct', 0),
+                    'correct_answers_assessed_incorrect': self.reward_func.reflection_stats.get('correct_answers_assessed_incorrect', 0),
+                    'incorrect_answers_assessed_correct': self.reward_func.reflection_stats.get('incorrect_answers_assessed_correct', 0),
+                    'incorrect_answers_assessed_incorrect': self.reward_func.reflection_stats.get('incorrect_answers_assessed_incorrect', 0),
+                })
             
             # Add plurality metrics to wandb logs
             wandb_stats.update({
@@ -138,6 +148,17 @@ class LoggingCallback(TrainerCallback):
                     f"Overall rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}, " +
                     f"Batch correct rate: {latest_batch.get('correct_answers', 0)}/{latest_batch.get('total_answers', 0)}"
                 )
+                
+                # Log reflection statistics
+                if hasattr(self.reward_func, 'reflection_stats'):
+                    reflection_stats = self.reward_func.reflection_stats
+                    self.logger.info(
+                        f"Reflection stats: Accuracy: {reflection_stats.get('self_assessment_accuracy', 0.0):.2%}, " +
+                        f"Correct assessments: {reflection_stats.get('correct_self_assessments', 0)}/" +
+                        f"{reflection_stats.get('total_reflections', 0)}, " +
+                        f"Correct answers assessed correctly: {reflection_stats.get('correct_answers_assessed_correct', 0)}, " +
+                        f"Incorrect answers assessed correctly: {reflection_stats.get('incorrect_answers_assessed_incorrect', 0)}"
+                    )
                 
                 # Log verification stats if available
                 if verification_stats and verification_stats.get('total_verifications', 0) > 0:
