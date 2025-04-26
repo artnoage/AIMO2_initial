@@ -9,15 +9,16 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
+
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+
 from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
-from grpo.solver_rewards import SolutionReward
-from utils.similarity_checker import SolutionSimilarityChecker
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
+from grpo.solver_reward2 import SolverReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -83,11 +84,23 @@ class LoggingCallback(TrainerCallback):
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0),
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0),
-                'verified_solutions': self.reward_func.stats.group_stats.get('verified_solutions', 0),
+                'correct_reflections': self.reward_func.stats.reward_components.get('correct_reflections', 0),
+                'incorrect_reflections': self.reward_func.stats.reward_components.get('incorrect_reflections', 0),
                 'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0),
-                'correct_to_incorrect_ratio': self.reward_func.stats.group_stats.get('correct_to_incorrect_ratio', 0.0),
-                'correct_to_total_ratio': self.reward_func.stats.group_stats.get('correct_to_total_ratio', 0.0)
             }
+            
+            # Add reflection statistics to wandb
+            if hasattr(self.reward_func, 'reflection_stats'):
+                wandb_stats.update({
+                    'reflection_accuracy': self.reward_func.reflection_stats.get('self_assessment_accuracy', 0.0),
+                    'total_reflections': self.reward_func.reflection_stats.get('total_reflections', 0),
+                    'correct_self_assessments': self.reward_func.reflection_stats.get('correct_self_assessments', 0),
+                    'incorrect_self_assessments': self.reward_func.reflection_stats.get('incorrect_self_assessments', 0),
+                    'correct_answers_assessed_correct': self.reward_func.reflection_stats.get('correct_answers_assessed_correct', 0),
+                    'correct_answers_assessed_incorrect': self.reward_func.reflection_stats.get('correct_answers_assessed_incorrect', 0),
+                    'incorrect_answers_assessed_correct': self.reward_func.reflection_stats.get('incorrect_answers_assessed_correct', 0),
+                    'incorrect_answers_assessed_incorrect': self.reward_func.reflection_stats.get('incorrect_answers_assessed_incorrect', 0),
+                })
             
             # Add plurality metrics to wandb logs
             wandb_stats.update({
@@ -136,6 +149,17 @@ class LoggingCallback(TrainerCallback):
                     f"Batch correct rate: {latest_batch.get('correct_answers', 0)}/{latest_batch.get('total_answers', 0)}"
                 )
                 
+                # Log reflection statistics
+                if hasattr(self.reward_func, 'reflection_stats'):
+                    reflection_stats = self.reward_func.reflection_stats
+                    self.logger.info(
+                        f"Reflection stats: Accuracy: {reflection_stats.get('self_assessment_accuracy', 0.0):.2%}, " +
+                        f"Correct assessments: {reflection_stats.get('correct_self_assessments', 0)}/" +
+                        f"{reflection_stats.get('total_reflections', 0)}, " +
+                        f"Correct answers assessed correctly: {reflection_stats.get('correct_answers_assessed_correct', 0)}, " +
+                        f"Incorrect answers assessed correctly: {reflection_stats.get('incorrect_answers_assessed_incorrect', 0)}"
+                    )
+                
                 # Log verification stats if available
                 if verification_stats and verification_stats.get('total_verifications', 0) > 0:
                     total_verifs = verification_stats.get('total_verifications', 0)
@@ -158,8 +182,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "reward_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
+    model_type = "self_correct_7b"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BSR"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -173,18 +197,10 @@ def main():
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
-    # Initialize similarity checker
-    similarity_checker = SolutionSimilarityChecker(reward_config)
-    logger.info("\nInitialized SolutionSimilarityChecker:")
-    logger.info(f"Using device: {similarity_checker.device}")
-    logger.info(f"Batch size: {similarity_checker.batch_size}")
-    
-    # Initialize reward function from experimental rewards with similarity checker
-    reward_func = SolutionReward(reward_config, similarity_checker=similarity_checker)
-    logger.info("\nInitialized SolutionReward from experimental rewards:")
+    # Initialize reward function from solver_reward2
+    reward_func = SolverReward(reward_config)
+    logger.info("\nInitialized SolverReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
-    logger.info(f"Verification reward value: {reward_config.verification_reward}")
-    logger.info(f"Using similarity checker: {reward_func.similarity_checker is not None}")
     
     # Initialize wandb
     wandb.init(
@@ -195,13 +211,10 @@ def main():
             "dataset": dataset_name,
             "base_reward": reward_config.base_reward,
             "validation_reward": 0.2,  # Fixed value in the code
-            "verification_reward": reward_config.verification_reward,
+            "reflection_reward": 1.0,  # Reward for correct reflection
             "answer_grouping_tolerance": reward_func.answer_grouping_tolerance,
             "tracking_plurality_metrics": True,
-            "using_verification_agent": True,
-            "using_similarity_checker": True,
-            "embedding_model": getattr(reward_config, 'embedding_model', "sentence-transformers/all-mpnet-base-v2"),
-            "embedding_device": similarity_checker.device.type
+            "using_similarity_checker": False
         }
     )
     
@@ -212,7 +225,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.77,
+        gpu_memory_utilization=0.6,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -233,7 +246,7 @@ def main():
     def get_questions(split="train") -> Dataset:
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=999)
@@ -248,6 +261,7 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
+        torch_empty_cache_steps=5,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -258,9 +272,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
-        gradient_accumulation_steps=1,
-        num_generations=6,
+        per_device_train_batch_size=10,
+        gradient_accumulation_steps=32,
+        num_generations=10,
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,

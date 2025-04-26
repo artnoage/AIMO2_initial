@@ -166,7 +166,7 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "prompt_1"
+    model_type = "64"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     
@@ -246,7 +246,8 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        learning_rate=2e-5,
+         torch_empty_cache_steps=10,
+        learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -262,7 +263,7 @@ def main():
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=1,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

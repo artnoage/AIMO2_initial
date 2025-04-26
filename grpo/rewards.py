@@ -542,14 +542,6 @@ class SolutionReward(BaseReward):
             has_glimpses = False
             if thinking_match:
                 thinking_content = thinking_match.group(1)
-                # Check if any of the glimpses of reasoning are in the thinking content
-                from grpo.terms import Glimpses_of_reasoning
-                for glimpse in Glimpses_of_reasoning:
-                    if glimpse.lower() in thinking_content.lower():
-                        has_glimpses = True
-                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
-                        break
-            
             
             # Extract and validate the answer
             model_answer = extract_answer_from_solution(completion)
@@ -778,15 +770,6 @@ class ProgrammingReward(BaseReward):
             # Check for glimpses of reasoning in thinking section
             thinking_match = re.search(r'<thinking>(.*?)</thinking>', completion, re.DOTALL)
             has_glimpses = False
-            if thinking_match:
-                thinking_content = thinking_match.group(1)
-                # Check if any of the glimpses of reasoning are in the thinking content
-                from grpo.terms import Glimpses_of_reasoning
-                for glimpse in Glimpses_of_reasoning:
-                    if glimpse.lower() in thinking_content.lower():
-                        has_glimpses = True
-                        self.logger.info(f"Found glimpse of reasoning: '{glimpse}'")
-                        break
             
             # Extract code from the completion
             # First check if response section exists

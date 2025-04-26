@@ -9,16 +9,14 @@ from unsloth import FastLanguageModel, PatchFastRL
 PatchFastRL("GRPO", FastLanguageModel)
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
-
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
 from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
-from grpo.solver_reward2 import SolverReward
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from rewards import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -84,23 +82,11 @@ class LoggingCallback(TrainerCallback):
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_answers': self.reward_func.stats.reward_components.get('correct_answers', 0),
                 'incorrect_answers': self.reward_func.stats.reward_components.get('incorrect_answers', 0),
-                'correct_reflections': self.reward_func.stats.reward_components.get('correct_reflections', 0),
-                'incorrect_reflections': self.reward_func.stats.reward_components.get('incorrect_reflections', 0),
+                'verified_solutions': self.reward_func.stats.group_stats.get('verified_solutions', 0),
                 'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0),
+                'correct_to_incorrect_ratio': self.reward_func.stats.group_stats.get('correct_to_incorrect_ratio', 0.0),
+                'correct_to_total_ratio': self.reward_func.stats.group_stats.get('correct_to_total_ratio', 0.0)
             }
-            
-            # Add reflection statistics to wandb
-            if hasattr(self.reward_func, 'reflection_stats'):
-                wandb_stats.update({
-                    'reflection_accuracy': self.reward_func.reflection_stats.get('self_assessment_accuracy', 0.0),
-                    'total_reflections': self.reward_func.reflection_stats.get('total_reflections', 0),
-                    'correct_self_assessments': self.reward_func.reflection_stats.get('correct_self_assessments', 0),
-                    'incorrect_self_assessments': self.reward_func.reflection_stats.get('incorrect_self_assessments', 0),
-                    'correct_answers_assessed_correct': self.reward_func.reflection_stats.get('correct_answers_assessed_correct', 0),
-                    'correct_answers_assessed_incorrect': self.reward_func.reflection_stats.get('correct_answers_assessed_incorrect', 0),
-                    'incorrect_answers_assessed_correct': self.reward_func.reflection_stats.get('incorrect_answers_assessed_correct', 0),
-                    'incorrect_answers_assessed_incorrect': self.reward_func.reflection_stats.get('incorrect_answers_assessed_incorrect', 0),
-                })
             
             # Add plurality metrics to wandb logs
             wandb_stats.update({
@@ -139,6 +125,15 @@ class LoggingCallback(TrainerCallback):
                         'answer_grouping_tolerance': self.reward_func.answer_grouping_tolerance
                     })
             
+            # Detailed stats for local logging only
+            local_stats = {
+                'reward_components': {
+                    'base_rewards': self.reward_func.stats.reward_components.get('base_rewards', 0) - getattr(self, '_last_base_rewards', 0),
+                    'validation_rewards': self.reward_func.stats.reward_components.get('validation_rewards', 0) - getattr(self, '_last_validation_rewards', 0),
+                    'verification_rewards': self.reward_func.stats.reward_components.get('verification_rewards', 0) - getattr(self, '_last_verification_rewards', 0)
+                }
+            }
+            
             # Log to console/file
             if latest_batch:
                 self.logger.info(
@@ -148,17 +143,6 @@ class LoggingCallback(TrainerCallback):
                     f"Overall rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}, " +
                     f"Batch correct rate: {latest_batch.get('correct_answers', 0)}/{latest_batch.get('total_answers', 0)}"
                 )
-                
-                # Log reflection statistics
-                if hasattr(self.reward_func, 'reflection_stats'):
-                    reflection_stats = self.reward_func.reflection_stats
-                    self.logger.info(
-                        f"Reflection stats: Accuracy: {reflection_stats.get('self_assessment_accuracy', 0.0):.2%}, " +
-                        f"Correct assessments: {reflection_stats.get('correct_self_assessments', 0)}/" +
-                        f"{reflection_stats.get('total_reflections', 0)}, " +
-                        f"Correct answers assessed correctly: {reflection_stats.get('correct_answers_assessed_correct', 0)}, " +
-                        f"Incorrect answers assessed correctly: {reflection_stats.get('incorrect_answers_assessed_incorrect', 0)}"
-                    )
                 
                 # Log verification stats if available
                 if verification_stats and verification_stats.get('total_verifications', 0) > 0:
@@ -182,8 +166,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "reward_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14BSR"
+    model_type = "128"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -197,10 +181,11 @@ def main():
     output_dir = f"train_results/{reward_config.model_type}/{timestamp}"
     wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
-    # Initialize reward function from solver_reward2
-    reward_func = SolverReward(reward_config)
-    logger.info("\nInitialized SolverReward:")
+    # Initialize reward function from experimental rewards
+    reward_func = SolutionReward(reward_config)
+    logger.info("\nInitialized SolutionReward from experimental rewards:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
+    logger.info(f"Verification reward value: {reward_config.verification_reward}")
     
     # Initialize wandb
     wandb.init(
@@ -211,10 +196,10 @@ def main():
             "dataset": dataset_name,
             "base_reward": reward_config.base_reward,
             "validation_reward": 0.2,  # Fixed value in the code
-            "reflection_reward": 1.0,  # Reward for correct reflection
+            "verification_reward": reward_config.verification_reward,
             "answer_grouping_tolerance": reward_func.answer_grouping_tolerance,
             "tracking_plurality_metrics": True,
-            "using_similarity_checker": False
+            "using_verification_agent": True
         }
     )
     
@@ -226,15 +211,15 @@ def main():
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
         gpu_memory_utilization=0.77,
-        max_lora_rank=64)
+        max_lora_rank=32)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=32,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -246,7 +231,7 @@ def main():
     def get_questions(split="train") -> Dataset:
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=999)
@@ -261,8 +246,8 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=5,
-        learning_rate=3e-6,
+         torch_empty_cache_steps=10,
+        learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -272,13 +257,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
-        gradient_accumulation_steps=32,
-        num_generations=6,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=128,
+        num_generations=5,
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=1,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
