@@ -465,14 +465,13 @@ class SolverReward:
         self.logger.info(f"Incorrect answers assessed correctly: {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
         self.logger.info(f"Incorrect answers assessed incorrectly: {self.reflection_stats['incorrect_answers_assessed_correct']}")
         try:
+            # Log reflection metrics with proper classification terminology
             wandb.log({
                 "reflection_accuracy": self.reflection_stats.get("self_assessment_accuracy", 0.0),
-                "correct_self_assessments": self.reflection_stats.get("correct_self_assessments", 0),
-                "incorrect_self_assessments": self.reflection_stats.get("incorrect_self_assessments", 0),
-                "correct_answers_assessed_correct": self.reflection_stats.get("correct_answers_assessed_correct", 0),
-                "correct_answers_assessed_incorrect": self.reflection_stats.get("correct_answers_assessed_incorrect", 0),
-                "incorrect_answers_assessed_correct": self.reflection_stats.get("incorrect_answers_assessed_correct", 0),
-                "incorrect_answers_assessed_incorrect": self.reflection_stats.get("incorrect_answers_assessed_incorrect", 0),
+                "true_positives": self.reflection_stats.get("correct_answers_assessed_correct", 0),  # Correct answer identified as correct
+                "false_negatives": self.reflection_stats.get("correct_answers_assessed_incorrect", 0),  # Correct answer identified as incorrect
+                "false_positives": self.reflection_stats.get("incorrect_answers_assessed_correct", 0),  # Incorrect answer identified as correct
+                "true_negatives": self.reflection_stats.get("incorrect_answers_assessed_incorrect", 0),  # Incorrect answer identified as incorrect
                 "total_reflections": self.reflection_stats.get("total_reflections", 0),
             })
         except Exception as e:
