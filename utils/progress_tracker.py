@@ -131,12 +131,16 @@ class ProgressTracker:
             if r.get('is_most_common_correct', False):
                 # For traditional benchmark (backward compatibility)
                 initial_most_common_correct += 1
-                final_most_common_correct += 1
+                # Only use this for final if no explicit filtered_is_most_common_correct field
+                if 'filtered_is_most_common_correct' not in r:
+                    final_most_common_correct += 1
             else:
                 # For benchmarks with separate initial and final majority
-                if r.get('initial_majority_correct', False):
+                if r.get('initial_is_most_common_correct', False):
                     initial_most_common_correct += 1
-                if r.get('final_majority_correct', False):
+                if r.get('filtered_is_most_common_correct', False):
+                    final_most_common_correct += 1
+                elif r.get('final_majority_correct', False):
                     final_most_common_correct += 1
                 # For hybrid benchmark
                 if r.get('most_common_correct', False):
@@ -167,7 +171,17 @@ class ProgressTracker:
             for count in problem_correct_counts:
                 if count > 0 and count > valid_avg:
                     initial_above_avg += 1
-                    final_above_avg += 1  # For backward compatibility if no separate final counts
+            
+            # For final counts, use separate tracking if available
+            for r in entries:
+                # Check if this entry has filtered_correct_solutions field
+                if 'filtered_correct_solutions' in r and r.get('filtered_correct_solutions', 0) > 0:
+                    if r.get('filtered_correct_solutions', 0) > valid_avg:
+                        final_above_avg += 1
+                # Fall back to initial counts if no filtered data
+                elif not any('filtered_correct_solutions' in entry for entry in entries):
+                    if r.get('correct_solutions', 0) > 0 and r.get('correct_solutions', 0) > valid_avg:
+                        final_above_avg += 1
         else:
             # If no problems have correct solutions, none are above average
             initial_above_avg = 0
