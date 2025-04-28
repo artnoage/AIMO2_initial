@@ -18,7 +18,7 @@ python auxilary/hf_loader.py --type model --load down --path models/14B --repo_n
 python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-of 1 --split train[:1000] 
 && python benchmark.py --dataset Metaskepsis/Numina_medium --main-temp 0 --best-of 1 --split train[:1000] 
 && python benchmark.py --dataset Metaskepsis/custom100bench --main-temp 0 --best-of 1 
-&& python benchmark.py --dataset Metaskepsis/custom219 --main-temp 0 --best-of 1 
+&& python benchmarks/reflective_benchmark.py --dataset Metaskepsis/validation_set_mini --main-temp 0.7 --best-of 8 
 && python benchmark.py --dataset AI-MO/aimo-validation-aime --main-temp 0 --best-of 1 
 
 yentinglin/aime_2025

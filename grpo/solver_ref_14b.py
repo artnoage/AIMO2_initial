@@ -56,7 +56,7 @@ class LoggingCallback(TrainerCallback):
         
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
-        
+        print(f"LOGS: {logs}")
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
             # Calculate new examples in this batch
             current_total_examples = self.reward_func.stats.total_examples
@@ -179,11 +179,12 @@ class LoggingCallback(TrainerCallback):
             
             # Update logs with our metrics
             logs.update(wandb_stats)
+            wandb.log(wandb_stats, step=state.global_step)
 
 def main():
     # Configuration
-    model_type = "reward_2"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14BSR"
+    model_type = "self_reflect_14"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14AA"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -221,20 +222,20 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=4400,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
         gpu_memory_utilization=0.77,
-        max_lora_rank=64)
+        max_lora_rank=32)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,
+        r=32,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=64,
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
         use_gradient_checkpointing="unsloth",
@@ -261,7 +262,7 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        torch_empty_cache_steps=5,
+        torch_empty_cache_steps=1,
         learning_rate=3e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -272,13 +273,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=6,
-        gradient_accumulation_steps=32,
-        num_generations=6,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=8,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=3200,
+        max_completion_length=3600,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=20,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,

@@ -163,11 +163,12 @@ class LoggingCallback(TrainerCallback):
             
             # Update logs with our metrics
             logs.update(wandb_stats)
+            wandb.log(wandb_stats, step=state.global_step)
 
 def main():
     # Configuration
     model_type = "128"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14B"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14A"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -206,7 +207,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=4200,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -246,7 +247,7 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-         torch_empty_cache_steps=10,
+         torch_empty_cache_steps=1,
         learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
@@ -261,7 +262,7 @@ def main():
         gradient_accumulation_steps=128,
         num_generations=5,
         max_prompt_length=800,
-        max_completion_length=3200,
+        max_completion_length=3400,
         num_train_epochs=1,
         save_steps=1,
         max_grad_norm=0.1,

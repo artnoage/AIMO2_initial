@@ -56,7 +56,7 @@ class LoggingCallback(TrainerCallback):
         
     def on_log(self, args, state, control, logs=None, **kwargs):
         self.step += 1
-        
+        print(f"LOGS: {logs}")
         if logs and 'rewards/0' in logs and hasattr(self.reward_func, 'stats'):
             # Calculate new examples in this batch
             current_total_examples = self.reward_func.stats.total_examples
@@ -179,6 +179,7 @@ class LoggingCallback(TrainerCallback):
             
             # Update logs with our metrics
             logs.update(wandb_stats)
+            wandb.log(wandb_stats, step=state.global_step)
 
 def main():
     # Configuration
@@ -262,7 +263,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=5,
-        learning_rate=3e-6,
+        learning_rate=8e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -278,7 +279,7 @@ def main():
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=30,
         max_grad_norm=0.1,
         report_to="wandb",
         output_dir=output_dir,
