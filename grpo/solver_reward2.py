@@ -6,7 +6,7 @@ from pathlib import Path
 import os, sys
 from collections import defaultdict
 from typing import List, Dict, Tuple, Optional, Union
-
+import wandb
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
@@ -203,7 +203,7 @@ class SolverReward:
                 
                 # If answer is correct but model thinks it's incorrect, subtract 1 point
                 if thinks_incorrect:
-                    reflection_reward = -1.0
+                    reflection_reward = -1.5
                     self.logger.info(f"Answer is correct but model thinks it's incorrect: {reflection_reward:.1f}")
                     self.stats.reward_components['incorrect_reflections'] = self.stats.reward_components.get('incorrect_reflections', 0) + 1
                     self.reflection_stats['incorrect_self_assessments'] += 1
@@ -464,7 +464,19 @@ class SolverReward:
         self.logger.info(f"Correct answers assessed incorrectly: {self.reflection_stats['correct_answers_assessed_incorrect']}")
         self.logger.info(f"Incorrect answers assessed correctly: {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
         self.logger.info(f"Incorrect answers assessed incorrectly: {self.reflection_stats['incorrect_answers_assessed_correct']}")
-        
+        try:
+            wandb.log({
+                "reflection_accuracy": self.reflection_stats.get("self_assessment_accuracy", 0.0),
+                "correct_self_assessments": self.reflection_stats.get("correct_self_assessments", 0),
+                "incorrect_self_assessments": self.reflection_stats.get("incorrect_self_assessments", 0),
+                "correct_answers_assessed_correct": self.reflection_stats.get("correct_answers_assessed_correct", 0),
+                "correct_answers_assessed_incorrect": self.reflection_stats.get("correct_answers_assessed_incorrect", 0),
+                "incorrect_answers_assessed_correct": self.reflection_stats.get("incorrect_answers_assessed_correct", 0),
+                "incorrect_answers_assessed_incorrect": self.reflection_stats.get("incorrect_answers_assessed_incorrect", 0),
+                "total_reflections": self.reflection_stats.get("total_reflections", 0),
+            })
+        except Exception as e:
+            self.logger.error(f"Failed to log to Wandb: {str(e)}")
         return rewards
         
     def _finalize_batch(self):
