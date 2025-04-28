@@ -211,10 +211,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 initial_most_common_answer = initial_most_common[0][0]
                 initial_majority_count = initial_most_common[0][1]
                 initial_majority_percentage = (initial_majority_count / len(initial_model_answers)) * 100
-                initial_is_most_common_correct = any(
-                    str(s['answer']) == initial_most_common_answer and s['is_correct'] 
-                    for s in all_solutions
-                )
+                
+                # Check if the most common answer is correct by comparing with the expected answer
+                numeric_verifier = NumericVerifier(tolerance=config.tolerance)
+                initial_is_most_common_correct = False
+                
+                # Try to convert both to numeric values for comparison
+                try:
+                    most_common_numeric = extract_numeric_answer(initial_most_common_answer)[0]
+                    correct_numeric = extract_numeric_answer(correct_answer)[0]
+                    
+                    if most_common_numeric is not None and correct_numeric is not None:
+                        # Use tolerance-based comparison for numeric answers
+                        initial_is_most_common_correct = abs(most_common_numeric - correct_numeric) <= config.tolerance
+                    else:
+                        # Fall back to string comparison for non-numeric answers
+                        initial_is_most_common_correct = initial_most_common_answer.strip() == str(correct_answer).strip()
+                except:
+                    # If conversion fails, use direct string comparison
+                    initial_is_most_common_correct = initial_most_common_answer.strip() == str(correct_answer).strip()
         
         # Calculate filtered majority vote (after filtering out self-assessed incorrect answers)
         filtered_model_answers = [s['answer'] for s in solutions if s['answer'] is not None]
@@ -230,10 +245,25 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                 filtered_most_common_answer = filtered_most_common[0][0]
                 filtered_majority_count = filtered_most_common[0][1]
                 filtered_majority_percentage = (filtered_majority_count / len(filtered_model_answers)) * 100
-                filtered_is_most_common_correct = any(
-                    str(s['answer']) == filtered_most_common_answer and s['is_correct'] 
-                    for s in solutions
-                )
+                
+                # Check if the most common answer is correct by comparing with the expected answer
+                numeric_verifier = NumericVerifier(tolerance=config.tolerance)
+                filtered_is_most_common_correct = False
+                
+                # Try to convert both to numeric values for comparison
+                try:
+                    most_common_numeric = extract_numeric_answer(filtered_most_common_answer)[0]
+                    correct_numeric = extract_numeric_answer(correct_answer)[0]
+                    
+                    if most_common_numeric is not None and correct_numeric is not None:
+                        # Use tolerance-based comparison for numeric answers
+                        filtered_is_most_common_correct = abs(most_common_numeric - correct_numeric) <= config.tolerance
+                    else:
+                        # Fall back to string comparison for non-numeric answers
+                        filtered_is_most_common_correct = filtered_most_common_answer.strip() == str(correct_answer).strip()
+                except:
+                    # If conversion fails, use direct string comparison
+                    filtered_is_most_common_correct = filtered_most_common_answer.strip() == str(correct_answer).strip()
         
         # Calculate thinking length statistics
         thinking_lengths = [get_thinking_length(s['solution']) for s in all_solutions]
@@ -361,9 +391,10 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'true_negatives': true_negatives,
             'self_assessment_accuracy': (correct_self_assessments/total_reflections)*100 if total_reflections else 0,
             
-            # For compatibility with ProgressTracker
+            # For compatibility with ProgressTracker - use separate fields for initial and filtered results
             'is_correct_list': [s['is_correct'] for s in all_solutions],  # Use initial list for compatibility
-            'is_most_common_correct': filtered_is_most_common_correct,  # Use filtered result for compatibility
+            'is_most_common_correct': initial_is_most_common_correct,  # Use initial result for compatibility
+            'filtered_is_most_common_correct': filtered_is_most_common_correct,  # Add filtered result separately
             'success_rate': (sum(1 for s in solutions if s['is_correct'])/len(solutions))*100 if solutions else 0,
             'total_solutions': len(all_solutions),
             'correct_solutions': sum(1 for s in all_solutions if s['is_correct']),
