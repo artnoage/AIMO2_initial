@@ -184,7 +184,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "self_correct_7b"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BSR"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BSR2"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first

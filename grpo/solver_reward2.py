@@ -458,23 +458,49 @@ class SolverReward:
         self.logger.info("\nReward Statistics Summary:")
         self.logger.info(self.stats.get_summary(getattr(self, 'relevant_stats', None)))
         
-        # Print reflection statistics with classification terminology
+        # Calculate reflection ratios
+        tp = self.reflection_stats.get("correct_answers_assessed_correct", 0)
+        fn = self.reflection_stats.get("correct_answers_assessed_incorrect", 0)
+        fp = self.reflection_stats.get("incorrect_answers_assessed_correct", 0)
+        tn = self.reflection_stats.get("incorrect_answers_assessed_incorrect", 0)
+        total_reflections = self.reflection_stats.get("total_reflections", 0)
+        
+        # Avoid division by zero
+        actual_positives = tp + fn
+        actual_negatives = fp + tn
+        predicted_positives = tp + fp
+        
+        tpr = tp / actual_positives if actual_positives > 0 else 0.0  # True Positive Rate (Recall/Sensitivity)
+        fnr = fn / actual_positives if actual_positives > 0 else 0.0  # False Negative Rate
+        fpr = fp / actual_negatives if actual_negatives > 0 else 0.0  # False Positive Rate
+        tnr = tn / actual_negatives if actual_negatives > 0 else 0.0  # True Negative Rate (Specificity)
+        ppv = tp / predicted_positives if predicted_positives > 0 else 0.0 # Positive Predictive Value (Precision)
+        accuracy = self.reflection_stats.get("self_assessment_accuracy", 0.0) # Already calculated
+
+        # Print reflection statistics with ratios
         self.logger.info("\nReflection Statistics:")
-        self.logger.info(f"Total reflections: {self.reflection_stats['total_reflections']}")
-        self.logger.info(f"Self-assessment accuracy: {self.reflection_stats['self_assessment_accuracy']:.2%}")
-        self.logger.info(f"True Positives (correct answers assessed as correct): {self.reflection_stats['correct_answers_assessed_correct']}")
-        self.logger.info(f"False Negatives (correct answers assessed as incorrect): {self.reflection_stats['correct_answers_assessed_incorrect']}")
-        self.logger.info(f"False Positives (incorrect answers assessed as correct): {self.reflection_stats['incorrect_answers_assessed_correct']}")
-        self.logger.info(f"True Negatives (incorrect answers assessed as incorrect): {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
+        self.logger.info(f"Total reflections: {total_reflections}")
+        self.logger.info(f"Self-assessment accuracy: {accuracy:.2%}")
+        self.logger.info(f"True Positive Rate (Recall): {tpr:.2%} ({tp}/{actual_positives})")
+        self.logger.info(f"False Negative Rate: {fnr:.2%} ({fn}/{actual_positives})")
+        self.logger.info(f"False Positive Rate: {fpr:.2%} ({fp}/{actual_negatives})")
+        self.logger.info(f"True Negative Rate (Specificity): {tnr:.2%} ({tn}/{actual_negatives})")
+        self.logger.info(f"Precision (PPV): {ppv:.2%} ({tp}/{predicted_positives})")
+        
         try:
-            # Log reflection metrics with proper classification terminology
+            # Log reflection metrics including ratios
             wandb.log({
-                "reflection_accuracy": self.reflection_stats.get("self_assessment_accuracy", 0.0),
-                "true_positives": self.reflection_stats.get("correct_answers_assessed_correct", 0),  # Correct answer identified as correct
-                "false_negatives": self.reflection_stats.get("correct_answers_assessed_incorrect", 0),  # Correct answer identified as incorrect
-                "false_positives": self.reflection_stats.get("incorrect_answers_assessed_correct", 0),  # Incorrect answer identified as correct
-                "true_negatives": self.reflection_stats.get("incorrect_answers_assessed_incorrect", 0),  # Incorrect answer identified as incorrect
-                "total_reflections": self.reflection_stats.get("total_reflections", 0),
+                "reflection_accuracy": accuracy,
+                "reflection_tpr": tpr,  # True Positive Rate (Recall)
+                "reflection_fnr": fnr,  # False Negative Rate
+                "reflection_fpr": fpr,  # False Positive Rate
+                "reflection_tnr": tnr,  # True Negative Rate (Specificity)
+                "reflection_precision": ppv, # Precision (PPV)
+                "reflection_tp_count": tp,
+                "reflection_fn_count": fn,
+                "reflection_fp_count": fp,
+                "reflection_tn_count": tn,
+                "total_reflections": total_reflections,
             })
         except Exception as e:
             self.logger.error(f"Failed to log to Wandb: {str(e)}")

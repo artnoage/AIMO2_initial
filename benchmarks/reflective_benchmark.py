@@ -263,12 +263,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'self_assessed_correct_list': [s['self_assessed_correct'] for s in solutions],
             'is_most_common_correct': is_most_common_correct,
             'success_rate': (correct_count/len(solutions))*100 if solutions else 0,
-            'total_solutions': len(solutions),
+            'total_solutions': len(solutions), # Solutions that passed the reflection filter
             'correct_solutions': correct_count,
             'incorrect_solutions': len(solutions) - correct_count,
-            'true_positives': true_positives,
-            'false_positives': false_positives,
-            'self_assessment_accuracy': (correct_self_assessments/total_reflections)*100 if total_reflections else 0,
+            # Add all reflection count fields for ProgressTracker compatibility
+            'correct_answers_assessed_correct': true_positives, # TP
+            'correct_answers_assessed_incorrect': false_negatives, # FN (will be 0 due to filtering)
+            'incorrect_answers_assessed_correct': false_positives, # FP
+            'incorrect_answers_assessed_incorrect': true_negatives, # TN (will be 0 due to filtering)
+            'total_reflections': total_reflections, # Count of solutions that passed the filter
+            'self_assessment_accuracy': (correct_self_assessments/total_reflections)*100 if total_reflections else 0, # Accuracy among filtered solutions
             'all_solutions_correct': all(s['is_correct'] for s in solutions) if solutions else False
         })
         

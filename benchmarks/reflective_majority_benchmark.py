@@ -386,10 +386,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             
             # Reflection statistics
             'true_positives': true_positives,
-            'false_positives': false_positives,
-            'false_negatives': false_negatives,
-            'true_negatives': true_negatives,
+            'false_positives': false_positives, # FP
+            'false_negatives': false_negatives, # FN
+            'true_negatives': true_negatives, # TN
             'self_assessment_accuracy': (correct_self_assessments/total_reflections)*100 if total_reflections else 0,
+            # Add renamed fields for ProgressTracker compatibility
+            'correct_answers_assessed_correct': true_positives, # TP
+            'correct_answers_assessed_incorrect': false_negatives, # FN
+            'incorrect_answers_assessed_correct': false_positives, # FP
+            'incorrect_answers_assessed_incorrect': true_negatives, # TN
+            'total_reflections': total_reflections, # Total solutions generated
             
             # For compatibility with ProgressTracker - use separate fields for initial and filtered results
             'is_correct_list': [s['is_correct'] for s in all_solutions],  # Use initial list for compatibility

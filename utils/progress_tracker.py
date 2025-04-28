@@ -430,7 +430,34 @@ class ProgressTracker:
             stats['main_most_common_correct_rate'] = (stats['main_most_common_correct_count'] / total) * 100 if total > 0 else 0
             stats['aux_most_common_correct_rate'] = (stats['aux_most_common_correct_count'] / total) * 100 if total > 0 else 0
             stats['combined_most_common_correct_rate'] = (stats['combined_most_common_correct_count'] / total) * 100 if total > 0 else 0
-            
+
+        # Reflection statistics (added)
+        reflection_entries = [r for r in entries if 'correct_answers_assessed_correct' in r] # Check for one key field
+        if reflection_entries:
+            tp = sum(r.get("correct_answers_assessed_correct", 0) for r in reflection_entries)
+            fn = sum(r.get("correct_answers_assessed_incorrect", 0) for r in reflection_entries)
+            fp = sum(r.get("incorrect_answers_assessed_correct", 0) for r in reflection_entries)
+            tn = sum(r.get("incorrect_answers_assessed_incorrect", 0) for r in reflection_entries)
+            total_reflections = tp + fn + fp + tn # Or sum(r.get("total_reflections", 0)) if available
+
+            # Avoid division by zero
+            actual_positives = tp + fn
+            actual_negatives = fp + tn
+            predicted_positives = tp + fp
+
+            stats['reflection_tp_count'] = tp
+            stats['reflection_fn_count'] = fn
+            stats['reflection_fp_count'] = fp
+            stats['reflection_tn_count'] = tn
+            stats['total_reflections'] = total_reflections
+
+            stats['reflection_tpr'] = tp / actual_positives if actual_positives > 0 else 0.0  # Recall
+            stats['reflection_fnr'] = fn / actual_positives if actual_positives > 0 else 0.0
+            stats['reflection_fpr'] = fp / actual_negatives if actual_negatives > 0 else 0.0
+            stats['reflection_tnr'] = tn / actual_negatives if actual_negatives > 0 else 0.0  # Specificity
+            stats['reflection_precision'] = tp / predicted_positives if predicted_positives > 0 else 0.0 # PPV
+            stats['reflection_accuracy'] = (tp + tn) / total_reflections if total_reflections > 0 else 0.0
+
         return stats
 
 
@@ -616,6 +643,19 @@ class ProgressTracker:
                 
             if 'response_extraction_rate' in batch_stats:
                 stats_str += f"- Response extraction rate: {batch_stats['response_extraction_rate']:.2f}\n"
+
+        # Add batch reflection statistics if present (Added)
+        if 'reflection_accuracy' in batch_stats:
+             stats_str += (
+                f"\nReflection Statistics (Batch):\n"
+                f"- Total reflections: {batch_stats.get('total_reflections', 0)}\n"
+                f"- Accuracy: {batch_stats['reflection_accuracy']:.2%}\n"
+                f"- Precision (PPV): {batch_stats['reflection_precision']:.2%} ({batch_stats.get('reflection_tp_count',0)}/{batch_stats.get('reflection_tp_count',0)+batch_stats.get('reflection_fp_count',0)})\n"
+                f"- Recall (TPR): {batch_stats['reflection_tpr']:.2%} ({batch_stats.get('reflection_tp_count',0)}/{batch_stats.get('reflection_tp_count',0)+batch_stats.get('reflection_fn_count',0)})\n"
+                f"- Specificity (TNR): {batch_stats['reflection_tnr']:.2%} ({batch_stats.get('reflection_tn_count',0)}/{batch_stats.get('reflection_tn_count',0)+batch_stats.get('reflection_fp_count',0)})\n"
+                f"- False Positive Rate (FPR): {batch_stats['reflection_fpr']:.2%}\n"
+                f"- False Negative Rate (FNR): {batch_stats['reflection_fnr']:.2%}\n"
+            )
             
         # Calculate accumulated statistics
         acc_stats = self._calculate_statistics([r for r in self.results if r.get('data_type') == 'statistics'])
@@ -754,7 +794,43 @@ class ProgressTracker:
                     f"- Judge decisions made: {acc_stats['judge_decisions']}\n"
                     f"- Overall judge accuracy: {acc_stats['avg_judge_accuracy']:.1f}%\n"
                 )
-        
+            
+            # Add accumulated step benchmark statistics if present
+            if 'wrong_steps_found' in acc_stats:
+                stats_str += (
+                    f"\nStep Benchmark Statistics:\n"
+                    f"- Total wrong steps identified: {acc_stats['wrong_steps_found']}\n"
+                )
+                if 'avg_wrong_step_position' in acc_stats:
+                    stats_str += f"- Average wrong step position: {acc_stats['avg_wrong_step_position']:.2f}\n"
+                if 'position_distribution' in acc_stats:
+                    stats_str += f"- Position distribution: {acc_stats['position_distribution']}\n"
+                if 'avg_completion_score' in acc_stats:
+                    stats_str += f"- Average completion score: {acc_stats['avg_completion_score']:.2f}\n"
+                if 'recovery_success_rate' in acc_stats:
+                    stats_str += f"- Average recovery success rate: {acc_stats['recovery_success_rate']:.2f}\n"
+                if 'unsalvageable_solutions' in acc_stats:
+                    stats_str += f"- Total unsalvageable solutions: {acc_stats['unsalvageable_solutions']}\n"
+                if 'unsalvageable_reasons' in acc_stats:
+                    stats_str += f"- Unsalvageable reasons: {acc_stats['unsalvageable_reasons']}\n"
+                if 'thinking_extraction_rate' in acc_stats:
+                    stats_str += f"- Average thinking extraction rate: {acc_stats['thinking_extraction_rate']:.2f}\n"
+                if 'response_extraction_rate' in acc_stats:
+                    stats_str += f"- Average response extraction rate: {acc_stats['response_extraction_rate']:.2f}\n"
+
+            # Add accumulated reflection statistics if present
+            if 'reflection_accuracy' in acc_stats:
+                 stats_str += (
+                    f"\nReflection Statistics:\n"
+                    f"- Total reflections: {acc_stats.get('total_reflections', 0)}\n"
+                    f"- Accuracy: {acc_stats['reflection_accuracy']:.2%}\n"
+                    f"- Precision (PPV): {acc_stats['reflection_precision']:.2%} ({acc_stats.get('reflection_tp_count',0)}/{acc_stats.get('reflection_tp_count',0)+acc_stats.get('reflection_fp_count',0)})\n"
+                    f"- Recall (TPR): {acc_stats['reflection_tpr']:.2%} ({acc_stats.get('reflection_tp_count',0)}/{acc_stats.get('reflection_tp_count',0)+acc_stats.get('reflection_fn_count',0)})\n"
+                    f"- Specificity (TNR): {acc_stats['reflection_tnr']:.2%} ({acc_stats.get('reflection_tn_count',0)}/{acc_stats.get('reflection_tn_count',0)+acc_stats.get('reflection_fp_count',0)})\n"
+                    f"- False Positive Rate (FPR): {acc_stats['reflection_fpr']:.2%}\n"
+                    f"- False Negative Rate (FNR): {acc_stats['reflection_fnr']:.2%}\n"
+                )
+
         print(stats_str)
         self._save_progress_stats(stats_str)
         
@@ -1002,6 +1078,19 @@ class ProgressTracker:
                 
             if 'response_extraction_rate' in final_stats:
                 stats_str += f"- Average response extraction rate: {final_stats['response_extraction_rate']:.2f}\n"
+
+        # Add reflection statistics if present
+        if 'reflection_accuracy' in final_stats:
+             stats_str += (
+                f"\nReflection Statistics:\n"
+                f"- Total reflections: {final_stats.get('total_reflections', 0)}\n"
+                f"- Accuracy: {final_stats['reflection_accuracy']:.2%}\n"
+                f"- Precision (PPV): {final_stats['reflection_precision']:.2%} ({final_stats.get('reflection_tp_count',0)}/{final_stats.get('reflection_tp_count',0)+final_stats.get('reflection_fp_count',0)})\n"
+                f"- Recall (TPR): {final_stats['reflection_tpr']:.2%} ({final_stats.get('reflection_tp_count',0)}/{final_stats.get('reflection_tp_count',0)+final_stats.get('reflection_fn_count',0)})\n"
+                f"- Specificity (TNR): {final_stats['reflection_tnr']:.2%} ({final_stats.get('reflection_tn_count',0)}/{final_stats.get('reflection_tn_count',0)+final_stats.get('reflection_fp_count',0)})\n"
+                f"- False Positive Rate (FPR): {final_stats['reflection_fpr']:.2%}\n"
+                f"- False Negative Rate (FNR): {final_stats['reflection_fnr']:.2%}\n"
+            )
 
         stats_str += f"\n- Total runtime: {total_duration.total_seconds():.1f}s"
 
