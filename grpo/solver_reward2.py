@@ -42,20 +42,22 @@ class SolverReward:
             ],
             'reflection_stats': [
                 'total_reflections', 'correct_self_assessments', 'incorrect_self_assessments',
-                'self_assessment_accuracy'
+                'self_assessment_accuracy', 'correct_answers_assessed_correct', 
+                'correct_answers_assessed_incorrect', 'incorrect_answers_assessed_correct',
+                'incorrect_answers_assessed_incorrect'
             ]
         }
         
-        # Initialize reflection statistics
+        # Initialize reflection statistics with classification terminology
         self.reflection_stats = {
             'total_reflections': 0,
             'correct_self_assessments': 0,  # Model correctly assessed its answer (right or wrong)
             'incorrect_self_assessments': 0,  # Model incorrectly assessed its answer
             'self_assessment_accuracy': 0.0,  # Percentage of correct assessments
-            'correct_answers_assessed_correct': 0,  # Correct answers that model thought were correct
-            'correct_answers_assessed_incorrect': 0,  # Correct answers that model thought were incorrect
-            'incorrect_answers_assessed_correct': 0,  # Incorrect answers that model thought were correct
-            'incorrect_answers_assessed_incorrect': 0,  # Incorrect answers that model thought were incorrect
+            'correct_answers_assessed_correct': 0,  # True Positives: Correct answers that model thought were correct
+            'correct_answers_assessed_incorrect': 0,  # False Negatives: Correct answers that model thought were incorrect
+            'incorrect_answers_assessed_correct': 0,  # False Positives: Incorrect answers that model thought were correct
+            'incorrect_answers_assessed_incorrect': 0,  # True Negatives: Incorrect answers that model thought were incorrect
         }
         
     def _setup_logger(self) -> logging.Logger:
@@ -200,7 +202,6 @@ class SolverReward:
             if is_correct:
                 base_reward = self.config.base_reward
                 
-                
                 # If answer is correct but model thinks it's incorrect, subtract 1 point
                 if thinks_incorrect:
                     reflection_reward = -1.5
@@ -210,6 +211,7 @@ class SolverReward:
                     self.reflection_stats['correct_answers_assessed_incorrect'] += 1
                 elif thinks_correct:
                     self.logger.info(f"Answer is correct and model correctly identified it")
+                    self.stats.reward_components['correct_reflections'] = self.stats.reward_components.get('correct_reflections', 0) + 1
                     self.reflection_stats['correct_self_assessments'] += 1
                     self.reflection_stats['correct_answers_assessed_correct'] += 1
                 else:
@@ -456,14 +458,14 @@ class SolverReward:
         self.logger.info("\nReward Statistics Summary:")
         self.logger.info(self.stats.get_summary(getattr(self, 'relevant_stats', None)))
         
-        # Print reflection statistics
+        # Print reflection statistics with classification terminology
         self.logger.info("\nReflection Statistics:")
         self.logger.info(f"Total reflections: {self.reflection_stats['total_reflections']}")
         self.logger.info(f"Self-assessment accuracy: {self.reflection_stats['self_assessment_accuracy']:.2%}")
-        self.logger.info(f"Correct answers assessed correctly: {self.reflection_stats['correct_answers_assessed_correct']}")
-        self.logger.info(f"Correct answers assessed incorrectly: {self.reflection_stats['correct_answers_assessed_incorrect']}")
-        self.logger.info(f"Incorrect answers assessed correctly: {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
-        self.logger.info(f"Incorrect answers assessed incorrectly: {self.reflection_stats['incorrect_answers_assessed_correct']}")
+        self.logger.info(f"True Positives (correct answers assessed as correct): {self.reflection_stats['correct_answers_assessed_correct']}")
+        self.logger.info(f"False Negatives (correct answers assessed as incorrect): {self.reflection_stats['correct_answers_assessed_incorrect']}")
+        self.logger.info(f"False Positives (incorrect answers assessed as correct): {self.reflection_stats['incorrect_answers_assessed_correct']}")
+        self.logger.info(f"True Negatives (incorrect answers assessed as incorrect): {self.reflection_stats['incorrect_answers_assessed_incorrect']}")
         try:
             # Log reflection metrics with proper classification terminology
             wandb.log({
