@@ -204,7 +204,7 @@ class SolverReward:
                 
                 # If answer is correct but model thinks it's incorrect, subtract 1 point
                 if thinks_incorrect:
-                    reflection_reward = -1.5
+                    reflection_reward = -1
                     self.logger.info(f"Answer is correct but model thinks it's incorrect: {reflection_reward:.1f}")
                     self.stats.reward_components['incorrect_reflections'] = self.stats.reward_components.get('incorrect_reflections', 0) + 1
                     self.reflection_stats['incorrect_self_assessments'] += 1

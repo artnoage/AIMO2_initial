@@ -184,7 +184,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "self_correct_7b"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BSR2"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BAA"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -263,7 +263,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=5,
-        learning_rate=8e-6,
+        learning_rate=6e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -273,9 +273,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
+        per_device_train_batch_size=11,
         gradient_accumulation_steps=32,
-        num_generations=10,
+        num_generations=11,
         max_prompt_length=800,
         max_completion_length=3200,
         num_train_epochs=1,

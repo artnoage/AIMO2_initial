@@ -91,8 +91,8 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "programming_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/S1"
-    dataset_name = "Metaskepsis/Olympiads_medium"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14AA"
+    dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -126,23 +126,23 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=7000,
+        max_seq_length=3000,
         fast_inference=True,
         load_in_4bit=False,
-        use_gradient_checkpointing=False,
-        gpu_memory_utilization=0.3,
-        max_lora_rank=128)
+        use_gradient_checkpointing="unsloth",
+        gpu_memory_utilization=0.75,
+        max_lora_rank=32)
     
     # Configure LoRA
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r=32,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                        "gate_proj", "up_proj", "down_proj"],
-        lora_alpha=128,
+        lora_alpha=32,
         lora_dropout=0,
         bias="none",
-        use_gradient_checkpointing=False,
+        use_gradient_checkpointing="unsloth",
         random_state=3407,
         use_rslora=False,
         loftq_config=None
@@ -179,11 +179,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=32,
-        num_generations=8,  # Fewer generations for programming tasks
-        max_prompt_length=1000,
-        max_completion_length=6000,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=8,
+        num_generations=5,  # Fewer generations for programming tasks
+        max_prompt_length=800,
+        max_completion_length=2200,
         num_train_epochs=1,
         save_steps=50,
         max_grad_norm=0.1,
