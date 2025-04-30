@@ -18,7 +18,7 @@ from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION
-from grpo.solver_reward2 import SolverReward
+from grpo.solver_ref_reward import SolverReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""

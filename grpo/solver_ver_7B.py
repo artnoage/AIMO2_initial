@@ -16,7 +16,7 @@ from config import RewardConfig
 from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
 from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
-from rewards import SolutionReward
+from solver_ver_rewards import SolutionReward
 
 def setup_logging(model_type: str) -> logging.Logger:
     """Setup logging configuration"""
@@ -167,8 +167,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "64"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14A"
+    model_type = "ver_7B"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BAA"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -211,7 +211,7 @@ def main():
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
-        gpu_memory_utilization=0.77,
+        gpu_memory_utilization=0.7,
         max_lora_rank=64)
     
     # Configure LoRA
@@ -248,7 +248,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=1e-5,
+        learning_rate=8e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -258,9 +258,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=5,
-        gradient_accumulation_steps=64,
-        num_generations=5,
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=32,
+        num_generations=8,
         max_prompt_length=800,
         max_completion_length=3400,
         num_train_epochs=1,

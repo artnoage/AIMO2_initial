@@ -18,9 +18,9 @@ class RewardConfig:
     boxed_replacement: str = r'\\boxed{?}'
     
     # Main model settings
-    main: str = "CODER"  # Main model to use for solving problems
+    main: str = "LOCAL_0"  # Main model to use for solving problems
     main_template: int = 1  # Template for main model
-    main_port: int = 8000  # Port for main model server
+    main_port: int = 8002  # Port for main model server
     main_temp: float = 0  # Temperature for main model generation
 
     # Auxiliary model settings

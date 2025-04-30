@@ -17,7 +17,7 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/7BA"
+    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/7BAA"
     LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/14A8"
     LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/14BR2"
     LOCAL_3= "/Home/stat/laschos/math/AIMO2_initial/models/14B_P2"
