@@ -182,14 +182,14 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         for i, (sol_correct, sol_answer) in enumerate(zip(programming_correctness, programming_answers)):
             logger.append(f"├─ Pair {i+1}: {'✓' if sol_correct else '✗'} (Answer: {sol_answer})")
             
-            # Show a preview of the engineer's thinking for this pair
+            # Show a preview of the engineer's think for this pair
             if i < len(engineer_analyses):
-                thinking_match = re.search(r'<thinking>(.*?)</thinking>', engineer_analyses[i], re.DOTALL)
-                if thinking_match:
-                    thinking_content = thinking_match.group(1).strip()
-                    # Show just the first line of thinking
-                    thinking_preview = thinking_content.split('\n')[0]
-                    logger.append(f"│  ├─ Engineer thinking: {thinking_preview}...")
+                think_match = re.search(r'<think>(.*?)</think>', engineer_analyses[i], re.DOTALL)
+                if think_match:
+                    think_content = think_match.group(1).strip()
+                    # Show just the first line of think
+                    think_preview = think_content.split('\n')[0]
+                    logger.append(f"│  ├─ Engineer think: {think_preview}...")
             
             # Add error messages for debugging
             if not sol_correct and i < len(programming_solutions):
@@ -258,7 +258,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             'example_processed_successfully': True,
             # Engineer statistics
             'engineer_count': len(engineer_analyses),  # Multiple engineers in this version
-            'has_engineer_thinking': [bool(re.search(r'<thinking>(.*?)</thinking>', ea, re.DOTALL)) for ea in engineer_analyses],
+            'has_engineer_think': [bool(re.search(r'<think>(.*?)</think>', ea, re.DOTALL)) for ea in engineer_analyses],
             'has_engineer_response': [bool(re.search(r'<response>(.*?)</response>', ea, re.DOTALL)) for ea in engineer_analyses],
             # Programming solutions statistics
             'programming_solutions_count': len(programming_solutions),

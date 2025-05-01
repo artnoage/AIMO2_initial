@@ -183,20 +183,20 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             most_common_answer = Counter(str(ans) for ans in model_answers).most_common(1)[0][0]
             is_most_common_correct = any(str(s['answer']) == most_common_answer and s['is_correct'] for s in solutions)
 
-        # Calculate thinking length statistics
-        thinking_lengths = [get_thinking_length(s['solution']) for s in solutions]
-        correct_thinking_lengths = [length for length, s in zip(thinking_lengths, solutions) if s['is_correct']]
-        incorrect_thinking_lengths = [length for length, s in zip(thinking_lengths, solutions) if not s['is_correct']]
+        # Calculate think length statistics
+        think_lengths = [get_think_length(s['solution']) for s in solutions]
+        correct_think_lengths = [length for length, s in zip(think_lengths, solutions) if s['is_correct']]
+        incorrect_think_lengths = [length for length, s in zip(think_lengths, solutions) if not s['is_correct']]
         
-        avg_thinking_length = sum(thinking_lengths) / len(thinking_lengths) if thinking_lengths else 0
-        avg_correct_thinking = sum(correct_thinking_lengths) / len(correct_thinking_lengths) if correct_thinking_lengths else 0
-        avg_incorrect_thinking = sum(incorrect_thinking_lengths) / len(incorrect_thinking_lengths) if incorrect_thinking_lengths else 0
+        avg_think_length = sum(think_lengths) / len(think_lengths) if think_lengths else 0
+        avg_correct_think = sum(correct_think_lengths) / len(correct_think_lengths) if correct_think_lengths else 0
+        avg_incorrect_think = sum(incorrect_think_lengths) / len(incorrect_think_lengths) if incorrect_think_lengths else 0
         
-        # Create thinking length distribution visualization
-        if thinking_lengths:
+        # Create think length distribution visualization
+        if think_lengths:
             # Create a simple ASCII histogram
-            correct_hist = create_ascii_histogram(correct_thinking_lengths, "Correct solutions thinking length")
-            incorrect_hist = create_ascii_histogram(incorrect_thinking_lengths, "Incorrect solutions thinking length")
+            correct_hist = create_ascii_histogram(correct_think_lengths, "Correct solutions think length")
+            incorrect_hist = create_ascii_histogram(incorrect_think_lengths, "Incorrect solutions think length")
         
         # Add statistics to logs
         logger.append("\n" + "="*80)
@@ -213,9 +213,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ Success rate: {(correct_count/len(solutions))*100:.1f}% (of self-assessed correct solutions)")
         logger.append(f"├─ Most common answer: {most_common_answer}")
         logger.append(f"├─ Most common answer correct? {'Yes' if is_most_common_correct else 'No'}")
-        logger.append(f"├─ Avg thinking length: {avg_thinking_length:.1f} chars")
-        logger.append(f"├─ Avg correct thinking length: {avg_correct_thinking:.1f} chars")
-        logger.append(f"└─ Avg incorrect thinking length: {avg_incorrect_thinking:.1f} chars")
+        logger.append(f"├─ Avg think length: {avg_think_length:.1f} chars")
+        logger.append(f"├─ Avg correct think length: {avg_correct_think:.1f} chars")
+        logger.append(f"└─ Avg incorrect think length: {avg_incorrect_think:.1f} chars")
         
         # Add reflection statistics
         logger.append(f"\n📊 Reflection Statistics:")
@@ -224,9 +224,9 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
         logger.append(f"├─ False positives (incorrect answers assessed as correct): {false_positives}")
         logger.append(f"└─ Self-assessment accuracy: {correct_self_assessments/total_reflections*100:.1f}% (of self-assessed correct solutions)")
         
-        # Add thinking length distributions
-        if thinking_lengths:
-            logger.append("\n📊 Thinking Length Distributions:")
+        # Add think length distributions
+        if think_lengths:
+            logger.append("\n📊 Think Length Distributions:")
             logger.append(correct_hist)
             logger.append(incorrect_hist)
             
@@ -356,3 +356,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.append(f"\n❌ Benchmark failed with error: {e}")
         logger.print()
+

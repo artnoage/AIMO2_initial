@@ -646,7 +646,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
             avg_position = sum(wrong_step_positions) / len(wrong_step_positions) if wrong_step_positions else 0
             avg_completion_score = sum(completion_scores) / len(completion_scores) if completion_scores else 0
             
-            # No need to count thinking/response sections as we're using the full model solution
+            # No need to count think/response sections as we're using the full model solution
             
             # Count unsalvageable solutions
             unsalvageable_solutions = sum(1 for r in results if r.get('data_type') == 'statistics' and r.get('unsalvageable', False))
