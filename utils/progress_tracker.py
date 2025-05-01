@@ -379,11 +379,11 @@ class ProgressTracker:
             stats['unsalvageable_reasons'] = unsalvageable_reasons
             
             # Section extraction statistics
-            thinking_rates = [r.get('thinking_extraction_rate', 0) for r in step_entries if 'thinking_extraction_rate' in r]
+            think_rates = [r.get('think_extraction_rate', 0) for r in step_entries if 'think_extraction_rate' in r]
             response_rates = [r.get('response_extraction_rate', 0) for r in step_entries if 'response_extraction_rate' in r]
             
-            if thinking_rates:
-                stats['thinking_extraction_rate'] = sum(thinking_rates) / len(thinking_rates)
+            if think_rates:
+                stats['think_extraction_rate'] = sum(think_rates) / len(think_rates)
             if response_rates:
                 stats['response_extraction_rate'] = sum(response_rates) / len(response_rates)
         
@@ -638,8 +638,8 @@ class ProgressTracker:
             if 'unsalvageable_reasons' in batch_stats:
                 stats_str += f"- Unsalvageable reasons: {batch_stats['unsalvageable_reasons']}\n"
                 
-            if 'thinking_extraction_rate' in batch_stats:
-                stats_str += f"- Thinking extraction rate: {batch_stats['thinking_extraction_rate']:.2f}\n"
+            if 'think_extraction_rate' in batch_stats:
+                stats_str += f"- Think extraction rate: {batch_stats['think_extraction_rate']:.2f}\n"
                 
             if 'response_extraction_rate' in batch_stats:
                 stats_str += f"- Response extraction rate: {batch_stats['response_extraction_rate']:.2f}\n"
@@ -813,8 +813,8 @@ class ProgressTracker:
                     stats_str += f"- Total unsalvageable solutions: {acc_stats['unsalvageable_solutions']}\n"
                 if 'unsalvageable_reasons' in acc_stats:
                     stats_str += f"- Unsalvageable reasons: {acc_stats['unsalvageable_reasons']}\n"
-                if 'thinking_extraction_rate' in acc_stats:
-                    stats_str += f"- Average thinking extraction rate: {acc_stats['thinking_extraction_rate']:.2f}\n"
+                if 'think_extraction_rate' in acc_stats:
+                    stats_str += f"- Average think extraction rate: {acc_stats['think_extraction_rate']:.2f}\n"
                 if 'response_extraction_rate' in acc_stats:
                     stats_str += f"- Average response extraction rate: {acc_stats['response_extraction_rate']:.2f}\n"
 
@@ -1073,8 +1073,8 @@ class ProgressTracker:
             if 'unsalvageable_reasons' in final_stats:
                 stats_str += f"- Unsalvageable reasons: {final_stats['unsalvageable_reasons']}\n"
                 
-            if 'thinking_extraction_rate' in final_stats:
-                stats_str += f"- Average thinking extraction rate: {final_stats['thinking_extraction_rate']:.2f}\n"
+            if 'think_extraction_rate' in final_stats:
+                stats_str += f"- Average think extraction rate: {final_stats['think_extraction_rate']:.2f}\n"
                 
             if 'response_extraction_rate' in final_stats:
                 stats_str += f"- Average response extraction rate: {final_stats['response_extraction_rate']:.2f}\n"

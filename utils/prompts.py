@@ -1,5 +1,5 @@
 FULLSOLUTION_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+Your output must have a **response** section.
 
 <response>
 <step>Step 1: Clearly state initial calculations
@@ -14,7 +14,7 @@ Answer in \boxed{}</step>
 
 
 FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-Your output must include three clearly separated sections: a **thinking** section, a **response** section, and a **reflection** section.
+Your output must include two clearly separated sections: a **response** section, and a **reflection** section.
 
 <response>
 <step>Step 1: Clearly state initial calculations
@@ -35,7 +35,7 @@ After completing your solution, critically evaluate your answer:
 
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
-Your response MUST include both a <thinking> section and a <response> section.
+Your response MUST include a <response> section.
 
 <response>
 Continue the solution from where it left off, maintaining the same step numbering and style.
@@ -67,8 +67,7 @@ Make sure all your steps follow logically from the partial solution and that eac
 TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions and identifies errors.
 
 You will be given a mathematical problem along with a proposed solution to analyze.
-
-Your output must include two clearly separated sections: **Think** and **Response**.
+Your response MUST include a <response> section.
 
 <response>
 Explicitly provide your verdict and necessary corrections.
@@ -88,8 +87,7 @@ If an incorrect step was found, provide the corrected solution starting from tha
 
 PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem.
 Your general task is to write a Python program that solves the problem.
-Your output must include two clearly separated sections: **Thinking** and **Response**.
-
+Your response MUST include a <response> section.
 
 <response>
 In this section, write a complete, self-contained Python program that solves the problem, based explicitly on the approach described in the thinking section above. Your code must:
@@ -122,7 +120,7 @@ print(result)  # Just the number, no text
 
 PROGRAMMER_SYSTEM_PROMPT_SUB="""You will be given a mathematical problem and some general instructions.
 Your general task is to write a Python program that solves the problem.
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+Your response MUST include a <response> section.
 
 
 <response>
@@ -155,7 +153,7 @@ print(result)  # Just the number, no text
 
 ARCHITECT_SYSTEM_PROMPT="""You are an expert mathematical problem-solving engineer. 
 Your task is to analyze mathematical problems and create concise instructions for a programmer who will implement the solution.
-Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+Your response MUST include a <response> section.
 
 <response>
 Provide instructions for the programmer. Include:
@@ -180,7 +178,7 @@ Your instructions should be clear and concise while providing all necessary guid
 TESTER_SYSTEM_PROMPT=""" You will be provided with a mathematical problem. 
 Your task is **not necessarily solve** this problem but rather to create a Python function that **efficiently verifies** whether a given 
 numeric value (float) correctly solves the problem.
-Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+Your response MUST include a <response> section.
 
 <response>
 Write a Python function named `test_solution(answer)` that:
@@ -216,8 +214,7 @@ Your response should strictly follow this verification approach.
 
 
 DUAL_PROOF_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to solve it using both logical reasoning and programming.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+Your response MUST include a <response> section.
 
 <response>
 Your response must include both a logical proof and a programming solution:
@@ -243,8 +240,7 @@ Both solutions should arrive at the same answer, though they may use different a
 </response>"""
 
 TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT="""You will be given a mathematical problem. Your task is to solve it using a test-driven programming approach.
-
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+Your response MUST include a <response> section.
 
 <response>
 Your response must include both a test suite and an implementation:
@@ -293,7 +289,7 @@ You will be given:
 1. A mathematical problem statement
 2. A proposed solution (with the final boxed answer removed)
 
-Your output must include two clearly separated sections: a **think** section and a **response** section.
+Your response MUST include a <response> section.
 
 <response>
 Provide your assessment in a structured JSON format that looks like this:
