@@ -96,13 +96,13 @@ TUTOR_SYSTEM_PROMPT = """You are a mathematical tutor who evaluates solutions an
 
 You will be given a mathematical problem along with a proposed solution to analyze.
 
-Your output must include two clearly separated sections: **Thinking** and **Response**.
+Your output must include two clearly separated sections: **Think** and **Response**.
 
-<thinking>
+<think>
 Use this area as your creative scratchpad.
 Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints. 
 Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
-</thinking>
+</think>
 
 <response>
 Explicitly provide your verdict and necessary corrections.
@@ -542,16 +542,16 @@ You will be given:
 1. A mathematical problem statement
 2. A proposed solution (with the final boxed answer removed)
 
-Your output must include two clearly separated sections: a **thinking** section and a **response** section.
+Your output must include two clearly separated sections: a **think** section and a **response** section.
 
-<thinking>
+<think>
 Use this area as your creative scratchpad.
 Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
 Analyze the solution step by step, noting any errors or issues.
 Determine if the solution is detailed enough with clear steps and reasoning.
 Determine if the solution's approach and reasoning are correct.
 Calculate what the final boxed answer should be.
-</thinking>
+</think>
 
 <response>
 Provide your assessment in a structured JSON format that looks like this:

@@ -185,7 +185,7 @@ def main():
     # Configuration
     model_type = "self_reflect_14"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14X"
-    dataset_name = "Metaskepsis/Numina_hard"
+    dataset_name = "Metaskepsis/Numina_medium"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -222,7 +222,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4400,
+        max_seq_length=3000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -263,7 +263,7 @@ def main():
     # GRPO specific training arguments
     training_args = GRPOConfig(
         torch_empty_cache_steps=1,
-        learning_rate=8e-6,
+        learning_rate=1e-5,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
@@ -273,11 +273,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=5,
+        per_device_train_batch_size=6,
         gradient_accumulation_steps=1,
-        num_generations=5,
+        num_generations=6,
         max_prompt_length=800,
-        max_completion_length=3600,
+        max_completion_length=2200,
         num_train_epochs=1,
         save_steps=20,
         max_grad_norm=0.1,
