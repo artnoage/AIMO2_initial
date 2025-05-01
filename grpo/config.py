@@ -12,7 +12,7 @@ class RewardConfig:
     timeout: int = 60
     
     # Regex patterns for extracting solution parts
-    thinking_pattern: str = r'<thinking>(.*?)</thinking>'
+    think_pattern: str = r'<think>(.*?)</think>'
     response_pattern: str = r'<response>(.*?)</response>'
     boxed_pattern: str = r'\\boxed\{[^}]*\}'
     boxed_replacement: str = r'\\boxed{?}'
@@ -69,5 +69,3 @@ class RewardConfig:
                 'is_correct': 1/3,
                 'boxed_answer': 1/3
             }
-
-

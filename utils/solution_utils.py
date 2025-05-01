@@ -173,23 +173,23 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
 
     return None  # Return None if no answer format is found
 
-def has_thinking_section(solution: str) -> bool:
-    """Check if solution has a thinking section"""
-    thinking_parts = re.findall(r'<thinking>(.*?)</thinking>', solution, re.DOTALL)
-    return bool(thinking_parts)
+def has_think_section(solution: str) -> bool:
+    """Check if solution has a think section"""
+    think_parts = re.findall(r'<think>(.*?)</think>', solution, re.DOTALL)
+    return bool(think_parts)
 
-def extract_thinking_section(solution: str) -> Optional[str]:
-    """Extract content from <thinking> or <reasoning> tags"""
-    thinking_pattern = r'<(?:thinking|reasoning)>(.*?)</(?:thinking|reasoning)>'
-    match = re.search(thinking_pattern, solution, re.DOTALL)
+def extract_think_section(solution: str) -> Optional[str]:
+    """Extract content from <think> or <reasoning> tags"""
+    think_pattern = r'<(?:think|reasoning)>(.*?)</(?:think|reasoning)>'
+    match = re.search(think_pattern, solution, re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
 
-def get_thinking_length(solution: str) -> int:
-    """Get the length of the thinking section in characters"""
-    thinking = extract_thinking_section(solution)
-    return len(thinking) if thinking else 0
+def get_think_length(solution: str) -> int:
+    """Get the length of the think section in characters"""
+    think = extract_think_section(solution)
+    return len(think) if think else 0
     
 def extract_response_section(solution: str) -> Optional[str]:
     """Extract content from <response> tags"""
@@ -379,6 +379,14 @@ def run_code_safely(code: str, timeout: int = 300) -> Tuple[bool, Optional[float
             os.unlink(temp_file_path)
         except:
             pass
+        
+        # Make sure the process is really gone
+        try:
+            if process.poll() is None:  # Process still running
+                import signal
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except (NameError, ProcessLookupError, OSError):
+            pass  # Process variable might not exist or process already gone
 
 def check_steps_status(solution: str) -> Tuple[bool, bool]:
     """
@@ -892,7 +900,7 @@ def split_into_steps(solution: str) -> List[str]:
         
     steps = []
     # Process first part (potential analysis)
-    if parts[0].strip() and ("analysis" in parts[0].lower() or "<thinking>" in parts[0]):
+    if parts[0].strip() and ("analysis" in parts[0].lower() or "<think>" in parts[0]):
         # Wrap in <step> tags if it's an analysis step
         steps.append(f"<step>{parts[0].strip()}</step>")
         

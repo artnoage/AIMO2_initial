@@ -246,8 +246,8 @@ class CustomChat2:
         return formatted_prompt
     
     
-    def _create_modified_prompt(self, original_messages, first_response, modified_thinking):
-        """Create a new prompt with the modified thinking section"""
+    def _create_modified_prompt(self, original_messages, first_response, modified_think):
+        """Create a new prompt with the modified think section"""
         # Extract the system message and user question from original messages
         system_content = ""
         user_content = ""
@@ -264,19 +264,19 @@ class CustomChat2:
                 elif role == "user":
                     user_content = message.get("content", "")
         
-        # Create the modified prompt with the "wait a second" thinking
+        # Create the modified prompt with the "wait a second" think
         modified_prompt = (
             f"<|im_start|>system<|im_sep|>{system_content}<|im_end|>"
             f"<|im_start|>user<|im_sep|>{user_content}<|im_end|>"
             f"<|im_start|>assistant<|im_sep|>"
-            f"<thinking>{modified_thinking}</thinking>"
+            f"<think>{modified_think}</think>"
         )
         
         return modified_prompt
 
     async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
         """
-        Get first response, modify thinking with '...no wait a second',
+        Get first response, modify think with '...no wait a second',
         then get second response and return that
         """
         max_tokens = kwargs.get("max_tokens", None)
@@ -313,18 +313,18 @@ class CustomChat2:
                     result = await response.json()
                     first_response = result.get("choices", [{}])[0].get("text", "")
             
-            # Step 2: Extract thinking section
-            thinking_content = self._extract_thinking_section(first_response)
+            # Step 2: Extract think section
+            think_content = self._extract_think_section(first_response)
             
-            # If no thinking section found, return the first response
-            if not thinking_content:
+            # If no think section found, return the first response
+            if not think_content:
                 return type('Response', (), {'content': first_response})()
             
-            # Step 3: Modify thinking with "...no wait a second"
-            modified_thinking = self._modify_thinking_with_wait(thinking_content)
+            # Step 3: Modify think with "...no wait a second"
+            modified_think = self._modify_think_with_wait(think_content)
             
             # Step 4: Create modified prompt with the wait pattern
-            modified_prompt = self._create_modified_prompt(prompt, first_response, modified_thinking)
+            modified_prompt = self._create_modified_prompt(prompt, first_response, modified_think)
             
             # Step 5: Get second response with modified prompt
             second_payload = {
