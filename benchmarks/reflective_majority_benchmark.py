@@ -89,18 +89,16 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                     'self_assessed_incorrect': thinks_incorrect
                 })
                 
-                # Skip this solution for the filtered list if model thinks it's incorrect
-                if thinks_incorrect:
-                    logger.append(f"Skipping solution attempt {attempt + 1} for filtered list because model self-assessed as incorrect")
-                    continue
-                
-                # Add to filtered solutions list
-                solutions.append({
-                    'solution': current_solution,
-                    'answer': current_answer,
-                    'is_correct': is_correct,
-                    'self_assessed_correct': thinks_correct
-                })
+                # Add to filtered solutions list only if model thinks it's correct
+                if thinks_correct:
+                    solutions.append({
+                        'solution': current_solution,
+                        'answer': current_answer,
+                        'is_correct': is_correct,
+                        'self_assessed_correct': thinks_correct
+                    })
+                else:
+                    logger.append(f"Skipping solution attempt {attempt + 1} for filtered list because model did not self-assess as correct")
                 
                 # Update statistics if correct
                 if is_correct:
@@ -149,22 +147,22 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
                             'self_assessed_incorrect': thinks_incorrect
                         })
                         
-                        # Skip this solution for the filtered list if model thinks it's incorrect
-                        if thinks_incorrect:
-                            logger.append(f"Skipping solution retry {retry + 1} for filtered list because model self-assessed as incorrect")
-                            continue
+                        # Add to filtered solutions list only if model thinks it's correct
+                        if thinks_correct:
+                            solutions.append({
+                                'solution': current_solution,
+                                'answer': current_answer,
+                                'is_correct': is_correct,
+                                'self_assessed_correct': thinks_correct
+                            })
+                        else:
+                            logger.append(f"Skipping solution retry {retry + 1} for filtered list because model did not self-assess as correct")
                         
                         if is_correct:
                             correct_count += 1
                             if best_solution is None:
                                 best_solution = current_solution
                                 
-                        solutions.append({
-                            'solution': current_solution,
-                            'answer': current_answer,
-                            'is_correct': is_correct,
-                            'self_assessed_correct': thinks_correct
-                        })
                         break  # Success, exit retry loop
                         
                     except Exception as retry_e:

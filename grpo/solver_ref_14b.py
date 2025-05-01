@@ -184,7 +184,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "self_reflect_14"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14AA"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/14X"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
