@@ -183,8 +183,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "self_correct_7b"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/73"
+    model_type = "self_correct_4B"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Q3B4"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -222,7 +222,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=12000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -273,11 +273,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=11,
-        gradient_accumulation_steps=32,
-        num_generations=11,
-        max_prompt_length=800,
-        max_completion_length=3200,
+        per_device_train_batch_size=12,
+        gradient_accumulation_steps=1,
+        num_generations=12,
+        max_prompt_length=1000,
+        max_completion_length=11000,
         num_train_epochs=1,
         save_steps=30,
         max_grad_norm=0.1,

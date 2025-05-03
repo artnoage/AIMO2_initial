@@ -24,7 +24,7 @@ def main():
 
     # Load model from checkpoint
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name="/Home/stat/laschos/math/AIMO2_initial/models/14BR22",
+        model_name="unsloth/Llama-3.2-1B-Instruct",
         max_seq_length=6000,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth")

@@ -1,33 +1,7 @@
 from typing import Union, Tuple, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from utils.model_utils import get_model_response
-from utils.prompts import (
-    FULLSOLUTION_SYSTEM_PROMPT,
-    FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION,
-    FINALIZATION_SYSTEM_PROMPT,
-    TUTOR_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT,
-    PROGRAMMER_SYSTEM_PROMPT_SUB,
-    ARCHITECT_SYSTEM_PROMPT,
-    TESTER_SYSTEM_PROMPT,
-    DUAL_PROOF_SYSTEM_PROMPT,
-    TEST_DRIVEN_PROGRAMMER_SYSTEM_PROMPT,
-    SOLUTION_VERIFIER_SYSTEM_PROMPT
-)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+from utils.prompts import *
 
 
 class FinalizationAgent:
@@ -46,7 +20,7 @@ class FinalizationAgent:
                 f"Partial Solution: {partial_solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (prompt[0].content, response) if return_prompt else response
 
 
@@ -64,7 +38,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=40000)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
     
 
@@ -89,7 +63,7 @@ class TutorAgent:
                 f"Proposed Solution:\n{solution}"
             ))
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + problem + "\n\n" + solution, response) if return_prompt else response
 
 class ProgrammingAgent:
@@ -106,7 +80,7 @@ class ProgrammingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=16384)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
     
     
@@ -125,7 +99,7 @@ class ArchitectAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"Problem:\n{problem}\n\n")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + f"Problem:\n{problem}\n\n", response) if return_prompt else response
 
 
@@ -145,7 +119,7 @@ class TestingAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=content)
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 
@@ -165,7 +139,7 @@ class DualProofAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=content)
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 
@@ -185,7 +159,7 @@ class TestDrivenProgrammerAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=content)
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=8192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + content, response) if return_prompt else response
 
 
@@ -202,7 +176,7 @@ class ReflectiveSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=4192)
+        response = await get_model_response(self.model, prompt, max_tokens=5000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 
@@ -237,6 +211,6 @@ class SolutionVerifierAgent:
             HumanMessage(content=content)
         ]
         
-        full_response = await get_model_response(self.model, prompt, max_tokens=4096)
+        full_response = await get_model_response(self.model, prompt, max_tokens=5000)
         
         return (system_prompt + "\n\n" + content, full_response) if return_prompt else full_response

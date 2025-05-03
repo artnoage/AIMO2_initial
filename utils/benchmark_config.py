@@ -120,8 +120,8 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=32,
-                          help='Maximum number of concurrent problems (default: 64)')
+        parser.add_argument('--max-concurrent', type=int, default=20,
+                          help='Maximum number of concurrent problems (default: 64)')   
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
         parser.add_argument('--completions', type=int, default=20,

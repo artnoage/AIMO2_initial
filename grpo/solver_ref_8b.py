@@ -1,12 +1,13 @@
+from unsloth import is_bfloat16_supported
+from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
 import os
 import wandb
 import logging
 import sys
 from datasets import load_dataset, Dataset
 from datetime import datetime
-from unsloth import is_bfloat16_supported
-from unsloth import FastLanguageModel, PatchFastRL
-PatchFastRL("GRPO", FastLanguageModel)
+
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
 
@@ -183,8 +184,8 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "self_correct_7b"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/73"
+    model_type = "self_correct_8B"
+    model_name = "Qwen/Qwen3-4B"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first
@@ -222,7 +223,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000,
+        max_seq_length=5000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -273,11 +274,11 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=11,
-        gradient_accumulation_steps=32,
-        num_generations=11,
+        per_device_train_batch_size=5,
+        gradient_accumulation_steps=1,
+        num_generations=5,
         max_prompt_length=800,
-        max_completion_length=3200,
+        max_completion_length=4200,
         num_train_epochs=1,
         save_steps=30,
         max_grad_norm=0.1,

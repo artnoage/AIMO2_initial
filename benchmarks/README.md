@@ -14,6 +14,9 @@ Evaluates a model's ability to solve mathematical problems and provide correct a
 - Supports group-based evaluation for solution diversity measurement
 - Implements majority voting for answer verification with configurable thresholds
 
+### Filtered Standard Benchmark (`filter_standard_benchmark.py`)
+A variation of the Standard Benchmark that generates multiple solutions (specifically 20 attempts) and filters the results to keep only one correct solution if there are 1, 2, or 3 correct solutions among the generated attempts. This is useful for creating filtered datasets for training.
+
 ### Programming Benchmark (`programming_benchmark.py`)
 Tests a model's ability to write Python code that solves mathematical problems. The code is executed to verify correctness.
 - Uses `utils.solution_utils.run_code_safely` for secure code execution in isolated environments
@@ -23,6 +26,9 @@ Tests a model's ability to write Python code that solves mathematical problems. 
 - Supports multiple solution approaches with comparative analysis
 - Implements memory and CPU usage limits for secure execution
 - Provides detailed execution traces for debugging and analysis
+
+### Filtered Programming Benchmark (`filter_programmer_benchmark.py`)
+A variation of the Programming Benchmark that generates multiple solutions (specifically 20 attempts) and filters the results to keep only one correct solution if there are 1 or 2 correct solutions among the generated attempts. This is useful for creating filtered datasets for training.
 
 ### Test Benchmark (`test_benchmark.py`)
 Evaluates a model's ability to create test functions that can verify mathematical solutions. These test functions should correctly identify valid and invalid answers.
@@ -34,8 +40,11 @@ Evaluates a model's ability to create test functions that can verify mathematica
 - Implements timeout protection for infinite loops
 - Provides detailed analysis of test function behavior
 
+### Programmer-Test Benchmark (`programmer_test_benchmark.py`)
+Evaluates a two-stage approach where a programming solution is generated and then a separate test function is created to verify it. It performs majority voting on solutions that pass their tests.
+
 ### Architect Benchmark (`architect_benchmark.py`)
-Tests a pipeline approach where one model acts as an "architect" to analyze problems and create guidance, and another model implements the solution as code.
+Tests a pipeline approach where one model acts as an "architect" to analyze problems and create guidance, and another model implements the solution as code. This specific implementation uses a one-to-one approach where multiple engineer analyses are generated, each leading to one programming solution.
 - Uses two models in sequence (architect and programmer) with configurable interaction
 - Measures the effectiveness of problem decomposition and planning
 - Evaluates the quality of generated code and implementation fidelity
@@ -64,6 +73,18 @@ Analyzes solutions step-by-step to identify the first incorrect step in a soluti
 - Implements visualization of reasoning paths and failure points
 - Provides aggregated statistics on common failure patterns
 
+### Dual Proof Benchmark (`dual_proof_benchmark.py`)
+Evaluates a method where the model generates both a logical proof and a programming solution for a problem. The results from both approaches are compared for verification and a final answer is selected based on a fallback logic.
+
+### Reflective Benchmark (`reflective_benchmark.py`)
+Evaluates a model's ability to self-assess the correctness of its generated solutions. Solutions where the model indicates the answer is incorrect are filtered out.
+
+### Reflective Majority Benchmark (`reflective_majority_benchmark.py`)
+Combines the Reflective Benchmark with majority voting. It generates multiple solutions, filters those where the model self-assesses as incorrect, and then performs a majority vote on the remaining solutions.
+
+### Test-Driven Programmer Benchmark (`test_driven_programmer_benchmark.py`)
+Evaluates a test-driven development approach where the model generates both a test suite and an implementation in a single response. Both components are evaluated independently, and their combined correctness is checked.
+
 ## Integration with Other Components
 
 ### Connection to GRPO Training
@@ -74,6 +95,9 @@ The benchmarks provide evaluation metrics that inform the reward functions used 
 - `tutor_benchmark.py` → `grpo.tutor_grpo.py` (error identification and correction)
 - `architect_benchmark.py` → `grpo.dynamic_qwen0.py` (architectural planning component)
 - `step_benchmark.py` → Used for analysis across all training types
+- `dual_proof_benchmark.py` → Can inform training for generating consistent proofs and code.
+- `reflective_benchmark.py` and `reflective_majority_benchmark.py` → Can inform training for improving self-assessment capabilities.
+- `test_driven_programmer_benchmark.py` → Can inform training for generating integrated tests and implementations.
 
 The benchmarks generate detailed performance metrics that can be used to:
 - Identify specific weaknesses in model capabilities
@@ -244,4 +268,3 @@ python -m benchmarks.tutor_benchmark --interactive-mode --feedback-interval 10
 Create detailed visualizations of benchmark results:
 ```bash
 python -m benchmarks.step_benchmark --visualize --chart-types histogram,heatmap,scatter
-```

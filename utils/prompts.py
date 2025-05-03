@@ -1,15 +1,8 @@
 FULLSOLUTION_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-Your output must have a **response** section.
+After you finish thinking put the proof in a response tag like this:
 
 <response>
-<step>Step 1: Clearly state initial calculations
-Show work with LaTeX notation</step>
-
-<step>Step 2: Logical next step
-Clearly numbered and self-contained</step>
-
-<step>Step N: Final conclusion clearly stated
-Answer in \boxed{}</step>
+Here you put the full proof, in steps using <step>,</step> tags. The final step should have the answer boxed.
 </response>"""
 
 
@@ -17,21 +10,17 @@ FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION = """You will be given a mathematical
 Your output must include two clearly separated sections: a **response** section, and a **reflection** section.
 
 <response>
-<step>Step 1: Clearly state initial calculations
-Show work with LaTeX notation</step>
+Here you put the full proof, in steps using <step>,</step> tags. The final step should have the answer boxed. 
 
-<step>Step 2: Logical next step
-Clearly numbered and self-contained</step>
-
-<step>Step N: Final conclusion clearly stated
-Answer in \boxed{}</step>
 </response>
 
 <reflection>
 After completing your solution, critically evaluate your answer:
 - If you believe your answer is correct, explain why: "The answer is correct because..." followed by a brief justification.
 - If you have doubts about your answer, explain why: "The answer may not be correct because..." followed by your concerns.
-</reflection>"""
+</reflection>
+
+THE FINAL ANSWER SHOULD BE THE ONLY THING BOXED! """
 
 FINALIZATION_SYSTEM_PROMPT= """You will be given a mathematical problem and a partial solution. Your task is to finalize the solution.
 
