@@ -65,10 +65,59 @@ graph TD
     Callback --> Wandb[Wandb Logging]
     Stats --> Wandb
     Trainer --> SavedModel[Saved Model]
+    
+    subgraph "Single-GPU Training"
+        Unsloth[Unsloth] --> Trainer
+    end
+    
+    subgraph "Multi-GPU Training"
+        Accelerate[Accelerate] --> Trainer
+        DeepSpeed[DeepSpeed] --> Trainer
+    end
 ```
 
 *   **Reward Functions:** Specialized reward functions for different mathematical tasks, each with a common interface but task-specific evaluation criteria.
 *   **Reward Statistics:** Detailed tracking of reward components, distributions, and task-specific metrics for analysis and visualization.
-*   **GRPO Trainer:** Integrates with Unsloth for efficient training, implements LoRA fine-tuning, and manages the training loop.
+*   **GRPO Trainer:** 
+    * **Single-GPU Version:** Integrates with Unsloth for efficient training of Qwen models on a single GPU.
+    * **Multi-GPU Version:** Uses TRL with Accelerate or DeepSpeed for distributed training across multiple GPUs.
 *   **Logging Callback:** Monitors training progress, updates statistics, and logs metrics to Wandb for visualization.
 *   **Model Saving:** Saves models in merged format for easy deployment, with support for quantization and adapter integration.
+
+**Multi-GPU Training Architecture:**
+
+```mermaid
+graph TD
+    Script[Training Script] --> |Option 1| Accelerate[Accelerate Launcher]
+    Script --> |Option 2| DeepSpeed[DeepSpeed Launcher]
+    
+    Accelerate --> DistributedTraining[Distributed Training]
+    DeepSpeed --> DistributedTraining
+    
+    DistributedTraining --> GPU1[GPU 1]
+    DistributedTraining --> GPU2[GPU 2]
+    DistributedTraining --> GPU3[GPU 3]
+    DistributedTraining --> GPU4[GPU 4]
+    
+    GPU1 --> ModelShard1[Model Shard 1]
+    GPU2 --> ModelShard2[Model Shard 2]
+    GPU3 --> ModelShard3[Model Shard 3]
+    GPU4 --> ModelShard4[Model Shard 4]
+    
+    ModelShard1 --> GradientSync[Gradient Synchronization]
+    ModelShard2 --> GradientSync
+    ModelShard3 --> GradientSync
+    ModelShard4 --> GradientSync
+    
+    GradientSync --> ModelUpdate[Model Update]
+    ModelUpdate --> SavedModel[Saved Model]
+```
+
+*   **Training Script Options:**
+    * **Accelerate Launcher:** Uses HuggingFace's Accelerate library for distributed training with simpler configuration but fewer optimization options.
+    * **DeepSpeed Launcher:** Uses Microsoft's DeepSpeed library for distributed training with more advanced optimization options like ZeRO.
+*   **Model Distribution:** Automatically distributes model weights across multiple GPUs using device_map="auto" for efficient memory usage.
+*   **Gradient Synchronization:** Synchronizes gradients across all GPUs to ensure consistent model updates.
+*   **ZeRO Optimization:** When using DeepSpeed, implements ZeRO stage 2 optimization with CPU offloading for memory efficiency.
+*   **Mixed Precision:** Automatically uses BF16 or FP16 based on hardware support for faster training and reduced memory usage.
+*   **Gradient Checkpointing:** Reduces memory usage by recomputing intermediate activations during the backward pass instead of storing them.

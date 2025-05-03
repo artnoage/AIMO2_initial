@@ -7,6 +7,10 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Anaconda3-latest-Linux-x86_64.sh
 source ~/.bashrc
 
+cd grpo 
+./run\_deepspeed\_training.sh --gpus 4
+./run\_multi\_gpu\_training.sh --gpus 4
+
 git config --global user.name "artnoage"
 git config --global user.email "artnoage@gmail.com"
 CUDA_VISIBLE_DEVICES=3 python grpo_training/group_qwen3.py
@@ -15,11 +19,7 @@ git clone https://github.com/artnoage/AIMO2_initial.git
 "Metaskepsis/W"
 python auxilary/hf_loader.py --type model --load down --path models/14B --repo_name Qwen/Qwen2.5-14B-Instruct
 
-python benchmark.py --dataset Metaskepsis/Numina_very_hard --main-temp 0 --best-of 1 --split train[:1000] 
-&& python benchmark.py --dataset Metaskepsis/Numina_medium --main-temp 0 --best-of 1 --split train[:1000] 
-&& python benchmark.py --dataset Metaskepsis/custom100bench --main-temp 0 --best-of 1 
-&& python benchmarks/reflective_benchmark.py --dataset Metaskepsis/validation_set_mini --main-temp 0.7 --best-of 8 
-&& python benchmark.py --dataset AI-MO/aimo-validation-aime --main-temp 0 --best-of 1 
+python benchmarks/reflective_benchmark.py --dataset Metaskepsis/validation_set_mini --main-temp 0.7 --best-of 8 
 
 yentinglin/aime_2025
 python joined_benchmark.py --dataset Metaskepsis/Numina_medium --best-of 1 --main-temp 0 --auxiliary-temp 0 --main-port 8002 --auxiliary-port 8003
