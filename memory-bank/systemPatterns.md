@@ -30,6 +30,8 @@ graph LR
 *   **Structured Logging and Progress Tracking:** Implement comprehensive logging (`logger.py`) and progress tracking (`progress_tracker.py`) for detailed monitoring and analysis of benchmark runs and training processes.
 *   **Answer Verification and Validation:** Employ robust methods for extracting and verifying mathematical answers, including numeric validation with tolerance and handling of LaTeX notation (`solution_utils.py`).
 *   **Step-by-Step Analysis:** Implement functionality to break down solutions into individual steps and analyze them for correctness (`solution_benchmark.py`, `step_benchmark.py`).
+*   **Reward-Based Training:** Implement a comprehensive reward system for GRPO training with specialized reward functions for different mathematical tasks, detailed statistics tracking, and integration with Wandb for visualization.
+*   **Reflective Problem-Solving:** Implement reflective solver components that evaluate both solution correctness and self-assessment accuracy, tracking detailed reflection statistics including true/false positives/negatives.
 
 **Design Patterns in Use:**
 
@@ -38,6 +40,9 @@ graph LR
 *   **Configuration Objects:** Use dataclasses (`benchmark_config.py`, `grpo/config.py`) for managing configuration options, providing a structured and validated way to configure benchmarks and training.
 *   **Utility Functions:** Employ a collection of utility functions (`solution_utils.py`, `data_preparation.py`, etc.) to encapsulate common functionalities and promote code reuse.
 *   **Factory Pattern:** Use a factory function (`model_utils.py.get_model`) to create appropriate model interfaces based on configuration.
+*   **Strategy Pattern:** Implement different reward strategies (`rewards.py`) that share a common interface but provide specialized behavior for different mathematical tasks.
+*   **Observer Pattern:** Use callbacks (`LoggingCallback`) to monitor training progress and update statistics without modifying the core training loop.
+*   **Template Method Pattern:** Define abstract base classes (`BaseReward`) that implement common behavior while allowing subclasses to override specific steps.
 
 **Component Relationships:**
 
@@ -46,3 +51,24 @@ graph LR
 *   Both Benchmarks and GRPO Training depend on Auxiliary Tools for processed datasets and exported models.
 *   Auxiliary Tools utilize Utilities for tasks like solution validation and model interaction.
 *   Reward functions in GRPO Training are designed to align with the evaluation criteria of specific benchmarks.
+
+**GRPO Training Architecture:**
+
+```mermaid
+graph TD
+    Config[RewardConfig] --> Reward[Reward Functions]
+    Reward --> Stats[RewardStats]
+    Dataset[Processed Dataset] --> Trainer[GRPOTrainer]
+    Model[Base Model] --> Trainer
+    Reward --> Trainer
+    Trainer --> Callback[LoggingCallback]
+    Callback --> Wandb[Wandb Logging]
+    Stats --> Wandb
+    Trainer --> SavedModel[Saved Model]
+```
+
+*   **Reward Functions:** Specialized reward functions for different mathematical tasks, each with a common interface but task-specific evaluation criteria.
+*   **Reward Statistics:** Detailed tracking of reward components, distributions, and task-specific metrics for analysis and visualization.
+*   **GRPO Trainer:** Integrates with Unsloth for efficient training, implements LoRA fine-tuning, and manages the training loop.
+*   **Logging Callback:** Monitors training progress, updates statistics, and logs metrics to Wandb for visualization.
+*   **Model Saving:** Saves models in merged format for easy deployment, with support for quantization and adapter integration.
