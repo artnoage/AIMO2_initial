@@ -66,7 +66,7 @@ class SolutionReward(BaseReward):
         self.stats.reward_components['diversity_rewards'] = 0
         
         # Compile regex patterns for better performance
-        self.thinking_pattern = re.compile(self.config.thinking_pattern, re.DOTALL)
+        self.thinking_pattern = re.compile(self.config.think_pattern, re.DOTALL)
         self.response_pattern = re.compile(self.config.response_pattern, re.DOTALL)
         self.boxed_pattern = re.compile(self.config.boxed_pattern)
         
@@ -92,7 +92,7 @@ class SolutionReward(BaseReward):
             def log(message, level="info"):
                 log_messages.append((level, message))
             
-            # Ensure current_batch exists in stats
+            # Ensure current_batch exists in stats with all required keys
             if not hasattr(self.stats, 'current_batch'):
                 self.stats.current_batch = {
                     'answers': [],
@@ -102,6 +102,11 @@ class SolutionReward(BaseReward):
                     'completions': [],
                     'similarity_scores': []
                 }
+            else:
+                # Ensure all required keys exist in current_batch
+                for key in ['answers', 'is_correct', 'execution_times', 'code_lengths', 'completions', 'similarity_scores']:
+                    if key not in self.stats.current_batch:
+                        self.stats.current_batch[key] = []
                 
             # Initialize group_stats if they don't exist
             if not hasattr(self.stats, 'group_stats'):

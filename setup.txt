@@ -30,3 +30,4 @@ XiaomiMiMo/MiMo-7B-Base
 
 
 python auxilary/hf_loader.py --type model --load down --path models/math --repo_name Qwen/Qwen2.5-Math-7B
+python auxilary/hf_loader.py --type model --load down --path models/Q --repo_name Qwen/Qwen2.5-7B-Instruct

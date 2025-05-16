@@ -4,6 +4,7 @@ Reward modules for evaluating model completions.
 This package contains various reward classes for different types of evaluation:
 - BaseReward: Abstract base class for all reward implementations
 - SolutionReward: Evaluates mathematical solution quality
+- SolutionEmbeddingReward: Extends SolutionReward with embedding similarity comparison
 - ProgrammingReward: Evaluates programming solution quality
 - SolverReward: Evaluates solution quality with detailed tracking
 - SolverVerReward: Evaluates solution verification capabilities
@@ -11,6 +12,7 @@ This package contains various reward classes for different types of evaluation:
 
 from grpo.rewards.base_reward import BaseReward
 from grpo.rewards.solution_reward import SolutionReward
+from grpo.rewards.solution_embedding_reward import SolutionEmbeddingReward
 from grpo.rewards.programming_reward import ProgrammingReward
 from grpo.rewards.solver_ver_reward import SolverVerReward
 
@@ -23,6 +25,7 @@ from grpo.solver_ref_reward import SolverReward
 __all__ = [
     'BaseReward',
     'SolutionReward',
+    'SolutionEmbeddingReward',
     'ProgrammingReward',
     'SolverReward',
     'SolverVerReward',
