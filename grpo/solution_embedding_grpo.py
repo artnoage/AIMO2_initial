@@ -270,7 +270,7 @@ def main():
         return concatenated_dataset
     
     # Get the dataset with multiple copies
-    formatted_dataset = get_questions(num_copies=3)  # Create 3 copies of the dataset
+    formatted_dataset = get_questions(num_copies=20)  # Create 3 copies of the dataset
     formatted_dataset = formatted_dataset.shuffle(seed=142)
     
     # Verify first few entries
