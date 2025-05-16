@@ -14,7 +14,7 @@ class ModelOption(Enum):
     GEMINI_PRO = "google/gemini-pro-1.5"
     GEMINI_FLASH="google/gemini-2.5-flash-preview"
     GPT = "openai/gpt-4o"
-    GPT_MINI="openai/gpt-4o-mini"
+    MINI="openai/o4-mini-high"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
     LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/Phi4"
@@ -55,7 +55,7 @@ class BenchmarkConfig:
     seed: int = 42  # Seed for dataset operations
     
     # Execution settings
-    max_concurrent: int = 1
+    max_concurrent: int = 20
     best_of: int = 1
     completions: int = 20
     solutions_per_group: int = 4  # Number of solutions to generate per group in ensemble benchmark

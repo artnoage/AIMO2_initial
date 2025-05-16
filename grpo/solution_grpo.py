@@ -13,10 +13,10 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 from config import RewardConfig
-from utils.data_preparation import prepare_programming_data
+from utils.data_preparation import prepare_solution_data
 # Import system prompts from agents.py
-from utils.agents import PROGRAMMER_SYSTEM_PROMPT
-from rewards import ProgrammingReward
+from utils.agents import FULLSOLUTION_SYSTEM_PROMPT
+from rewards import SolutionReward
 
 class TimeoutException(Exception):
     """Exception raised when code execution times out"""
@@ -28,7 +28,7 @@ def setup_logging(model_type: str) -> logging.Logger:
     log_dir = f"logs/{model_type}"
     os.makedirs(log_dir, exist_ok=True)
     
-    logger = logging.getLogger('programming_grpo')
+    logger = logging.getLogger('solution_grpo')
     logger.setLevel(logging.INFO)
     
     file_handler = logging.FileHandler(
@@ -78,7 +78,7 @@ class LoggingCallback(TrainerCallback):
             
             # Key performance metrics for wandb
             wandb_stats = {
-                'programming_reward': logs['rewards/0'],
+                'solution_reward': logs['rewards/0'],
                 'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
                 'correct_solutions': self.reward_func.stats.reward_components.get('correct_solutions', 0),
                 'syntax_valid_solutions': self.reward_func.stats.reward_components.get('syntax_valid_solutions', 0),
@@ -145,14 +145,14 @@ class LoggingCallback(TrainerCallback):
 
 
 
-# Use the ProgrammingReward class from rewards.py
+# Use the SolutionReward class from rewards.py
 
 
 def main():
     # Configuration
-    model_type = "programming_0"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/7BA"
-    dataset_name = "Metaskepsis/Numina_hard"
+    model_type = "solution_0"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/math"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250516_172318"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -166,8 +166,8 @@ def main():
     wandbname = f"{model_type}, {model_name}, {dataset_name}, {timestamp}"
     
     # Initialize reward function
-    reward_func = ProgrammingReward(reward_config)
-    logger.info("\nInitialized ProgrammingReward:")
+    reward_func = SolutionReward(reward_config)
+    logger.info("\nInitialized SolutionReward:")
     logger.info(f"Has stats object: {hasattr(reward_func, 'stats')}")
     
     # Initialize wandb
@@ -215,7 +215,7 @@ def main():
         
         # Load dataset
         data = load_dataset(dataset_name, split=split)
-        return prepare_programming_data(data, PROGRAMMER_SYSTEM_PROMPT)
+        return prepare_solution_data(data, FULLSOLUTION_SYSTEM_PROMPT)
     
     formatted_dataset = get_questions()
     formatted_dataset = formatted_dataset.shuffle(seed=142)
@@ -240,9 +240,9 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=12,
-        gradient_accumulation_steps=8,
-        num_generations=12,  # Fewer generations for programming tasks
+        per_device_train_batch_size=8,
+        gradient_accumulation_steps=1,
+        num_generations=18,  # Fewer generations for solution tasks
         max_prompt_length=1000,
         max_completion_length=4000,
         num_train_epochs=1,

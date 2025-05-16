@@ -1,9 +1,26 @@
 FULLSOLUTION_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
-After you finish thinking put the proof in a response tag like this:
+Your output must include two clearly separated sections: a **think** section and a **response** section.
+
+<think>
+Use this area as your creative scratchpad.
+Feel free to capture your thoughts, abstractions, corrections, or ideas in any order and form you wish—without constraints.
+Thoughts about the nature of the problem, potential difficulties, suitable solution methods.
+You can attempt trial and error. You can backtrack, or correct mistakes. 
+Use this freedom to ensure you've gathered all insights necessary to clearly and effectively provide the requested response.
+Do not proceed if you dont feel confident about the answer. 
+</think>
 
 <response>
-Here you put the full proof, in steps using <step>,</step> tags. The final step should have the answer boxed, i.e. \\boxed{answer}.
+<step>Step 1: Clearly state initial calculations
+Show work with LaTeX notation</step>
+
+<step>Step 2: Logical next step
+Clearly numbered and self-contained</step>
+
+<step>Step N: Final conclusion clearly stated
+Answer in \boxed{}</step>
 </response>"""
+
 
 
 FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.

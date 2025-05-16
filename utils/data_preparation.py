@@ -25,6 +25,7 @@ def prepare_solution_data(data: Dataset, system_prompts: Union[str, List[str]]) 
         return {
             'prompt': '<|im_start|>system\\n' + selected_prompt + '<|im_end|>\\n<|im_start|>user\\n' + x['problem'] + '<|im_end|>\\n<|im_start|>assistant\\n',
             'answer': x.get('answer', x.get('correct_answer', '')),  # Try both answer and correct_answer
+            'model_solution':x.get('model_solution',''),
             'partial_solution': '',  # Empty partial solution indicates full solution task
             'full_solution': '',
             'is_correct': None,  # Use None instead of empty string for consistency

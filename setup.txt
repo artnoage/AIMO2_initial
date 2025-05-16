@@ -29,4 +29,4 @@ python auxilary/hf_loader.py --type model --load down --path models/MiMo-7B-RL -
 XiaomiMiMo/MiMo-7B-Base
 
 
-python auxilary/hf_loader.py --type model --load down --path models/Phi4-mini --repo_name microsoft/Phi-4-mini-reasoning
+python auxilary/hf_loader.py --type model --load down --path models/math --repo_name Qwen/Qwen2.5-Math-7B
