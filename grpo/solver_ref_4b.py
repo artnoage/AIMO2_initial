@@ -184,7 +184,7 @@ class LoggingCallback(TrainerCallback):
 def main():
     # Configuration
     model_type = "self_correct_4B"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Q3B4"
+    model_name = "microsoft/Phi-4-mini-reasoning"
     dataset_name = "Metaskepsis/Numina_hard"
     
     # Setup logging first

@@ -195,7 +195,98 @@ class CustomChat:
         except Exception as e:
             print(f"Exception in CustomChat.ainvoke: {str(e)}")
             raise
+class CustomChat2:
+    """Chat model that makes direct API requests to local endpoints"""
+    
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000/v1",
+        model: str = "default",
+        temperature: float = 0,
+        api_key: str = "EMPTY"
+    ):
+        self.base_url = base_url
+        self.model = model
+        self.temperature = temperature
+        self.api_key = api_key
 
+    def _format_prompt(self, messages):
+        """Format messages using the Phi chat template format"""
+        formatted_prompt = ""
+        
+        for message in messages:
+            # Handle both dict-like messages and LangChain message objects
+            if hasattr(message, 'type') and hasattr(message, 'content'):
+                # LangChain message object
+                role = message.type if hasattr(message, 'type') else "user"
+                content = message.content
+            elif isinstance(message, dict):
+                # Dictionary message format
+                role = message.get("role", "").lower()
+                content = message.get("content", "")
+            else:
+                # Fallback for other formats
+                role = "user"
+                content = str(message)
+            if role == "system":
+                formatted_prompt += f"<|im_start|>system<|im_sep|>{content}<|im_end|>"
+            elif role == "user":
+                formatted_prompt += f"<|im_start|>user<|im_sep|>{content}<|im_end|>"
+            elif role == "human":
+                formatted_prompt += f"<|im_start|>user<|im_sep|>{content}<|im_end|>"
+            elif role == "assistant":
+                formatted_prompt += f"<|im_start|>assistant<|im_sep|>{content}<|im_end|>"
+            else:
+                # Handle other roles or fallback
+                formatted_prompt += f"<|im_start|>{role}<|im_sep|>{content}<|im_end|>"
+                
+        # Add the assistant prefix for the model to continue from
+        if not formatted_prompt.endswith("<|im_start|>assistan<|im_sep|>"):
+            formatted_prompt += "<|im_start|>assistant<|im_sep|>"
+            
+        return formatted_prompt
+
+    async def ainvoke(self, prompt: Any, **kwargs: Any) -> Any:
+        """Async call to completion endpoint with direct API request"""
+        max_tokens = kwargs.get("max_tokens", None)
+        
+        try:
+            # Format the prompt using our chat template
+            formatted_prompt = self._format_prompt(prompt)
+            
+            # Create completion parameters
+            payload = {
+                "model": self.model,
+                "prompt": formatted_prompt,
+                "temperature": self.temperature
+            }
+            
+            if max_tokens:
+                payload["max_tokens"] = max_tokens
+            
+            # Make direct API request using aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/completions",
+                    json=payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    }
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise ValueError(f"Error from API: {error_text}")
+                    
+                    result = await response.json()
+                    
+                    # Create a response object with the same interface
+                    return type('Response', (), {
+                        'content': result.get("choices", [{}])[0].get("text", "")
+                    })()
+        except Exception as e:
+            print(f"Exception in CustomChat.ainvoke: {str(e)}")
+            raise
 @contextmanager
 def time_limit(seconds):
     def signal_handler(signum, frame):
@@ -254,7 +345,7 @@ def get_model(config: BenchmarkConfig, role: str = "main"):
             api_key=openrouter_api_key)
 
 
-def async_retry(max_retries: int = 3, timeout: int = 120):
+def async_retry(max_retries: int = 3, timeout: int = 300):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -276,7 +367,7 @@ def async_retry(max_retries: int = 3, timeout: int = 120):
         return wrapper
     return decorator
 
-@async_retry(max_retries=3, timeout=120)
+@async_retry(max_retries=3, timeout=300)
 async def get_model_response(model, prompt, max_tokens=None) -> str:
     """Get response from model with retry logic"""
     try:

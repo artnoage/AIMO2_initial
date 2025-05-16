@@ -2,7 +2,7 @@ FULLSOLUTION_SYSTEM_PROMPT = """You will be given a mathematical problem. Carefu
 After you finish thinking put the proof in a response tag like this:
 
 <response>
-Here you put the full proof, in steps using <step>,</step> tags. The final step should have the answer boxed.
+Here you put the full proof, in steps using <step>,</step> tags. The final step should have the answer boxed, i.e. \\boxed{answer}.
 </response>"""
 
 

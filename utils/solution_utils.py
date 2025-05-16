@@ -148,21 +148,24 @@ def extract_answer_from_solution(solution: str) -> Optional[str]:
             i += 1
         return i - 1 if count == 0 else -1
 
-    # Check if there are multiple boxed answers
+    # Find all boxed answers
     pattern = re.compile(r'\\boxed\{')
     matches = list(pattern.finditer(solution))
-    if len(matches) > 1:
-        return None  # Return None if multiple boxed answers are found
     
-    # If exactly one boxed answer, extract it
-    if len(matches) == 1:
-        match = matches[0]
+    last_boxed_answer = None
+    
+    # Iterate through all matches to find the last valid one
+    for match in matches:
         start = match.end() - 1  # Position of the opening brace '{'
         end = find_matching_brace(solution, start)
         if end != -1:
             # Extract content between the braces
             content = solution[start + 1:end].strip()
-            return content
+            last_boxed_answer = content # Update with the latest found boxed answer
+
+    # If a boxed answer was found, return the last one
+    if last_boxed_answer is not None:
+        return last_boxed_answer
 
     # If no boxed answer found, try hash format
     if "####" in solution:

@@ -17,9 +17,9 @@ class ModelOption(Enum):
     GPT_MINI="openai/gpt-4o-mini"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/Q3B8"
-    LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/72"
-    LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/73"
+    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/Phi4"
+    LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/Q3B8"
+    LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/Q25M7B"
     LOCAL_3= "/Home/stat/laschos/math/AIMO2_initial/models/Q3B4"
     LOCAL_4= "/Home/stat/laschos/math/AIMO2_initial/models/7B"
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
@@ -35,13 +35,13 @@ class BenchmarkConfig:
     main: str = "LOCAL_0"
     auxiliary: str = "LOCAL_1"  # If None, uses same as main
     auxiliary2: str = "LOCAL_2"  # Third model option
-    main_port: int = 8000
+    main_port: int = 9000
     auxiliary_port: int = 6000
     auxiliary2_port: int = 6000
     main_temp: float = 0.7
     auxiliary_temp: float = 0.7
     auxiliary2_temp: float = 0.0
-    main_template: int = 1  # Template type for main model (1=CustomChat, 2=CustomChat2)
+    main_template: int = 2  # Template type for main model (1=CustomChat, 2=CustomChat2)
     auxiliary_template: int = 1  # Template type for auxiliary model
     auxiliary2_template: int = 1  # Template type for auxiliary2 model
     
@@ -87,7 +87,7 @@ class BenchmarkConfig:
         parser.add_argument('--auxiliary2', type=str,
                           choices=[model.name for model in ModelOption],
                           default='LOCAL_2', help='Second auxiliary model (optional)')
-        parser.add_argument('--main-port', type=int, default=8000,
+        parser.add_argument('--main-port', type=int, default=9000,
                           help='Port for main model server (default: 8000)')
         parser.add_argument('--auxiliary-port', type=int, default=6000,
                           help='Port for auxiliary model server (default: 6000)')
@@ -120,7 +120,7 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=20,
+        parser.add_argument('--max-concurrent', type=int, default=4,
                           help='Maximum number of concurrent problems (default: 64)')   
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')

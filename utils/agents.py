@@ -38,7 +38,7 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=5000)
+        response = await get_model_response(self.model, prompt, max_tokens=32000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
     
 
@@ -176,7 +176,7 @@ class ReflectiveSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=5000)
+        response = await get_model_response(self.model, prompt, max_tokens=6000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 

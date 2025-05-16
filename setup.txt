@@ -23,3 +23,10 @@ python benchmarks/reflective_benchmark.py --dataset Metaskepsis/validation_set_m
 
 yentinglin/aime_2025
 python joined_benchmark.py --dataset Metaskepsis/Numina_medium --best-of 1 --main-temp 0 --auxiliary-temp 0 --main-port 8002 --auxiliary-port 8003
+python auxilary/hf_loader.py --type model --load down --path models/MiMo-7B-Base --repo_name XiaomiMiMo/MiMo-7B-Base
+python auxilary/hf_loader.py --type model --load down --path models/MiMo-7B-SFT --repo_name XiaomiMiMo/MiMo-7B-SFT
+python auxilary/hf_loader.py --type model --load down --path models/MiMo-7B-RL --repo_name XiaomiMiMo/MiMo-7B-RL
+XiaomiMiMo/MiMo-7B-Base
+
+
+python auxilary/hf_loader.py --type model --load down --path models/Phi4-mini --repo_name microsoft/Phi-4-mini-reasoning

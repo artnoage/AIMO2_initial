@@ -8,6 +8,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import GRPOConfig, GRPOTrainer
 from transformers import TrainerCallback
+from peft import LoraConfig
 from accelerate import Accelerator
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -222,8 +223,7 @@ def main():
     # Load model using standard transformers
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
-        device_map="auto",  # This will distribute the model across available GPUs
+        torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,  # This will distribute the model across available GPUs
         trust_remote_code=True
     )
     
@@ -269,11 +269,11 @@ def main():
         logging_steps=1,
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
-        per_device_train_batch_size=3,  # Reduced batch size to fit in memory when using multiple GPUs
-        gradient_accumulation_steps=4,  # Increased to maintain effective batch size
-        num_generations=12,
+        per_device_train_batch_size=4,  # Reduced batch size to fit in memory when using multiple GPUs
+        gradient_accumulation_steps=1,  # Increased to maintain effective batch size
+        num_generations=4,
         max_prompt_length=1000,
-        max_completion_length=11000,
+        max_completion_length=4000,
         num_train_epochs=1,
         save_steps=30,
         max_grad_norm=0.1,
@@ -288,14 +288,33 @@ def main():
         deepspeed=None,  # Can be configured with a deepspeed config file if needed
     )
     
-    # Initialize trainer with reward function
+    # PEFT Configuration (LoRA)
+    lora_config = LoraConfig(
+        r=16,  # Rank of the LoRA matrices
+        lora_alpha=16,  # Alpha parameter for LoRA scaling
+        lora_dropout=0.05,  # Dropout probability for LoRA layers
+        bias="none",  # Bias type for LoRA. 'none' is common.
+        task_type="CAUSAL_LM",
+        target_modules=[
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],  # Common target modules for Qwen-like models
+    )
+
+    # Initialize trainer with reward function and PEFT config
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
         reward_funcs=[reward_func],
         args=training_args,
         train_dataset=formatted_dataset,
-        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)]
+        callbacks=[LoggingCallback(reward_func=reward_func, logger=logger, save_frequency=10)],
+        peft_config=lora_config
     )
     
     # Train
