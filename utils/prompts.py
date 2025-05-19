@@ -21,7 +21,18 @@ Clearly numbered and self-contained</step>
 Answer in \boxed{}</step>
 </response>"""
 
+FULLSOLUTION_SYSTEM_PROMPTA = """You will be given a mathematical problem. After you finish thinking give your answer in the **response** section, using the following format:
 
+<response>
+<step>Step 1: Clearly state initial calculations
+Show work with LaTeX notation</step>
+
+<step>Step 2: Logical next step
+Clearly numbered and self-contained</step>
+...
+<step>Step N: Final conclusion clearly stated
+Answer in \boxed{}</step>
+</response>"""
 
 FULLSOLUTION_SYSTEM_PROMPT_WITH_REFLECTION = """You will be given a mathematical problem. Carefully analyze it before providing a well-structured response.
 Your output must include two clearly separated sections: a **response** section, and a **reflection** section.

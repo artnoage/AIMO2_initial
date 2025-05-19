@@ -473,7 +473,7 @@ class SolutionEmbeddingReward(SolutionReward):
                     transformed_similarity = 5.0
                 else:
                     # Calculate 1/|(1-x)| with a maximum of 5.0
-                    transformed_similarity = min(5.0, 1.0 /  math.sqrt(abs(1.0 - similarity_score)))
+                    transformed_similarity = min(5.0, 1.0 /  math.sqrt(math.sqrt(abs(1.0 - similarity_score))))
                 
                                 
                 

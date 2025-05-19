@@ -38,9 +38,24 @@ class FullSolutionAgent:
             SystemMessage(content=system_prompt),
             HumanMessage(content=f"{problem}")
         ]
-        response = await get_model_response(self.model, prompt, max_tokens=32000)
+        response = await get_model_response(self.model, prompt, max_tokens=30000)
         return (system_prompt + "\n\n" + problem, response) if return_prompt else response
     
+class FullSolutionAgentA:
+    """Agent that provides complete solutions with analysis and steps"""
+    
+    def __init__(self, model):
+        self.model = model
+        
+    async def generate(self, problem: str, return_prompt: bool = False) -> Union[str, Tuple[str, str]]:
+        """Generate a complete solution with analysis and steps"""
+        system_prompt = FULLSOLUTION_SYSTEM_PROMPTA
+        prompt = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=f"{problem}")
+        ]
+        response = await get_model_response(self.model, prompt, max_tokens=30000)
+        return (system_prompt + "\n\n" + problem, response) if return_prompt else response
 
 class TutorAgent:
     """Agent that evaluates mathematical solutions and identifies the first wrong step"""

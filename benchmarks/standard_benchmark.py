@@ -47,7 +47,7 @@ async def process_example(example: Dict, running_id: int, example_id: int, confi
 
         main = get_model(config, role="main")
         #solution_agent = SimpleFullSolutionAgent(main)
-        solution_agent = FullSolutionAgent(main)
+        solution_agent = FullSolutionAgentA(main)
         solutions = []
         correct_count = 0
         best_solution = None

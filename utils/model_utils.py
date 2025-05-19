@@ -55,7 +55,7 @@ class OpenRouterChat:
             
             # Combine system and user content if both exist
             if system_content and user_content:
-                combined_content = f"System instructions:\n{system_content}\n\nUser message:\n{user_content}"
+                combined_content = f"\n{system_content}\n\n\n{user_content}"
                 messages = [{"role": "user", "content": combined_content}]
             elif user_content:
                 messages = [{"role": "user", "content": user_content}]

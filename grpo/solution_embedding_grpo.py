@@ -170,9 +170,9 @@ class LoggingCallback(TrainerCallback):
 
 def main():
     # Configuration
-    model_type = "solution_embedding_0"
+    model_type = "solution_embedding_1"
     model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Q"
-    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250516_172318"
+    dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250518_124125"
     
     # Setup logging first
     logger = setup_logging(model_type)
@@ -215,7 +215,7 @@ def main():
     # Load model
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=5000,
+        max_seq_length=4000,
         fast_inference=True,
         load_in_4bit=False,
         use_gradient_checkpointing="unsloth",
@@ -270,7 +270,7 @@ def main():
         return concatenated_dataset
     
     # Get the dataset with multiple copies
-    formatted_dataset = get_questions(num_copies=20)  # Create 3 copies of the dataset
+    formatted_dataset = get_questions(num_copies=50)  # Create 3 copies of the dataset
     formatted_dataset = formatted_dataset.shuffle(seed=142)
     
     # Verify first few entries
@@ -285,24 +285,24 @@ def main():
     
     # GRPO specific training arguments
     training_args = GRPOConfig(
-        learning_rate=3e-6,
+        learning_rate=8e-6,
         adam_beta1=0.9,
         adam_beta2=0.99,
         weight_decay=0.1,
         warmup_ratio=0.01,
         lr_scheduler_type="cosine",
-        optim="adamw_torch",
+        optim="paged_adamw_8bit",
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=8,
-        gradient_accumulation_steps=1,
-        num_generations=8,  # Fewer generations for solution tasks
+        per_device_train_batch_size=10,
+        gradient_accumulation_steps=8,
+        num_generations=10,  # Fewer generations for solution tasks
         max_prompt_length=1000,
-        max_completion_length=4000,
+        max_completion_length=3000,
         num_train_epochs=1,
         save_steps=200,
-        max_grad_norm=0.1,
+        max_grad_norm=0.01,
         report_to="wandb",
         output_dir=output_dir,
     )

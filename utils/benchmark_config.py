@@ -17,7 +17,7 @@ class ModelOption(Enum):
     MINI="openai/o4-mini-high"
     MASTER = "openai/o1-preview-2024-09-12"
     MASTER_MINI="openai/o1-mini"
-    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/Phi4"
+    LOCAL_0= "/Home/stat/laschos/math/AIMO2_initial/models/solution_embedding_0/20250516_222432"
     LOCAL_1= "/Home/stat/laschos/math/AIMO2_initial/models/Q3B8"
     LOCAL_2= "/Home/stat/laschos/math/AIMO2_initial/models/Q25M7B"
     LOCAL_3= "/Home/stat/laschos/math/AIMO2_initial/models/Q3B4"
@@ -25,8 +25,8 @@ class ModelOption(Enum):
     NEMOTRON= "nvidia/llama-3.1-nemotron-70b-instruct"
     MISTRAL="mistralai/mistral-small-24b-instruct-2501"
     CODER="qwen/qwen-2.5-coder-32b-instruct"
-    DEEP="deepseek/deepseek-chat"
-    QWEN="qwen/qwen3-30b-a3b"
+    DEEP="deepseek/deepseek-r1"
+    QWEN="qwen/qwen3-235b-a22b"
     NANO="openai/gpt-4.1-nano"
 @dataclass
 class BenchmarkConfig:
@@ -55,7 +55,7 @@ class BenchmarkConfig:
     seed: int = 42  # Seed for dataset operations
     
     # Execution settings
-    max_concurrent: int = 20
+    max_concurrent: int = 128
     best_of: int = 1
     completions: int = 20
     solutions_per_group: int = 4  # Number of solutions to generate per group in ensemble benchmark
@@ -120,7 +120,7 @@ class BenchmarkConfig:
                           help='Seed for dataset operations (default: 42)')
                           
         # Execution arguments
-        parser.add_argument('--max-concurrent', type=int, default=4,
+        parser.add_argument('--max-concurrent', type=int, default=64,
                           help='Maximum number of concurrent problems (default: 64)')   
         parser.add_argument('--best-of', type=int, default=1,
                           help='Number of attempts per problem (default: 5)')
