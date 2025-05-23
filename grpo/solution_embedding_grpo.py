@@ -82,58 +82,9 @@ class LoggingCallback(TrainerCallback):
             latest_batch = {}
             if hasattr(self.reward_func.stats, 'batch_results') and self.reward_func.stats.batch_results:
                 latest_batch = self.reward_func.stats.batch_results[-1]
-            
-            # Key performance metrics for wandb
-            wandb_stats = {
-                'solution_reward': logs['rewards/0'],
-                'average_reward': self.reward_func.stats.reward_components.get('average_reward', 0.0),
-                'correct_solutions': self.reward_func.stats.reward_components.get('correct_solutions', 0),
-                'syntax_valid_solutions': self.reward_func.stats.reward_components.get('syntax_valid_solutions', 0),
-                'execution_valid_solutions': self.reward_func.stats.reward_components.get('execution_valid_solutions', 0),
-                'average_completion_length': self.reward_func.stats.plurality_stats.get('avg_completion_length', 0.0)
-            }
-            
-            # Add plurality metrics to wandb logs - ensure these are always logged
-            wandb_stats.update({
-                'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
-                'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0),
-                'avg_completion_length': plurality_stats.get('avg_completion_length', 0.0)
-            })
-            
-            # Add embedding metrics to wandb logs
-            wandb_stats.update({
-                'avg_similarity_score': embedding_stats.get('avg_similarity_score', 0.0),
-                'high_similarity_count': embedding_stats.get('high_similarity_count', 0),
-                'high_similarity_rate': embedding_stats.get('high_similarity_count', 0) / max(embedding_stats.get('total_similarity_comparisons', 1), 1)
-            })
-        
-            if latest_batch:
-                # Convert boolean plurality_correct to float (1.0 for True, 0.0 for False)
-                plurality_correct_float = 1.0 if latest_batch.get('plurality_correct', False) else 0.0
-            
-                # Always include these metrics in wandb logs
-                wandb_stats.update({
-                    'batch_plurality_correct': plurality_correct_float,  # Numeric value for averaging
-                    'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
-                    'batch_avg_code_length': latest_batch.get('avg_code_length', 0),
-                    'batch_avg_execution_time': latest_batch.get('avg_execution_time', 0.0),
-                    'batch_total_answers': latest_batch.get('total_answers', 0),
-                    'batch_correct_answers': latest_batch.get('correct_answers', 0),
-                    'batch_correct_rate': latest_batch.get('correct_answers', 0) / max(latest_batch.get('total_answers', 1), 1)
-                })
-            
-                # Add answer group metrics if available
-                if hasattr(self.reward_func, 'answer_grouping_tolerance'):
-                    wandb_stats.update({
-                        'answer_grouping_tolerance': self.reward_func.answer_grouping_tolerance
-                    })
-                
-                # Add embedding similarity metrics if available
-                if hasattr(self.reward_func, 'high_similarity_threshold'):
-                    wandb_stats.update({
-                        'high_similarity_threshold': self.reward_func.high_similarity_threshold,
-                        'embedding_similarity_max_reward': self.reward_func.embedding_similarity_max_reward
-                    })
+
+            # WandB logging is now handled by the reward function's _finalize_batch method.
+            # This callback will focus on console logging.
             
             # Detailed stats for local logging only
             local_stats = {
@@ -165,13 +116,13 @@ class LoggingCallback(TrainerCallback):
             self._last_length_penalties = self.reward_func.stats.reward_components.get('total_length_penalty', 0.0)
             
             # Update logs with our metrics
-            logs.update(wandb_stats)
+            # logs.update(wandb_stats) # Removed as WandB logging is now in BaseReward
 
 
 def main():
     # Configuration
     model_type = "solution_embedding_1"
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Q"
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Qtp"
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250518_124125"
     
     # Setup logging first
@@ -237,7 +188,7 @@ def main():
         loftq_config=None
     )
     
-    def get_questions(split="train", num_copies=100) -> Dataset:
+    def get_questions(split="train", num_copies=10) -> Dataset:
         """
         Load dataset and make multiple copies of it.
         
@@ -295,13 +246,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
+        per_device_train_batch_size=14,
         gradient_accumulation_steps=8,
-        num_generations=10,  # Fewer generations for solution tasks
+        num_generations=14,  # Fewer generations for solution tasks
         max_prompt_length=1000,
         max_completion_length=3000,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=20,
         max_grad_norm=0.01,
         report_to="wandb",
         output_dir=output_dir,

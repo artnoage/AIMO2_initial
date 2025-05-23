@@ -161,6 +161,10 @@ class RewardStats:
         
         # Create a logger for this instance
         self.logger = logging.getLogger(f'reward_stats_{config.model_type}')
+
+        # For CTI / CTT based on all individual answers
+        self.cumulative_individual_correct_answers = 0
+        self.cumulative_individual_total_answers = 0
         
     def _create_bins(self) -> Tuple[List[float], List[str]]:
         """Create dynamic bins based on the range of observed rewards
@@ -244,6 +248,19 @@ class RewardStats:
             # Update usage counter
             if hasattr(self, 'reward_type_usage') and reward_type in self.reward_type_usage:
                 self.reward_type_usage[reward_type] += 1
+
+        # Update cumulative individual answer stats from the current_batch
+        # This assumes current_batch['is_correct'] is populated by the specific reward function
+        # before BaseReward.__call__ calls self.stats.update()
+        # More accurately, BaseReward.__call__ populates current_batch, then calls calculate_reward,
+        # then calls self.stats.update(), then calls self._finalize_batch().
+        # So, current_batch['is_correct'] should be up-to-date here.
+        if 'is_correct' in self.current_batch and isinstance(self.current_batch['is_correct'], list):
+            for correct_status in self.current_batch['is_correct']:
+                if correct_status is not None: # Ensure we only count processed examples
+                    self.cumulative_individual_total_answers += 1
+                    if correct_status: # True or False
+                        self.cumulative_individual_correct_answers += 1
         
         # Initialize example type tracking if not already present
         if not hasattr(self, 'example_types'):

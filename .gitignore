@@ -37,3 +37,4 @@ examples/
 .cache/
 wait.json
 _unsloth_temporary_saved_buffers
+*.json

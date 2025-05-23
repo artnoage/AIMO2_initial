@@ -79,45 +79,8 @@ class LoggingCallback(TrainerCallback):
             if hasattr(self.reward_func.stats, 'batch_results') and self.reward_func.stats.batch_results:
                 latest_batch = self.reward_func.stats.batch_results[-1]
             
-            wandb_stats = {
-                'solution_reward_total': logs['rewards/0'], # Total reward from trainer
-                'average_reward_calculated': self.reward_func.stats.reward_components.get('average_reward', 0.0),
-                'correct_solutions_final_answer': self.reward_func.stats.group_stats.get('correct_answers', 0),
-                'avg_completion_len': plurality_stats.get('avg_completion_length', 0.0) # Renamed for clarity
-            }
-            
-            wandb_stats.update({
-                'plurality_correct_rate': plurality_stats.get('plurality_correct_rate', 0.0),
-                'avg_plurality_percentage': plurality_stats.get('avg_plurality_percentage', 0.0),
-            })
-            
-            # Add DTW metrics to wandb logs
-            wandb_stats.update({
-                'avg_dtw_distance': dtw_stats.get('average_dtw_distance', 0.0),
-                'completions_with_steps': dtw_stats.get('completions_with_steps', 0),
-                'dtw_comparisons_count': dtw_stats.get('dtw_comparisons_count',0),
-                # Add step count stats to wandb
-                'avg_step_diff': step_count_stats.get('average_step_diff', 0.0),
-                'perfect_step_count_matches': step_count_stats.get('perfect_step_count_matches', 0),
-                'num_step_comparisons': step_count_stats.get('num_step_comparisons', 0)
-            })
-        
-            if latest_batch:
-                plurality_correct_float = 1.0 if latest_batch.get('plurality_correct', False) else 0.0
-                wandb_stats.update({
-                    'batch_plurality_correct': plurality_correct_float,
-                    'batch_plurality_percentage': latest_batch.get('plurality_percentage', 0.0),
-                    'batch_total_answers_in_plurality': latest_batch.get('total_answers', 0), # Clarified name
-                    'batch_correct_answers_in_plurality': latest_batch.get('correct_answers', 0), # Clarified name
-                    'batch_correct_rate_plurality': latest_batch.get('correct_answers', 0) / max(latest_batch.get('total_answers', 1), 1)
-                })
-            
-            if hasattr(self.reward_func, 'answer_grouping_tolerance'):
-                wandb_stats['answer_grouping_tolerance'] = self.reward_func.answer_grouping_tolerance
-            if hasattr(self.reward_func, 'dtw_max_reward'): # From SolutionDTWReward
-                wandb_stats['dtw_max_reward'] = self.reward_func.dtw_max_reward
-            if hasattr(self.reward_func, 'correctness_reward_value'): # From SolutionDTWReward
-                wandb_stats['correctness_reward_value'] = self.reward_func.correctness_reward_value
+            # WandB logging is now handled by the reward function's _finalize_batch method.
+            # This callback will focus on console logging.
 
             # Detailed stats for local logging only (delta from last log)
             current_base_correctness = self.reward_func.stats.reward_components.get('base_correctness_rewards', 0.0)
@@ -133,12 +96,51 @@ class LoggingCallback(TrainerCallback):
             self.logger.info(local_stats_msg)
             
             if latest_batch:
+                # Use the new cumulative stats from RewardStats for console logging
+                cumulative_correct_all = getattr(self.reward_func.stats, 'cumulative_individual_correct_answers', 0)
+                cumulative_total_all = getattr(self.reward_func.stats, 'cumulative_individual_total_answers', 0)
+                cumulative_incorrect_all = cumulative_total_all - cumulative_correct_all
+
+                if cumulative_incorrect_all > 0:
+                    cumulative_cti_ratio_all_str = f"{cumulative_correct_all / cumulative_incorrect_all:.3f}"
+                elif cumulative_correct_all > 0:
+                    cumulative_cti_ratio_all_str = "inf"
+                else:
+                    cumulative_cti_ratio_all_str = "0.000"
+
+                if cumulative_total_all > 0:
+                    cumulative_ctt_ratio_all_str = f"{cumulative_correct_all / cumulative_total_all:.6f}"
+                else:
+                    cumulative_ctt_ratio_all_str = "0.000000"
+
+                # Batch-specific ratios
+                batch_correct_answers = latest_batch.get('correct_answers', 0)
+                batch_total_answers_in_group = latest_batch.get('total_answers', 0)
+                batch_incorrect_answers = batch_total_answers_in_group - batch_correct_answers
+
+                if batch_total_answers_in_group > 0:
+                    batch_ctt_ratio = batch_correct_answers / batch_total_answers_in_group
+                    batch_ctt_ratio_str = f"{batch_ctt_ratio:.6f}"
+                else:
+                    batch_ctt_ratio_str = "0.000000"
+
+                if batch_incorrect_answers > 0:
+                    batch_cti_ratio = batch_correct_answers / batch_incorrect_answers
+                    batch_cti_ratio_str = f"{batch_cti_ratio:.3f}"
+                elif batch_correct_answers > 0: # incorrect is 0, correct is > 0
+                    batch_cti_ratio_str = "inf"
+                else: # incorrect is 0, correct is 0
+                    batch_cti_ratio_str = "0.000"
+
                 self.logger.info(
                     f"Step {self.step}: Plurality ans: {latest_batch.get('plurality_answer')} " +
                     f"({latest_batch.get('plurality_percentage', 0.0):.2%}), " +
                     f"Correct: {latest_batch.get('plurality_correct', False)}, " +
-                    f"Overall Plurality Rate: {plurality_stats.get('plurality_correct_rate', 0.0):.2%}, " +
-                    f"Batch Correct (Plurality): {latest_batch.get('correct_answers', 0)}/{latest_batch.get('total_answers', 0)}, " +
+                    f"Batch correct rate: {batch_correct_answers}/{batch_total_answers_in_group}, " +
+                    f"Batch CTT Ratio: {batch_ctt_ratio_str}, " +
+                    f"Batch CTI Ratio: {batch_cti_ratio_str}, " +
+                    f"Cumulative CTT (All Ans): {cumulative_ctt_ratio_all_str}, " +
+                    f"Cumulative CTI (All Ans): {cumulative_cti_ratio_all_str}, " +
                     f"Avg DTW Dist: {dtw_stats.get('average_dtw_distance', 0.0):.4f}, " +
                     f"Avg Step Diff: {step_count_stats.get('average_step_diff', 0.0):.2f}"
                 )
@@ -148,13 +150,13 @@ class LoggingCallback(TrainerCallback):
             self._last_dtw_similarity_rewards = current_dtw_similarity
             self._last_step_count_match_rewards = current_step_count_match
             
-            logs.update(wandb_stats)
+            # logs.update(wandb_stats) # Removed as WandB logging is now in BaseReward
 
 
 def main():
     # Configuration
     model_type = "solution_dtw_1" # Changed model_type
-    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/Q" # Keep your base model
+    model_name = "/Home/stat/laschos/math/AIMO2_initial/models/dtw2" # Keep your base model
     dataset_name = "/Home/stat/laschos/math/AIMO2_initial/local_datasets/20250518_124125" # Your dataset
     
     logger = setup_logging(model_type, script_name=f"{model_type}_train") # Use specific logger name
@@ -202,7 +204,7 @@ def main():
     
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_name,
-        max_seq_length=4000, # Adjust as needed
+        max_seq_length=3000, # Adjust as needed
         fast_inference=True, # Matching original script
         load_in_4bit=False, # Or True if you need 4-bit
         use_gradient_checkpointing="unsloth",
@@ -238,7 +240,7 @@ def main():
         return formatted_data
     
     # Consider a smaller num_copies for faster iteration during testing
-    formatted_dataset = get_questions(dataset_name, num_copies=10) # Example: 10 copies
+    formatted_dataset = get_questions(dataset_name, num_copies=50) # Example: 10 copies
     formatted_dataset = formatted_dataset.shuffle(seed=42) # Consistent seed
     
     # GRPO specific training arguments
@@ -253,13 +255,13 @@ def main():
         logging_steps=1,
         bf16=is_bfloat16_supported(),
         fp16=not is_bfloat16_supported(),
-        per_device_train_batch_size=10,
+        per_device_train_batch_size=14,
         gradient_accumulation_steps=8,
-        num_generations=10,  # Fewer generations for solution tasks
+        num_generations=14,  # Fewer generations for solution tasks
         max_prompt_length=1000,
-        max_completion_length=3000,
+        max_completion_length=2000,
         num_train_epochs=1,
-        save_steps=200,
+        save_steps=20,
         max_grad_norm=0.01,
         report_to="wandb",
         output_dir=output_dir,

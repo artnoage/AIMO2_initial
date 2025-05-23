@@ -10,6 +10,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.append(project_root)
 
 from abc import ABC, abstractmethod
+import wandb # Added for direct logging
 from grpo.config import RewardConfig
 from grpo.reward_stats import RewardStats
 
@@ -328,3 +329,100 @@ class BaseReward(ABC):
             self.logger.info(f"Answer groups (tolerance={self.answer_grouping_tolerance}):")
             for info in group_info:
                 self.logger.info(f"  {info}")
+
+        # Log metrics to Weights & Biases if active
+        if wandb.run:
+            metrics_to_log = {}
+
+            # General stats from RewardStats (self.stats)
+            if hasattr(self.stats, 'average_reward'):
+                metrics_to_log['average_reward_calculated'] = self.stats.average_reward
+            
+            # Group stats (final answer correctness from individual calculations)
+            if hasattr(self.stats, 'group_stats') and self.stats.group_stats:
+                metrics_to_log['correct_solutions_final_answer'] = self.stats.group_stats.get('correct_answers', 0)
+
+            # Plurality stats (calculated in _finalize_batch)
+            if hasattr(self.stats, 'plurality_stats') and self.stats.plurality_stats:
+                metrics_to_log['avg_completion_len'] = self.stats.plurality_stats.get('avg_completion_length', 0.0)
+                metrics_to_log['plurality_correct_rate'] = self.stats.plurality_stats.get('plurality_correct_rate', 0.0)
+                metrics_to_log['avg_plurality_percentage'] = self.stats.plurality_stats.get('avg_plurality_percentage', 0.0)
+
+            # Batch-specific plurality stats (from the latest batch_result)
+            if hasattr(self.stats, 'batch_results') and self.stats.batch_results:
+                latest_batch_stats = self.stats.batch_results[-1]
+                metrics_to_log['batch_plurality_correct'] = 1.0 if latest_batch_stats.get('plurality_correct', False) else 0.0
+                metrics_to_log['batch_plurality_percentage'] = latest_batch_stats.get('plurality_percentage', 0.0)
+                metrics_to_log['batch_total_answers'] = latest_batch_stats.get('total_answers', 0)
+                # 'correct_answers' in batch_result is for the plurality group
+                metrics_to_log['batch_correct_answers_in_plurality'] = latest_batch_stats.get('correct_answers', 0) 
+                if latest_batch_stats.get('total_answers', 0) > 0:
+                     metrics_to_log['batch_correct_rate_plurality'] = latest_batch_stats.get('correct_answers', 0) / latest_batch_stats.get('total_answers', 1)
+                else:
+                     metrics_to_log['batch_correct_rate_plurality'] = 0.0
+
+
+            # DTW specific stats (for SolutionDTWReward)
+            if hasattr(self.stats, 'dtw_stats') and self.stats.dtw_stats:
+                metrics_to_log['avg_dtw_distance'] = self.stats.dtw_stats.get('average_dtw_distance', 0.0)
+                metrics_to_log['completions_with_steps'] = self.stats.dtw_stats.get('completions_with_steps', 0)
+                metrics_to_log['dtw_comparisons_count'] = self.stats.dtw_stats.get('dtw_comparisons_count', 0)
+
+            # Step count specific stats (for SolutionDTWReward)
+            if hasattr(self.stats, 'step_count_stats') and self.stats.step_count_stats:
+                metrics_to_log['avg_step_diff'] = self.stats.step_count_stats.get('average_step_diff', 0.0)
+                metrics_to_log['perfect_step_count_matches'] = self.stats.step_count_stats.get('perfect_step_count_matches', 0)
+                metrics_to_log['num_step_comparisons'] = self.stats.step_count_stats.get('num_step_comparisons', 0)
+
+            # Config values from the reward instance or its config
+            # These are specific to the reward function instance (e.g., SolutionDTWReward)
+            if hasattr(self, 'answer_grouping_tolerance'):
+                metrics_to_log['answer_grouping_tolerance'] = self.answer_grouping_tolerance
+            elif hasattr(self.config, 'answer_grouping_tolerance'):
+                 metrics_to_log['answer_grouping_tolerance'] = self.config.answer_grouping_tolerance
+            
+            # DTW-specific config values
+            if hasattr(self, 'dtw_max_reward'): 
+                metrics_to_log['dtw_max_reward'] = self.dtw_max_reward
+            if hasattr(self, 'correctness_reward_value'): 
+                metrics_to_log['correctness_reward_value'] = self.correctness_reward_value
+            if hasattr(self, 'step_count_match_max_reward'): 
+                metrics_to_log['step_count_match_max_reward'] = self.step_count_match_max_reward
+
+            # Embedding-specific stats and config
+            if hasattr(self.stats, 'embedding_stats') and self.stats.embedding_stats:
+                metrics_to_log['avg_similarity_score'] = self.stats.embedding_stats.get('avg_similarity_score', 0.0)
+                metrics_to_log['high_similarity_count'] = self.stats.embedding_stats.get('high_similarity_count', 0)
+                total_sim_comps = self.stats.embedding_stats.get('total_similarity_comparisons', 1)
+                if total_sim_comps > 0:
+                    metrics_to_log['high_similarity_rate'] = self.stats.embedding_stats.get('high_similarity_count', 0) / total_sim_comps
+                else:
+                    metrics_to_log['high_similarity_rate'] = 0.0
+            
+            if hasattr(self, 'high_similarity_threshold'):
+                metrics_to_log['high_similarity_threshold'] = self.high_similarity_threshold
+            if hasattr(self, 'embedding_similarity_max_reward'):
+                metrics_to_log['embedding_similarity_max_reward'] = self.embedding_similarity_max_reward
+
+            # Add cumulative CTI and CTT based on all individual answers
+            if hasattr(self.stats, 'cumulative_individual_total_answers') and self.stats.cumulative_individual_total_answers > 0:
+                cumulative_correct = self.stats.cumulative_individual_correct_answers
+                cumulative_total = self.stats.cumulative_individual_total_answers
+                cumulative_incorrect = cumulative_total - cumulative_correct
+
+                metrics_to_log['metrics/cumulative_ctt_ratio_all_answers'] = cumulative_correct / cumulative_total
+
+                if cumulative_incorrect > 0:
+                    metrics_to_log['metrics/cumulative_cti_ratio_all_answers'] = cumulative_correct / cumulative_incorrect
+                elif cumulative_correct > 0: # incorrect is 0, correct > 0
+                    metrics_to_log['metrics/cumulative_cti_ratio_all_answers'] = float('inf')
+                else: # incorrect is 0, correct is 0
+                    metrics_to_log['metrics/cumulative_cti_ratio_all_answers'] = 0.0
+            else:
+                metrics_to_log['metrics/cumulative_ctt_ratio_all_answers'] = 0.0
+                metrics_to_log['metrics/cumulative_cti_ratio_all_answers'] = 0.0
+
+
+            if metrics_to_log:
+                wandb.log(metrics_to_log)
+                self.logger.info(f"Logged {len(metrics_to_log)} metrics to WandB.")

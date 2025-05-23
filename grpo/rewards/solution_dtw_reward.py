@@ -28,8 +28,7 @@ class SolutionDTWReward(BaseReward):
         'dtw_stats': ['average_dtw_distance', 'completions_with_steps'],
         'step_count_stats': ['average_step_diff', 'perfect_step_count_matches'],
         'group_stats': [ # From SolutionReward, if we want to keep some basic answer stats
-            'correct_answers', 'incorrect_answers', 'correct_to_total_ratio'
-        ],
+            'correct_answers', 'incorrect_answers', 'correct_to_incorrect_ratio', 'correct_to_total_ratio' ],
         'plurality_stats': [ # From SolutionReward
             'plurality_correct_rate', 'avg_plurality_percentage', 'avg_completion_length'
         ]
@@ -139,30 +138,30 @@ class SolutionDTWReward(BaseReward):
             self.logger.info(f"DTW: Shape of np_comp_embeddings for DTW: {np_comp_embeddings.shape}")
             self.logger.info(f"DTW: Shape of np_ref_embeddings for DTW: {np_ref_embeddings.shape}")
 
-            # --- Direct Printing of Full Embedding Values ---
-            print("\n--- [RAW EMBEDDING VALUES] Completion Step Embeddings ---")
-            for i, step_text in enumerate(completion_steps):
-                if i < np_comp_embeddings.shape[0]:
-                    step_emb_np = np_comp_embeddings[i]
-                    clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
-                    print(f"  Comp Step {i+1}/{len(completion_steps)} (Text: '{clean_step_text}...'):")
-                    print(f"    Embedding (shape {step_emb_np.shape}): {step_emb_np.tolist()}")
-                else:
-                    clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
-                    print(f"  Comp Step {i+1}/{len(completion_steps)} (Text: '{clean_step_text}...'): ERROR - No corresponding embedding in array (array shape {np_comp_embeddings.shape})")
+            # # --- Direct Printing of Full Embedding Values ---
+            # print("\n--- [RAW EMBEDDING VALUES] Completion Step Embeddings ---")
+            # for i, step_text in enumerate(completion_steps):
+            #     if i < np_comp_embeddings.shape[0]:
+            #         step_emb_np = np_comp_embeddings[i]
+            #         clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
+            #         print(f"  Comp Step {i+1}/{len(completion_steps)} (Text: '{clean_step_text}...'):")
+            #         print(f"    Embedding (shape {step_emb_np.shape}): {step_emb_np.tolist()}")
+            #     else:
+            #         clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
+            #         print(f"  Comp Step {i+1}/{len(completion_steps)} (Text: '{clean_step_text}...'): ERROR - No corresponding embedding in array (array shape {np_comp_embeddings.shape})")
 
-            print("\n--- [RAW EMBEDDING VALUES] Reference Step Embeddings ---")
-            for i, step_text in enumerate(reference_steps):
-                if i < np_ref_embeddings.shape[0]:
-                    step_emb_np = np_ref_embeddings[i]
-                    clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
-                    print(f"  Ref Step {i+1}/{len(reference_steps)} (Text: '{clean_step_text}...'):")
-                    print(f"    Embedding (shape {step_emb_np.shape}): {step_emb_np.tolist()}")
-                else:
-                    clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
-                    print(f"  Ref Step {i+1}/{len(reference_steps)} (Text: '{clean_step_text}...'): ERROR - No corresponding embedding in array (array shape {np_ref_embeddings.shape})")
-            print("--- [RAW EMBEDDING VALUES] End of Prints ---\n")
-            # --- End of Direct Printing ---
+            # print("\n--- [RAW EMBEDDING VALUES] Reference Step Embeddings ---")
+            # for i, step_text in enumerate(reference_steps):
+            #     if i < np_ref_embeddings.shape[0]:
+            #         step_emb_np = np_ref_embeddings[i]
+            #         clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
+            #         print(f"  Ref Step {i+1}/{len(reference_steps)} (Text: '{clean_step_text}...'):")
+            #         print(f"    Embedding (shape {step_emb_np.shape}): {step_emb_np.tolist()}")
+            #     else:
+            #         clean_step_text = step_text[:70].replace('\n', ' ') # Corrected method
+            #         print(f"  Ref Step {i+1}/{len(reference_steps)} (Text: '{clean_step_text}...'): ERROR - No corresponding embedding in array (array shape {np_ref_embeddings.shape})")
+            # print("--- [RAW EMBEDDING VALUES] End of Prints ---\n")
+            # # --- End of Direct Printing ---
 
             # Ensure both are 2D. This is a safeguard; previous checks should handle most issues.
             if np_comp_embeddings.ndim != 2 or np_ref_embeddings.ndim != 2:
@@ -189,28 +188,16 @@ class SolutionDTWReward(BaseReward):
                 self.logger.info("DTW: One of the numpy embedding arrays has 0 steps after processing. Returning 0.0 DTW reward.")
                 return 0.0
 
-            list_comp_embeddings_np = [row for row in np_comp_embeddings] # Still needed for len(x) by dtw
-            list_ref_embeddings_np = [row for row in np_ref_embeddings]   # Still needed for len(y) by dtw
+            # list_comp_embeddings_np = [row for row in np_comp_embeddings] # Not needed if passing 2D arrays to dtw
+            # list_ref_embeddings_np = [row for row in np_ref_embeddings]   # Not needed
 
-            # Manually compute the cost matrix
-            N = np_comp_embeddings.shape[0]
-            M = np_ref_embeddings.shape[0]
+            self.logger.debug(f"DTW: Is dtw_cost_func_numpy callable? {callable(dtw_cost_func_numpy)}")
             
-            cost_matrix = np.zeros((N, M))
-            self.logger.debug(f"DTW: Manually creating cost matrix of shape ({N}, {M})")
-            for i in range(N):
-                for j in range(M):
-                    # dtw_cost_func_numpy expects 1D numpy arrays
-                    cost_matrix[i, j] = dtw_cost_func_numpy(np_comp_embeddings[i], np_ref_embeddings[j])
+            # Call dtw with 2D NumPy arrays and the dist_method.
+            # dtw-python should iterate these, passing 1D rows to dtw_cost_func_numpy.
+            alignment = dtw(np_comp_embeddings, np_ref_embeddings, dist_method=dtw_cost_func_numpy)
             
-            self.logger.debug(f"DTW: Manually computed cost_matrix (sample norms): sum={np.sum(cost_matrix):.4f}, mean={np.mean(cost_matrix):.4f}")
-
-            # Call dtw with the precomputed cost matrix.
-            # x and y are still passed as dtw-python uses their lengths for pathfinding,
-            # but dist_method will be ignored if cost_matrix is provided.
-            alignment = dtw(list_comp_embeddings_np, list_ref_embeddings_np, cost_matrix=cost_matrix)
-            
-            raw_distance = alignment.distance # This is sum of costs along path
+            raw_distance = alignment.distance
             normalized_distance = alignment.normalizedDistance
             self.logger.info(f"DTW: Raw distance = {raw_distance:.4f}, Normalized distance = {normalized_distance:.4f}")
 
@@ -341,6 +328,24 @@ class SolutionDTWReward(BaseReward):
         # self.stats.reward_components['total_rewards'] = self.stats.reward_components.get('total_rewards', 0.0) + total_reward
         # BaseReward.__call__ calls self.stats.update(rewards, ...), which should handle total and average.
 
+        # Calculate and store batch-level CTI and CTT ratios in group_stats
+        # These are the stats that RewardStats.get_summary() will use for the "Group Stats" section.
+        batch_correct_answers = self.stats.group_stats.get('correct_answers', 0)
+        batch_incorrect_answers = self.stats.group_stats.get('incorrect_answers', 0)
+        batch_total_answers = batch_correct_answers + batch_incorrect_answers
+
+        if batch_incorrect_answers > 0:
+            self.stats.group_stats['correct_to_incorrect_ratio'] = batch_correct_answers / batch_incorrect_answers
+        elif batch_correct_answers > 0: # incorrect is 0, correct > 0
+            self.stats.group_stats['correct_to_incorrect_ratio'] = float('inf')
+        else: # incorrect is 0, correct is 0
+            self.stats.group_stats['correct_to_incorrect_ratio'] = 0.0
+        
+        if batch_total_answers > 0:
+            self.stats.group_stats['correct_to_total_ratio'] = batch_correct_answers / batch_total_answers
+        else:
+            self.stats.group_stats['correct_to_total_ratio'] = 0.0
+
         return total_reward
 
     def _ensure_batch_lists_length(self, required_length: int):
@@ -355,5 +360,7 @@ class SolutionDTWReward(BaseReward):
 
     # Override _finalize_batch from BaseReward if custom plurality logic is needed,
     # or ensure BaseReward._finalize_batch works with the stats populated by this class.
-    # The current BaseReward._finalize_batch should work if 'answers' and 'is_correct' are populated.
+    # The current BaseReward._finalize_batch should work if 'answers' and 'is_correct' are populated,
+    # and it now logs cumulative CTI/CTT based on all answers thanks to RewardStats enhancements.
     # We added self.answer_grouping_tolerance for it.
+    # No need to override _finalize_batch here anymore for CTI/CTT WandB logging.
